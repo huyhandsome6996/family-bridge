@@ -1,0 +1,775 @@
+{
+  "reviewed_at": "2026-10-10",
+  "board_url": "https://trello.com/b/UHuo0vGw",
+  "cards": [
+    {
+      "id": "US-001",
+      "epic": "E00",
+      "name": "[E00][US-001] Hướng dẫn đọc bảng và cập nhật tiến độ (HD01)",
+      "url": "https://trello.com/c/cfygnhGw",
+      "dependencies": [],
+      "wave": 0,
+      "branch": "docs/us-001-hd01",
+      "acceptance": "Thầy đọc hướng dẫn và tự thử cập nhật một thẻ; không đánh dấu hoàn thành tính năng khi chưa có bản chạy.",
+      "list": "Sẵn sàng thực hiện",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-002",
+      "epic": "E00",
+      "name": "[E00][US-002] Kế hoạch xây dựng 6–8 tuần và các mốc xem bản chạy (KH01)",
+      "url": "https://trello.com/c/wFj6DZy3",
+      "dependencies": [
+        "US-001"
+      ],
+      "wave": 1,
+      "branch": "docs/us-002-kh01",
+      "acceptance": "Mỗi tuần báo tính năng đã kiểm chứng, lỗi còn lại, nội dung chờ duyệt và mục tiêu tuần sau. Demo mẫu mục tiêu 2–3 tuần; đầy đủ dự kiến 6–8 tuần với 20–30 giờ/tuần, chưa tính Zalo xét duyệt. Ước lượng 6–8 tuần trước đây cần đánh giá lại sau US nền tảng vì admin tùy biến trong Mini App có thể tăng công sức; không giữ cam kết cũ cứng nhắc.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-003",
+      "epic": "E01",
+      "name": "[E01][US-003] Mở được bản chạy mẫu và lưu cách cài đặt (KT01)",
+      "url": "https://trello.com/c/lWIOzya4",
+      "dependencies": [],
+      "wave": 0,
+      "branch": "feat/us-003-kt01",
+      "acceptance": "Mở được màn hình Mini App và kiểm tra backend hoạt động; người khác làm theo hướng dẫn chạy được bản mẫu.",
+      "list": "Sẵn sàng thực hiện",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-004",
+      "epic": "E01",
+      "name": "[E01][US-004] Sắp xếp dữ liệu để các chức năng dùng chung (KT02)",
+      "url": "https://trello.com/c/qs9KQpKg",
+      "dependencies": [
+        "US-003"
+      ],
+      "wave": 1,
+      "branch": "feat/us-004-kt02",
+      "acceptance": "Có bộ hợp đồng và ranh giới được chốt đủ để mở các nhánh độc lập; chưa tuyên bố chức năng nghiệp vụ đã xong.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-005",
+      "epic": "E08",
+      "name": "[E08][US-005] Thầy duyệt cách nói và nguyên tắc riêng tư (N01)",
+      "url": "https://trello.com/c/BYycsi5J",
+      "dependencies": [],
+      "wave": 0,
+      "branch": "docs/us-005-n01",
+      "acceptance": "Có bản nội dung có phiên bản và người duyệt; quy định kết nối không cho phép đọc mọi dữ liệu.",
+      "list": "Sẵn sàng thực hiện",
+      "owner": "Thầy"
+    },
+    {
+      "id": "US-006",
+      "epic": "E08",
+      "name": "[E08][US-006] Thầy xác minh người hỗ trợ và đầu mối trợ giúp (N05)",
+      "url": "https://trello.com/c/y7BDi51B",
+      "dependencies": [],
+      "wave": 0,
+      "branch": "docs/us-006-n05",
+      "acceptance": "Có danh sách đã được đồng ý và xác minh; mục chưa xác minh không xuất bản cho người dùng thật.",
+      "list": "Sẵn sàng thực hiện",
+      "owner": "Thầy"
+    },
+    {
+      "id": "US-007",
+      "epic": "E08",
+      "name": "[E08][US-007] Thầy chuẩn bị thẻ cảm xúc và phản hồi mẫu (N02)",
+      "url": "https://trello.com/c/FecC9MZa",
+      "dependencies": [
+        "US-005"
+      ],
+      "wave": 1,
+      "branch": "docs/us-007-n02",
+      "acceptance": "Có bộ thẻ đủ cho luồng gửi/nhận demo và các mẫu phản hồi dễ hiểu; danh sách bản chính thức tách bản mẫu.",
+      "list": "Danh sách cần làm",
+      "owner": "Thầy"
+    },
+    {
+      "id": "US-008",
+      "epic": "E08",
+      "name": "[E08][US-008] Thầy duyệt cách AI giúp diễn đạt (N03)",
+      "url": "https://trello.com/c/VwtEaRlO",
+      "dependencies": [
+        "US-005"
+      ],
+      "wave": 1,
+      "branch": "docs/us-008-n03",
+      "acceptance": "Có bộ tình huống và tiêu chí đánh giá; hướng dẫn có phiên bản và người duyệt.",
+      "list": "Danh sách cần làm",
+      "owner": "Thầy"
+    },
+    {
+      "id": "US-009",
+      "epic": "E08",
+      "name": "[E08][US-009] Thầy chuẩn bị nhật ký, hoạt động và nội dung 4 tuần (N04)",
+      "url": "https://trello.com/c/eNVTbf1W",
+      "dependencies": [
+        "US-005"
+      ],
+      "wave": 1,
+      "branch": "docs/us-009-n04",
+      "acceptance": "Có bản duyệt với hoạt động riêng học sinh/người chăm sóc và hoạt động chung; tham gia tự nguyện, không bắt buộc tuần tự.",
+      "list": "Danh sách cần làm",
+      "owner": "Thầy"
+    },
+    {
+      "id": "US-010",
+      "epic": "E08",
+      "name": "[E08][US-010] Thầy duyệt khảo sát và kế hoạch nghiên cứu (N06)",
+      "url": "https://trello.com/c/iXq32l3r",
+      "dependencies": [
+        "US-005"
+      ],
+      "wave": 1,
+      "branch": "docs/us-010-n06",
+      "acceptance": "Có bản khảo sát có mã phiên bản, nguồn và phương pháp; thầy duyệt kế hoạch thử nghiệm.",
+      "list": "Danh sách cần làm",
+      "owner": "Thầy"
+    },
+    {
+      "id": "US-011",
+      "epic": "E01",
+      "name": "[E01][US-011] Học sinh và người chăm sóc đăng nhập bằng Zalo (F01a)",
+      "url": "https://trello.com/c/5cdxLWAa",
+      "dependencies": [
+        "US-004"
+      ],
+      "wave": 2,
+      "branch": "feat/us-011-f01a",
+      "acceptance": "Hai tài khoản vào đúng hồ sơ; giả mạo danh tính bị từ chối; có cách đăng nhập lại.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-012",
+      "epic": "E01",
+      "name": "[E01][US-012] Người khác không đọc được dữ liệu riêng (F15a)",
+      "url": "https://trello.com/c/NYRJCzKj",
+      "dependencies": [
+        "US-011"
+      ],
+      "wave": 3,
+      "branch": "feat/us-012-f15a",
+      "acceptance": "Các truy cập trái phép bị từ chối; nhật ký/AI mặc định riêng tư; kết nối không mở quyền đọc toàn bộ.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-013",
+      "epic": "E01",
+      "name": "[E01][US-013] Học sinh mời mẹ kết nối và mẹ xác nhận (F01b)",
+      "url": "https://trello.com/c/wAHZ74mo",
+      "dependencies": [
+        "US-012"
+      ],
+      "wave": 4,
+      "branch": "feat/us-013-f01b",
+      "acceptance": "Hai bên xác nhận mới kết nối; mã sai/trùng không tạo quan hệ sai; quyền xem vẫn được kiểm soát.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-014",
+      "epic": "E02",
+      "name": "[E02][US-014] Thầy đăng nhập trang quản trị với đúng quyền (AD01)",
+      "url": "https://trello.com/c/LxXAtanf",
+      "dependencies": [
+        "US-012"
+      ],
+      "wave": 4,
+      "branch": "feat/us-014-ad01",
+      "acceptance": "Thầy vào quản trị bằng tài khoản Zalo được cấp quyền, ngay trong Mini App; backend chặn truy cập ngoài quyền.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-015",
+      "epic": "E04",
+      "name": "[E04][US-015] Học sinh ghi tâm trạng và xem lịch sử riêng (F07a)",
+      "url": "https://trello.com/c/5QO0gzIF",
+      "dependencies": [
+        "US-012"
+      ],
+      "wave": 4,
+      "branch": "feat/us-015-f07a",
+      "acceptance": "Chỉ người viết thấy mục mới tạo; xem lịch sử đúng dữ liệu; truy cập trái phép bị từ chối.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-016",
+      "epic": "E04",
+      "name": "[E04][US-016] Học sinh viết nhật ký riêng (F08a)",
+      "url": "https://trello.com/c/a7SQrEMh",
+      "dependencies": [
+        "US-012"
+      ],
+      "wave": 4,
+      "branch": "feat/us-016-f08a",
+      "acceptance": "Nhật ký mặc định riêng tư; chỉ người viết được xem và sửa; câu hỏi thay qua admin.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-017",
+      "epic": "E01",
+      "name": "[E01][US-017] Người dùng yêu cầu xóa dữ liệu (F15c)",
+      "url": "https://trello.com/c/ZiUaqKe6",
+      "dependencies": [
+        "US-012"
+      ],
+      "wave": 4,
+      "branch": "feat/us-017-f15c",
+      "acceptance": "Yêu cầu đúng chủ thể; có trạng thái/bằng chứng xử lý; thầy duyệt cách giải thích giới hạn lưu giữ.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-018",
+      "epic": "E09",
+      "name": "[E09][US-018] Sao lưu và thử khôi phục bản chạy (VH01)",
+      "url": "https://trello.com/c/WWoqe5Cj",
+      "dependencies": [
+        "US-004"
+      ],
+      "wave": 2,
+      "branch": "feat/us-018-vh01",
+      "acceptance": "Có kết quả khôi phục đã thử; quyền dữ liệu riêng được giữ; tài liệu đủ để Huy thực hiện lại.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-019",
+      "epic": "E09",
+      "name": "[E09][US-019] Tìm hiểu điều kiện thông báo ngoài Mini App (Z01)",
+      "url": "https://trello.com/c/NUtx7doq",
+      "dependencies": [
+        "US-003"
+      ],
+      "wave": 1,
+      "branch": "feat/us-019-z01",
+      "acceptance": "Có kết luận có nguồn và ngày kiểm tra; không cam kết tin cá nhân tự động; xin quyền không đồng nghĩa đã gửi được tin.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-020",
+      "epic": "E02",
+      "name": "[E02][US-020] Thầy thêm, xem trước và xuất bản nội dung (AD02)",
+      "url": "https://trello.com/c/9794mejC",
+      "dependencies": [
+        "US-014"
+      ],
+      "wave": 5,
+      "branch": "feat/us-020-ad02",
+      "acceptance": "Nội dung nháp/ẩn không hiện cho người dùng; nội dung xuất bản hiện theo cơ chế đã ghi rõ; dữ liệu mẫu có dấu rõ.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-021",
+      "epic": "E03",
+      "name": "[E03][US-021] Hai tài khoản gửi và nhận trong hộp thư (F05a)",
+      "url": "https://trello.com/c/10jZDxyM",
+      "dependencies": [
+        "US-013"
+      ],
+      "wave": 5,
+      "branch": "feat/us-021-f05a",
+      "acceptance": "Hai tài khoản thấy đúng tin, đúng người nhận; không trùng tin; người thứ ba không đọc được.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-022",
+      "epic": "E06",
+      "name": "[E06][US-022] Học sinh mời thêm người làm điểm tựa (F11a)",
+      "url": "https://trello.com/c/XtkHQwYd",
+      "dependencies": [
+        "US-013"
+      ],
+      "wave": 5,
+      "branch": "feat/us-022-f11a",
+      "acceptance": "Điểm tựa phải xác nhận; quyền riêng vẫn giữ; học sinh quản lý được danh sách.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-023",
+      "epic": "E01",
+      "name": "[E01][US-023] Hủy kết nối và thu hồi quyền chia sẻ (F15b)",
+      "url": "https://trello.com/c/Vjcuke9o",
+      "dependencies": [
+        "US-013"
+      ],
+      "wave": 5,
+      "branch": "feat/us-023-f15b",
+      "acceptance": "Quyền liên quan bị thu hồi; không tạo gửi mới đến kết nối đã hủy; hành vi nội dung trao đổi trước đó được giải thích rõ.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-024",
+      "epic": "E02",
+      "name": "[E02][US-024] Thầy cập nhật bài học, hoạt động và đầu mối (AD03)",
+      "url": "https://trello.com/c/oksheU8m",
+      "dependencies": [
+        "US-020"
+      ],
+      "wave": 6,
+      "branch": "feat/us-024-ad03",
+      "acceptance": "Thầy thay nội dung không sửa code; đầu mối thiếu xác minh/đồng ý không xuất bản; có bản xem trước.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-025",
+      "epic": "E02",
+      "name": "[E02][US-025] Thầy quản lý phiên bản khảo sát và hướng dẫn AI (AD04)",
+      "url": "https://trello.com/c/3jr6GDwo",
+      "dependencies": [
+        "US-020"
+      ],
+      "wave": 6,
+      "branch": "feat/us-025-ad04",
+      "acceptance": "Thay khảo sát không làm mất khả năng so sánh; cấu hình không vượt giới hạn; có bản ghi và khôi phục nội dung.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-026",
+      "epic": "E04",
+      "name": "[E04][US-026] Học sinh chọn mục tâm trạng muốn chia sẻ (F07b)",
+      "url": "https://trello.com/c/4hco737d",
+      "dependencies": [
+        "US-015",
+        "US-013"
+      ],
+      "wave": 5,
+      "branch": "feat/us-026-f07b",
+      "acceptance": "Người nhận chỉ thấy mục đã được cấp quyền; thu hồi/hủy kết nối chặn truy cập tiếp theo.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-027",
+      "epic": "E03",
+      "name": "[E03][US-027] Học sinh chọn thẻ và xem trước người nhận (F03a)",
+      "url": "https://trello.com/c/mt5RLDCc",
+      "dependencies": [
+        "US-021",
+        "US-020"
+      ],
+      "wave": 6,
+      "branch": "feat/us-027-f03a",
+      "acceptance": "Chỉ chọn người nhận hợp lệ; chưa xác nhận thì chưa gửi; thẻ chưa xuất bản không xuất hiện.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-028",
+      "epic": "E03",
+      "name": "[E03][US-028] Người nhận trả lời bằng mẫu hoặc lời riêng (F05b)",
+      "url": "https://trello.com/c/XVdiOht8",
+      "dependencies": [
+        "US-021",
+        "US-020"
+      ],
+      "wave": 6,
+      "branch": "feat/us-028-f05b",
+      "acceptance": "Luồng con gửi thẻ — mẹ nhận — mẹ trả lời chạy với hai tài khoản; gửi phản hồi cần xác nhận.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-029",
+      "epic": "E03",
+      "name": "[E03][US-029] AI gợi ý lời nói và người viết tự duyệt (F04a)",
+      "url": "https://trello.com/c/3uuRbARC",
+      "dependencies": [
+        "US-021"
+      ],
+      "wave": 6,
+      "branch": "feat/us-029-f04a",
+      "acceptance": "Người nhận chỉ thấy bản cuối do người viết chọn; câu gốc/trao đổi AI không bị gửi kèm.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-030",
+      "epic": "E03",
+      "name": "[E03][US-030] Giữ nháp và nghỉ 5 phút trước khi gửi (F06a)",
+      "url": "https://trello.com/c/qHggx4EK",
+      "dependencies": [
+        "US-021"
+      ],
+      "wave": 6,
+      "branch": "feat/us-030-f06a",
+      "acceptance": "Hết đếm ngược không có tin tự gửi; nháp và trạng thái đúng khi mở lại app.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-031",
+      "epic": "E04",
+      "name": "[E04][US-031] Học sinh chia sẻ từng trang và nhận phản hồi (F08b)",
+      "url": "https://trello.com/c/ziFh1vrA",
+      "dependencies": [
+        "US-016",
+        "US-013",
+        "US-021"
+      ],
+      "wave": 6,
+      "branch": "feat/us-031-f08b",
+      "acceptance": "Không có quyền đọc toàn bộ sổ; chia sẻ đúng trang/đúng người; thu hồi quyền được kiểm tra.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-032",
+      "epic": "E06",
+      "name": "[E06][US-032] Học sinh gửi tín hiệu cần được lắng nghe (F10a)",
+      "url": "https://trello.com/c/D817B6Wc",
+      "dependencies": [
+        "US-021"
+      ],
+      "wave": 6,
+      "branch": "feat/us-032-f10a",
+      "acceptance": "Tín hiệu tới đúng người; trả lời/thời gian hiện cho người gửi; không bị cơ chế tạm dừng chặn.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-033",
+      "epic": "E03",
+      "name": "[E03][US-033] Vẫn tiếp tục được khi AI lỗi (F04b)",
+      "url": "https://trello.com/c/YVOW54e0",
+      "dependencies": [
+        "US-029"
+      ],
+      "wave": 7,
+      "branch": "feat/us-033-f04b",
+      "acceptance": "AI lỗi không làm mất nháp hoặc gửi ngoài ý muốn; các tình huống N03 được thử và lưu kết quả.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-034",
+      "epic": "E03",
+      "name": "[E03][US-034] Thầy chỉnh khoảng chờ, trợ giúp luôn mở (F06b)",
+      "url": "https://trello.com/c/Ro32huzj",
+      "dependencies": [
+        "US-030",
+        "US-014"
+      ],
+      "wave": 7,
+      "branch": "feat/us-034-f06b",
+      "acceptance": "Cấu hình sai bị từ chối; yêu cầu trợ giúp không phải chờ; hết khoảng chờ vẫn cần xác nhận.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-035",
+      "epic": "E06",
+      "name": "[E06][US-035] Học sinh tự chọn liên hệ điểm tựa khác (F11b)",
+      "url": "https://trello.com/c/kfcEmzfe",
+      "dependencies": [
+        "US-022",
+        "US-032"
+      ],
+      "wave": 7,
+      "branch": "feat/us-035-f11b",
+      "acceptance": "Chưa phản hồi không kích hoạt chuyển tiếp tự động; chỉ nội dung mới được học sinh duyệt gửi.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-036",
+      "epic": "E05",
+      "name": "[E05][US-036] Gia đình chọn gợi ý từ chương trình 4 tuần (F02a)",
+      "url": "https://trello.com/c/rwjhkqP6",
+      "dependencies": [
+        "US-024"
+      ],
+      "wave": 7,
+      "branch": "feat/us-036-f02a",
+      "acceptance": "Bốn chủ đề đúng N04; mọi người hiểu lựa chọn tự nguyện; không nhầm 4 tuần nội dung với thời gian xây app.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-037",
+      "epic": "E05",
+      "name": "[E05][US-037] Gia đình chọn hoạt động kết nối phù hợp (F09a)",
+      "url": "https://trello.com/c/1vV3Bocg",
+      "dependencies": [
+        "US-024"
+      ],
+      "wave": 7,
+      "branch": "feat/us-037-f09a",
+      "acceptance": "Người dùng chọn được hoạt động; bản ẩn/nháp không hiển thị; bài học đọc dễ trên điện thoại.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-038",
+      "epic": "E06",
+      "name": "[E06][US-038] Học sinh xem thầy cô hỗ trợ và mở cuộc gọi (F12a)",
+      "url": "https://trello.com/c/PrnNRU5i",
+      "dependencies": [
+        "US-024"
+      ],
+      "wave": 7,
+      "branch": "feat/us-038-f12a",
+      "acceptance": "Thông tin khớp N05; nút mở đúng số; không làm người dùng hiểu có người trực liên tục.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-039",
+      "epic": "E06",
+      "name": "[E06][US-039] Học sinh mở trang tìm trợ giúp (F13a)",
+      "url": "https://trello.com/c/QzsTphrv",
+      "dependencies": [
+        "US-024"
+      ],
+      "wave": 7,
+      "branch": "feat/us-039-f13a",
+      "acceptance": "Đầu mối đúng bản đã xác minh; nút gọi đúng số; phân biệt rõ phạm vi và trạng thái chưa xác minh.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-040",
+      "epic": "E07",
+      "name": "[E07][US-040] Người dùng tự nguyện làm khảo sát trước và sau (F14a)",
+      "url": "https://trello.com/c/ckdgO9xr",
+      "dependencies": [
+        "US-025"
+      ],
+      "wave": 7,
+      "branch": "feat/us-040-f14a",
+      "acceptance": "Trước/sau dùng đúng kế hoạch N06; người từ chối vẫn dùng app; dữ liệu có phiên bản và không trùng.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-041",
+      "epic": "E02",
+      "name": "[E02][US-041] Thầy tự thêm thẻ, sửa bài học và cập nhật đầu mối (AD05)",
+      "url": "https://trello.com/c/nu9LCrjo",
+      "dependencies": [
+        "US-020",
+        "US-024",
+        "US-025"
+      ],
+      "wave": 7,
+      "branch": "feat/us-041-ad05",
+      "acceptance": "Có video/ảnh thao tác thật của thầy; ba nội dung cập nhật hiện đúng; không cần chỉnh code.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-042",
+      "epic": "E09",
+      "name": "[E09][US-042] Thầy xem luồng gửi thẻ và góp ý (QA02)",
+      "url": "https://trello.com/c/VXzpDTyv",
+      "dependencies": [
+        "US-027",
+        "US-028"
+      ],
+      "wave": 7,
+      "branch": "test/us-042-qa02",
+      "acceptance": "Có bằng chứng luồng chạy và kết quả lỗi/quyền truy cập; thầy ghi rõ duyệt hay cần sửa.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-043",
+      "epic": "E09",
+      "name": "[E09][US-043] Kiểm tra bản demo AI, tâm trạng và nhật ký (QA03)",
+      "url": "https://trello.com/c/ej3EMsmD",
+      "dependencies": [
+        "US-033",
+        "US-034",
+        "US-015",
+        "US-016",
+        "US-032"
+      ],
+      "wave": 8,
+      "branch": "test/us-043-qa03",
+      "acceptance": "Có video bản demo dữ liệu mẫu, kết quả quyền truy cập và nhận xét thầy; mốc 2–3 tuần là mục tiêu được đánh giá lại.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-044",
+      "epic": "E05",
+      "name": "[E05][US-044] Gia đình xem tiến độ và hướng dẫn sổ giấy (F02b)",
+      "url": "https://trello.com/c/Yu8mhNlV",
+      "dependencies": [
+        "US-036"
+      ],
+      "wave": 8,
+      "branch": "feat/us-044-f02b",
+      "acceptance": "Tiến độ đúng hoạt động người dùng chủ động chọn; app, sổ giấy và giáo trình hỗ trợ nhau mà không bắt buộc trình tự.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-045",
+      "epic": "E07",
+      "name": "[E07][US-045] Thầy xem báo cáo tổng hợp đã bỏ nhận diện (F14b)",
+      "url": "https://trello.com/c/72v8VIuy",
+      "dependencies": [
+        "US-040"
+      ],
+      "wave": 8,
+      "branch": "feat/us-045-f14b",
+      "acceptance": "Không có tên/số điện thoại/nội dung riêng trong báo cáo; không trộn phiên bản khác mà không giải thích.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-046",
+      "epic": "E06",
+      "name": "[E06][US-046] Gửi yêu cầu và nhận lịch hẹn khi có đầu mối thật (F12b)",
+      "url": "https://trello.com/c/G7MVggRs",
+      "dependencies": [
+        "US-038",
+        "US-021",
+        "US-006"
+      ],
+      "wave": 8,
+      "branch": "feat/us-046-f12b",
+      "acceptance": "Có đầu mối thật nhận và trả lời yêu cầu/lịch hẹn trong thử nghiệm; không giả lập có người trực. Đây là thẻ phụ thuộc, chưa nằm trong cam kết bản đầu.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-047",
+      "epic": "E09",
+      "name": "[E09][US-047] Thay hoặc ẩn nội dung mẫu trước thử nghiệm (QA06)",
+      "url": "https://trello.com/c/n2VcjtOE",
+      "dependencies": [
+        "US-041",
+        "US-005",
+        "US-007",
+        "US-008",
+        "US-009",
+        "US-006",
+        "US-010"
+      ],
+      "wave": 8,
+      "branch": "docs/us-047-qa06",
+      "acceptance": "Không có số trợ giúp mẫu hoặc nội dung nhạy cảm mẫu trong bản thử nghiệm; mỗi mục xuất bản có bằng chứng duyệt.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-048",
+      "epic": "E09",
+      "name": "[E09][US-048] Thử lại toàn bộ quyền riêng tư bằng nhiều tài khoản (QA07)",
+      "url": "https://trello.com/c/XtfpRW32",
+      "dependencies": [
+        "US-012",
+        "US-023",
+        "US-017",
+        "US-026",
+        "US-031",
+        "US-035",
+        "US-033",
+        "US-045"
+      ],
+      "wave": 9,
+      "branch": "test/us-048-qa07",
+      "acceptance": "Không đọc trái phép nhật ký/AI/tâm trạng; quyền thu hồi có hiệu lực; không còn lỗi nghiêm trọng đã xác định.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-049",
+      "epic": "E09",
+      "name": "[E09][US-049] Thử các luồng trên Zalo thật và mạng yếu (QA08)",
+      "url": "https://trello.com/c/i3qEKzu7",
+      "dependencies": [
+        "US-013",
+        "US-027",
+        "US-028",
+        "US-033",
+        "US-034",
+        "US-026",
+        "US-031",
+        "US-032",
+        "US-035",
+        "US-038",
+        "US-039",
+        "US-044",
+        "US-037",
+        "US-045",
+        "US-041",
+        "US-023",
+        "US-017"
+      ],
+      "wave": 9,
+      "branch": "test/us-049-qa08",
+      "acceptance": "Có thiết bị/phiên bản/thời điểm/kết quả; không gửi trùng/sai người; lỗi chặn sử dụng đã sửa.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-050",
+      "epic": "E09",
+      "name": "[E09][US-050] Nghiệm thu bản thử nghiệm cùng thầy (NT01)",
+      "url": "https://trello.com/c/sC8qq2Al",
+      "dependencies": [
+        "US-047",
+        "US-048",
+        "US-049",
+        "US-018"
+      ],
+      "wave": 10,
+      "branch": "test/us-050-nt01",
+      "acceptance": "Mọi mục nghiệm thu có bằng chứng, Huy xác nhận kỹ thuật và thầy duyệt nội dung/trải nghiệm; mục chưa đạt có thẻ sửa lỗi, chưa chuyển Hoàn thành.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    },
+    {
+      "id": "US-051",
+      "epic": "E09",
+      "name": "[E09][US-051] Chuẩn bị hồ sơ thử nghiệm và xét duyệt Zalo (Z02)",
+      "url": "https://trello.com/c/kHdTZDCo",
+      "dependencies": [
+        "US-050"
+      ],
+      "wave": 11,
+      "branch": "release/us-051-zalo",
+      "acceptance": "Có hồ sơ và danh sách điều kiện đã kiểm tra; không đánh dấu Zalo đã duyệt khi chưa có bằng chứng.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy"
+    },
+    {
+      "id": "US-052",
+      "epic": "E09",
+      "name": "[E09][US-052] Thống nhất đợt dùng thử và ghi phản hồi (TN01)",
+      "url": "https://trello.com/c/cj6J2XmA",
+      "dependencies": [
+        "US-050",
+        "US-010"
+      ],
+      "wave": 11,
+      "branch": "docs/us-052-tn01",
+      "acceptance": "Có kế hoạch được duyệt trước khi mời; dữ liệu/feedback đúng phạm vi; chưa coi thử nghiệm 4 tuần gia đình nằm trong 6–8 tuần xây phần mềm.",
+      "list": "Danh sách cần làm",
+      "owner": "Huy và Thầy"
+    }
+  ]
+}

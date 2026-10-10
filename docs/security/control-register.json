@@ -1,0 +1,278 @@
+{
+  "reviewed_at": "2026-10-10",
+  "baseline_commit": "7c9a77049e6bea3490039e4ef44a6afbb21fb17f",
+  "note": "Baseline qua kiểm tra source scaffold; không phải pentest hoặc chứng nhận. Không có control VERIFIED. Cập nhật evidence sau mỗi triển khai. Tài liệu được đưa vào main ngày 11/10/2026; baseline PARTIAL thuộc PR #1 chưa merge, không phải trạng thái runtime của main.",
+  "controls": [
+    {
+      "id": "SEC-01",
+      "title": "Xác minh credential Zalo ở server theo đúng App ID; không tin zalo_id/name/phone/role client. Binding phải chống chiếm tài khoản và replay theo cơ chế provider hỗ trợ",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Invalid/expired/wrong-app credential bị từ chối; không phát token từ ID tự khai",
+      "evidence": []
+    },
+    {
+      "id": "SEC-02",
+      "title": "App token ngắn hạn, validation thuật toán/key/expiry đúng; session revoke/refresh rotation/reuse handling thiết kế trước phát hành. Logout/user disabled/role revoke có hiệu lực server",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Token hết hạn, sai signature/claim, phiên bị revoke không dùng được; access JWT TTL không thay revoke ACL",
+      "evidence": []
+    },
+    {
+      "id": "SEC-03",
+      "title": "Default deny, kiểm tra owner/recipient/current grant/connection ở list/detail/update/delete/export/search và nested endpoints",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Actor B không đọc/sửa ID của A dù đoán UUID; revoke có tác dụng",
+      "evidence": []
+    },
+    {
+      "id": "SEC-04",
+      "title": "Capability + school scope, không dựa UI/is_staff; thao tác cấp quyền cần authority, step-up phù hợp và audit",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Thầy/admin A không gọi chức năng B hoặc vượt trường; role hết hạn bị chặn",
+      "evidence": []
+    },
+    {
+      "id": "SEC-05",
+      "title": "Serializer allowlist read/write; không nhận owner_id, admin, approved, cooldown, consent, read_at tùy ý. Không fields='__all__' cho API riêng",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Mass assignment/extra fields từ chối; response không original/prompt/ghi chú không được chia sẻ",
+      "evidence": []
+    },
+    {
+      "id": "SEC-06",
+      "title": "Mã mời entropy mạnh, hash at rest, TTL, giới hạn đoán/tạo/claim; xác nhận đúng hai actor trong transaction",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Hết hạn/reuse/self-connect/claim race bị chặn; không log mã",
+      "evidence": []
+    },
+    {
+      "id": "SEC-07",
+      "title": "Send cần explicit action, đúng revision/recipient, active connection và cooldown server; unique idempotency và payload hash",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Double submit một kết quả; key cũ+payload khác bị từ chối; hết giờ không gửi",
+      "evidence": []
+    },
+    {
+      "id": "SEC-08",
+      "title": "Grant riêng từng mood/page, revision cụ thể, thu hồi; private journal/AI không public admin/teacher",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Sửa mục không lộ revision mới; context/reply/cache không bypass grant",
+      "evidence": []
+    },
+    {
+      "id": "SEC-09",
+      "title": "TLS hợp lệ, hosts/CORS explicit, DEBUG false; trust proxy header chỉ khi ingress tin cậy ghi đè. Không xem CORS là auth; bảo vệ CSRF nếu dùng cookie/session",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Production config check; origin/Host/proxy giả và cookie flow được kiểm tra",
+      "evidence": []
+    },
+    {
+      "id": "SEC-10",
+      "title": "Access token không URL/log/public storage. Zalo storage có giới hạn; không giả định browser localStorage/cookie là keystore. Clear state khi logout/unlink",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Inspect build/network/logs; token không bundle, private data không snapshot công khai",
+      "evidence": []
+    },
+    {
+      "id": "SEC-11",
+      "title": "ORM/parameterized SQL, validation type/range/length/enum; không eval/exec/pickle hoặc shell interpolation từ input",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Test benign injection markers giữ dạng dữ liệu, không thay query/command; lỗi generic",
+      "evidence": []
+    },
+    {
+      "id": "SEC-12",
+      "title": "Render user/AI text như text; không dangerouslySetInnerHTML. Nếu rich text cần sanitizer allowlist, safe URLs; CSP khi host cho phép và thử Zalo thật",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "XSS markers không thực thi; javascript/data URL bị chặn; CSP không phá SDK",
+      "evidence": []
+    },
+    {
+      "id": "SEC-13",
+      "title": "Không fetch URL tùy ý; allowlist provider/endpoint, chống SSRF/private/link-local/metadata targets, redirect và DNS edge cases",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Fake provider/URL không truy cập mạng ngoài scope; giới hạn response/timeout, không tắt TLS verify",
+      "evidence": []
+    },
+    {
+      "id": "SEC-14",
+      "title": "Bound body/text/page/query/retry/timeouts; rate limit actor+IP+action, không chỉ process-local. Quota AI/global budget/concurrency; gateway limits cho DoS",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Body lớn/AI spam/enumeration bị chặn phù hợp; request giúp đỡ không bị timer và danh bạ vẫn mở",
+      "evidence": []
+    },
+    {
+      "id": "SEC-15",
+      "title": "Validation state transitions và DB constraints; transaction/lock order; chống TOCTOU, race gửi/revoke, appointment overlap và consent thay đổi",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Test cạnh tranh MySQL; khóa ngắn, không network trong transaction",
+      "evidence": []
+    },
+    {
+      "id": "SEC-16",
+      "title": "Minimal data gửi AI chỉ do người viết chủ động, có thông báo xử lý; provider retention/training/subprocessors chốt trước thử. Không trộn dữ liệu actor khác",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Inspect provider payload giả; không history/PII dư; retention & deletion có bằng chứng",
+      "evidence": []
+    },
+    {
+      "id": "SEC-17",
+      "title": "Prompt injection không cấp thêm quyền: AI chỉ rephrase, không tool DB/send/contact; output không tin cậy, giới hạn/schema, người viết sửa/duyệt",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "“Bỏ qua chỉ dẫn” không gửi/lộ canary user khác; AI output không chạy code/link",
+      "evidence": []
+    },
+    {
+      "id": "SEC-18",
+      "title": "Chống đổi ý gốc/tự thêm chẩn đoán/giải pháp nguy hiểm; không coi AI là người hỗ trợ khẩn cấp",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Test ý/cảm xúc/nhu cầu được giữ, có lựa chọn sửa/bỏ; trang trợ giúp độc lập",
+      "evidence": []
+    },
+    {
+      "id": "SEC-19",
+      "title": "Secret ở secret manager/env server, ít quyền, TTL/rotate; không VITE_* secret, .env thật, PAT, DB dump hoặc credential trong repo",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Secret scan không in value; exposed credential revoke trước tiếp tục; public App ID không phải secret",
+      "evidence": []
+    },
+    {
+      "id": "SEC-20",
+      "title": "Runtime DB user ít quyền, network hạn chế, TLS khi ngoài trusted network; tài khoản migration riêng khi vận hành",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Không root production/public DB; test CA/hostname; chạy migrate/test không suy từ SQLite",
+      "evidence": []
+    },
+    {
+      "id": "SEC-21",
+      "title": "At-rest encryption cho DB/backups theo hạ tầng và khóa tách biệt; retention/deletion ledger; restore không hồi sinh grant/user đã xóa",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Restore rehearsal cách ly, reapply deletions, có retention phê duyệt; không tự viết crypto/E2EE giả",
+      "evidence": []
+    },
+    {
+      "id": "SEC-22",
+      "title": "Logs/audit/metrics không raw journal/message/survey/prompt/token/code/PII; escape metadata tránh log injection; access/retention/alert",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Synthetic canary không xuất hiện log; log failure không mở quyền hoặc crash đường help",
+      "evidence": []
+    },
+    {
+      "id": "SEC-23",
+      "title": "Survey tự nguyện, pseudonym không phải anonymity; aggregate suppression chống nhóm nhỏ/differencing; không raw export/free text",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Kiểm tra các filter/export nhiều lần, không suy ra cá nhân; withdrawal vẫn được dùng app",
+      "evidence": []
+    },
+    {
+      "id": "SEC-24",
+      "title": "Danh bạ/help content đã đồng ý/xác minh, review_due; publish có authority/version, ngăn sửa số trái phép",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Editor không tự publish; staff/call target đúng mục đã duyệt; có fallback khi API/auth lỗi",
+      "evidence": []
+    },
+    {
+      "id": "SEC-25",
+      "title": "Dependencies pin/lock, audit Python/npm/container, đánh giá transitive/reachability, SBOM/update plan. Không force downgrade SDK để làm sạch audit",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Ghi advisory+path+runtime/dev+fix/exception; thử build và device nếu đổi SDK/UI",
+      "evidence": []
+    },
+    {
+      "id": "SEC-26",
+      "title": "CI ít quyền, pin Actions SHA cho release, không chạy untrusted PR code với secrets/pull_request_target, chống script injection; bảo vệ nhánh/release",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Review workflows/permissions/env, fork PR không secret; artifact gắn commit, deploy tách khỏi test",
+      "evidence": []
+    },
+    {
+      "id": "SEC-27",
+      "title": "Production tối thiểu: không admin/debug/docs nhạy cảm, container nonroot/patch, services private, no secrets health/error, HTTP methods/types strict",
+      "status": "PARTIAL",
+      "reason": "Có một số thiết lập nền tảng; chưa kiểm chứng kiểm soát đầy đủ hoặc production.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "check --deploy với env thật; GET health minimal; bad body/Content-Type/5xx không stack trace",
+      "evidence": []
+    },
+    {
+      "id": "SEC-28",
+      "title": "Incident runbook, contact/owner rõ, revoke/contain/restore, evidence khử nội dung; disable AI hoặc nguy cơ cao không chặn help",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Tabletop và restore có người phụ trách; không công khai lỗ hổng/live secret",
+      "evidence": []
+    },
+    {
+      "id": "SEC-29",
+      "title": "Inventory API/version/domain/provider, endpoint auth/throttle/sensitivity; retire endpoint cũ. Webhook nếu thêm phải verify signature/time/replay",
+      "status": "NOT_IMPLEMENTED",
+      "reason": "Chức năng hoặc kiểm soát nghiệp vụ chưa được triển khai/kiểm chứng.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Unknown/debug route không xuất dữ liệu; callback sai signature bị từ chối khi tính năng được thêm",
+      "evidence": []
+    },
+    {
+      "id": "SEC-30",
+      "title": "Upload/XML/archive/attachments ngoài MVP: không bật parser/endpoint. Nếu bổ sung phải model threat: MIME/magic/size/paths/zip bombs/XXE/AV/quarantine",
+      "status": "NOT_APPLICABLE_WITH_REASON",
+      "reason": "MVP chưa có upload/XML/archive endpoint; phải đánh giá lại khi bổ sung.",
+      "owner_role": "Backend/frontend owner; reviewer bảo mật được phân công",
+      "next_step": "Ghi N/A hiện tại; khi thêm tính năng phải test, không đưa file user lên scanner bên thứ ba mặc định",
+      "evidence": []
+    }
+  ],
+  "baseline_ref": "feat/us-003-kt01"
+}

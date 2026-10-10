@@ -1,49 +1,48 @@
-﻿# Family Bridge - Phạm Vi Dự Án (Project Scope)
+# Phạm vi Family Bridge
 
-> **Lưu ý quan trọng**: Đây là tài liệu xác định phạm vi ban đầu phục vụ giai đoạn khởi tạo workspace. Toàn bộ các tính năng được liệt kê dưới đây mới ở mức định hướng và thiết kế, **chưa được triển khai lập trình trong mã nguồn**.
+Bản chốt ngày 10/10/2026 từ yêu cầu trực tiếp của Huy là chuẩn triển khai. Hai DOCX tham khảo và tài liệu cũ có nội dung khác phải được đối chiếu trước khi dùng. Các chức năng dưới đây là yêu cầu, chưa phải chức năng đã có trong mã nguồn.
 
----
+## Mười lăm nhóm tính năng
 
-## 1. Trục chính của dự án
-Family Bridge được định hướng là nền tảng đồng hành hỗ trợ cha mẹ và con cái cải thiện kết nối, thấu hiểu và giao tiếp lành mạnh thông qua **chương trình đồng hành 4 tuần**:
-- **Tuần 1 - Khởi đầu kết nối & Lắng nghe**: Thiết lập không gian chia sẻ an toàn, nhận diện cảm xúc cá nhân.
-- **Tuần 2 - Thấu hiểu & Góc nhìn**: Đặt mình vào vị trí của đối phương, nhận biết rào cản và khoảng cách thế hệ.
-- **Tuần 3 - Giao tiếp thấu cảm & Chữa lành**: Học cách diễn đạt cảm xúc chân thành, giảm xung đột và phòng thủ.
-- **Tuần 4 - Gắn kết bền vững**: Duy trì thói quen đồng hành, tổng kết hành trình và cam kết dài hạn.
+| Mã | Yêu cầu | US Trello |
+| --- | --- | --- |
+| F01 | Đăng nhập bằng Zalo; kết nối học sinh với cha mẹ/người chăm sóc bằng mã mời, hai bên xác nhận | 011, 013 |
+| F02 | Gợi ý 4 tuần với hoạt động riêng và chung; tự nguyện, chọn từng hoạt động | 036, 044 |
+| F03 | Bộ thẻ cảm xúc online; chọn thẻ, người nhận, xem trước và xác nhận; người nhận có gợi ý phản hồi | 027, 028 |
+| F04 | AI giúp cả hai bên diễn đạt rõ cảm xúc và nhu cầu, giữ đúng ý; xem, sửa, duyệt trước khi gửi; không gửi câu gốc | 029, 033 |
+| F05 | Hộp thư và phản hồi nhanh trong Mini App; có thể trả lời bằng lời riêng hoặc mẫu | 021, 028 |
+| F06 | Lưu nháp và tạm dừng 5 phút; mở lại vẫn đúng trạng thái; hết giờ không tự gửi; trợ giúp không bị chặn | 030, 034 |
+| F07 | Ghi nhận cảm xúc hằng ngày, ghi chú, lịch sử cá nhân; chủ động chia sẻ từng mục | 015, 026 |
+| F08 | Nhật ký riêng; nhật ký song hành theo chủ đề, chia sẻ từng trang và phản hồi; có hướng dẫn sổ giấy | 016, 031, 044 |
+| F09 | Trò chuyện 5 phút, bữa ăn không điện thoại, đi dạo/gọi điện khi ở xa; bài học khoảng 60 giây cho người chăm sóc | 037 |
+| F10 | Nút “Con cần được lắng nghe”; chọn người đã kết nối và nhu cầu trò chuyện/ở bên/hẹn trao đổi | 032 |
+| F11 | Thêm người thân/giáo viên/cán bộ tham vấn đồng ý làm điểm tựa; học sinh tự chọn liên hệ khác; không tự chuyển tâm sự | 022, 035 |
+| F12 | Danh bạ thầy/cô đồng ý tiếp nhận và mở màn hình gọi; yêu cầu gặp riêng/lịch hẹn chỉ bật khi có đầu mối dùng hệ thống | 038, 046 |
+| F13 | Trang tìm trợ giúp riêng, đầu mối/số điện thoại/giờ hoạt động đã xác minh; người dùng chủ động gọi | 039 |
+| F14 | Khảo sát trước/sau tự nguyện cho học sinh và người đồng hành; nghiên cứu dùng tổng hợp bỏ nhận diện | 040, 045 |
+| F15 | Quản lý người kết nối, từng nội dung chia sẻ, hủy kết nối và yêu cầu xóa; nhật ký riêng/AI không mặc định mở cho người thân/giáo viên | 012, 017, 023 |
 
----
+## Bốn chủ đề
 
-## 2. Các nhóm chức năng dự kiến
+1. Nhận diện cảm xúc và “Tiếng lòng chưa nói”: nhận biết cảm xúc, chia sẻ điều buồn hoặc khó mở lời.
+2. Giảm so sánh và “Bản sắc riêng của con”: ghi nhận cố gắng, luyện lắng nghe, dành thời gian cho nhau.
+3. Ranh giới riêng tư và niềm tin: thống nhất tôn trọng không gian cá nhân, điện thoại và thông tin riêng.
+4. Cảm ơn, xin lỗi và “Thỏa ước gia đình mới”: xác nhận việc cụ thể tiếp tục thực hiện sau chương trình.
 
-### 2.1. Ghép nối gia đình (Family Pairing)
-- Cho phép tạo mã kết nối hoặc quét QR để liên kết tài khoản giữa cha mẹ và con cái một cách an toàn và tự nguyện.
-- Hỗ trợ mô hình nhóm gia đình hạt nhân, đảm bảo quyền riêng tư của từng thành viên.
+Luồng chi tiết ở [chương trình 4 tuần](product/four-week-flow.md), dữ liệu ở [ERD](data/erd.md) và quyền quản trị ở [admin](product/admin-capabilities.md). Đây là thiết kế chưa triển khai.
 
-### 2.2. Nhật ký & Tâm trạng riêng tư (Private Journal & Mood Tracking)
-- Không gian riêng tư để mỗi người (cha mẹ hoặc con cái) tự ghi lại cảm xúc, suy nghĩ trong ngày mà không bị người khác tự ý đọc.
-- Giúp người dùng giải tỏa cảm xúc trước khi chuyển hóa thành lời nói.
+Không khóa tuần sau nếu chưa làm tuần trước. Không bắt buộc tham gia hoạt động hay khảo sát để sử dụng công cụ giao tiếp.
 
-### 2.3. AI gợi ý diễn đạt (AI-Assisted Empathetic Communication)
-- Hỗ trợ người viết diễn đạt lại suy nghĩ theo hướng tích cực, xây dựng và giảm tính công kích/phòng thủ.
-- **Nguyên tắc cốt lõi**: AI chỉ đóng vai trò gợi ý. Người dùng luôn là người kiểm duyệt, chỉnh sửa và chủ động quyết định trước khi gửi bất kỳ nội dung nào.
+## Những quyết định được áp dụng
 
-### 2.4. Nhắn tin đồng hành (Companion Messaging)
-- Kênh trò chuyện trực tiếp giữa cha mẹ và con với các tính năng hỗ trợ giao tiếp thấu cảm.
-- Gợi ý chủ đề mở lời khi cảm thấy bế tắc hoặc khó mở lời trực tiếp.
+- Frontend học sinh, người chăm sóc và quản trị nội dung nằm trong Mini App theo backlog hiện tại; không xây web hoặc React Native trong đợt này.
+- Hộp thư nằm trong hệ thống Family Bridge. Thông báo ngoài Mini App là phần nghiên cứu điều kiện Zalo ở US-019; không giả định có quyền gửi tin cá nhân tự động.
+- Khoảng tạm dừng mặc định và phạm vi đợt đầu là **300 giây**. Khả năng admin đổi thời gian ở US-034 là phần mở rộng của backlog; chưa triển khai khi chưa có quyết định mới.
+- Nút cần được lắng nghe và trang tìm trợ giúp là hai luồng khác nhau. Không dùng bộ đếm để trì hoãn liên hệ hỗ trợ.
+- Dữ liệu tâm trạng và nhật ký là cá nhân. Kết nối chỉ cho phép tương tác, không cấp quyền đọc mọi dữ liệu.
+- Nội dung AI chỉ được chuyển tới nhà cung cấp AI khi người viết chủ động dùng tính năng, với thông báo xử lý dữ liệu phù hợp; không có nghĩa “riêng tư” là không có bên xử lý kỹ thuật.
+- Dữ liệu mẫu và số liệu minh họa không được ghi thành kết quả nghiên cứu đã thu thập. Các tỷ lệ, p-value và hiệu ứng trong DOCX cần dữ liệu thật và kiểm chứng trước khi sử dụng làm kết luận.
 
-### 2.5. Hoạt động kết nối định kỳ (Connection Activities & Challenges)
-- Các câu hỏi gợi mở (prompt questions) và thử thách nhỏ hàng ngày/hàng tuần phù hợp theo lộ trình 4 tuần.
-- Khuyến khích tương tác ngoài đời thực giữa cha mẹ và con.
+## Điều kiện thử nghiệm
 
-### 2.6. Đánh giá trước và sau chương trình (Pre/Post Assessment)
-- Bảng khảo sát ngắn gọn đo lường mức độ gắn kết, thấu hiểu và chất lượng giao tiếp trước khi bắt đầu và sau khi hoàn thành 4 tuần.
-- Đưa ra phản hồi trực quan về sự cải thiện trong mối quan hệ.
-
----
-
-## 3. Kiến trúc kỹ thuật định hướng
-- **Backend chung**: Django / Django REST Framework (cung cấp API trung tâm, xác thực, cơ sở dữ liệu và tích hợp AI).
-- **Đa nền tảng người dùng**:
-  - **Zalo Mini App**: Kênh tiếp cận thuận tiện, dễ dùng cho phụ huynh trên ứng dụng Zalo quen thuộc.
-  - **Web Application**: Giao diện trình duyệt cho máy tính và thiết bị di động.
-  - **Mobile App**: Ứng dụng di động độc lập cho trải nghiệm sâu hơn và thông báo đẩy.
+Có xác thực Zalo phía server; kiểm tra quyền từng đối tượng; nội dung và danh bạ được duyệt; sao lưu/khôi phục MySQL; quy trình yêu cầu xóa; thử các luồng bằng nhiều tài khoản trên Zalo Android/iOS; đồng ý tham gia và quy trình hỗ trợ đã được thầy thống nhất. Hoàn thành code không đồng nghĩa Zalo đã xét duyệt.

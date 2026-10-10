@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Bridge Security"
+  short_description: "Kiểm soát bảo mật, quyền riêng tư và lạm dụng API"
+  default_prompt: "Dùng $family-bridge-security để mô hình hóa rủi ro và kiểm chứng biện pháp bảo mật cho thay đổi Family Bridge."

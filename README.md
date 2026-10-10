@@ -1,73 +1,30 @@
-﻿# Family Bridge
+# Family Bridge
 
-Nền tảng hỗ trợ cha mẹ và con cải thiện giao tiếp và thấu hiểu lẫn nhau qua chương trình đồng hành 4 tuần.
+Zalo Mini App được đề xuất để hỗ trợ giao tiếp giữa học sinh THPT và cha mẹ/người chăm sóc, với công cụ bày tỏ cảm xúc và chương trình đồng hành tự nguyện 4 tuần.
 
-> **Trạng thái hiện tại**: Đây là **workspace khởi tạo cấu trúc ban đầu** cho dự án. Toàn bộ các chức năng nghiệp vụ, backend Django, giao diện web và app mobile **chưa được lập trình triển khai**.
+## Trạng thái main
 
----
+Ngày 11/10/2026, main đã có bộ skill, rule và tài liệu chuẩn triển khai. Backend trên main còn trống và Mini App còn template ban đầu. Khung Django/DRF, MySQL/Render và màn hình Mini App gọi API nằm trong [PR #1](https://github.com/huyhandsome6996/family-bridge/pull/1), nhánh feat/us-003-kt01, chưa merge. 15 tính năng nghiệp vụ chưa triển khai; chưa deploy Render/phát hành Zalo hoặc kiểm thử trên điện thoại thật.
 
-## 1. Mục tiêu dự án
-Family Bridge hướng tới giải quyết rào cản thế hệ và xung đột giao tiếp trong gia đình hiện đại thông qua:
-- Trục chính là **chương trình đồng hành 4 tuần** được thiết kế có lộ trình từ nhận diện cảm xúc, thấu cảm đến duy trì gắn kết.
-- Hỗ trợ công cụ gợi ý diễn đạt tích cực bằng AI (người dùng luôn kiểm duyệt trước khi gửi).
-- Kết nối đa kênh: Web, Mobile App và Zalo Mini App sử dụng chung một hệ thống backend Django tập trung.
+## Coding agent phải đọc
 
-Chi tiết về định hướng tính năng xem tại [docs/project-scope.md](docs/project-scope.md).
+Đọc [AGENTS.md](AGENTS.md), [phạm vi](docs/project-scope.md), hai repo skills và rule bắt buộc trước mỗi tác vụ. Theo yêu cầu người dùng, thay đổi chỉ về skill/rule/tài liệu được kiểm tra rồi push thẳng main; mã nguồn và runtime/deployment dùng nhánh/PR riêng. Xem [hướng dẫn agent](docs/engineering/agent-guide.md).
 
----
+- [DSA rules và ngân sách tài nguyên](docs/engineering/dsa-rules.md)
+- [Security rules, threat model và nguồn](docs/security/security-rules.md)
+- [Luồng đồng hành 4 tuần](docs/product/four-week-flow.md)
+- [ERD và ràng buộc quyền dữ liệu](docs/data/erd.md)
+- [Khả năng và giới hạn admin](docs/product/admin-capabilities.md)
+- [Kiến trúc Django/DRF + MySQL + React Zalo Mini App](docs/architecture.md)
+- [Hợp đồng API nền tảng](docs/contracts/api-foundation.md)
+- [Hướng dẫn chạy khung code của PR #1](docs/development.md)
+- [Trello audit](docs/project/trello-audit.md) và [52 US/phụ thuộc](docs/project/backlog-snapshot.json)
+- [Bằng chứng và giới hạn kiểm tra](docs/validation.md)
 
-## 2. Cấu trúc thư mục
+Từ gốc repo kiểm tra tài liệu:
 
-`	ext
-family-bridge/
-├── backend/            # Backend dịch vụ trung tâm (Django REST Framework - khởi tạo khung)
-├── web/                # Giao diện ứng dụng Web (khởi tạo khung)
-├── mobile/             # Ứng dụng di động độc lập (khởi tạo khung)
-├── zalo-mini-app/      # Bộ khung Zalo Mini App (Vite 5 + React/JavaScript Blank Template)
-├── docs/               # Tài liệu thiết kế và phạm vi dự án
-│   └── project-scope.md
-├── .gitignore          # Cấu hình loại trừ Git cho đa nền tảng
-└── README.md           # Hướng dẫn tổng quan workspace
-`
+```bash
+python scripts/check_agent_docs.py
+```
 
-- Các thư mục ackend/, web/, mobile/ hiện tại chỉ chứa file .gitkeep để duy trì cấu trúc thư mục trong Git.
-- Thư mục zalo-mini-app/ đã được khởi tạo bằng công cụ chính thức của Zalo (zmp-cli) với template Blank JavaScript và liên kết với Mini App ID dự án.
-
----
-
-## 3. Yêu cầu môi trường & Công cụ cần có
-
-Để phát triển dự án đầy đủ trong các giai đoạn tiếp theo, máy phát triển cần có:
-- **Git** (khuyến nghị >= 2.40)
-- **Node.js** (khuyến nghị >= 18.x hoặc 20.x/24.x LTS) & **npm** (>= 9.x)
-- **Python** (khuyến nghị >= 3.10)
-- **Zalo Mini App CLI (zmp-cli)**: Cài đặt toàn cục qua 
-pm install -g zmp-cli (đã sẵn sàng trên máy)
-
----
-
-## 4. Hướng dẫn chạy bộ khung Zalo Mini App
-
-1. Di chuyển vào thư mục Zalo Mini App:
-   `ash
-   cd zalo-mini-app
-   `
-
-2. Cài đặt các gói phụ thuộc (nếu chưa cài):
-   `ash
-   npm install
-   `
-
-3. Khởi chạy máy chủ phát triển cục bộ:
-   `ash
-   npm run start
-   # hoặc:
-   npx zmp-cli start
-   `
-
-4. Trình duyệt hoặc Zalo Simulator sẽ mở ra giao diện khung mặc định của Zalo Mini App.
-
----
-
-## 5. Giấy phép & Bảo mật
-Dự án được quản lý dưới dạng kho lưu trữ riêng tư (PRIVATE repository). Không chia sẻ các mã bí mật, file .env hoặc token xác thực vào kho lưu trữ mã nguồn.
+CI trên main chỉ kiểm tra bộ hướng dẫn. Không suy ra runtime/security đã nghiệm thu từ job tài liệu đạt. Repo public: không commit secret/PAT, nhật ký, tâm sự hoặc khảo sát thật.

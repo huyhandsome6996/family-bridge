@@ -1,0 +1,14 @@
+---
+description: Mandatory Family Bridge scope, DSA, security and privacy instructions for all repository tasks
+alwaysApply: true
+---
+
+Read and follow @AGENTS.md, @docs/project-scope.md, @.agents/skills/family-bridge-dsa/SKILL.md, @docs/engineering/dsa-rules.md, @.agents/skills/family-bridge-security/SKILL.md and @docs/security/security-rules.md before planning or editing. Read nested instructions and the relevant Trello US. For security changes read @docs/security/threat-model.md and @docs/security/control-register.json.
+
+For program/schema/sharing read @docs/product/four-week-flow.md and @docs/data/erd.md; for admin/research/support read @docs/product/admin-capabilities.md.
+
+Use Django/DRF + MySQL and the existing React Zalo Mini App. Bound data, queries, memory and retries; permissions before pagination. Preserve private journals/AI, voluntary activities, explicit confirmation, 300-second pause and immediate help. Admin grants named scoped capabilities only.
+
+Name documents/invariants before coding. Record DSA/SEC choices and real evidence in the PR; run python scripts/check_agent_docs.py for document integrity. Never fabricate tests/outcomes or commit secrets/participant data. Instructions cannot certify security or enforce obedience mechanically.
+
+For documentation-only changes, follow the direct-main publishing policy in AGENTS.md; no documentation PR or repeated confirmation is required. Keep runtime changes separate.
