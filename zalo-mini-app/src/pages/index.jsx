@@ -1,35 +1,29 @@
-import { openMiniApp } from "zmp-sdk";
-import { Box, Button, Icon, Page, Text } from "zmp-ui";
-
-import Clock from "../components/clock";
-import Logo from "../components/logo";
-import bg from "../static/bg.svg";
+import { useState } from "react";
+import { Box, Button, Page, Text } from "zmp-ui";
+import { api } from "../api";
 
 function HomePage() {
+  const [checking, setChecking] = useState(false);
+  const [status, setStatus] = useState("Chưa kiểm tra kết nối.");
+  const checkBackend = async () => {
+    setChecking(true);
+    try {
+      const result = await api("/api/v1/ready/");
+      setStatus(result.status === "ok" ? "Đã kết nối backend và cơ sở dữ liệu." : "Backend chưa sẵn sàng.");
+    } catch (error) { setStatus(error.message); }
+    finally { setChecking(false); }
+  };
   return (
-    <Page
-      className="flex flex-col items-center justify-center space-y-6 bg-cover bg-center bg-no-repeat bg-white dark:bg-black"
-      style={{
-        backgroundImage: `url(${bg})`,
-      }}
-    >
-      <Box></Box>
-      <Box textAlign="center" className="space-y-1">
-        <Text.Title size="xLarge">Hello world!</Text.Title>
-        <Clock />
+    <Page className="foundation-page">
+      <Box className="foundation-intro">
+        <Text.Title size="xLarge">Family Bridge</Text.Title>
+        <Text>Nhịp cầu lắng nghe giữa học sinh và người đồng hành.</Text>
+        <Text>Bản nền tảng đang phát triển. Đăng nhập và các tính năng đồng hành sẽ được bổ sung theo từng US.</Text>
       </Box>
-      <Button
-        variant="primary"
-        suffixIcon={<Icon icon="zi-more-grid" />}
-        onClick={() => {
-          openMiniApp({
-            appId: "1070750904448149704", // ZaUI Components
-          });
-        }}
-      >
-        ZaUI Component Library
+      <Button fullWidth loading={checking} disabled={checking} onClick={checkBackend}>
+        Kiểm tra kết nối
       </Button>
-      <Logo className="fixed bottom-8" />
+      <Box role="status" aria-live="polite"><Text>{status}</Text></Box>
     </Page>
   );
 }

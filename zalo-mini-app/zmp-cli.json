@@ -3,7 +3,7 @@
   "name": "family-bridge",
   "framework": "react",
   "cssPreProcessor": "scss",
-  "includeTailwind": true,
+  "includeTailwind": false,
   "package": "zmp-ui",
   "stateManagement": "jotai",
   "newProject": true,

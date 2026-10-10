@@ -1,14 +1,4 @@
-.page {
-  padding: 16px 16px 96px 16px;
-}
-
-.section-container {
-  padding: 16px;
-  background: #ffffff;
-  border-radius: 8px;
-  margin-bottom: 24px;
-}
-
-.zaui-list-item {
-  cursor: pointer;
-}
+.foundation-page { padding: 24px 20px calc(32px + env(safe-area-inset-bottom)); }
+.foundation-page > * + * { margin-top: 24px; }
+.foundation-intro > * + * { margin-top: 12px; }
+.foundation-page { background: var(--zaui-page-bg-color, #fff); }
