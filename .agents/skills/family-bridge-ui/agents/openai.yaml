@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Bridge UI"
+  short_description: "Vietnamese Zalo Mini App UI and privacy rules"
+  default_prompt: "Use $family-bridge-ui to plan or review Family Bridge UI while preserving privacy, explicit sending and immediate help."
