@@ -8,8 +8,9 @@ Ngày 11/10/2026, main đã có bộ skill, rule và tài liệu chuẩn triển
 
 ## Coding agent phải đọc
 
-Đọc [AGENTS.md](AGENTS.md), [phạm vi](docs/project-scope.md), hai repo skills và rule bắt buộc trước mỗi tác vụ. Theo yêu cầu người dùng, thay đổi chỉ về skill/rule/tài liệu được kiểm tra rồi push thẳng main; mã nguồn và runtime/deployment dùng nhánh/PR riêng. Xem [hướng dẫn agent](docs/engineering/agent-guide.md).
+Đọc [AGENTS.md](AGENTS.md), [phạm vi](docs/project-scope.md), hai repo skills DSA/security và rule bắt buộc trước mỗi tác vụ. Theo yêu cầu người dùng, thay đổi chỉ về skill/rule/tài liệu được kiểm tra rồi push thẳng main; mã nguồn và runtime/deployment dùng nhánh/PR riêng. Riêng đợt chore/taste-skill-integration dùng nhánh/Draft PR và chờ review theo ngoại lệ trong AGENTS.md. Trước nhiệm vụ UI đọc [family-bridge-ui](.agents/skills/family-bridge-ui/SKILL.md); đọc Taste upstream khi áp dụng advice liên quan. Xem [hướng dẫn agent](docs/engineering/agent-guide.md).
 
+- [UI rules](docs/engineering/ui-rules.md) và [Taste v2 pin/giới hạn/cập nhật](docs/engineering/taste-skill-integration.md)
 - [DSA rules và ngân sách tài nguyên](docs/engineering/dsa-rules.md)
 - [Security rules, threat model và nguồn](docs/security/security-rules.md)
 - [Luồng đồng hành 4 tuần](docs/product/four-week-flow.md)

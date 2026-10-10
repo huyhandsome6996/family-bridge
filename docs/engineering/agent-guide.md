@@ -4,7 +4,8 @@ Mỗi tác vụ bắt đầu bằng đọc [AGENTS.md](../../AGENTS.md) và [ph�
 
 1. [family-bridge-dsa](../../.agents/skills/family-bridge-dsa/SKILL.md) + [DSA rules](dsa-rules.md).
 2. [family-bridge-security](../../.agents/skills/family-bridge-security/SKILL.md) + [security rules](../security/security-rules.md).
-3. Đọc tài liệu/US liên quan: [luồng 4 tuần](../product/four-week-flow.md), [ERD](../data/erd.md), [admin](../product/admin-capabilities.md), threat model và API contract.
+3. Trước nhiệm vụ UI đọc [family-bridge-ui](../../.agents/skills/family-bridge-ui/SKILL.md) và [UI rules](ui-rules.md); đọc [Taste upstream](../../.agents/skills/design-taste-frontend/SKILL.md) trước khi dùng advice liên quan, cùng [nguồn/giới hạn](taste-skill-integration.md). Quy tắc Family Bridge ưu tiên hơn Taste v2 thử nghiệm.
+4. Đọc tài liệu/US liên quan: [luồng 4 tuần](../product/four-week-flow.md), [ERD](../data/erd.md), [admin](../product/admin-capabilities.md), threat model và API contract.
 
 Agent phải nêu tài liệu đã áp dụng, invariant và giới hạn; PR mã nguồn hoặc bản ghi commit tài liệu phải có DSA/SEC evidence. Không cần đọc lại nguyên file không đổi nhiều lần trong cùng tác vụ. Khi resume hoặc đổi scope, đọc phần thay đổi/liên quan. Không coi tài liệu là tính năng đã có.
 
@@ -19,6 +20,10 @@ Agent phải nêu tài liệu đã áp dụng, invariant và giới hạn; PR m�
 | Agent khác | AGENTS.md + các đường dẫn trên | Yêu cầu đọc trực tiếp; không mặc định agent tự tìm mọi file |
 
 Đây là skill được version hóa trong repo, không tuyên bố đã cài global cho mọi tài khoản/IDE. Bộ hướng dẫn đã được đưa trực tiếp vào main ngày 11/10/2026; checkout main mới nhất để sử dụng. Nội dung rule + review + CI tăng khả năng tuân thủ, không có file nào bảo đảm agent luôn obey hoặc hệ thống không bị hack.
+
+## Ngoại lệ đợt Taste integration
+
+Đợt chore/taste-skill-integration bắt đầu từ origin/main mới nhất, chỉ skill/tài liệu/checker tối thiểu, commit/push nhánh rồi mở Draft PR vào main và dừng review. Không lấy code nhánh chưa duyệt, push main, merge, auto-merge hoặc force-push. Chỉ merge khi review đạt và có chỉ dẫn merge riêng. Ngoại lệ này ưu tiên hơn quy ước tài liệu bên dưới.
 
 ## Quy ước đưa tài liệu lên main
 
