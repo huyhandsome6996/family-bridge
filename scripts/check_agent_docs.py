@@ -6,9 +6,17 @@ import re
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILLS = ("family-bridge-dsa", "family-bridge-security", "family-bridge-ui")
+SKILLS = ("family-bridge-dsa", "family-bridge-security", "family-bridge-ui",
+          "family-bridge-workflow")
 TASTE_DIR = ".agents/skills/design-taste-frontend"
 ALL_SKILLS = SKILLS + ("design-taste-frontend",)
+WORKFLOW_DOCS = (
+    "docs/product/user-flows.md", "docs/product/admin-configuration-catalog.md",
+    "docs/product/content-lifecycle.md", "docs/product/workflow-state-machines.md",
+    "docs/product/access-sharing-matrix.md", "docs/product/workflow-acceptance.md",
+    "docs/product/decision-register.md", "docs/operations/admin-handover.md",
+    "docs/engineering/workflow-rules.md", "docs/design/brand-identity.md",
+)
 REQUIRED = (
     "AGENTS.md", "SECURITY.md", "docs/project-scope.md",
     "docs/engineering/dsa-rules.md", "docs/product/four-week-flow.md",
@@ -20,7 +28,8 @@ REQUIRED = (
     "README.md", "docs/engineering/agent-guide.md",
     "docs/engineering/ui-rules.md", "docs/engineering/taste-skill-integration.md",
     f"{TASTE_DIR}/SKILL.md", f"{TASTE_DIR}/LICENSE", f"{TASTE_DIR}/upstream.json",
-) + tuple(f".agents/skills/{name}/{file}" for name in SKILLS
+    "docs/contracts/api-foundation.md", "docs/project/backlog-snapshot.json", "docs/validation.md",
+) + WORKFLOW_DOCS + tuple(f".agents/skills/{name}/{file}" for name in SKILLS
           for file in ("SKILL.md", "agents/openai.yaml"))
 
 def validate(root=ROOT):
@@ -106,7 +115,8 @@ def validate(root=ROOT):
 
     required_refs = [f".agents/skills/{name}/SKILL.md" for name in ALL_SKILLS]
     required_refs += ["docs/engineering/dsa-rules.md", "docs/security/security-rules.md",
-                      "docs/engineering/ui-rules.md", "docs/engineering/taste-skill-integration.md"]
+                      "docs/engineering/ui-rules.md", "docs/engineering/taste-skill-integration.md",
+                      *WORKFLOW_DOCS, "docs/product/admin-capabilities.md"]
     for rel in ("AGENTS.md", ".github/copilot-instructions.md",
                 ".cursor/rules/family-bridge.mdc"):
         for ref in required_refs:
@@ -144,6 +154,85 @@ def validate(root=ROOT):
     for i in range(1, 16):
         if f"| F{i:02d} |" not in texts["docs/data/erd.md"]:
             errors.append(f"Missing ERD feature mapping F{i:02d}")
+    errors.extend(validate_workflow(texts))
+    return errors
+
+
+def validate_workflow(texts):
+    """Check canonical IDs and references, not domain correctness or test execution."""
+    errors = []
+    registries = {}
+    specs = (
+        ("FL", "docs/product/user-flows.md", r"^## (FL-\d{2}) —", 20),
+        ("AF", "docs/product/user-flows.md", r"^## (AF-\d{2}) —", 6),
+        ("CAP", "docs/product/admin-capabilities.md", r"^\| (CAP-\d{2}) \|", 22),
+        ("WF", "docs/engineering/workflow-rules.md", r"^\| (WF-\d{2}) \|", 24),
+        ("DEC", "docs/product/decision-register.md", r"^\| (DEC-\d{2}) \|", 23),
+    )
+    for prefix, rel, pattern, count in specs:
+        ids = re.findall(pattern, texts[rel], re.M)
+        expected = {f"{prefix}-{i:02d}" for i in range(1, count + 1)}
+        if len(ids) != count or set(ids) != expected:
+            errors.append(f"Invalid/duplicate {prefix} registry: {rel}")
+        registries[prefix] = expected
+    config_ids = re.findall(r"^\| (CFG-[A-J]\d{2}) `",
+                            texts["docs/product/admin-configuration-catalog.md"], re.M)
+    group_counts = dict(zip("ABCDEFGHIJ", (15, 11, 6, 12, 6, 14, 17, 10, 17, 12)))
+    config_expected = {f"CFG-{group}{i:02d}" for group, count in group_counts.items()
+                       for i in range(1, count + 1)}
+    if len(config_ids) != 120 or set(config_ids) != config_expected:
+        errors.append("Configuration catalog must define 120 unique A..J fields")
+    sources = re.findall(r"^\| CFG-[A-J]\d{2} `([^`]+)`",
+                         texts["docs/product/admin-configuration-catalog.md"], re.M)
+    if len(set(sources)) != len(sources):
+        errors.append("Duplicate configuration source.field")
+    registries["CFG"] = config_expected
+    acceptance = texts["docs/product/workflow-acceptance.md"]
+    for prefix, count in (("WT", 20), ("AT", 6)):
+        ids = re.findall(rf"^\| ({prefix}-\d{{2}}-\d{{2}}) \|", acceptance, re.M)
+        expected = {f"{prefix}-{flow:02d}-{case:02d}" for flow in range(1, count + 1)
+                    for case in range(1, 4)}
+        if len(ids) != count * 3 or set(ids) != expected:
+            errors.append(f"Invalid/duplicate {prefix} acceptance registry")
+        registries[prefix] = expected
+    try:
+        cards = json.loads(texts["docs/project/backlog-snapshot.json"])["cards"]
+        registries["US"] = {card["id"] for card in cards}
+    except (ValueError, KeyError, TypeError):
+        errors.append("Invalid backlog snapshot for workflow mapping")
+        registries["US"] = set()
+    # Only fully qualified IDs are references; compact ranges are explanatory.
+    pattern = r"\b(?:FL-\d{2}|AF-\d{2}|CAP-\d{2}|WF-\d{2}|DEC-\d{2}|CFG-[A-J]\d{2}|[WA]T-\d{2}-\d{2}|US-\d{3})\b"
+    for rel in (*WORKFLOW_DOCS, "docs/product/admin-capabilities.md",
+                ".agents/skills/family-bridge-workflow/SKILL.md", "docs/data/erd.md",
+                "docs/contracts/api-foundation.md", "docs/project-scope.md",
+                "docs/product/four-week-flow.md"):
+        us_refs = {f"US-{part}" for compact in re.findall(r"US-(\d{3}(?:/\d{3})*)", texts[rel])
+                   for part in compact.split("/")}
+        for ref in us_refs - registries["US"]:
+            errors.append(f"Unknown workflow reference in {rel}: {ref}")
+        for ref in set(re.findall(pattern, texts[rel])):
+            if ref not in registries[ref.split("-", 1)[0]]:
+                errors.append(f"Unknown workflow reference in {rel}: {ref}")
+    rows = re.findall(r"^\| (F\d{2}) \| (.+)$", acceptance, re.M)
+    if len(rows) != 15 or {f for f, _ in rows} != {f"F{i:02d}" for i in range(1, 16)}:
+        errors.append("Acceptance feature mapping must contain F01..F15 exactly once")
+    for feature, row in rows:
+        cells = [cell.strip() for cell in row.rstrip("|").split("|")]
+        if len(cells) != 5 or any(not cell for cell in cells):
+            errors.append(f"Incomplete feature mapping: {feature}")
+            continue
+        for index, prefix in ((0, r"(?:FL|AF)-"), (2, r"WF-"),
+                              (3, r"[WA]T-"), (4, r"US-")):
+            if not re.search(prefix, cells[index]):
+                errors.append(f"Missing mapping column for {feature}: {index}")
+    cap_tests = re.findall(r"^\| (CAP-\d{2}) \| ([WA]T-\d{2}-\d{2}) \|",
+                           acceptance, re.M)
+    if len(cap_tests) != 22 or {cap for cap, _ in cap_tests} != registries["CAP"]:
+        errors.append("Acceptance must map every capability to a test")
+    for rel in ("README.md", "docs/engineering/agent-guide.md"):
+        if "family-bridge-workflow/SKILL.md" not in texts[rel] or "workflow-rules.md" not in texts[rel]:
+            errors.append(f"Workflow skill/rules not discoverable in {rel}")
     return errors
 
 if __name__ == "__main__":
@@ -152,5 +241,5 @@ if __name__ == "__main__":
         for problem in problems:
             print(problem, file=sys.stderr)
         raise SystemExit(1)
-    print("Agent documents OK: files, relative links, skill metadata, rule wiring, Taste provenance/checksums/MIT, SEC register and feature mapping.")
+    print("Agent documents OK: files/links, 5 skills, wiring, Taste checksums/MIT, SEC register; 20 FL, 6 AF, 22 CAP, 24 WF, 23 DEC, 120 CFG, 78 cases and F01..F15/US mapping.")
     print("This does not verify runtime, diagram rendering, source URLs, security or agent obedience.")

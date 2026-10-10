@@ -37,7 +37,7 @@ Không khóa tuần sau nếu chưa làm tuần trước. Không bắt buộc th
 
 - Frontend học sinh, người chăm sóc và quản trị nội dung nằm trong Mini App theo backlog hiện tại; không xây web hoặc React Native trong đợt này.
 - Hộp thư nằm trong hệ thống Family Bridge. Thông báo ngoài Mini App là phần nghiên cứu điều kiện Zalo ở US-019; không giả định có quyền gửi tin cá nhân tự động.
-- Khoảng tạm dừng mặc định và phạm vi đợt đầu là **300 giây**. Khả năng admin đổi thời gian ở US-034 là phần mở rộng của backlog; chưa triển khai khi chưa có quyết định mới.
+- Pause tự chọn cố định **300 giây server**, hết giờ vẫn là nháp; admin không được đổi thời gian hoặc bật auto-send. Nội dung quyền đổi khoảng chờ ở US-034 cũ được supersede bởi DEC-03; thay invariant cần quyết định riêng.
 - Nút cần được lắng nghe và trang tìm trợ giúp là hai luồng khác nhau. Không dùng bộ đếm để trì hoãn liên hệ hỗ trợ.
 - Dữ liệu tâm trạng và nhật ký là cá nhân. Kết nối chỉ cho phép tương tác, không cấp quyền đọc mọi dữ liệu.
 - Nội dung AI chỉ được chuyển tới nhà cung cấp AI khi người viết chủ động dùng tính năng, với thông báo xử lý dữ liệu phù hợp; không có nghĩa “riêng tư” là không có bên xử lý kỹ thuật.
@@ -46,3 +46,11 @@ Không khóa tuần sau nếu chưa làm tuần trước. Không bắt buộc th
 ## Điều kiện thử nghiệm
 
 Có xác thực Zalo phía server; kiểm tra quyền từng đối tượng; nội dung và danh bạ được duyệt; sao lưu/khôi phục MySQL; quy trình yêu cầu xóa; thử các luồng bằng nhiều tài khoản trên Zalo Android/iOS; đồng ý tham gia và quy trình hỗ trợ đã được thầy thống nhất. Hoàn thành code không đồng nghĩa Zalo đã xét duyệt.
+
+## Quản trị sâu, workflow và bàn giao
+
+Yêu cầu bổ sung: System Administrator được cấp rõ toàn bộ named capabilities quản trị phù hợp SYSTEM, backend vẫn authenticate/authorize/state-check/audit mỗi hành động; không `is_staff`, client flag hoặc Django superuser bypass dữ liệu nghiệp vụ. Các role nhỏ và scope/TTL giúp thầy tự quản lý nội dung/cấu hình thường ngày sau khi admin thực sự được xây; không nâng tất cả admin hiện có. Một người có thể edit/review/publish qua bước riêng có audit, không bắt nhóm nhỏ có hai người, nhưng nội dung pháp lý/chuyên môn vẫn cần người phụ trách phê duyệt thật.
+
+Hợp đồng chi tiết thống nhất tại [FL/AF toàn bộ](product/user-flows.md), [admin capabilities](product/admin-capabilities.md), [từng field A..J](product/admin-configuration-catalog.md), [lifecycle](product/content-lifecycle.md), [state machines](product/workflow-state-machines.md), [quyền và chia sẻ](product/access-sharing-matrix.md), [F/US/rule/test mapping](product/workflow-acceptance.md), [WF rules](engineering/workflow-rules.md), [quyết định chốt/mở](product/decision-register.md), [brand](design/brand-identity.md), [bàn giao teacher](operations/admin-handover.md). Các nguồn configuration mới là logical schema đề xuất US-004/DEC-22, chưa model/migration/API. Chỉ áp defaults/bounds đã duyệt; module flag không tạo tính năng chưa code.
+
+Giữ baseline4, grants từng item/recipient/revision/current generation, enrollment pin, private pages/AI/mood, explicit send/no auto-forward, help ngay, bilateral confirmations và voluntary research. System Administrator cũng không raw survey/mapping/tâm sự. Rollback là release mới revalidate; restore áp latest deletion/revocation ledger trước serve. Brand logo mẫu03 hai lời thoại, palette đã chốt theo brand doc; asset nguồn chưa có, upload ngoài MVP. Console dịch vụ, secret, billing, code/schema/feature mới phải tách app/console/coder rõ. Docs checks không admin hoạt động hay US Done/SEC VERIFIED.

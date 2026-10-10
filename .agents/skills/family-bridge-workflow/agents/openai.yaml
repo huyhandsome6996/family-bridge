@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Bridge Workflow"
+  short_description: "User flows, deep admin, configuration and handover"
+  default_prompt: "Use $family-bridge-workflow to plan or review Family Bridge user and admin changes with state, permission, configuration and acceptance evidence."

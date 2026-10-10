@@ -14,6 +14,11 @@ Read [AGENTS](../../../AGENTS.md), [scope](../../../docs/project-scope.md),
 Read [four-week flow](../../../docs/product/four-week-flow.md),
 [ERD/privacy](../../../docs/data/erd.md) and
 [admin capabilities](../../../docs/product/admin-capabilities.md) for the affected flow.
+For business UI also read [workflow skill](../family-bridge-workflow/SKILL.md),
+[flows/states](../../../docs/product/user-flows.md),
+[configuration catalog](../../../docs/product/admin-configuration-catalog.md),
+[content lifecycle](../../../docs/product/content-lifecycle.md) and
+[brand identity](../../../docs/design/brand-identity.md).
 Resolve links from this skill directory. Keep mandatory DSA/security skills active.
 
 ## Apply the workflow
@@ -25,7 +30,7 @@ Resolve links from this skill directory. Keep mandatory DSA/security skills acti
 5. Keep activities/surveys voluntary and published weeks accessible. Do not introduce streak pressure, emotion rankings or automatic forwarding. Render admin actions by named capability/scope with server authorization. Admin never gains default access to private thoughts.
 6. Read [Taste upstream](../design-taste-frontend/SKILL.md) before using relevant advice; consult [provenance and limits](../../../docs/engineering/taste-skill-integration.md). Treat v2 as experimental. Use brief/audit, hierarchy, consistency and lightweight accessibility advice where appropriate. Do not apply its marketing pre-flight, hero/image/font/dependency/animation mandates to inbox, journals, forms or admin. Record excluded advice and the governing project rule.
 7. Verify loading/empty/error/disabled/success, offline/resume, keyboard/safe area, small screens, large text, touch targets, contrast, focus and reduced motion when implementing UI. Cancel obsolete requests and bound histories under DSA. Keep drafts on failure and avoid automatic send retries. Do not load decorative imagery or heavy animation to satisfy Taste.
-8. Report paths, commands, device/browser scope and remaining checks. For this integration only, change skills/docs/minimal document validation on chore/taste-skill-integration, open a Draft PR to main and stop for review. Do not implement UI, merge, enable auto-merge or push main. Merge requires a separate user instruction after review passes.
+8. Report paths, commands, device/browser scope and remaining checks. Follow the task-specific authorized publishing scope in AGENTS. The historical chore/taste-skill-integration exception used a Draft PR and separate reviewed merge instruction (PR #2, completed); it does not override later authorized docs-only direct-main tasks. Never infer permission to merge app code or implement UI from a documentation task.
 
 ## Record evidence
 

@@ -33,18 +33,19 @@ Baseline cho triển khai sau; dùng CSS/SCSS và API theme zmp-ui phù hợp ph
 | Bo góc | Baseline 8 px cho control, 12 px nhóm nội dung; nhất quán, không biến mọi nội dung thành card |
 | Lớp nổi | Content 0, thanh cố định 10, overlay 20, dialog 30; ánh xạ lớp zmp-ui hiện có, quản lý focus và không che trợ giúp |
 
-Palette là đề xuất ngữ nghĩa, chưa phải nhận diện thương hiệu được duyệt. Ưu tiên tokens hiện hữu khi đạt tương phản; thay palette phải nêu trong nhiệm vụ UI riêng. Không dùng màu trạng thái để chấm cảm xúc học sinh.
+Brand đã chốt ở [brand identity](../design/brand-identity.md): #C65B43 primary, #E4AB56 accent, #FFF4E8 background, #713D32 text. Bảng sau phân biệt brand tokens và functional colors; chưa triển khai vào app. Màu chức năng cần đạt tương phản, không dùng để chấm cảm xúc học sinh.
 
 | Token | Baseline nền sáng | Cách dùng |
 | --- | --- | --- |
-| background / surface | #F8FAFC / #FFFFFF | Nền đọc/soạn |
-| text / text-secondary | #0F172A / #475569 | Chữ chính/phụ, không làm mờ chữ cần đọc bằng opacity |
-| primary / on-primary | #1D4ED8 / #FFFFFF | Hành động chính/chọn; không ép mọi trạng thái cùng accent |
+| background / surface | #FFF4E8 / #FFFFFF | Nền đọc/soạn |
+| text / text-secondary | #713D32 / #475569 | Chữ chính/phụ, không làm mờ chữ cần đọc bằng opacity |
+| brand-primary / brand-accent | #C65B43 / #E4AB56 | Nhận diện; không ép thành màu chức năng |
+| action / on-action | #A84733 / #FFF4E8 | Dẫn xuất accessible đề xuất, 5.36:1 solid; không đổi token brand gốc |
 | success | #166534 trên #F0FDF4 | Thành công có nhãn, chỉ sau server xác nhận |
 | warning | #92400E trên #FFFBEB | Cần xem lại; không dán nhãn tâm trạng “xấu” |
 | error / destructive | #B91C1C trên #FEF2F2 | Lỗi/xóa/thu hồi, có cách tiếp tục |
 | info | #1E40AF trên #EFF6FF | Hướng dẫn trạng thái |
-| border-control / focus | #64748B / #1D4ED8 | Ranh giới input/focus rõ trên surface; placeholder không thay label |
+| border-control / focus | #64748B / #A84733 | Ranh giới input/focus rõ trên surface; placeholder không thay label |
 
 Đo cặp màu thực tế: chữ thường >=4.5:1, chữ lớn >=3:1, ranh giới control/focus và đồ họa cần thiết >=3:1. Không chỉ dùng màu: thêm nhãn/biểu tượng và thông báo trạng thái. Nếu nhiệm vụ có dark mode, định nghĩa/đo lại tokens toàn màn hình; không tự thêm chế độ hoặc đảo nền từng section theo Taste.
 
@@ -59,7 +60,7 @@ Palette là đề xuất ngữ nghĩa, chưa phải nhận diện thương hiệ
 | Danh sách | Metadata tối thiểu đã có quyền, phân trang giới hạn; không preview tâm sự riêng trong admin/thông báo/màn hình khác |
 | Preview | Đúng nội dung/revision và người nhận, có sửa/quay lại và xác nhận; đổi nội dung/người nhận phải preview lại |
 | Dialog / Sheet | Focus/đóng/back rõ; xóa/thu hồi nêu phạm vi thật, không hứa xóa mọi bản chụp/backup |
-| Admin | Capability/school scope, dữ liệu tối thiểu; editor/reviewer riêng; không nút “đọc tâm sự” hoặc export raw |
+| Admin | Capability/school scope, dữ liệu tối thiểu; bước edit/review/publish riêng; một người có thể đủ caps khi nhóm nhỏ; không nút “đọc tâm sự” hoặc export raw |
 
 | Trạng thái | Hành vi |
 | --- | --- |

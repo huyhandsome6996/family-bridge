@@ -117,3 +117,9 @@ Sửa tạo revision mới, bắt đầu lại xác nhận; không sửa chữ b
 | Không staff/API lỗi | Không hứa lịch tự động; còn danh bạ trợ giúp |
 
 Liên kết: [ERD](../data/erd.md), [admin](admin-capabilities.md), [DSA](../engineering/dsa-rules.md). Thiết kế không chứng minh đã nghiệm thu.
+
+## Liên kết workflow/admin thống nhất
+
+Bản này giữ baseline 4 chủ đề và tóm tắt chương trình. [FL-12..15 và các luồng khác](user-flows.md), [state register](workflow-state-machines.md), [catalog A/C](admin-configuration-catalog.md), [lifecycle](content-lifecycle.md), [WF rules](../engineering/workflow-rules.md) và [acceptance](workflow-acceptance.md) chi tiết guards/lỗi/offline/concurrency/expected. Nhãn `planned/done` ở run tương ứng `not_started/completed` diễn giải UI; schema enum phải chốt US-004, không tạo hai state machine. Enrollment có completed tự chọn, không tự kết thúc ngày28. Agreement confirmed cũ áp dụng đến revision mới confirmed hoặc chủ động end/unlink; chỉnh proposal mới không sửa bản cũ.
+
+Admin clone version, sửa wording/mục tiêu phù hợp baseline/hoạt động/audience/lesson/paper guide rồi preview/review/publish; người đang tham gia pin phiên bản, không rewrite riêng tư/confirmed agreement. Cùng người có caps được review/publish bước riêng, chuyên môn/legal vẫn approval thật. Không đổi số tuần/phạm vi nghiên cứu, pause300 hoặc auto-send. Retirement safety tác động pin cũ cần policy DEC-20, alternative/help; contact current safety luôn recheck dù program pin. Module off không xóa nháp/ghi chú. Xem [handover](../operations/admin-handover.md) và [decisions](decision-register.md) trước phát hành/pilot.
