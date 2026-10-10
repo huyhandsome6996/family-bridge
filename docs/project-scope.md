@@ -24,10 +24,12 @@ Bản chốt ngày 10/10/2026 từ yêu cầu trực tiếp của Huy là chuẩ
 
 ## Bốn chủ đề
 
-1. Nhận diện cảm xúc.
-2. Giảm so sánh và ghi nhận bản sắc riêng.
-3. Tôn trọng riêng tư và xây dựng niềm tin.
-4. Cảm ơn, xin lỗi và xây dựng thỏa ước gia đình.
+1. Nhận diện cảm xúc và “Tiếng lòng chưa nói”: nhận biết cảm xúc, chia sẻ điều buồn hoặc khó mở lời.
+2. Giảm so sánh và “Bản sắc riêng của con”: ghi nhận cố gắng, luyện lắng nghe, dành thời gian cho nhau.
+3. Ranh giới riêng tư và niềm tin: thống nhất tôn trọng không gian cá nhân, điện thoại và thông tin riêng.
+4. Cảm ơn, xin lỗi và “Thỏa ước gia đình mới”: xác nhận việc cụ thể tiếp tục thực hiện sau chương trình.
+
+Luồng chi tiết ở [chương trình 4 tuần](product/four-week-flow.md), dữ liệu ở [ERD](data/erd.md) và quyền quản trị ở [admin](product/admin-capabilities.md). Đây là thiết kế chưa triển khai.
 
 Không khóa tuần sau nếu chưa làm tuần trước. Không bắt buộc tham gia hoạt động hay khảo sát để sử dụng công cụ giao tiếp.
 

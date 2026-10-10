@@ -1,5 +1,27 @@
 # Family Bridge project instructions
 
+## Mandatory reading at the start of every task
+
+Read this file, `docs/project-scope.md`, `.agents/skills/family-bridge-dsa/SKILL.md`, and `docs/engineering/dsa-rules.md` before planning or changing code. Follow applicable nested AGENTS.md files too. On a resumed task, reread files changed since the last read; do not repeat an unchanged full read within the same task.
+
+Also read `.agents/skills/family-bridge-security/SKILL.md` and `docs/security/security-rules.md` for every coding task. For security-relevant changes read `docs/security/threat-model.md` and `docs/security/control-register.json`; use `docs/security/verification-plan.md` for validation and `docs/security/incident-response.md` for incidents. Primary references are cataloged in `docs/security/sources.md`.
+
+Read `docs/product/four-week-flow.md` and `docs/data/erd.md` for program, sharing, schema or workflow changes. Read `docs/product/admin-capabilities.md` for roles, administration, research, content publishing or school support. Read the relevant Trello US and existing API contracts before implementation. These documents describe target behavior, not implemented features.
+
+In the first work update, name the applicable documents and the invariants affected. In the PR, record input bounds, algorithm/data structure choices, time and auxiliary space costs, query/payload limits, authorization and verification evidence. For text-only changes mark runtime analysis N/A with a reason. Never claim reading or profiling that did not happen.
+
+Use `python scripts/check_agent_docs.py` to check instruction wiring and document structure. This check cannot prove agent obedience, feature correctness, performance, privacy or database compatibility. Do not mark a US Done from this check alone.
+
+## Performance and data safety
+
+- Apply the mandatory rules in `docs/engineering/dsa-rules.md`. Prefer bounded, simple solutions; do not add sophisticated algorithms, caches or infrastructure without workload evidence.
+- Filter by authorization in the database before pagination or aggregation. Recheck grants/connection state on each sensitive operation; speed never overrides privacy.
+- Bound list pages, input text, AI requests, retries, polling, caches and exports. Prevent N+1 queries, nested full-history scans and unbounded DOM/state growth.
+- Use atomic transitions and database uniqueness for concurrent confirmations, sends and agreement acceptance. A 300-second pause never creates an automatic send job.
+- Treat ERD indexes and performance budgets as design proposals until MySQL/device measurements validate them. Record measured evidence separately from targets.
+- Administrative roles grant only named scoped capabilities. `is_staff`/UI visibility must not grant access to private journals, AI drafts, messages or raw surveys.
+- Apply SEC-01..SEC-30 according to scope. Record actual control status/evidence; do not call documents or scaffold a security certification. Never use, echo or commit credentials exposed in chat/logs. Local synthetic tests are authorized by the task; production/third-party scans and destructive load tests need separate explicit scope.
+
 - The current product scope is `docs/project-scope.md` (15 features, voluntary activities, 5-minute pause). User instructions override older DOCX or copied project text.
 - Implement Django/DRF backend and the existing React Zalo Mini App. Do not start standalone web or React Native clients in this phase.
 - Keep domain modules and migrations owned by each US. Route registration/settings/shared contract changes belong in a small coordinated PR.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Family Bridge DSA"
+  short_description: "Thiết kế DSA, truy vấn và hiệu năng an toàn"
+  default_prompt: "Dùng $family-bridge-dsa để thiết kế và kiểm chứng hiệu năng của thay đổi Family Bridge."

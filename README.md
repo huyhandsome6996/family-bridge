@@ -50,6 +50,12 @@ npm run start
 
 ## Tài liệu cho lập trình
 
+- [Cách coding agent đọc rule, dùng skill và ghi evidence](docs/engineering/agent-guide.md)
+- [Quy tắc DSA và ngân sách tài nguyên](docs/engineering/dsa-rules.md)
+- [Luồng chương trình đồng hành 4 tuần](docs/product/four-week-flow.md)
+- [ERD, constraints và quyền dữ liệu](docs/data/erd.md)
+- [Khả năng và giới hạn giao diện admin](docs/product/admin-capabilities.md)
+- [Bảo mật: rule, threat model, kiểm chứng và nguồn](docs/security/security-rules.md)
 - [15 tính năng và phạm vi mới nhất](docs/project-scope.md)
 - [Đánh giá Trello và các điểm cần sửa](docs/project/trello-audit.md)
 - [Bản chụp 52 US và phụ thuộc](docs/project/backlog-snapshot.json)
