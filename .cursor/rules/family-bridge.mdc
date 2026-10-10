@@ -10,3 +10,5 @@ For program/schema/sharing read @docs/product/four-week-flow.md and @docs/data/e
 Use Django/DRF + MySQL and the existing React Zalo Mini App. Bound data, queries, memory and retries; permissions before pagination. Preserve private journals/AI, voluntary activities, explicit confirmation, 300-second pause and immediate help. Admin grants named scoped capabilities only.
 
 Name documents/invariants before coding. Record DSA/SEC choices and real evidence in the PR; run python scripts/check_agent_docs.py for document integrity. Never fabricate tests/outcomes or commit secrets/participant data. Instructions cannot certify security or enforce obedience mechanically.
+
+For documentation-only changes, follow the direct-main publishing policy in AGENTS.md; no documentation PR or repeated confirmation is required. Keep runtime changes separate.

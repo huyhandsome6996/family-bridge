@@ -1,5 +1,7 @@
 # Cài đặt và kiểm tra Family Bridge
 
+Hướng dẫn dưới đây áp dụng cho khung code ở nhánh feat/us-003-kt01 (PR #1), hoặc main sau khi phần mã nguồn được merge. Tại lần đưa tài liệu vào main ngày 11/10/2026, backend trên main còn trống; không chạy các lệnh backend ở main rồi coi file thiếu là lỗi tính năng.
+
 ## Backend trên máy cá nhân
 
 Tạo môi trường Python 3.12 và cài `backend/requirements.txt`. Sao chép `backend/.env.example` thành `.env` và đặt DJANGO_ENV=development. Muốn dùng MySQL cài thêm `backend/requirements-mysql.txt`, tạo database utf8mb4 và điền MYSQL_*; tài khoản DB cần quyền migration tại môi trường phát triển.

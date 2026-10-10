@@ -1,5 +1,7 @@
 # Hợp đồng nền tảng API
 
+Các endpoint được ghi “hiện có” thuộc khung code trong PR #1/nhánh feat/us-003-kt01. Ngày đưa tài liệu vào main 11/10/2026 chỉ tài liệu được chuyển; main chưa có backend nghiệp vụ hoặc endpoint nền tảng này.
+
 Đây là hợp đồng các endpoint đã triển khai cùng quy tắc đề xuất cho US-004. Chưa phải OpenAPI hoàn chỉnh cho 15 tính năng; các nhánh nghiệp vụ phải chốt schema cụ thể trước tích hợp.
 
 ## Endpoint hiện có

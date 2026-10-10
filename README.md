@@ -6,6 +6,8 @@
 
 Bản nền tảng có backend Django REST Framework, API kiểm tra dịch vụ/cơ sở dữ liệu và màn hình Mini App gọi API. **15 tính năng nghiệp vụ chưa được triển khai.** Đăng nhập Zalo, ghép nối, AI và hộp thư chưa hoạt động. Chưa triển khai Render hoặc phát hành Zalo; chưa kiểm thử trên điện thoại thật.
 
+Skill, rule và tài liệu đã được đưa vào main riêng. Theo yêu cầu người dùng, cập nhật chỉ về hướng dẫn được kiểm tra rồi push thẳng main; phần code/dependency/migration/deployment vẫn dùng nhánh/PR. Xem [AGENTS.md](AGENTS.md) và [hướng dẫn agent](docs/engineering/agent-guide.md).
+
 ## Công nghệ và phạm vi
 
 | Thành phần | Lựa chọn |

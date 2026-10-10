@@ -1,5 +1,7 @@
 # Kiến trúc kỹ thuật Family Bridge
 
+Ngày 11/10/2026, tài liệu này được đưa trực tiếp vào main. Các đường dẫn/khung code được mô tả thuộc nhánh feat/us-003-kt01 trong PR #1; chưa merge mã nền tảng vào main. Thiết kế là chuẩn hướng tới, không bằng chứng main đã chạy các chức năng.
+
 Dùng một backend Django REST Framework cung cấp API cho Zalo Mini App. Backend giữ dữ liệu và quyền truy cập; frontend hiển thị và gọi API, không tự quyết định quyền.
 
 ## Các thành phần

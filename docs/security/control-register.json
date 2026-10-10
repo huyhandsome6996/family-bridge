@@ -1,7 +1,7 @@
 {
   "reviewed_at": "2026-10-10",
   "baseline_commit": "7c9a77049e6bea3490039e4ef44a6afbb21fb17f",
-  "note": "Baseline qua kiểm tra source scaffold; không phải pentest hoặc chứng nhận. Không có control VERIFIED. Cập nhật evidence sau mỗi triển khai.",
+  "note": "Baseline qua kiểm tra source scaffold; không phải pentest hoặc chứng nhận. Không có control VERIFIED. Cập nhật evidence sau mỗi triển khai. Tài liệu được đưa vào main ngày 11/10/2026; baseline PARTIAL thuộc PR #1 chưa merge, không phải trạng thái runtime của main.",
   "controls": [
     {
       "id": "SEC-01",
@@ -273,5 +273,6 @@
       "next_step": "Ghi N/A hiện tại; khi thêm tính năng phải test, không đưa file user lên scanner bên thứ ba mặc định",
       "evidence": []
     }
-  ]
+  ],
+  "baseline_ref": "feat/us-003-kt01"
 }

@@ -1,5 +1,7 @@
 # Bằng chứng kiểm tra nền tảng
 
+Bằng chứng ngày 10/10/2026 phía dưới được thu ở các commit 7c9a770/48f44c8 của nhánh feat/us-003-kt01 và CI của PR #1. Không suy thành kiểm thử runtime trên main: ngày 11/10/2026 chỉ bộ tài liệu/skill và công cụ kiểm tra tài liệu được đưa vào main.
+
 Ngày 10/10/2026. Đây là kiểm tra khung kỹ thuật, không phải nghiệm thu 15 tính năng nghiệp vụ.
 
 | Kiểm tra | Kết quả |
@@ -32,3 +34,8 @@ GitHub Actions được cấu hình cho backend SQLite, MySQL và Mini App. Kế
 - Register baseline: 21 NOT_IMPLEMENTED, 8 PARTIAL, 1 NOT_APPLICABLE_WITH_REASON; không có control VERIFIED. Retention, unlink history, provider handling, suppression/report release và các quyết định nghiên cứu vẫn cần nghiệm thu ở US liên quan.
 - CI bổ sung agent-docs; workflow run mới phải kiểm tra sau push. Kiểm tra cấu trúc không chứng nhận privacy/security, và không thay MySQL/device/production tests.
 - Không có business code mới, không migration, deploy Render, scan production hoặc thử exploit hệ thống bên thứ ba trong tác vụ tài liệu này.
+
+
+## Đưa hướng dẫn vào main (11/10/2026)
+
+Chuyển riêng tài liệu/skill/rules và checker, không chuyển backend/React/dependencies/Render. main có workflow Agent documentation checks độc lập; kết quả runtime cũ thuộc PR #1. Quy ước đẩy tài liệu trực tiếp main được ghi trong AGENTS.md và agent-guide.md. Chạy document checker, hai skill validators và diff check trước commit; không cần chạy lại benchmark hay các bài kiểm thử app khi không thay app.

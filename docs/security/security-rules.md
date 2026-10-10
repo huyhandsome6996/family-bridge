@@ -1,5 +1,7 @@
 # Quy tắc bảo mật bắt buộc
 
+Phần trạng thái nền tảng ở tài liệu này lấy từ baseline nhánh feat/us-003-kt01/PR #1, không phải runtime trên main tại lần chuyển tài liệu ngày 11/10/2026. Các SEC controls là yêu cầu phải triển khai và kiểm chứng.
+
 Family Bridge xử lý tâm sự học sinh và người chăm sóc. Bảo vệ người dùng, quyền riêng tư và khả năng tìm trợ giúp là yêu cầu nghiệp vụ. Áp dụng mọi lần coding/review; kiểm tra liên quan phạm vi thay đổi, không giả vờ đã nghiệm thu toàn bộ hệ thống.
 
 Mục lục: [kiểm soát](#kiểm-soát), [đối chiếu chuẩn](#đối-chiếu-chuẩn), [quy tắc agent](#quy-tắc-cho-coding-agent), [trạng thái](#trạng-thái-hiện-tại).

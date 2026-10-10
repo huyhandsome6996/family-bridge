@@ -6,7 +6,7 @@ Mỗi tác vụ bắt đầu bằng đọc [AGENTS.md](../../AGENTS.md) và [ph�
 2. [family-bridge-security](../../.agents/skills/family-bridge-security/SKILL.md) + [security rules](../security/security-rules.md).
 3. Đọc tài liệu/US liên quan: [luồng 4 tuần](../product/four-week-flow.md), [ERD](../data/erd.md), [admin](../product/admin-capabilities.md), threat model và API contract.
 
-Agent phải nêu tài liệu đã áp dụng, invariant và giới hạn; PR phải có DSA/SEC evidence. Không cần đọc lại nguyên file không đổi nhiều lần trong cùng tác vụ. Khi resume hoặc đổi scope, đọc phần thay đổi/liên quan. Không coi tài liệu là tính năng đã có.
+Agent phải nêu tài liệu đã áp dụng, invariant và giới hạn; PR mã nguồn hoặc bản ghi commit tài liệu phải có DSA/SEC evidence. Không cần đọc lại nguyên file không đổi nhiều lần trong cùng tác vụ. Khi resume hoặc đổi scope, đọc phần thay đổi/liên quan. Không coi tài liệu là tính năng đã có.
 
 ## Entry point theo công cụ
 
@@ -18,7 +18,13 @@ Agent phải nêu tài liệu đã áp dụng, invariant và giới hạn; PR ph
 | Cursor | .cursor/rules/family-bridge.mdc | alwaysApply rule; kiểm tra rule được bật trong môi trường đang dùng |
 | Agent khác | AGENTS.md + các đường dẫn trên | Yêu cầu đọc trực tiếp; không mặc định agent tự tìm mọi file |
 
-Đây là skill được version hóa trong repo, không tuyên bố đã cài global cho mọi tài khoản/IDE. Cần checkout nhánh có các file này; main chưa chứa nếu PR chưa merge. Nội dung rule + review + CI tăng khả năng tuân thủ, không có file nào bảo đảm agent luôn obey hoặc hệ thống không bị hack.
+Đây là skill được version hóa trong repo, không tuyên bố đã cài global cho mọi tài khoản/IDE. Bộ hướng dẫn đã được đưa trực tiếp vào main ngày 11/10/2026; checkout main mới nhất để sử dụng. Nội dung rule + review + CI tăng khả năng tuân thủ, không có file nào bảo đảm agent luôn obey hoặc hệ thống không bị hack.
+
+## Quy ước đưa tài liệu lên main
+
+Theo yêu cầu trực tiếp ngày 11/10/2026, các lần tạo/sửa skill, rule và tài liệu chỉ cần kiểm tra phù hợp rồi commit/push thẳng main, không mở PR hoặc hỏi xác nhận lại. Quy ước nguồn ở AGENTS.md. Bao gồm công cụ kiểm tra tối thiểu phục vụ tài liệu; không gộp runtime code, dependency, migration hoặc cấu hình triển khai vào commit tài liệu. Cập nhật trên main mới nhất, không force-push hoặc bỏ qua branch protection, không ghi đè thay đổi của người khác.
+
+PR #1 vẫn giữ phần nền tảng Django/Mini App để review riêng. Khi chưa có backend/manage.py và workflow nền tảng trong main, các hướng dẫn chạy backend/kiểm thử app mô tả nhánh feat/us-003-kt01, không phải chức năng đã có trên main.
 
 ## Kiểm tra và nghiệm thu
 

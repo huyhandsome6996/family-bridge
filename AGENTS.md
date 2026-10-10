@@ -8,9 +8,17 @@ Also read `.agents/skills/family-bridge-security/SKILL.md` and `docs/security/se
 
 Read `docs/product/four-week-flow.md` and `docs/data/erd.md` for program, sharing, schema or workflow changes. Read `docs/product/admin-capabilities.md` for roles, administration, research, content publishing or school support. Read the relevant Trello US and existing API contracts before implementation. These documents describe target behavior, not implemented features.
 
-In the first work update, name the applicable documents and the invariants affected. In the PR, record input bounds, algorithm/data structure choices, time and auxiliary space costs, query/payload limits, authorization and verification evidence. For text-only changes mark runtime analysis N/A with a reason. Never claim reading or profiling that did not happen.
+In the first work update, name the applicable documents and the invariants affected. In the code PR (or documentation commit summary), record input bounds, algorithm/data structure choices, time and auxiliary space costs, query/payload limits, authorization and verification evidence. For text-only changes mark runtime analysis N/A with a reason. Never claim reading or profiling that did not happen.
 
 Use `python scripts/check_agent_docs.py` to check instruction wiring and document structure. This check cannot prove agent obedience, feature correctness, performance, privacy or database compatibility. Do not mark a US Done from this check alone.
+
+## Publishing documentation and skills
+
+The user explicitly authorized direct updates to main on 11 October 2026. For documentation-only tasks, commit and push skills, rules, project documents and their minimal validation tooling directly to the latest main after relevant checks. Do not open a PR or request confirmation again for this authorized scope. Record verification/limitations in the commit summary and final report instead of requiring a documentation PR.
+
+Use a focused commit and fast-forward update with the expected main SHA; never force-push, overwrite concurrent edits or bypass branch protection. If main has moved, inspect and integrate the new changes before retrying. If repository protection prevents a direct push, use the permitted route and explain the actual restriction.
+
+This policy does not authorize merging application code, dependencies, migrations, runtime/deployment configuration or mixed code/documentation PRs. Extract documentation and its minimal checks from mixed PRs; keep application changes in their own reviewed branch/PR. Keep statements about implemented features scoped to the branch/commit containing the code.
 
 ## Performance and data safety
 
@@ -25,7 +33,7 @@ Use `python scripts/check_agent_docs.py` to check instruction wiring and documen
 - The current product scope is `docs/project-scope.md` (15 features, voluntary activities, 5-minute pause). User instructions override older DOCX or copied project text.
 - Implement Django/DRF backend and the existing React Zalo Mini App. Do not start standalone web or React Native clients in this phase.
 - Keep domain modules and migrations owned by each US. Route registration/settings/shared contract changes belong in a small coordinated PR.
-- Link a Trello US in the PR. Read its acceptance criteria and predecessors. Use the latest main after predecessors merge; mocks do not prove integration.
+- Link a Trello US in code PRs where applicable; documentation-only tasks follow the direct-main policy above. Read its acceptance criteria and predecessors. Use the latest main after predecessors merge; mocks do not prove integration.
 - Never trust client-provided Zalo identity or admin flags. Verify provider credentials server-side before issuing application tokens. Default-deny APIs also require object-level authorization.
 - Private journals/AI drafts are not readable by relatives or teachers by default. Grants apply to each chosen item/page and recipient. Recheck after unlink/revoke.
 - No auto-send after a timer, AI response, retry, app resume, or lack of reply. Users select recipients, review and explicitly confirm. Help requests/calls bypass the 300-second pause.
