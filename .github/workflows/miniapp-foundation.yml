@@ -1,0 +1,61 @@
+name: miniapp-foundation
+
+# CI nền tảng Mini App (US-003, Agent B) — không dùng secrets, không deploy.
+# Deploy lên Zalo thuộc Antigravity theo docs/handover/miniapp-foundation/.
+
+on:
+  push:
+    branches:
+      - "feat/us-003-miniapp-ui-foundation"
+    paths:
+      - "zalo-mini-app/**"
+      - ".github/workflows/miniapp-foundation.yml"
+  pull_request:
+    paths:
+      - "zalo-mini-app/**"
+      - ".github/workflows/miniapp-foundation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: zalo-mini-app
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: zalo-mini-app/package-lock.json
+
+      - name: Install dependencies (reproducible)
+        run: npm ci
+
+      - name: Run tests (mock adapter)
+        run: npm test
+
+      - name: Production build + verify Zalo manifest
+        run: npm run build
+
+      - name: Scan staged bundle for secrets
+        shell: bash
+        run: |
+          if grep -rEn "ghp_[A-Za-z0-9]{20,}|gho_[A-Za-z0-9]{20,}|AKIA[0-9A-Z]{16}|AIza[0-9A-Za-z_-]{35}" www/; then
+            echo "::error::Secret pattern found in bundle"; exit 1
+          fi
+          echo "Bundle secret scan clean"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: miniapp-www
+          path: zalo-mini-app/www
+          retention-days: 7
