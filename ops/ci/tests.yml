@@ -1,0 +1,60 @@
+# B17 — least-privilege CI: tests only, read-only token, no secrets on
+# untrusted events. Actions are referenced by major version tag here and
+# MUST be pinned to full commit SHAs before this workflow guards any
+# production path (documented in ops/runbook.md).
+name: tests
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install Django/DRF
+        run: pip install "Django>=5.2,<6" "djangorestframework>=3.16,<4"
+      - name: Feature-lab harness tests (all feature labels)
+        working-directory: tests/feature-lab
+        env:
+          DJANGO_SETTINGS_MODULE: harness.settings
+          DJANGO_ENV: test
+        run: |
+          python manage.py test harness labgrants \
+            family_bridge_features.f01_identity \
+            family_bridge_features.f15_privacy \
+            family_bridge_features.f05_inbox \
+            family_bridge_features.f03_cards \
+            family_bridge_features.f04_ai \
+            family_bridge_features.f06_drafts \
+            family_bridge_features.f07_mood \
+            family_bridge_features.f08_journal \
+            family_bridge_features.f10_signal \
+            family_bridge_features.f11_supporters \
+            family_bridge_features.f13_help \
+            family_bridge_features.f12_appointments \
+            family_bridge_features.f09_activities \
+            family_bridge_features.f02_program \
+            family_bridge_features.f14_surveys \
+            family_bridge_features.admin_core -v 1
+
+  mobile:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Vanilla JS module tests
+        run: |
+          for t in packages/family_bridge_mobile/*/tests/*.test.mjs; do
+            node --test "$t"
+          done
