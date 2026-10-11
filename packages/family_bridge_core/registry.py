@@ -153,7 +153,7 @@ FEATURES: List[Dict[str, Any]] = [
         "branch": "feat/f12-school-support-appointments",
         "us_ids": ["US-038", "US-046"],
         "backend": {"package": "family_bridge_features.f12_appointments",
-                    "app_label": "f12_appointments", "routes": "appointments"},
+                    "app_label": "f12_appointments", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f12_appointments"},
         "docs": "docs/features/f12",
         "depends_on": ["F13"],
