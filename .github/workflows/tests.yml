@@ -27,6 +27,10 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: harness.settings
           DJANGO_ENV: test
+          # Harness refuses to load feature apps without FB_FEATURES; without
+          # it the suite errors spuriously (apps uninstalled -> missing tables).
+          # Label list = B18 integration set (docs/features/integration/report.md).
+          FB_FEATURES: "f01_identity,f15_privacy,f05_inbox,f03_cards,f04_ai,f06_drafts,f07_mood,f08_journal,f10_signal,f11_supporters,f13_help,f12_appointments,f09_activities,f02_program,f14_surveys,admin_core"
         run: |
           python manage.py test harness labgrants \
             family_bridge_features.f01_identity \
