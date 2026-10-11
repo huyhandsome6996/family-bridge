@@ -19,10 +19,12 @@
 
 ## CI least-privilege
 
-- `.github/workflows/tests.yml`: `permissions: contents: read`; KHÔNG
-  dùng `pull_request_target` với secrets; artifacts gắn SHA (nếu thêm).
-- **Trước khi guard production**: pin actions theo full commit SHA
-  (hiện là major tag + ghi chú).
+- `ops/ci/tests.yml`: READY-TO-INSTALL template (`permissions:
+  contents: read`; KHÔNG dùng `pull_request_target` với secrets).
+  **Cài đặt**: copy vào `.github/workflows/tests.yml` bởi người có token
+  `workflow` scope (PAT hiện tại của lead KHÔNG đủ scope — push bị
+  GitHub từ chối ngày 11/10/2026); sau đó pin actions theo full commit
+  SHA trước khi guard production.
 
 ## Bounded purge (task dọn dẹp)
 
