@@ -1,0 +1,24 @@
+{
+  "feature_id": "F03",
+  "branch": "feat/f03-emotion-cards",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-027"],
+  "backend": {
+    "app_label": "f03_cards",
+    "package": "family_bridge_features.f03_cards",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/cards (published catalog, bounded window 50)",
+      "POST /api/v1/cards/preview (exact card+version+recipient binding)",
+      "POST /api/v1/cards/send (explicit, X-Idempotency-Key, server-side hash)",
+      "GET /api/v1/cards/{message_id} (participant-only snapshot)",
+      "GET /api/v1/cards/{message_id}/reply-suggestions (recipient-only)"
+    ],
+    "models": ["EmotionCardSnapshot"],
+    "ports_provided": ["snapshot view cho UI (write-once)"],
+    "ports_consumed": ["MessageTransport (F05 — duy nhất)", "CardProvider (B16 content ở B18)", "ConnectionReader (F01)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f03_cards", "pages": ["cards", "card-detail"]},
+  "tests": {"backend": "27 PASS (SQLite; 55/55 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL race (không DB trong môi trường)"]},
+  "status": "implemented"
+}
