@@ -1,0 +1,25 @@
+{
+  "feature_id": "F15",
+  "branch": "feat/f15-privacy-revocation-deletion",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-012", "US-017", "US-023"],
+  "backend": {
+    "app_label": "f15_privacy",
+    "package": "family_bridge_features.f15_privacy",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/privacy/overview",
+      "POST /api/v1/privacy/grants/{item_type}/{item_id}/revoke",
+      "POST /api/v1/privacy/deletion-requests",
+      "GET /api/v1/privacy/deletion-requests/{id}",
+      "POST /api/v1/privacy/deletion-requests/{id}/cancel",
+      "POST /api/v1/privacy/consents/{purpose}/withdraw"
+    ],
+    "models": ["DeletionRequest", "DeletionLedgerEvent", "PrivacyCase"],
+    "ports_provided": ["AccessPolicyService (can_view_item/revoke_grant)", "DeletionService", "hook+provider registries"],
+    "ports_consumed": ["ConnectionReader (generation check)", "session resolver", "consent writer (B18)"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f15_privacy", "pages": ["privacy"]},
+  "tests": {"backend": "23 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL race", "restore drill thật"]},
+  "status": "implemented"
+}

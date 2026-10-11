@@ -17,8 +17,8 @@ import os
 import sys
 from pathlib import Path
 
-BASE_DIR = Path(__file__).resolve().parent
-REPO_ROOT = BASE_DIR.parents[1]
+BASE_DIR = Path(__file__).resolve().parent          # tests/feature-lab/harness
+REPO_ROOT = BASE_DIR.parents[2]                     # repo root
 PACKAGES_DIR = REPO_ROOT / "packages"
 FEATURE_LAB_DIR = REPO_ROOT / "tests" / "feature-lab"
 
@@ -57,9 +57,52 @@ unknown = [name for name in _requested if name not in VALID_LABELS]
 if unknown:
     raise RuntimeError(f"FB_FEATURES contains unknown labels: {unknown}")
 
+# Dependency expansion: sessions (f01) are the shared substrate for every
+# feature module; other known substrate deps resolved here so feature branches
+# test standalone with one command.
+HARNESS_DEPS = {
+    "f15_privacy": ["f01_identity"],
+    "f07_mood": ["f01_identity", "f15_privacy"],
+    "f08_journal": ["f01_identity", "f15_privacy"],
+    "f05_inbox": ["f01_identity"],
+    "f03_cards": ["f01_identity", "f05_inbox"],
+    "f04_ai": ["f01_identity", "f06_drafts"],
+    "f06_drafts": ["f01_identity"],
+    "f10_signal": ["f01_identity", "f05_inbox"],
+    "f11_supporters": ["f01_identity"],
+    "f13_help": [],
+    "f12_appointments": ["f01_identity", "f13_help"],
+    "f09_activities": ["f01_identity"],
+    "f02_program": ["f01_identity", "f09_activities"],
+    "f14_surveys": ["f01_identity"],
+    "admin_core": ["f01_identity", "f15_privacy"],
+    "ops_core": ["f15_privacy"],
+}
+import importlib.util as _ilu
+
+
+def _label_present(label: str) -> bool:
+    """Only include deps whose code exists on the current branch — feature
+    branches are cut from B00 and may not carry other features yet."""
+    try:
+        return _ilu.find_spec(f"family_bridge_features.{label}") is not None
+    except (ImportError, ValueError):
+        return False
+
+
+_resolved = list(_requested)
+for name in _requested:
+    for dep in HARNESS_DEPS.get(name, []):
+        if dep not in _resolved and _label_present(dep):
+            _resolved.append(dep)
+_requested = _resolved
+
 INSTALLED_APPS = (
     DJANGO_APPS + THIRD_PARTY_APPS
     + ["labusers"]
+    # Test-only apps (fixtures, never production): labgrants models the
+    # grant-provider contract for F15 tests.
+    + ["labgrants"]
     + [f"family_bridge_features.{label}" for label in _requested]
 )
 

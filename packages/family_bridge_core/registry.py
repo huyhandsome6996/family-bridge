@@ -187,7 +187,7 @@ FEATURES: List[Dict[str, Any]] = [
         "branch": "feat/f15-privacy-revocation-deletion",
         "us_ids": ["US-012", "US-017", "US-023"],
         "backend": {"package": "family_bridge_features.f15_privacy",
-                    "app_label": "f15_privacy", "routes": "privacy"},
+                    "app_label": "f15_privacy", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f15_privacy"},
         "docs": "docs/features/f15",
         "depends_on": ["F01"],
