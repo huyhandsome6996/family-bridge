@@ -1,0 +1,25 @@
+{
+  "feature_id": "F08",
+  "branch": "feat/f08-private-shared-journals",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-016", "US-031"],
+  "backend": {
+    "app_label": "f08_journal",
+    "package": "family_bridge_features.f08_journal",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/journal/prompts (published topic prompts)",
+      "GET|POST /api/v1/journal/pages (own cursor + owner-scoped search)",
+      "GET|PATCH|DELETE /api/v1/journal/pages/{id} (expected_revision guard)",
+      "GET /api/v1/journal/pages/{id}/shares | POST .../share | GET .../replies",
+      "GET /api/v1/journal/shared | GET|POST /api/v1/journal/shared/{id}(/replies)",
+      "GET /api/v1/journal/my-replies | POST /api/v1/journal/shares/{id}/revoke"
+    ],
+    "models": ["JournalPage", "JournalShare", "JournalReply"],
+    "ports_provided": ["JournalShareService (grant provider item_type=journal_page cho F15 ở B18)", "apply_user_deletion hook"],
+    "ports_consumed": ["prompt provider (B16 content)", "ConnectionReader (F01)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f08_journal", "pages": ["journal", "journal-shared"]},
+  "tests": {"backend": "17 PASS (SQLite; 45/45 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL race share/edit/reply"]},
+  "status": "implemented"
+}

@@ -108,7 +108,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F08", "title": "Nhat ky rieng va song hanh",
         "branch": "feat/f08-private-shared-journals", "us_ids": ["US-016", "US-031"],
         "backend": {"package": "family_bridge_features.f08_journal",
-                    "app_label": "f08_journal", "routes": "journal"},
+                    "app_label": "f08_journal", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f08_journal"},
         "docs": "docs/features/f08",
         "depends_on": ["F01", "F15", "F05"],
