@@ -214,3 +214,47 @@ KHÔNG được suy rộng thành:
    ghi nhận trong PR; kết quả CI không được dùng để tuyên bố MySQL device evidence.
 7. **Throttle per-process** (phát hiện 4.7): giới hạn đã ghi ở cả security-rules.md
    (SEC-14) và checklist; chấp nhận ở mức foundation,US-004/DEC-17 chốt lại.
+
+## Phụ lục 2 — Bằng chứng CI run đầu tiên (Lead, 2026-10-11)
+
+Sau khi PAT có scope `workflow` được cung cấp, commit CI `472fd76`
+("ci(backend): backend-foundation workflow (SQLite + MySQL 8.4 + production guard)")
+đã được push fast-forward lên `origin/feat/us-003-backend-foundation`
+(32446fe → 472fd76, không force push). Vì workflow tự liệt kê chính nó trong
+paths-filter (`.github/workflows/backend-foundation.yml`), GitHub Actions đã
+chạy run đầu tiên ngay sau push:
+
+| Mục | Giá trị |
+| --- | --- |
+| Run | 38134533254 — https://github.com/huyhandsome6996/family-bridge/actions/runs/38134533254 |
+| Head | `472fd760873e4c584145495b8e3618f66e3123bb` |
+| Event | push (nhánh `feat/us-003-backend-foundation`) |
+| Kết luận | **success — 3/3 jobs** |
+
+Chi tiết từng job (log gốc được lead tải về lưu ngoài repo để đối chiếu):
+
+| Job | Thời lượng | Kết quả | Bằng chứng rút gọn từ log |
+| --- | --- | --- | --- |
+| sqlite-checks | ~11s | success | `System check identified no issues`; `makemigrations --check --dry-run` → `No changes detected`; `Ran 30 tests in 1.023s — OK (skipped=2)` — khớp chính xác kết quả local tại mục 2.7 |
+| mysql-checks | ~58s | success | service mysql:8.4 healthy; GRANT `test_family_bridge` thành công; `migrate` áp đủ chuỗi migration (contenttypes, auth.0001→0012, accounts.0001, …) từng bước `... OK`; **`Ran 30 tests in 2.611s — OK`, không có skip nào** — 2 test guard dương tính ở mục 2.6 (trước đây SKIP local vì mysqlclient không build được) đã chạy thật và PASS trên MySQL |
+| production-guard | ~27s | success | Âm tính: `check` với `DJANGO_ENV=production` thiếu `DJANGO_SECRET_KEY` thoát ≠ 0, output nhắc `DJANGO_SECRET_KEY`, không echo secret. Dương tính: `check --deploy` với dummy CI-only exit 0 |
+
+Hệ quả so với báo cáo gốc ở trên:
+
+1. Phát hiện 4.6 ("CI chưa từng chạy") — **ĐÃ ĐÓNG**.
+2. Mục 2.6: hai test dương tính production-guard không còn chỉ là "script khớp CI" —
+   đã có bằng chứng chạy thật trong `mysql-checks` (30/30, zero skip).
+3. Cột "MySQL" ở mục 1 cần đọc lại theo trạng thái mới: **đã có bằng chứng MySQL
+   runtime ở mức CI** (migrate + toàn bộ 30 test trên MySQL 8.4 container); vẫn
+   KHÔNG phải bằng chứng deploy/device thật — phần còn lại thuộc Antigravity.
+4. SEC-20: credential trong CI là CI-only (GRANT giới hạn trên `test_family_bridge.*`),
+   không phải pattern runtime production; user DB ít quyền khi deploy vẫn là việc
+   của Antigravity theo checklist.
+5. Nhãn kết quả vẫn đúng là **"backend foundation đã kiểm tra cục bộ"**, giờ có
+   thêm CI xanh: *backend foundation đã kiểm tra cục bộ + CI xanh (SQLite, MySQL 8.4,
+   production-guard)*. Vẫn KHÔNG suy rộng thành "US-003 Done" / "Zalo đã kiểm chứng" /
+   "đã deploy production".
+
+Ghi chú quy trình: commit tài liệu này cũng nằm trong paths-filter
+(`docs/handover/backend-foundation/**`) nên sẽ kích hoạt một run CI tiếp theo trên
+nhánh; kết quả run đó được lead theo dõi và dẫn liên kết cập nhật trong PR #4.
