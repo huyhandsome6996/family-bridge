@@ -41,7 +41,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F02", "title": "Dong hanh 4 tuan",
         "branch": "feat/f02-four-week-program", "us_ids": ["US-036", "US-044"],
         "backend": {"package": "family_bridge_features.f02_program",
-                    "app_label": "f02_program", "routes": "program"},
+                    "app_label": "f02_program", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f02_program"},
         "docs": "docs/features/f02",
         "depends_on": ["F09"],
