@@ -1,0 +1,72 @@
+/* ============================================================
+   tokens.css — Family Bridge design tokens (US-003)
+   Quy tắc CONTRACTS.md mục 4: các token bắt buộc GIỮ NGUYÊN giá trị,
+   không đổi tên, không đổi màu. Chỉ bổ sung token phái sinh.
+   ============================================================ */
+
+:root {
+  /* --- Màu thương hiệu (bắt buộc theo contract) --- */
+  --fb-primary: #C65B43;
+  --fb-accent: #E4AB56;
+  --fb-bg: #FFF4E8;
+  --fb-text: #713D32;
+  --fb-text-secondary: #475569;
+  --fb-surface: #FFFFFF;
+  --fb-cta: #A84733;
+  --fb-on-cta: #FFF4E8;
+
+  /* --- Trạng thái (bắt buộc theo contract) --- */
+  --fb-success: #166534;
+  --fb-success-bg: #F0FDF4;
+  --fb-warning: #92400E;
+  --fb-warning-bg: #FFFBEB;
+  --fb-error: #B91C1C;
+  --fb-error-bg: #FEF2F2;
+  --fb-info: #1E40AF;
+  --fb-info-bg: #EFF6FF;
+
+  /* --- Viền + focus (bắt buộc theo contract) --- */
+  --fb-border: #64748B;
+  --fb-focus: #A84733;
+
+  /* --- Bo góc (bắt buộc theo contract) --- */
+  --fb-radius-control: 8px;
+  --fb-radius-group: 12px;
+
+  /* --- Spacing thang 4/8/12/16/24/32 --- */
+  --fb-space-1: 4px;
+  --fb-space-2: 8px;
+  --fb-space-3: 12px;
+  --fb-space-4: 16px;
+  --fb-space-6: 24px;
+  --fb-space-8: 32px;
+
+  /* --- Typography (body 16px, line-height 1.5–1.6; heading 20–24px) --- */
+  --fb-font-body: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --fb-font-size-body: 16px;
+  --fb-line-height-body: 1.55;
+  --fb-font-size-h1: 24px;
+  --fb-font-size-h2: 20px;
+
+  /* --- Bố cục 1 cột, container 480px, touch target ≥44px --- */
+  --fb-container-max: 480px;
+  --fb-touch-target: 44px;
+  --fb-nav-height: 56px;
+
+  /* --- Motion: CHỈ transform/opacity, 100–200ms --- */
+  --fb-transition-quick: 120ms;
+  --fb-transition-base: 160ms;
+
+  /* --- Lớp z-index: top-bar < bottom-nav < sheet < dialog --- */
+  --fb-z-top-bar: 40;
+  --fb-z-bottom-nav: 50;
+  --fb-z-sheet: 60;
+  --fb-z-dialog: 70;
+
+  /* --- Phái sinh: hairline (cùng sắc --fb-border, nhẹ hơn cho viền card),
+         màu overlay, màu chữ trắng trên nền primary --- */
+  --fb-hairline: rgba(100, 116, 139, 0.35);
+  --fb-hairline-strong: rgba(100, 116, 139, 0.5);
+  --fb-overlay-bg: rgba(71, 28, 20, 0.5);
+  --fb-on-primary: #FFFFFF; /* trắng = tỷ lệ tương phản cao nhất đạt được trên #C65B43 */
+}

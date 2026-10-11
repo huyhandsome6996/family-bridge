@@ -1,47 +1,44 @@
-# Zalo Mini App
+# Family Bridge Zalo Mini App
 
-## Development
+Bản nền tảng giao diện US-003: JavaScript thuần (ES Modules) + Vite + zmp-sdk, KHÔNG React/zmp-ui.
 
-### Using Zalo Mini App Extension
+- [Cài đặt và chạy local](../docs/setup/miniapp/README.md)
+- [Phạm vi dự án](../docs/project-scope.md) · [Quy tắc UI](../docs/engineering/ui-rules.md) · [Hợp đồng API nền tảng](../docs/contracts/api-foundation.md)
+- [Bàn giao nền tảng Mini App](../docs/handover/miniapp-foundation/README.md) (mapping màn hình, adapter, checklist Antigravity, báo cáo chính sách Zalo)
 
-1. Install [Visual Studio Code](https://code.visualstudio.com/download) and [Zalo Mini App Extension](https://mini.zalo.me/docs/dev-tools).
-1. In the **Home** tab, process **Config App ID** and **Install Dependencies**.
-1. Navigate to the **Run** tab, select the suitable launcher, and click **Start**.
+## Cấu trúc
 
-### Using Zalo Mini App CLI
+```
+zalo-mini-app/
+├── index.html               # Entry HTML (SPA)
+├── app-config.json          # Cấu hình Zalo Mini App (statusBar, safe area…)
+├── vite.config.mjs          # Build + plugin sinh manifest app-config.json
+├── scripts/verify-build.mjs # Kiểm tra output www/ sau build
+├── src/
+│   ├── main.js              # Entry JS: boot store/adapter/router
+│   ├── app/                 # dom.js, router.js, store.js, nav.js
+│   ├── core/
+│   │   ├── config.js        # env + demo mode + phát hiện môi trường Zalo
+│   │   ├── adapter/         # adapter.js, mock-adapter.js, zalo-adapter.js
+│   │   ├── api/client.mjs   # API client HTTPS-only, timeout, không retry tự động
+│   │   └── fixtures/        # Dữ liệu minh họa (chỉ demo mode)
+│   ├── components/          # Design system thuần JS (button, sheet, dialog…)
+│   ├── styles/              # tokens.css, base.css, components.css
+│   └── pages/               # U01/U02/U04/U08-U10 + 5 hub + connection-check + help
+└── tests/                   # node:test + happy-dom (mock adapter, không cần server)
+```
 
-1. [Install Node JS](https://nodejs.org/en/download/).
-1. [Install Zalo Mini App CLI](https://mini.zalo.me/docs/dev-tools/cli/intro/).
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-1. **Start** the dev server:
-   ```bash
-   zmp start
-   ```
-1. **Open** `localhost:3000` in your browser.
+## Lệnh chính
 
-## Deployment
+```bash
+npm install        # cài dependencies (Node >= 22.12)
+npm start          # dev server localhost:3000 (preview browser)
+npm test           # toàn bộ tests (mock adapter, không gọi server)
+npm run build      # build production vào www/ + verify manifest Zalo
+```
 
-1. **Create** a mini program. For instructions on how to create a mini program, please refer to the [Coffee Shop Tutorial](https://mini.zalo.me/tutorial/coffee-shop/step-1/)
+`npm run deploy` (zmp CLI) thuộc Antigravity — xem checklist bàn giao.
 
-1. **Deploy** your mini program to Zalo using the mini app ID created.
+## Chế độ demo
 
-   - **Using Zalo Mini App Extension**: navigate to the **Deploy** panel > **Login** > **Deploy**.
-   - **Using Zalo Mini App CLI**:
-     ```bash
-     zmp login
-     zmp deploy
-     ```
-
-1. Open the mini app in Zalo by scanning the QR code.
-
-## Resources
-
-- [Zalo Mini App Official Website](https://mini.zalo.me/)
-- [ZaUI Documentation](https://mini.zalo.me/documents/zaui/)
-- [ZMP SDK Documentation](https://mini.zalo.me/documents/api/)
-- [DevTools Documentation](https://mini.zalo.me/docs/dev-tools/)
-- [Ready-made Mini App Templates](https://mini.zalo.me/zaui-templates)
-- [Community Support](https://mini.zalo.me/community)
+Demo mode CHỈ bật khi thêm `?demo=1` vào URL (rõ ràng, có nhãn "Dữ liệu minh họa" trên mọi màn hình). Không có cơ chế fallback tự động từ lỗi API/auth sang mock; production không tự bật dữ liệu giả. Chi tiết: `src/core/config.js`.

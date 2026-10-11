@@ -1,0 +1,137 @@
+/* ============================================================
+   base.css — reset tối giản + nền chữ + bố cục 1 cột (US-003)
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: var(--fb-font-body);
+  font-size: var(--fb-font-size-body);
+  line-height: var(--fb-line-height-body);
+  color: var(--fb-text); /* #713D32 trên #FFF4E8 = 8.01:1 */
+  background: var(--fb-bg);
+  /* KHÔNG khóa 100vh cứng: fallback 100vh + 100dvh theo contract mục 4 */
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+h1, h2, h3, p, ul, ol, figure {
+  margin: 0;
+}
+
+h1 {
+  font-size: var(--fb-font-size-h1);
+  line-height: 1.3;
+}
+
+h2,
+h3 {
+  font-size: var(--fb-font-size-h2);
+  line-height: 1.35;
+}
+
+ul,
+ol {
+  padding: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img,
+svg {
+  max-width: 100%;
+}
+
+a {
+  color: var(--fb-cta);
+}
+
+#app {
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* Vùng nội dung page: 1 cột, tối đa 480px, đệm ngang 16px theo contract.
+   Page contract (3-b): root của page nên dùng class .fb-page. */
+.fb-page {
+  width: 100%;
+  max-width: var(--fb-container-max);
+  margin: 0 auto;
+  padding: var(--fb-space-6) var(--fb-space-4) var(--fb-space-8);
+}
+
+/* Khi router gắn .fb-bottom-nav, chừa chỗ để nội dung cuối không bị che.
+   :has() là enhancement cho webview hiện đại; page vẫn có thể tự thêm
+   class .fb-page--with-nav nếu cần hỗ trợ webview rất cũ. */
+body:has(.fb-bottom-nav) .fb-page,
+.fb-page--with-nav {
+  padding-bottom: calc(var(--fb-nav-height) + var(--fb-space-8) + env(safe-area-inset-bottom));
+}
+
+/* Container trừu tượng (không padding dọc) cho các khối ngoài .fb-page */
+.fb-container {
+  width: 100%;
+  max-width: var(--fb-container-max);
+  margin: 0 auto;
+  padding-left: var(--fb-space-4);
+  padding-right: var(--fb-space-4);
+}
+
+/* Focus luôn nhìn thấy rõ (contract mục 4) */
+:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: 2px;
+}
+
+/* Ẩn khỏi thị giác nhưng screen reader vẫn đọc được */
+.fb-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* Khối lỗi khởi động do src/main.js (của Lead) render khi boot thất bại */
+.fb-boot-error {
+  margin: var(--fb-space-6) var(--fb-space-4);
+  padding: var(--fb-space-4);
+  background: var(--fb-error-bg);
+  color: var(--fb-error);
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  border-radius: var(--fb-radius-group);
+  font-weight: 600;
+}
+
+/* Tôn trọng người dùng bật "giảm chuyển động":
+   tắt transition/animation không thiết yếu (contract mục 4) */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}

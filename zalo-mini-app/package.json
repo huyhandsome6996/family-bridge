@@ -1,41 +1,33 @@
 {
   "name": "zalo-mini-app",
   "private": true,
-  "version": "1.0.0",
-  "description": "zmp-blank-templates",
+  "version": "0.3.0",
+  "description": "Family Bridge Zalo Mini App — frontend foundation (US-003)",
   "repository": "",
   "license": "UNLICENSED",
+  "type": "module",
+  "scripts": {
+    "login": "zmp login",
+    "start": "vite --host 127.0.0.1 --port 3000",
+    "build": "vite build && node scripts/verify-build.mjs",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "zmp-sdk": "2.53.0"
+  },
+  "devDependencies": {
+    "happy-dom": "20.14.6",
+    "vite": "8.3.4"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
   "browserslist": [
     "Android >= 5",
     "IOS >= 9.3",
     "Edge >= 15",
     "Safari >= 9.1",
     "Chrome >= 49",
-    "Firefox >= 31",
     "Samsung >= 5"
-  ],
-  "scripts": {
-    "login": "zmp login",
-    "start": "zmp start",
-    "deploy": "zmp deploy"
-  },
-  "dependencies": {
-    "jotai": "^2.12.1",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "zmp-sdk": "latest",
-    "zmp-ui": "latest"
-  },
-  "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.1",
-    "autoprefixer": "^10.4.19",
-    "cross-env": "^7.0.3",
-    "postcss": "^8.4.38",
-    "postcss-cli": "^8.3.1",
-    "postcss-preset-env": "^6.7.0",
-    "sass": "^1.76.0",
-    "tailwindcss": "^3.4.3",
-    "vite": "^5.2.13",
-    "zmp-vite-plugin": "latest"
-  }
+  ]
 }
