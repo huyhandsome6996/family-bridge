@@ -1,0 +1,44 @@
+# Render configuration PREPARED for the Antigravity deployment team.
+# Nothing here is deployed by this branch/task (US-003 backend foundation):
+# creating the service, granting secrets and the first migrate are one-off
+# steps owned by Antigravity - see docs/handover/backend-foundation/antigravity-checklist.md.
+# migrate deliberately stays OUT of startCommand; run it one-off (Render shell/job)
+# after secrets exist. healthCheckPath uses the liveness endpoint, which never
+# touches the DB and is exempt from throttling so monitoring is never rate-limited.
+services:
+  - type: web
+    name: family-bridge-backend
+    runtime: python
+    rootDir: backend
+    plan: starter
+    buildCommand: pip install -r requirements-mysql.txt
+    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /api/v1/health/
+    autoDeploy: false
+    envVars:
+      - key: DJANGO_ENV
+        value: production
+      - key: DJANGO_SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: 3.12.15
+      # Values below are supplied by Antigravity from the real environment/secret
+      # manager (sync: false). Never put real credentials in this file (SEC-19).
+      - key: DJANGO_ALLOWED_HOSTS
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        sync: false
+      - key: MYSQL_DATABASE
+        sync: false
+      - key: MYSQL_USER
+        sync: false
+      - key: MYSQL_PASSWORD
+        sync: false
+      - key: MYSQL_HOST
+        sync: false
+      - key: MYSQL_PORT
+        sync: false
+      # Path to a CA certificate when the MySQL provider requires TLS
+      # (settings then enforce ssl_mode=VERIFY_IDENTITY).
+      - key: MYSQL_SSL_CA
+        sync: false
