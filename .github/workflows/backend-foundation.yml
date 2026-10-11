@@ -1,0 +1,174 @@
+# Backend foundation CI (US-003). SEC-26: least-privilege permissions (contents: read)
+# and every Actions reference pinned to a commit SHA (version noted in comment).
+# SQLite job = local-equivalent foundation checks; MySQL 8.4 job = proof that
+# migrations run on real MySQL (SQLite results are never MySQL evidence);
+# production-guard proves settings fail closed without secrets and pass --deploy with CI-only dummies.
+name: backend-foundation
+
+on:
+  push:
+    branches: [feat/us-003-backend-foundation]
+    paths:
+      - "backend/**"
+      - "docs/setup/backend/**"
+      - "docs/handover/backend-foundation/**"
+      - "render.yaml"
+      - ".github/workflows/backend-foundation.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "docs/setup/backend/**"
+      - "docs/handover/backend-foundation/**"
+      - "render.yaml"
+      - ".github/workflows/backend-foundation.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: backend
+
+jobs:
+  sqlite-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (SEC-26: pinned SHA)
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0 (SEC-26: pinned SHA)
+        with:
+          # Range keeps CI resilient; production runtime is pinned to 3.12.15 in render.yaml.
+          python-version: "3.12"
+      - name: Install dependencies (SQLite, without mysqlclient)
+        run: pip install -r requirements.txt
+      - name: Django checks and migration drift guard
+        env:
+          DJANGO_ENV: test
+          DB_ENGINE: sqlite
+        run: |
+          python manage.py check
+          python manage.py makemigrations --check --dry-run
+      - name: Test suite
+        env:
+          DJANGO_ENV: test
+          DB_ENGINE: sqlite
+        run: python manage.py test -v 2
+
+  mysql-checks:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+          MYSQL_DATABASE: family_bridge
+          MYSQL_USER: family_bridge
+          MYSQL_PASSWORD: ci-family-bridge-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (SEC-26: pinned SHA)
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0 (SEC-26: pinned SHA)
+        with:
+          python-version: "3.12"
+      # mysqlclient ships source-only for Linux (Windows-only wheels on PyPI),
+      # so the MySQL client dev libraries must be present before pip builds it.
+      - name: Install MySQL client dev libraries (CI only)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config default-libmysqlclient-dev
+      - name: Install dependencies (includes mysqlclient)
+        run: pip install -r requirements-mysql.txt
+      # CI credentials are for CI only, not a production pattern (SEC-20: the runtime
+      # DB user stays least-privilege). The mysql:8.4 image only grants ALL on
+      # family_bridge.*, while Django's test runner must create test_family_bridge.
+      - name: Grant CI-only privileges on the Django test database
+        run: |
+          mysql -h 127.0.0.1 -uroot -pci-root-password -e "GRANT ALL PRIVILEGES ON \`test_family_bridge\`.* TO 'family_bridge'@'%'; FLUSH PRIVILEGES;"
+      - name: Migrate on real MySQL (migration proof)
+        env:
+          DJANGO_ENV: test
+          DB_ENGINE: mysql
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: "3306"
+          MYSQL_DATABASE: family_bridge
+          MYSQL_USER: family_bridge
+          MYSQL_PASSWORD: ci-family-bridge-password
+        run: python manage.py migrate
+      - name: Test suite on MySQL
+        env:
+          DJANGO_ENV: test
+          DB_ENGINE: mysql
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PORT: "3306"
+          MYSQL_DATABASE: family_bridge
+          MYSQL_USER: family_bridge
+          MYSQL_PASSWORD: ci-family-bridge-password
+        run: python manage.py test -v 2
+
+  production-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1 (SEC-26: pinned SHA)
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0 (SEC-26: pinned SHA)
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      # Production settings mandate DB_ENGINE=mysql, so Django needs the MySQL
+      # driver importable even for check --deploy (no DB connection is made).
+      # mysqlclient has Linux source-only distributions; version stays pinned to
+      # the same release as requirements-mysql.txt (SEC-25). CI-only, no secrets.
+      - name: Install MySQL driver for production settings import
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config default-libmysqlclient-dev
+          pip install mysqlclient==2.2.8
+      # Negative control: production settings without DJANGO_SECRET_KEY must fail closed.
+      - name: Guard (negative) - production check without SECRET_KEY must fail
+        env:
+          DJANGO_ENV: production
+        run: |
+          set +e
+          output=$(python manage.py check 2>&1)
+          status=$?
+          set -e
+          echo "$output"
+          if [ "$status" -eq 0 ]; then
+            echo "::error::FAIL: 'python manage.py check' with DJANGO_ENV=production and no DJANGO_SECRET_KEY must not succeed" >&2
+            exit 1
+          fi
+          if ! printf '%s' "$output" | grep -q "DJANGO_SECRET_KEY"; then
+            echo "::error::Expected the failure output to mention DJANGO_SECRET_KEY" >&2
+            exit 1
+          fi
+          if printf '%s' "$output" | grep -q "ci-dummy-password"; then
+            echo "::error::Failure output must never contain a secret value" >&2
+            exit 1
+          fi
+      # Positive control: with a CI-only dummy secret (never a real credential)
+      # the production configuration must pass check --deploy; warnings are
+      # acceptable and stay visible in this job's output.
+      - name: Guard (positive) - production check --deploy with CI dummy secrets
+        env:
+          DJANGO_ENV: production
+          DJANGO_SECRET_KEY: ci-only-dummy-secret-key-for-family-bridge-0123456789abcdef-not-real
+          DJANGO_ALLOWED_HOSTS: api.example.com
+          DB_ENGINE: mysql
+          MYSQL_DATABASE: family_bridge
+          MYSQL_USER: family_bridge
+          MYSQL_PASSWORD: ci-dummy-password
+          CORS_ALLOWED_ORIGINS: https://example.zdn.vn
+        run: python manage.py check --deploy

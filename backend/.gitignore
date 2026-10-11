@@ -1,0 +1,7 @@
+# Backend-local ignores (complements the repository root .gitignore).
+# Root .gitignore already covers: __pycache__/, *.py[cod] (covers *.pyc),
+# .env / .env.* (keeping !.env.example), venv/, .venv, *.sqlite3 (covers
+# db.sqlite3) and *.log. Entries below are the ones the root does not provide.
+.pytest_cache/
+.coverage
+htmlcov/
