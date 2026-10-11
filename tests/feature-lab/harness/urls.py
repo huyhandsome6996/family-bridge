@@ -34,10 +34,9 @@ urlpatterns = [
 _loaded = set(settings.FEATURE_LAB["features"])
 for _feature in registry.FEATURES:
     _label = _feature["backend"]["app_label"]
+    _routes = _feature["backend"]["routes"].strip("/")
     if _label in _loaded:
+        _prefix = f"api/v1/{_routes}/" if _routes else "api/v1/"
         urlpatterns.append(
-            path(
-                f"api/v1/{_feature['backend']['routes']}/",
-                include(f"family_bridge_features.{_label}.urls"),
-            ),
+            path(_prefix, include(f"family_bridge_features.{_label}.urls")),
         )
