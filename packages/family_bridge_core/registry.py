@@ -201,7 +201,7 @@ FEATURES: List[Dict[str, Any]] = [
         "branch": "feat/admin-deep-management",
         "us_ids": ["US-014", "US-020", "US-024", "US-025", "US-041"],
         "backend": {"package": "family_bridge_features.admin_core",
-                    "app_label": "admin_core", "routes": "admin"},
+                    "app_label": "admin_core", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/admin_core"},
         "docs": "docs/features/admin",
         "depends_on": ["F01", "F15"],
