@@ -1,0 +1,44 @@
+{
+  "feature_id": "F01",
+  "branch": "feat/f01-zalo-connections",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-011", "US-013"],
+  "backend": {
+    "app_label": "f01_identity",
+    "package": "family_bridge_features.f01_identity",
+    "routes_prefix": "",
+    "endpoints": [
+      "POST /api/v1/auth/session",
+      "POST /api/v1/auth/logout",
+      "GET /api/v1/consents",
+      "POST /api/v1/consents",
+      "POST /api/v1/connections/invites",
+      "GET /api/v1/connections/invites",
+      "POST /api/v1/connections/invites/claim",
+      "POST /api/v1/connections/invites/{id}/confirm",
+      "POST /api/v1/connections/invites/{id}/decline",
+      "POST /api/v1/connections/invites/{id}/cancel",
+      "GET /api/v1/connections",
+      "POST /api/v1/connections/{id}/revoke"
+    ],
+    "models": ["ProviderIdentity", "Session", "ConsentRecord", "ConnectionInvite", "ClaimAttempt", "Connection"],
+    "ports_provided": ["ConnectionReader (InviteService)"],
+    "ports_consumed": ["IdentityVerifier (ZaloPlatformVerifier production)"]
+  },
+  "mobile": {
+    "module": "packages/family_bridge_mobile/f01_identity",
+    "pages": ["onboarding", "connection"],
+    "tests": "node --test packages/family_bridge_mobile/f01_identity/tests/*.test.mjs"
+  },
+  "policy_hooks": {"grants_revoked_on_revoke": "F15 listens; F01 exposes connection revoke via service (integration wiring B18)"},
+  "deletion_hook": "provider identity + sessions + consents + connections của user — sẽ đăng ký vào F15 registry ở B18",
+  "dependencies": [],
+  "tests": {
+    "backend_cmd": "bash tests/feature-lab/scripts/test_feature.sh f01_identity",
+    "backend_result": "48 tests: 46 PASS, 2 SKIPPED (MySQL-gated), SQLite local",
+    "mobile_cmd": "node --test 'packages/family_bridge_mobile/f01_identity/tests/*.test.mjs'",
+    "mobile_result": "4 PASS",
+    "not_run": ["MySQL race (không có DB)", "Zalo device (US-049)", "EXPLAIN MySQL"]
+  },
+  "status": "implemented"
+}
