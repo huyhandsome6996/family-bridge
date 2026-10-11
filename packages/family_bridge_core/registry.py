@@ -64,7 +64,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F04", "title": "AI ho tro dien dat",
         "branch": "feat/f04-ai-expression", "us_ids": ["US-029", "US-033"],
         "backend": {"package": "family_bridge_features.f04_ai",
-                    "app_label": "f04_ai", "routes": "ai"},
+                    "app_label": "f04_ai", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f04_ai"},
         "docs": "docs/features/f04",
         "depends_on": ["F06"],

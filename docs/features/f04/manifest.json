@@ -1,0 +1,25 @@
+{
+  "feature_id": "F04",
+  "branch": "feat/f04-ai-expression",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-029", "US-033"],
+  "backend": {
+    "app_label": "f04_ai",
+    "package": "family_bridge_features.f04_ai",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/ai/status (truthful ai_enabled flag)",
+      "POST /api/v1/ai/refine (X-Idempotency-Key; replay không gọi provider lần 2)",
+      "GET /api/v1/ai/suggestions (author-only, latest 20)",
+      "GET /api/v1/ai/suggestions/{id} (author-only)",
+      "POST /api/v1/ai/suggestions/{id}/accept (author-only, không gửi)",
+      "POST /api/v1/ai/suggestions/{id}/discard (author-only)"
+    ],
+    "models": ["AiSuggestion"],
+    "ports_provided": ["AiExpressService (refine/decide/status)"],
+    "ports_consumed": ["AI provider port (B18 wiring — server allowlist + env keys; US-008 duyệt)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f04_ai", "pages": ["refine"]},
+  "tests": {"backend": "18 PASS (SQLite; 46/46 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL quota race", "provider HTTP thật"]},
+  "status": "implemented"
+}
