@@ -142,7 +142,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "family_bridge_core.drf.fb_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"invite_claim": "30/hour", "send_message": "60/hour", "ai_refine": "30/hour"},
+    "DEFAULT_THROTTLE_RATES": {"invite_claim": "30/hour", "send_message": "60/hour", "ai_refine": "30/hour", "survey_report": "20/hour"},
     "UNAUTHENTICATED_USER": None,
 }
 

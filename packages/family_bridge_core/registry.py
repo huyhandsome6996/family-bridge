@@ -175,7 +175,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F14", "title": "Khao sat tu nguyen va bao cao nghien cuu",
         "branch": "feat/f14-surveys-safe-research", "us_ids": ["US-040", "US-045"],
         "backend": {"package": "family_bridge_features.f14_surveys",
-                    "app_label": "f14_surveys", "routes": "surveys"},
+                    "app_label": "f14_surveys", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f14_surveys"},
         "docs": "docs/features/f14",
         "depends_on": ["F01"],

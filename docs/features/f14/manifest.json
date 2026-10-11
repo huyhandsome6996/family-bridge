@@ -1,0 +1,23 @@
+{
+  "feature_id": "F14",
+  "branch": "feat/f14-surveys-safe-research",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-040", "US-045"],
+  "backend": {
+    "app_label": "f14_surveys",
+    "package": "family_bridge_features.f14_surveys",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/surveys/forms (published typed forms, không text)",
+      "GET|POST /api/v1/surveys/consent (explicit grant/withdraw)",
+      "POST /api/v1/surveys/responses (consent required; 1 lần/phase)",
+      "GET /api/v1/surveys/report/{form_key} (aggregate k-suppressed, DEC-15 gate)"
+    ],
+    "models": ["ResearchConsent", "SurveyResponse"],
+    "ports_provided": ["SurveyService", "apply_user_deletion hook (F15/WF-21)"],
+    "ports_consumed": ["form provider (B16 — US-010 duyệt)", "ResearchPolicyReader (DEC-15)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f14_surveys", "pages": ["surveys"]},
+  "tests": {"backend": "17 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL withdrawal race mid-export"]},
+  "status": "implemented"
+}
