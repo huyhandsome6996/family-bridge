@@ -27,7 +27,7 @@ export function createMockAdapter({ scenario = null } = {}) {
     const mode = pick(fallback);
     if (mode === "timeout") {
       await wait(TIMEOUT_MS + 500); // vượt quá timeoutMs của ApiClient-style guard
-      throw new ApiError("Kết nối quá thời gian chờ. Vui lòng thử lại.", 0);
+      throw new ApiError("Kết nối quá thời gian chờ. Vui lòng thử lại.", 0, "timeout");
     }
     await wait(DEFAULT_LATENCY_MS);
     if (mode === "error") {
@@ -36,6 +36,7 @@ export function createMockAdapter({ scenario = null } = {}) {
           ? "Máy chủ chưa sẵn sàng (dữ liệu minh họa)."
           : "Không thể hoàn tất yêu cầu. Vui lòng thử lại.",
         503,
+        "http",
       );
     }
     return true;
