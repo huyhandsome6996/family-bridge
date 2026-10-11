@@ -1,0 +1,28 @@
+{
+  "feature_id": "F07",
+  "branch": "feat/f07-mood-history-sharing",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-015", "US-026"],
+  "backend": {
+    "app_label": "f07_mood",
+    "package": "family_bridge_features.f07_mood",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/mood/entries (own history cursor entry_date desc)",
+      "POST /api/v1/mood/entries (create; entry_date mặc định hôm nay VN)",
+      "GET|PATCH /api/v1/mood/entries/{id} (owner-only; edit bump revision)",
+      "GET /api/v1/mood/entries/{id}/shares (owner xem grant của mục)",
+      "POST /api/v1/mood/entries/{id}/share (per-entry, 1 recipient, revision hiện hành)",
+      "GET /api/v1/mood/entries/summary (đếm mô tả, bounded, owner-only)",
+      "GET /api/v1/mood/shared (nhận được, DB-filtered revision current)",
+      "GET /api/v1/mood/shared/{share_id} (đọc: grant+revision+connection re-check)",
+      "POST /api/v1/mood/shares/{id}/revoke (owner-only, hiệu lực ngay)"
+    ],
+    "models": ["MoodEntry", "MoodShare"],
+    "ports_provided": ["MoodShareService (grant provider item_type=mood_entry cho F15 ở B18)"],
+    "ports_consumed": ["ConnectionReader (F01)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f07_mood", "pages": ["mood", "mood-shared"]},
+  "tests": {"backend": "19 PASS (SQLite; 47/47 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL race share/edit"]},
+  "status": "implemented"
+}

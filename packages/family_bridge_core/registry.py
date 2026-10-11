@@ -97,7 +97,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F07", "title": "Ghi nhan tam trang va chia se tung muc",
         "branch": "feat/f07-mood-history-sharing", "us_ids": ["US-015", "US-026"],
         "backend": {"package": "family_bridge_features.f07_mood",
-                    "app_label": "f07_mood", "routes": "mood"},
+                    "app_label": "f07_mood", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f07_mood"},
         "docs": "docs/features/f07",
         "depends_on": ["F01", "F15"],
