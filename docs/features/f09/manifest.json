@@ -1,0 +1,25 @@
+{
+  "feature_id": "F09",
+  "branch": "feat/f09-activities-micro-lessons",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-037"],
+  "backend": {
+    "app_label": "f09_activities",
+    "package": "family_bridge_features.f09_activities",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/activities/catalog (published, kind/audience filter)",
+      "GET|POST /api/v1/activities/progress (private per participant)",
+      "GET|POST /api/v1/activities/invites (2 chiều, mỗi người tự tick)",
+      "POST /api/v1/activities/invites/{id}/respond (invitee-only)",
+      "POST /api/v1/activities/invites/{id}/my-response (own only)",
+      "POST /api/v1/activities/invites/{id}/cancel (inviter, pending)"
+    ],
+    "models": ["ActivityProgress", "SharedActivityInvite"],
+    "ports_provided": ["ActivityService"],
+    "ports_consumed": ["PublishedContentReader (B16 — F02 refs ở B18)", "ConnectionReader (F01)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f09_activities", "pages": ["activities"]},
+  "tests": {"backend": "13 PASS (SQLite)", "mobile": "3 PASS", "not_run": []},
+  "status": "implemented"
+}
