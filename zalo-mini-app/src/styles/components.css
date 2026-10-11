@@ -1,0 +1,655 @@
+/* ============================================================
+   components.css — toàn bộ class .fb-* của design system (US-003)
+   Quy tắc:
+   - Chỉ dùng var(--fb-*) từ tokens.css (trừ rgba phái sinh cùng sắc).
+   - Phần tử tương tác: touch target ≥ 44px.
+   - Transition CHỈ transform/opacity, 100–200ms (contract mục 2/4).
+   - Không animation keyframes; skeleton giữ kích thước dạng tĩnh.
+   ============================================================ */
+
+/* ================= Nút (.fb-btn) ================= */
+
+.fb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  min-height: 44px;
+  padding: 10px 20px;
+  border: 1.5px solid transparent;
+  border-radius: var(--fb-radius-control);
+  font-family: inherit;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  /* Chỉ transform/opacity theo contract */
+  transition:
+    transform var(--fb-transition-quick) ease,
+    opacity var(--fb-transition-quick) ease;
+}
+
+.fb-btn:active {
+  transform: scale(0.98);
+}
+
+.fb-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* N primary: nền --fb-primary + chữ TRẮNG (tỷ lệ tốt nhất trên #C65B43).
+   LƯU Ý: #FFF4E8 trên #C65B43 chỉ được dùng cho chữ lớn (contract mục 4);
+   với hành động quan trọng cần AA đầy đủ, dùng variant --cta (5.36:1). */
+.fb-btn--primary {
+  background: var(--fb-primary);
+  color: var(--fb-on-primary);
+}
+
+/* CTA chính: 5.36:1 — đạt AA cho chữ thường */
+.fb-btn--cta {
+  background: var(--fb-cta);
+  color: var(--fb-on-cta);
+}
+
+/* Nút thứ cấp/không nhấn mạnh: viền + chữ CTA trên nền trong suốt */
+.fb-btn--ghost {
+  background: transparent;
+  border-color: var(--fb-cta);
+  color: var(--fb-cta);
+}
+
+/* Hành động rủi ro: nền đỏ lỗi + chữ trắng (6.4:1) */
+.fb-btn--danger {
+  background: var(--fb-error);
+  color: var(--fb-on-primary);
+}
+
+.fb-btn--md {
+  font-size: 16px;
+}
+
+.fb-btn--lg {
+  min-height: 52px;
+  padding: 12px 24px;
+  font-size: 18px;
+}
+
+/* ================= Trường nhập (.fb-field) ================= */
+
+.fb-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-field__label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-input,
+.fb-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  background: var(--fb-surface);
+  color: var(--fb-text);
+  border: 1px solid var(--fb-hairline-strong);
+  border-radius: var(--fb-radius-control);
+}
+
+.fb-textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.fb-input:focus-visible,
+.fb-textarea:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: 0;
+  border-color: var(--fb-focus);
+}
+
+.fb-field--error .fb-input,
+.fb-field--error .fb-textarea {
+  border-color: var(--fb-error);
+}
+
+.fb-field__hint {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--fb-text-secondary);
+}
+
+.fb-field__error {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--fb-error);
+}
+
+/* ================= Danh sách (.fb-list) ================= */
+
+.fb-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-list__item {
+  padding: var(--fb-space-3) var(--fb-space-4);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-control);
+}
+
+/* ================= Card (.fb-card) ================= */
+
+.fb-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-4);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+}
+
+/* Brand: nền --fb-cta + chữ --fb-on-cta (5.36:1, đạt AA) — dùng nền đậm hơn
+   --fb-primary vì chữ nhỏ trên #C65B43 không đạt AA (xem ghi chú .fb-btn--primary). */
+.fb-card--brand {
+  background: var(--fb-cta);
+  border-color: transparent;
+  color: var(--fb-on-cta);
+}
+
+.fb-card__title {
+  font-size: var(--fb-font-size-h2); /* 20px — trong dải heading 20–24 */
+  font-weight: 700;
+}
+
+.fb-card__description {
+  color: inherit;
+  opacity: 0.92;
+}
+
+.fb-card__footer {
+  margin-top: var(--fb-space-2);
+  padding-top: var(--fb-space-3);
+  border-top: 1px solid var(--fb-hairline);
+}
+
+.fb-card--brand .fb-card__footer {
+  border-top-color: rgba(255, 244, 232, 0.35);
+}
+
+/* ================= Overlay + Bottom sheet (.fb-sheet) ================= */
+
+.fb-sheet-root,
+.fb-dialog-root {
+  position: fixed;
+  inset: 0;
+}
+
+.fb-sheet-root {
+  z-index: var(--fb-z-sheet);
+}
+
+.fb-dialog-root {
+  z-index: var(--fb-z-dialog);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--fb-space-4);
+}
+
+.fb-sheet-root .fb-overlay,
+.fb-dialog-root .fb-overlay {
+  position: absolute;
+  inset: 0;
+  background: var(--fb-overlay-bg);
+}
+
+.fb-sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto;
+  max-width: var(--fb-container-max);
+  max-height: 85%; /* của vùng fixed inset 0 — không khóa 100vh cứng */
+  overflow-y: auto;
+  background: var(--fb-surface);
+  border-radius: var(--fb-radius-group) var(--fb-radius-group) 0 0;
+  padding: var(--fb-space-4) var(--fb-space-4)
+    calc(var(--fb-space-6) + env(safe-area-inset-bottom));
+}
+
+/* Panel được focus bằng chương trình khi mở — không vẽ vòng focus cho container */
+.fb-sheet:focus,
+.fb-sheet:focus-visible,
+.fb-dialog:focus,
+.fb-dialog:focus-visible {
+  outline: none;
+}
+
+.fb-sheet__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--fb-space-3);
+  margin-bottom: var(--fb-space-3);
+}
+
+.fb-sheet__title {
+  font-size: var(--fb-font-size-h2);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.fb-sheet__close {
+  flex: 0 0 auto;
+  width: var(--fb-touch-target);
+  height: var(--fb-touch-target);
+  margin: -6px -6px 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  color: var(--fb-text-secondary);
+  cursor: pointer;
+  transition: opacity var(--fb-transition-quick) ease;
+}
+
+.fb-sheet__close:active {
+  opacity: 0.7;
+}
+
+.fb-sheet__close svg {
+  width: 22px;
+  height: 22px;
+}
+
+.fb-sheet__body {
+  color: var(--fb-text);
+}
+
+.fb-sheet__actions,
+.fb-dialog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+  margin-top: var(--fb-space-4);
+}
+
+.fb-sheet__actions .fb-btn,
+.fb-dialog__actions .fb-btn {
+  flex: 1 1 auto;
+}
+
+/* ================= Dialog trung tâm (.fb-dialog) ================= */
+
+.fb-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  max-height: 85%;
+  overflow-y: auto;
+  background: var(--fb-surface);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-6) var(--fb-space-4) var(--fb-space-4);
+}
+
+.fb-dialog__title {
+  font-size: var(--fb-font-size-h2);
+  font-weight: 700;
+  margin-bottom: var(--fb-space-2);
+}
+
+.fb-dialog__message {
+  color: var(--fb-text);
+}
+
+/* ================= Badge trạng thái (.fb-badge) =================
+   Text-based, KHÔNG dùng chấm màu cảm xúc học sinh (contract mục 3). */
+
+.fb-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.fb-badge--success {
+  background: var(--fb-success-bg);
+  color: var(--fb-success);
+}
+
+.fb-badge--warning {
+  background: var(--fb-warning-bg);
+  color: var(--fb-warning);
+}
+
+.fb-badge--error {
+  background: var(--fb-error-bg);
+  color: var(--fb-error);
+}
+
+.fb-badge--info {
+  background: var(--fb-info-bg);
+  color: var(--fb-info);
+}
+
+.fb-badge--neutral {
+  background: rgba(100, 116, 139, 0.14);
+  color: var(--fb-text-secondary);
+}
+
+.fb-badge__icon {
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.fb-badge__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ================= Skeleton (.fb-skeleton) =================
+   TĨNH (không shimmer): contract cấm animation ngoài transition
+   100–200ms transform/opacity — khối chỉ giữ kích thước. */
+
+.fb-skeleton-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-skeleton {
+  background: rgba(100, 116, 139, 0.18);
+  border-radius: var(--fb-radius-control);
+}
+
+.fb-skeleton--line {
+  width: 100%;
+  height: 16px;
+}
+
+.fb-skeleton--card {
+  width: 100%;
+  height: 96px;
+  border-radius: var(--fb-radius-group);
+}
+
+.fb-skeleton--circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+}
+
+/* ================= Empty state (.fb-empty) ================= */
+
+.fb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-8) var(--fb-space-4);
+  background: var(--fb-surface);
+  border: 1px dashed var(--fb-hairline-strong);
+  border-radius: var(--fb-radius-group);
+}
+
+.fb-empty__icon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  color: var(--fb-accent); /* trang trí — không mang thông tin */
+}
+
+.fb-empty__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fb-empty__title {
+  font-size: var(--fb-font-size-h2);
+  font-weight: 700;
+}
+
+.fb-empty__description {
+  color: var(--fb-text-secondary);
+  max-width: 36ch;
+}
+
+.fb-empty .fb-btn {
+  margin-top: var(--fb-space-2);
+}
+
+/* ================= Error state (.fb-error) ================= */
+
+.fb-error {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-6) var(--fb-space-4);
+  background: var(--fb-error-bg);
+  border: 1px solid rgba(185, 28, 28, 0.35);
+  border-radius: var(--fb-radius-group);
+}
+
+.fb-error__icon {
+  display: inline-flex;
+  width: 44px;
+  height: 44px;
+  color: var(--fb-error);
+}
+
+.fb-error__icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fb-error__title {
+  color: var(--fb-error);
+  font-size: var(--fb-font-size-h2);
+  font-weight: 700;
+}
+
+.fb-error__description {
+  color: var(--fb-text);
+}
+
+.fb-error__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  margin-top: var(--fb-space-2);
+}
+
+/* ================= Top bar (.fb-top-bar) =================
+   Chỉ tiêu đề + nút back bên TRÁI; không đặt gì góc phải (vùng menu Zalo). */
+
+.fb-top-bar {
+  position: sticky;
+  top: 0;
+  z-index: var(--fb-z-top-bar);
+  background: var(--fb-surface);
+  border-bottom: 1px solid var(--fb-hairline);
+}
+
+.fb-top-bar__inner {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  min-height: 56px;
+  max-width: var(--fb-container-max);
+  margin: 0 auto;
+  padding: var(--fb-space-2) var(--fb-space-4);
+}
+
+.fb-top-bar__back {
+  flex: 0 0 auto;
+  width: var(--fb-touch-target);
+  height: var(--fb-touch-target);
+  margin-left: calc(var(--fb-space-2) * -1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  color: var(--fb-text);
+  cursor: pointer;
+  transition: opacity var(--fb-transition-quick) ease;
+}
+
+.fb-top-bar__back:active {
+  opacity: 0.7;
+}
+
+.fb-top-bar__back-icon {
+  display: flex;
+  width: 24px;
+  height: 24px;
+}
+
+.fb-top-bar__back-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.fb-top-bar__title {
+  font-size: var(--fb-font-size-h2);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ================= Bottom navigation (.fb-bottom-nav) ================= */
+
+.fb-bottom-nav {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--fb-z-bottom-nav);
+  background: var(--fb-surface);
+  border-top: 1px solid var(--fb-hairline);
+  /* Đẩy nội dung lên khỏi thanh chỉ báo hệ thống (contract mục 4) */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.fb-bottom-nav__list {
+  display: flex;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  max-width: var(--fb-container-max);
+}
+
+.fb-bottom-nav__item {
+  flex: 1 1 0;
+  min-height: var(--fb-nav-height); /* ≥ 44px touch target */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px;
+  color: var(--fb-text-secondary);
+  font-size: 14px; /* ≥ 10pt theo Zalo Design Guidelines */
+  font-weight: 500;
+  line-height: 1.2;
+  text-decoration: none;
+  transition:
+    transform var(--fb-transition-quick) ease,
+    opacity var(--fb-transition-quick) ease;
+}
+
+.fb-bottom-nav__item:active {
+  transform: scale(0.96);
+  opacity: 0.8;
+}
+
+.fb-bottom-nav__item--active {
+  color: var(--fb-cta); /* 5.8:1 trên trắng */
+  font-weight: 700;
+}
+
+.fb-bottom-nav__icon {
+  display: flex;
+  width: 24px;
+  height: 24px;
+}
+
+.fb-bottom-nav__icon svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ================= Demo banner (.fb-demo-banner) ================= */
+
+.fb-demo-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-2) var(--fb-space-4);
+  background: var(--fb-warning-bg);
+  color: var(--fb-warning);
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(146, 64, 14, 0.25);
+}
+
+/* ================= Logo (.fb-logo) =================
+   Placeholder — chờ asset logo mẫu 03 được duyệt (brand-identity.md). */
+
+.fb-logo {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.fb-logo svg {
+  display: block;
+}
+
+.fb-logo--sm svg {
+  width: 28px;
+  height: 28px;
+}
+
+.fb-logo--md svg {
+  width: 40px;
+  height: 40px;
+}
+
+.fb-logo--lg svg {
+  width: 64px;
+  height: 64px;
+}
