@@ -1,0 +1,25 @@
+{
+  "feature_id": "F11",
+  "branch": "feat/f11-backup-supporters",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-022", "US-035"],
+  "backend": {
+    "app_label": "f11_supporters",
+    "package": "family_bridge_features.f11_supporters",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET|POST /api/v1/supporters/roles (student side; invite explicit)",
+      "GET /api/v1/supporters/roles/{id} (participant-only)",
+      "POST /api/v1/supporters/roles/{id}/respond (supporter-only accept/decline)",
+      "POST /api/v1/supporters/roles/{id}/revoke (either party)",
+      "POST /api/v1/supporters/roles/{id}/contact (NEW text, X-Idempotency-Key)",
+      "GET /api/v1/supporters/commitments (supporter side)"
+    ],
+    "models": ["SupporterRole"],
+    "ports_provided": ["SupporterService (invite/respond/revoke/contact)"],
+    "ports_consumed": ["MessageTransport (F05)", "F01 invite connector (ensure_backup_connection — B18)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f11_supporters", "pages": ["supporters"]},
+  "tests": {"backend": "14 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL race invite/accept"]},
+  "status": "implemented"
+}

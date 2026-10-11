@@ -1,0 +1,18 @@
+{
+  "feature_id": "B17",
+  "branch": "chore/operations-backup-hardening",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-018", "US-019 (nghiên cứu)", "US-051 (chuẩn bị)"],
+  "backend": {"app_label": null, "package": "ops/ + .github/workflows/ + docs/operations/"},
+  "artifacts": [
+    "ops/backup/backup.sh (mysqldump single-transaction, secrets out-of-band)",
+    "ops/backup/verify_restore.sh (rehearsal isolated-only + ledger replay note)",
+    "ops/env_check.py (read-only hardening validator, tested)",
+    "ops/runbook.md (RPO/RTO/cadence PENDING DEC-12)",
+    ".github/workflows/tests.yml (contents:read, no pull_request_target+secrets)",
+    "docs/operations/zalo-notification-research.md (US-019 conditional)",
+    "docs/operations/zalo-submission-dossier-checklist.md (US-051, không submit)"
+  ],
+  "tests": {"backend": "env_check smoke (exit 1 on missing env — expected)", "not_run": ["backup/restore thật (cần MySQL + operator)"]},
+  "status": "implemented"
+}

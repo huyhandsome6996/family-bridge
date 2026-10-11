@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-11",
+  "branch": "review/full-product-integration",
+  "base": "chore/full-build-contract-baseline (B00, frozen cc6ade2f2c1d1760172046f045b3cf8c2d9894d7)",
+  "ab_snapshots_pinned": {
+    "backend_foundation": {"branch": "feat/us-003-backend-foundation", "sha": "1b233c4", "note": "merge --no-ff; không sửa worktree gốc"},
+    "miniapp_ui_foundation": {"branch": "feat/us-003-miniapp-ui-foundation", "sha": "6af2cdd", "note": "merge --no-ff; QA 79/79 PASS (happy-dom)"}
+  },
+  "feature_merges": [
+    {"branch": "feat/f01-zalo-connections", "pr": 6, "conflicts": "none"},
+    {"branch": "feat/f15-privacy-revocation-deletion", "pr": 7, "conflicts": "none"},
+    {"branch": "feat/f05-inbox-replies", "pr": 8, "conflicts": "labgrants models+migration add/add -> giữ f05 superset (TestConnection)"},
+    {"branch": "feat/f03-emotion-cards", "pr": 9, "conflicts": "none"},
+    {"branch": "feat/f04-ai-expression", "pr": 10, "conflicts": "none"},
+    {"branch": "feat/f06-drafts-five-minute-pause", "pr": 11, "conflicts": "none"},
+    {"branch": "feat/f07-mood-history-sharing", "pr": 12, "conflicts": "none"},
+    {"branch": "feat/f08-private-shared-journals", "pr": 13, "conflicts": "none"},
+    {"branch": "feat/f10-listening-signal", "pr": 14, "conflicts": "none"},
+    {"branch": "feat/f11-backup-supporters", "pr": 15, "conflicts": "none"},
+    {"branch": "feat/f13-help-directory", "pr": 16, "conflicts": "none"},
+    {"branch": "feat/f12-school-support-appointments", "pr": 17, "conflicts": "none"},
+    {"branch": "feat/f09-activities-micro-lessons", "pr": 18, "conflicts": "none"},
+    {"branch": "feat/f02-four-week-program", "pr": 19, "conflicts": "none"},
+    {"branch": "feat/f14-surveys-safe-research", "pr": 20, "conflicts": "harness settings THROTTLE_RATES -> union ai_refine + survey_report"},
+    {"branch": "feat/admin-deep-management", "pr": 21, "conflicts": "none"},
+    {"branch": "chore/operations-backup-hardening", "pr": 22, "conflicts": "none"}
+  ],
+  "combined_regression": {
+    "command": "cd tests/feature-lab && FB_FEATURES='f01_identity,f15_privacy,f05_inbox,f03_cards,f04_ai,f06_drafts,f07_mood,f08_journal,f10_signal,f11_supporters,f13_help,f12_appointments,f09_activities,f02_program,f14_surveys,admin_core' python manage.py test harness labgrants family_bridge_features",
+    "result": "333/333 PASS (2 skipped = MySQL-gated race suites, NOT_RUN trung thực)",
+    "drift_check": "makemigrations --check: No changes detected",
+    "node_modules": "16/16 file test PASS",
+    "zalo_miniapp_qa": "79/79 PASS (Agent B, happy-dom; KHÔNG phải Zalo device thật)"
+  },
+  "not_a_signoff": "Nhánh này để REVIEW — không phải nghiệm thu của Huy/Thầy; chưa deploy; chưa Zalo thật."
+}

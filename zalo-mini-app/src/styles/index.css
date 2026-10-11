@@ -1,0 +1,9 @@
+/* ============================================================
+   index.css — điểm vào CSS của design system (US-003).
+   Lead import đúng file này (contract mục 4). Thứ tự @import bắt buộc:
+   tokens → base → components. File này CHỈ chứa @import.
+   ============================================================ */
+
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";

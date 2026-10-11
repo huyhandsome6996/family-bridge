@@ -1,0 +1,25 @@
+{
+  "feature_id": "F02",
+  "branch": "feat/f02-four-week-program",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-036", "US-044"],
+  "backend": {
+    "app_label": "f02_program",
+    "package": "family_bridge_features.f02_program",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/program/catalog (published, mọi revision giữ lại)",
+      "POST /api/v1/program/enroll (tự nguyện, pin revision)",
+      "POST /api/v1/program/opt-out (tự nguyện nghỉ)",
+      "GET /api/v1/program/my | GET /program/weeks/{key} (4 tuần đều xem được, gợi ý không khóa)",
+      "POST /api/v1/program/progress (own done/skipped/reset)",
+      "POST /api/v1/program/agreement/accept (per-revision UNIQUE, mỗi người tự ký)"
+    ],
+    "models": ["Enrollment", "WeekProgress", "AgreementAcceptance"],
+    "ports_provided": ["ProgramService"],
+    "ports_consumed": ["program content provider (B16 — US-009 duyệt; F09 activity keys)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f02_program", "pages": ["program"]},
+  "tests": {"backend": "12 PASS (SQLite)", "mobile": "3 PASS", "not_run": []},
+  "status": "implemented"
+}

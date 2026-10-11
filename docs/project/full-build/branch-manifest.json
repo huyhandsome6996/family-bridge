@@ -36,7 +36,8 @@
       "features": [
         "US-004 hợp đồng/nền tảng"
       ],
-      "status": "implemented"
+      "status": "implemented",
+      "draft_pr": 5
     },
     {
       "id": "B01",
@@ -49,7 +50,8 @@
         "US-011",
         "US-013"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 6
     },
     {
       "id": "B15",
@@ -63,7 +65,8 @@
         "US-017",
         "US-023"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 7
     },
     {
       "id": "B05",
@@ -76,7 +79,8 @@
         "US-021",
         "US-028"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 8
     },
     {
       "id": "B03",
@@ -88,7 +92,8 @@
       "us": [
         "US-027"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 9
     },
     {
       "id": "B04",
@@ -101,7 +106,8 @@
         "US-029",
         "US-033"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 10
     },
     {
       "id": "B06",
@@ -114,7 +120,8 @@
         "US-030",
         "US-034"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 11
     },
     {
       "id": "B07",
@@ -127,7 +134,8 @@
         "US-015",
         "US-026"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 12
     },
     {
       "id": "B08",
@@ -140,7 +148,8 @@
         "US-016",
         "US-031"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 13
     },
     {
       "id": "B10",
@@ -152,7 +161,8 @@
       "us": [
         "US-032"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 14
     },
     {
       "id": "B11",
@@ -165,7 +175,8 @@
         "US-022",
         "US-035"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 15
     },
     {
       "id": "B13",
@@ -177,7 +188,8 @@
       "us": [
         "US-039"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 16
     },
     {
       "id": "B12",
@@ -190,7 +202,8 @@
         "US-038",
         "US-046"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 17
     },
     {
       "id": "B09",
@@ -202,7 +215,8 @@
       "us": [
         "US-037"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 18
     },
     {
       "id": "B02",
@@ -215,7 +229,8 @@
         "US-036",
         "US-044"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 19
     },
     {
       "id": "B14",
@@ -228,7 +243,8 @@
         "US-040",
         "US-045"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 20
     },
     {
       "id": "B16",
@@ -244,7 +260,8 @@
         "US-025",
         "US-041"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 21
     },
     {
       "id": "B17",
@@ -256,7 +273,8 @@
       "us": [
         "US-018"
       ],
-      "status": "planned"
+      "status": "implemented",
+      "draft_pr": 22
     },
     {
       "id": "B18",
@@ -271,7 +289,8 @@
         "US-047",
         "US-048"
       ],
-      "status": "planned"
+      "status": "integrated-for-review",
+      "draft_pr": 23
     }
   ],
   "pr_urls": {

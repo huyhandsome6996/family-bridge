@@ -1,0 +1,24 @@
+{
+  "feature_id": "B16",
+  "branch": "feat/admin-deep-management",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-014", "US-020", "US-024", "US-025", "US-041"],
+  "backend": {
+    "app_label": "admin_core",
+    "package": "family_bridge_features.admin_core",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/admin/dashboard (aggregate an toàn)",
+      "GET|POST /api/v1/admin/content (draft) + publish/retire/clone (per-cap)",
+      "GET /api/v1/admin/capabilities | POST grant | POST {id}/revoke",
+      "GET /api/v1/admin/settings | POST /settings/{key} (immutable chặn)",
+      "GET /api/v1/admin/audit (redacted)"
+    ],
+    "models": ["AdminCapabilityGrant", "ContentItem", "ProductSetting", "AuditEvent"],
+    "ports_provided": ["AdminCapabilityChecker (B00 protocol)", "ContentLifecycle", "SettingsService", "AuditWriter"],
+    "ports_consumed": ["session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/admin_core", "pages": ["admin"]},
+  "tests": {"backend": "13 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL final-admin concurrent revoke"]},
+  "status": "implemented"
+}
