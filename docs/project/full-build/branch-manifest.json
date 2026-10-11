@@ -1,0 +1,285 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-10-11",
+  "baseline": {
+    "branch": "chore/full-build-contract-baseline",
+    "base_main_sha": "c2c285a28a6214c8199c438b62c82b080f15be46",
+    "head_sha": "db8778bf62515419263518f1559a1354663f29ea",
+    "frozen": true,
+    "note": "frozen=true sau khi push + Draft PR + kiểm tra checks; mọi B01..B17 tạo từ đúng SHA này",
+    "freeze_note": "Baseline nội dung đóng băng tại commit db8778b (draft PR #5). Commit kế tiếp của B00 chỉ ghi bookkeeping (manifest/PR). Các nhánh feature B01..B17 tạo từ HEAD của B00 tại thời điểm freeze — SHA cụ thể được ghi trong report của từng feature (docs/features/<fxx>/report.md) và thống nhất cho mọi nhánh."
+  },
+  "external_agents": {
+    "us003_backend_foundation": {
+      "owner": "Agent A (không thuộc quyền sửa của lead)",
+      "branch": "feat/us-003-backend-foundation",
+      "sha_pinned_at_review": "32446fe4c9c269282fc61c3e2af8b8812fd884de",
+      "note": "Django scaffold: accounts.User (AbstractUser UUID), core health/ready/CORS/default-deny/envelope/throttle tests, Docker, render prep"
+    },
+    "us003_miniapp_ui_foundation": {
+      "owner": "Agent B (không thuộc quyền sửa của lead)",
+      "branch": "feat/us-003-miniapp-ui-foundation",
+      "sha_pinned_at_review": "779700556211ddf108d2e9cf896d228584cd10e1",
+      "note": "Vanilla JS Mini App: router/store/components/adapter (mock+zalo), pages home/mailbox/diary/help, QA tests"
+    },
+    "us003_kt01_legacy_pr1": {
+      "owner": "cũ",
+      "branch": "feat/us-003-kt01",
+      "note": "PR #1 scaffold cũ hỗn hợp backend/frontend — không merge mù, không cherry-pick mù"
+    }
+  },
+  "branches": [
+    {
+      "id": "B00",
+      "branch": "chore/full-build-contract-baseline",
+      "target_pr_base": "main",
+      "features": [
+        "US-004 hợp đồng/nền tảng"
+      ],
+      "status": "implemented"
+    },
+    {
+      "id": "B01",
+      "branch": "feat/f01-zalo-connections",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F01"
+      ],
+      "us": [
+        "US-011",
+        "US-013"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B15",
+      "branch": "feat/f15-privacy-revocation-deletion",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F15"
+      ],
+      "us": [
+        "US-012",
+        "US-017",
+        "US-023"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B05",
+      "branch": "feat/f05-inbox-replies",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F05"
+      ],
+      "us": [
+        "US-021",
+        "US-028"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B03",
+      "branch": "feat/f03-emotion-cards",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F03"
+      ],
+      "us": [
+        "US-027"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B04",
+      "branch": "feat/f04-ai-expression",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F04"
+      ],
+      "us": [
+        "US-029",
+        "US-033"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B06",
+      "branch": "feat/f06-drafts-five-minute-pause",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F06"
+      ],
+      "us": [
+        "US-030",
+        "US-034"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B07",
+      "branch": "feat/f07-mood-history-sharing",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F07"
+      ],
+      "us": [
+        "US-015",
+        "US-026"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B08",
+      "branch": "feat/f08-private-shared-journals",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F08"
+      ],
+      "us": [
+        "US-016",
+        "US-031"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B10",
+      "branch": "feat/f10-listening-signal",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F10"
+      ],
+      "us": [
+        "US-032"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B11",
+      "branch": "feat/f11-backup-supporters",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F11"
+      ],
+      "us": [
+        "US-022",
+        "US-035"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B13",
+      "branch": "feat/f13-help-directory",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F13"
+      ],
+      "us": [
+        "US-039"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B12",
+      "branch": "feat/f12-school-support-appointments",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F12"
+      ],
+      "us": [
+        "US-038",
+        "US-046"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B09",
+      "branch": "feat/f09-activities-micro-lessons",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F09"
+      ],
+      "us": [
+        "US-037"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B02",
+      "branch": "feat/f02-four-week-program",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F02"
+      ],
+      "us": [
+        "US-036",
+        "US-044"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B14",
+      "branch": "feat/f14-surveys-safe-research",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "F14"
+      ],
+      "us": [
+        "US-040",
+        "US-045"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B16",
+      "branch": "feat/admin-deep-management",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "B16"
+      ],
+      "us": [
+        "US-014",
+        "US-020",
+        "US-024",
+        "US-025",
+        "US-041"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B17",
+      "branch": "chore/operations-backup-hardening",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "B17"
+      ],
+      "us": [
+        "US-018"
+      ],
+      "status": "planned"
+    },
+    {
+      "id": "B18",
+      "branch": "review/full-product-integration",
+      "target_pr_base": "chore/full-build-contract-baseline",
+      "features": [
+        "tích hợp"
+      ],
+      "us": [
+        "US-042",
+        "US-043",
+        "US-047",
+        "US-048"
+      ],
+      "status": "planned"
+    }
+  ],
+  "pr_urls": {
+    "B00": "https://github.com/huyhandsome6996/family-bridge/pull/5"
+  },
+  "notes": [
+    "PR feature target B00, KHÔNG target main — giữ diff sạch.",
+    "Sau khi B00 được Huy/review merge, các PR feature được retarget; không duplicate commit vào main.",
+    "SHA pin A/B là đối chiếu lúc 11/10/2026; fetch lại trước khi ghép ở B18."
+  ]
+}

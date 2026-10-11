@@ -1,0 +1,123 @@
+/* Family Bridge design tokens — brand chốt DEC-07 + functional colors.
+   One-column mobile layout; body 16px; headings 20–24px; touch >=44px;
+   spacing scale 4/8/12/16/24/32; focus visible; respects reduced motion.
+   Font stack uses system fonts with Vietnamese diacritics support. */
+
+:root {
+  --fb-brand-primary: #C65B43;
+  --fb-brand-accent: #E4AB56;
+  --fb-brand-background: #FFF4E8;
+  --fb-brand-text: #713D32;
+  --fb-surface: #FFFFFF;
+
+  --fb-action: #A84733;
+  --fb-on-action: #FFF4E8;
+  --fb-success: #166534;   --fb-success-bg: #F0FDF4;
+  --fb-warning: #92400E;   --fb-warning-bg: #FFFBEB;
+  --fb-error: #B91C1C;     --fb-error-bg: #FEF2F2;
+  --fb-info: #1E40AF;      --fb-info-bg: #EFF6FF;
+  --fb-border: #64748B;
+  --fb-focus: #A84733;
+  --fb-text-secondary: #475569;
+
+  --fb-space-4: 4px;  --fb-space-8: 8px;   --fb-space-12: 12px;
+  --fb-space-16: 16px; --fb-space-24: 24px; --fb-space-32: 32px;
+
+  --fb-radius-control: 8px;
+  --fb-radius-group: 12px;
+
+  --fb-font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    "Helvetica Neue", "Noto Sans", "Noto Sans SC", Arial, sans-serif;
+}
+
+.fb-page {
+  font-family: var(--fb-font);
+  background: var(--fb-brand-background);
+  color: var(--fb-brand-text);
+  font-size: 16px;
+  line-height: 1.6;
+  min-height: 100vh;
+  padding: var(--fb-space-16);
+  max-width: 480px;          /* one-column mobile; grows with viewport */
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.fb-page h1, .fb-page h2, .fb-page h3 {
+  line-height: 1.3;
+  margin: var(--fb-space-16) 0 var(--fb-space-8);
+}
+.fb-page h1 { font-size: 24px; }
+.fb-page h2 { font-size: 20px; }
+.fb-page h3 { font-size: 18px; }
+
+.fb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  min-width: 44px;
+  padding: var(--fb-space-12) var(--fb-space-16);
+  border-radius: var(--fb-radius-control);
+  border: 1px solid transparent;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  gap: var(--fb-space-8);
+}
+.fb-button:disabled { opacity: 0.6; cursor: not-allowed; }
+.fb-button--primary { background: var(--fb-action); color: var(--fb-on-action); }
+.fb-button--secondary {
+  background: var(--fb-surface); color: var(--fb-brand-text);
+  border-color: var(--fb-border);
+}
+.fb-button--danger { background: var(--fb-error-bg); color: var(--fb-error); border-color: var(--fb-error); }
+
+.fb-button:focus-visible, .fb-input:focus-visible, .fb-textarea:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: 2px;
+}
+
+.fb-input, .fb-textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--fb-space-12);
+  border-radius: var(--fb-radius-control);
+  border: 1px solid var(--fb-border);
+  background: var(--fb-surface);
+  color: var(--fb-brand-text);
+  font-size: 16px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.fb-textarea { min-height: 120px; resize: vertical; }
+.fb-label { display: block; font-weight: 600; margin-bottom: var(--fb-space-4); }
+
+.fb-card {
+  background: var(--fb-surface);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-16);
+  margin-bottom: var(--fb-space-12);
+  border: 1px solid rgba(113, 61, 50, 0.12);
+}
+
+.fb-status { padding: var(--fb-space-8) var(--fb-space-12); border-radius: var(--fb-radius-control); margin: var(--fb-space-8) 0; }
+.fb-status--error   { background: var(--fb-error-bg);   color: var(--fb-error); }
+.fb-status--success { background: var(--fb-success-bg); color: var(--fb-success); }
+.fb-status--info    { background: var(--fb-info-bg);    color: var(--fb-info); }
+.fb-status--warning { background: var(--fb-warning-bg); color: var(--fb-warning); }
+
+.fb-mock-banner {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--fb-warning-bg); color: var(--fb-warning);
+  padding: var(--fb-space-8) var(--fb-space-16);
+  font-weight: 600; text-align: center;
+  border-bottom: 1px solid var(--fb-warning);
+}
+
+.fb-list { list-style: none; margin: 0; padding: 0; }
+.fb-list li { padding: var(--fb-space-12) 0; border-bottom: 1px solid rgba(113, 61, 50, 0.08); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
