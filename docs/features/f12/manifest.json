@@ -1,0 +1,27 @@
+{
+  "feature_id": "F12",
+  "branch": "feat/f12-school-support-appointments",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-038", "US-046"],
+  "backend": {
+    "app_label": "f12_appointments",
+    "package": "family_bridge_features.f12_appointments",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/appointments/directory (auth; verified school contacts)",
+      "GET|POST /api/v1/appointments/requests (GATED scheduling_no_staff)",
+      "GET /api/v1/appointments/requests/{id} (requester/capable handler)",
+      "POST .../claim (capability-holding operator)",
+      "POST .../slots (handler đề xuất slot UTC 30', atomic overlap guard)",
+      "POST .../slots/{id}/accept|decline (requester; stale → 409)",
+      "POST .../cancel (idempotent) | POST .../complete (handler)",
+      "GET /api/v1/appointments/queue (assigned-only)"
+    ],
+    "models": ["AppointmentRequest", "AppointmentSlot"],
+    "ports_provided": ["AppointmentService (state machine + gates)"],
+    "ports_consumed": ["staff directory gate (B16 capability — B18)", "school directory (B12/B16 — US-006)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f12_appointments", "pages": ["appointments"]},
+  "tests": {"backend": "14 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL double-book race", "device call"]},
+  "status": "implemented"
+}
