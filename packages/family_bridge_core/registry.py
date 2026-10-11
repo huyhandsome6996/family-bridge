@@ -119,7 +119,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F09", "title": "Hoat dong ket noi va bai hoc ngan",
         "branch": "feat/f09-activities-micro-lessons", "us_ids": ["US-037"],
         "backend": {"package": "family_bridge_features.f09_activities",
-                    "app_label": "f09_activities", "routes": "activities"},
+                    "app_label": "f09_activities", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f09_activities"},
         "docs": "docs/features/f09",
         "depends_on": ["F01"],
