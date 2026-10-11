@@ -1,0 +1,18 @@
+{
+  "feature_id": "F13",
+  "branch": "feat/f13-help-directory",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-039"],
+  "backend": {
+    "app_label": "f13_help",
+    "package": "family_bridge_features.f13_help",
+    "routes_prefix": "",
+    "endpoints": ["GET /api/v1/help/directory (PUBLIC allowlist — không auth)"],
+    "models": [],
+    "ports_provided": ["HelpDirectoryService (verified filter + fallback)"],
+    "ports_consumed": ["DirectoryReader (B12/B13 content owner — B18)"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f13_help", "pages": ["help"]},
+  "tests": {"backend": "7 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["device call test (Antigravity)"]},
+  "status": "implemented"
+}

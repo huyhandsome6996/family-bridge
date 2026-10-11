@@ -164,7 +164,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F13", "title": "Trang tim tro giup doc lap",
         "branch": "feat/f13-help-directory", "us_ids": ["US-039"],
         "backend": {"package": "family_bridge_features.f13_help",
-                    "app_label": "f13_help", "routes": "help"},
+                    "app_label": "f13_help", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f13_help"},
         "docs": "docs/features/f13",
         "depends_on": [],
