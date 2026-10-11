@@ -25,7 +25,7 @@ npm test           # node --test tests/*.test.mjs — mock adapter, không cần
 npm run build      # vite build + verify-build: kiểm tra www/app-config.json và assets
 ```
 
-Kết quả tham chiếu tại thời điểm bàn giao: 79/79 tests pass; build sinh `www/` (entry `assets/app.module.js`, CSS `assets/index.css`) và `verify-build` in "Verified Zalo app-config and all referenced assets".
+Kết quả tham chiếu sau Task 13-c: 97/97 tests pass (gồm 18 test phân loại lỗi connection-check); build sinh `www/` (entry `assets/app.module.js`, CSS `assets/index.css`) và `verify-build` in "Verified Zalo app-config and all referenced assets".
 
 ## 4. Chế độ demo (dữ liệu minh họa)
 
@@ -39,7 +39,7 @@ Kết quả tham chiếu tại thời điểm bàn giao: 79/79 tests pass; build
 Sao chép `.env.example` thành `.env` (KHÔNG commit `.env`):
 
 - `APP_ID`: ID Mini App trên Zalo (thông tin công khai, không phải secret).
-- `VITE_API_BASE_URL`: địa chỉ backend HTTPS cho build thật, ví dụ `https://family-bridge-backend.example.com`. Khi thiếu, màn kiểm tra kết nối báo lỗi cấu hình — không tự dùng dữ liệu giả.
+- `VITE_API_BASE_URL`: địa chỉ backend HTTPS cho build thật, ví dụ `https://family-bridge-backend.example.com`. Khi thiếu (hoặc địa chỉ không HTTPS ngoài localhost), màn kiểm tra kết nối hiển thị lỗi cấu hình — copy kỳ vọng: tiêu đề "Chưa cấu hình địa chỉ máy chủ" kèm hướng dẫn thêm `VITE_API_BASE_URL` khi build; TUYỆT ĐỐI không hiện thông báo timeout ("Kết nối quá thời gian chờ") cho trường hợp này. Lỗi mạng hiển thị "Chưa kết nối được máy chủ" + nút Thử lại. Không tự dùng dữ liệu giả.
 
 Tuyệt đối không đặt secret/API key/PAT vào biến `VITE_*` — chúng đi vào bundle công khai (SEC-19).
 

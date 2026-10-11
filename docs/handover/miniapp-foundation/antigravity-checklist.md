@@ -6,13 +6,14 @@ Phạm vi Agent B kết thúc ở "frontend foundation/demo đã kiểm tra cụ
 
 - [ ] Cấu hình App ID thật vào Mini App Center + `zalo-mini-app/.env` (`APP_ID`).
 - [ ] Chốt phân loại danh mục dịch vụ + chuẩn bị giấy tờ xác thực chủ sở hữu (xem zalo-policy-report.md 4.2 — giáo dục có thể yêu cầu giấy phép).
-- [ ] `npm ci && npm test && npm run build` trên máy deploy — phải pass (79/79 tests, verify-build OK).
+- [ ] `npm ci && npm test && npm run build` trên máy deploy — phải pass (97/97 tests, verify-build OK).
 
 ## B. Nối backend thật (theo docs/contracts/api-foundation.md)
 
 - [ ] Thay `VITE_API_BASE_URL` bằng backend của Agent A (HTTPS).
 - [ ] Kiểm tra `GET /api/v1/health/` → `{"status":"ok"}` qua màn "Kiểm tra kết nối máy chủ" (trạng thái success).
 - [ ] Kiểm tra `GET /api/v1/ready/`: 200 ok → success; 503 unavailable → trạng thái "Máy chủ chưa sẵn sàng" (không phải lỗi mạng); timeout → trạng thái timeout riêng.
+- [ ] Thiếu `VITE_API_BASE_URL` (hoặc địa chỉ không HTTPS ngoài localhost) → màn kiểm tra kết nối hiện lỗi cấu hình "Chưa cấu hình địa chỉ máy chủ" kèm hướng dẫn thêm `VITE_API_BASE_URL` khi build — KHÔNG được hiện thông báo timeout (phân loại lỗi theo `kind`, xem connection-check-fix-report.md).
 - [ ] Gỡ thiết lập demo: xác nhận production KHÔNG có nút "Giả lập" ở màn kiểm tra kết nối; URL không `?demo=1` không bao giờ hiển thị fixture.
 - [ ] Nối các API nghiệp vụ US-004 vào `src/core/adapter/zalo-adapter.js` (boundary đã đánh dấu getConnectionStatus/getProfile ném 501).
 
@@ -39,6 +40,6 @@ Phạm vi Agent B kết thúc ở "frontend foundation/demo đã kiểm tra cụ
 
 ## E. Kết quả đã kiểm tra cục bộ (tham chiếu)
 
-- `npm test`: 79/79 pass (mock adapter; không cần server).
+- `npm test`: 97/97 pass (mock adapter + fetch stub; không cần server) — gồm 18 test phân loại lỗi connection-check (Task 13-c).
 - `npm run build`: Verified Zalo app-config and all referenced assets; bundle `www/` scan sạch secret.
 - Browser preview: luồng U01→U02→U04→home, 5 hub, connection-check 4 trạng thái, help; demo `?demo=1` có nhãn "Dữ liệu minh họa" và cô lập khỏi production.
