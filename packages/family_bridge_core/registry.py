@@ -86,7 +86,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F06", "title": "Nhap va tam dung 5 phut (300 giay server)",
         "branch": "feat/f06-drafts-five-minute-pause", "us_ids": ["US-030", "US-034"],
         "backend": {"package": "family_bridge_features.f06_drafts",
-                    "app_label": "f06_drafts", "routes": "drafts"},
+                    "app_label": "f06_drafts", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f06_drafts"},
         "docs": "docs/features/f06",
         "depends_on": [],

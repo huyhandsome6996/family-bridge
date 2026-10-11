@@ -1,0 +1,28 @@
+{
+  "feature_id": "F06",
+  "branch": "feat/f06-drafts-five-minute-pause",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-030", "US-034"],
+  "backend": {
+    "app_label": "f06_drafts",
+    "package": "family_bridge_features.f06_drafts",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/drafts (own active drafts + server_time + pause_seconds)",
+      "POST /api/v1/drafts (create; AI-linkage fields rejected)",
+      "GET /api/v1/drafts/{id} (author-only + pause state + server_time)",
+      "POST /api/v1/drafts/{id} (edit: revision bump, deadline KHÔNG đổi)",
+      "DELETE /api/v1/drafts/{id} (discard)",
+      "POST /api/v1/drafts/{id}/pause (300s server-decided, không reset)",
+      "DELETE /api/v1/drafts/{id}/pause (cancel)",
+      "POST /api/v1/drafts/{id}/preview (chỉ sau deadline; bind revision+recipient)",
+      "POST /api/v1/drafts/{id}/confirm-send (final confirm qua sender port)"
+    ],
+    "models": ["Draft", "DraftPreview"],
+    "ports_provided": ["DraftService", "apply_user_deletion hook (F15/WF-21)"],
+    "ports_consumed": ["per-kind sender port (text→F05, emotion_card→F03 ở B18)", "session resolver", "clock (server, DEC-03)"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f06_drafts", "pages": ["drafts"]},
+  "tests": {"backend": "21 PASS (SQLite; 49/49 gồm harness+labgrants)", "mobile": "4 PASS", "not_run": ["MySQL race confirm concurrent"]},
+  "status": "implemented"
+}
