@@ -20,8 +20,9 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent
 REPO_ROOT = BASE_DIR.parents[1]
 PACKAGES_DIR = REPO_ROOT / "packages"
+FEATURE_LAB_DIR = REPO_ROOT / "tests" / "feature-lab"
 
-for candidate in (str(REPO_ROOT), str(PACKAGES_DIR)):
+for candidate in (str(REPO_ROOT), str(PACKAGES_DIR), str(FEATURE_LAB_DIR)):
     if candidate not in sys.path:
         sys.path.insert(0, candidate)
 
