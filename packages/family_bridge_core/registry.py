@@ -130,7 +130,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F10", "title": "Nut 'Con can duoc lang nghe'",
         "branch": "feat/f10-listening-signal", "us_ids": ["US-032"],
         "backend": {"package": "family_bridge_features.f10_signal",
-                    "app_label": "f10_signal", "routes": "signal"},
+                    "app_label": "f10_signal", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f10_signal"},
         "docs": "docs/features/f10",
         "depends_on": ["F01", "F05"],
