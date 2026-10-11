@@ -1,5 +1,12 @@
-"""API foundation. Production requires explicit secrets and durable MySQL."""
+"""API foundation. Production requires explicit secrets and durable MySQL.
+
+B18 wiring: the integrated feature packages (packages/family_bridge_features/*)
+are mounted on this real backend — registry-driven URLs, F01 bearer-session
+authentication, scoped throttle rates and the FamilyBridgeError envelope.
+Missing packages fail loudly at startup (no silent partial wiring).
+"""
 import os
+import sys
 from datetime import timedelta
 from pathlib import Path
 
@@ -7,6 +14,12 @@ from django.core.exceptions import ImproperlyConfigured
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+REPO_ROOT = BASE_DIR.parent
+PACKAGES_DIR = REPO_ROOT / "packages"
+for _candidate in (str(REPO_ROOT), str(PACKAGES_DIR)):
+    if _candidate not in sys.path:
+        sys.path.insert(0, _candidate)
+
 load_dotenv(BASE_DIR / ".env", override=False)
 
 
@@ -36,6 +49,43 @@ INSTALLED_APPS = [
     "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",
     "rest_framework", "corsheaders", "accounts", "core",
 ]
+
+# --- B18 feature wiring (explicit allowlist, no plugin discovery) -----------
+# Labels mirror family_bridge_core.registry.FEATURES backend.app_label.
+# FB_FEATURES may narrow the set (ops/rollback); unknown labels refuse to
+# boot, absent packages refuse to boot — wiring is never silently partial.
+FEATURE_APP_LABELS = {
+    "f01_identity", "f02_program", "f03_cards", "f04_ai", "f05_inbox",
+    "f06_drafts", "f07_mood", "f08_journal", "f09_activities", "f10_signal",
+    "f11_supporters", "f12_appointments", "f13_help", "f14_surveys",
+    "f15_privacy", "admin_core",
+}
+import importlib.util as _ilu  # noqa: E402  (placement fixed: after sys.path)
+
+
+def _label_present(label: str) -> bool:
+    try:
+        return _ilu.find_spec(f"family_bridge_features.{label}") is not None
+    except (ImportError, ValueError):
+        return False
+
+
+_requested_features = [item.strip() for item in csv_env("FB_FEATURES", ",".join(sorted(FEATURE_APP_LABELS)))]
+_unknown = [label for label in _requested_features if label not in FEATURE_APP_LABELS]
+if _unknown:
+    raise ImproperlyConfigured(f"FB_FEATURES contains unknown labels: {_unknown}")
+_missing = [label for label in _requested_features if not _label_present(label)]
+if _missing:
+    raise ImproperlyConfigured(
+        f"Feature packages missing from repository (packages/family_bridge_features): {_missing}")
+FEATURE_APPS = _requested_features
+INSTALLED_APPS += [f"family_bridge_features.{label}" for label in FEATURE_APPS]
+
+# Zalo verification credentials (SEC-01): read from environment only. The
+# verifier fails closed when either value is absent — login returns
+# module_unavailable instead of pretending to authenticate.
+ZALO_APP_ID = os.getenv("ZALO_APP_ID", "")
+ZALO_APP_SECRET = os.getenv("ZALO_APP_SECRET", "")
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -87,7 +137,12 @@ if DJANGO_ENV == "development":
 CORS_ALLOW_CREDENTIALS = False
 CORS_URLS_REGEX = r"^/api/.*$"
 REST_FRAMEWORK = {
-    "DEFAULT_AUTHENTICATION_CLASSES": ["rest_framework_simplejwt.authentication.JWTAuthentication"],
+    # B18: bearer application sessions issued by F01 after server-side Zalo
+    # verification (contract rule: never trust client-provided identity).
+    # simplejwt stays installed for the scaffold but issues no tokens here.
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "family_bridge_features.f01_identity.auth.FBSDSessionAuthentication",
+    ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.IsAuthenticated"],
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "EXCEPTION_HANDLER": "core.exceptions.api_exception_handler",
@@ -99,8 +154,15 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_CLASSES": [
         "rest_framework.throttling.AnonRateThrottle",
         "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
     ],
-    "DEFAULT_THROTTLE_RATES": {"anon": "60/min", "user": "120/min"},
+    # Scoped rates = B18 integration union (f04 ai_refine + f14 survey_report
+    # plus the baseline invite_claim/send_message), identical to the harness.
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min", "user": "120/min",
+        "invite_claim": "30/hour", "send_message": "60/hour",
+        "ai_refine": "30/hour", "survey_report": "20/hour",
+    },
 }
 SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(minutes=15)}
 AUTH_PASSWORD_VALIDATORS = [
