@@ -4,7 +4,9 @@ Zalo Mini App được đề xuất để hỗ trợ giao tiếp giữa học si
 
 ## Trạng thái main
 
-Ngày 11/10/2026, main đã có bộ skill, rule và tài liệu chuẩn triển khai. Backend trên main còn trống và Mini App còn template ban đầu. Khung Django/DRF, MySQL/Render và màn hình Mini App gọi API nằm trong [PR #1](https://github.com/huyhandsome6996/family-bridge/pull/1), nhánh feat/us-003-kt01, chưa merge. 15 tính năng nghiệp vụ chưa triển khai; chưa deploy Render/phát hành Zalo hoặc kiểm thử trên điện thoại thật.
+Ngày 11/10/2026 (đợt hợp nhất cuối ngày): main đã chứa **toàn bộ sản phẩm đã tích hợp** — baseline hợp đồng B00 (PR #5), 16 features B01–B16 + hardening B17 ghép qua nhánh tích hợp review/full-product-integration (PR #23, regression 333/333 PASS xác minh độc lập), và wiring backend thật (PR #24): feature packages mount lên backend Django/DRF qua registry-driven URLs, auth bearer-session của F01, scoped throttle rates, envelope lỗi hợp đồng; backend tests 40/40 PASS, makemigrations --check sạch, smoke server thật đạt (health/ready 200; route riêng tư 401 + Bearer challenge; fail-closed khi thiếu Zalo credentials). CI `tests.yml` (B17 template + job miniapp) chạy harness 333-test, mobile node và miniapp QA trên mọi push/PR.
+
+Chưa làm (trung thực): kiểm thử Zalo trên thiết bị thật (US-049), MySQL race suites + EXPLAIN thật (chờ MySQL), AI provider thật (cổng để trống theo thiết kế — luồng manual vẫn dùng được), deploy Render + nghiệm thu + submit Zalo + pilot (US-050..052 — chờ Huy/Antigravity/Thầy), nội dung mẫu TEST-ONLY phải thay bằng nội dung Thầy duyệt trước pilot (US-047), Trello chưa cập nhật (không có token).
 
 ## Coding agent phải đọc
 
