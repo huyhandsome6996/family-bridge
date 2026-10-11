@@ -35,6 +35,7 @@ Không khóa tuần sau nếu chưa làm tuần trước. Không bắt buộc th
 
 ## Những quyết định được áp dụng
 
+- Quyết định frontend ngày 11/10/2026 (supersede phần frontend của DEC-01): Mini App dùng HTML5/CSS3/JavaScript thuần ES Modules + Vite + zmp-sdk; không dùng React/zmp-ui cho module mới; không tạo web client riêng hay React Native. Backend Django/DRF + MySQL và mọi invariant riêng tư giữ nguyên. Module feature mới nằm ở `packages/` theo [full-build plan](project/full-build/plan.md).
 - Frontend học sinh, người chăm sóc và quản trị nội dung nằm trong Mini App theo backlog hiện tại; không xây web hoặc React Native trong đợt này.
 - Hộp thư nằm trong hệ thống Family Bridge. Thông báo ngoài Mini App là phần nghiên cứu điều kiện Zalo ở US-019; không giả định có quyền gửi tin cá nhân tự động.
 - Pause tự chọn cố định **300 giây server**, hết giờ vẫn là nháp; admin không được đổi thời gian hoặc bật auto-send. Nội dung quyền đổi khoảng chờ ở US-034 cũ được supersede bởi DEC-03; thay invariant cần quyết định riêng.

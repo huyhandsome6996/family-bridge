@@ -1,0 +1,9 @@
+@import "family_bridge_mobile_core/src/styles/tokens.css";
+
+#lab-nav {
+  padding: 8px 16px;
+  background: #fff;
+  border-bottom: 1px solid rgba(113, 61, 50, 0.12);
+  font-family: inherit;
+}
+#lab-nav a { color: #A84733; text-decoration: none; font-weight: 600; }

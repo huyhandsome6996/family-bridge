@@ -6,6 +6,16 @@ Mục lục: [ưu tiên](#ưu-tiên-và-phạm-vi), [ngôn ngữ](#ngôn-ngữ-v
 
 ## Ưu tiên và phạm vi
 
+> **Cập nhật 11/10/2026 (supersede phần stack cho module mới):** frontend mới
+> là HTML5/CSS3/JavaScript thuần ES Modules + Vite + zmp-sdk trong cấu trúc
+> Zalo Mini App; React/zmp-ui không được dùng cho module mới. Các quy tắc
+> ngôn ngữ, tokens, trạng thái, điện thoại/a11y, quyền riêng tư dưới đây vẫn
+> áp dụng nguyên vẹn cho UI thuần JS; hợp đồng dùng chung ở
+> `packages/family_bridge_mobile_core/` và registry
+> `packages/family_bridge_core/registry.py`. Đoạn "Frontend chính thức" và
+> "Tailwind v3" bên dưới giữ nguyên để đối chiếu lịch sử và scaffold hiện có
+> của Agent B; khi xung đột, đoạn cập nhật này thắng cho module mới.
+
 - Đọc [family-bridge-ui](../../.agents/skills/family-bridge-ui/SKILL.md) trước mọi tác vụ giao diện, cùng [AGENTS](../../AGENTS.md), [scope](../project-scope.md), [DSA](dsa-rules.md) và [security](../security/security-rules.md).
 - Khi xung đột, yêu cầu trực tiếp của người dùng và quy tắc phạm vi, DSA, bảo mật, quyền riêng tư, admin của Family Bridge có ưu tiên hơn Taste. Skill UI không tạo ngoại lệ bảo mật.
 - Frontend chính thức: React/Vite + zmp-sdk + zmp-ui trong Zalo Mini App. Không chuyển Next.js/RSC hoặc React Native; không cài hệ component khác để theo ví dụ upstream.

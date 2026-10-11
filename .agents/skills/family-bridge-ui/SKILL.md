@@ -5,6 +5,13 @@ description: Plan, implement, review or debug Vietnamese Family Bridge UI in Rea
 
 # Family Bridge UI
 
+> **Stack update 2026-10-11:** new frontend modules use vanilla
+> HTML/CSS/JavaScript ES Modules + Vite + zmp-sdk (no React/zmp-ui for new
+> modules). Every rule below about consent, sharing, preview/confirm,
+> 300-second pause, help access, states and accessibility still applies;
+> shared contracts live in `packages/family_bridge_mobile_core/` and the
+> feature registry `packages/family_bridge_core/registry.py`.
+
 ## Read the contract
 
 Read [AGENTS](../../../AGENTS.md), [scope](../../../docs/project-scope.md),

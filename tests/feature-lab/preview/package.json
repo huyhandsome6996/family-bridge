@@ -1,0 +1,22 @@
+{
+  "name": "family-bridge-feature-lab-preview",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Localhost-only preview shell for feature modules. MOCK data. Never shipped to production.",
+  "scripts": {
+    "dev": "vite --port 5180 --strictPort",
+    "build": "vite build --outDir dist-lab"
+  },
+  "devDependencies": {
+    "vite": "^6.0.0"
+  },
+  "vite": {
+    "resolve": {
+      "alias": {
+        "family_bridge_mobile_core": "../../packages/family_bridge_mobile_core/index.js",
+        "family_bridge_mobile": "../../packages/family_bridge_mobile"
+      }
+    }
+  }
+}

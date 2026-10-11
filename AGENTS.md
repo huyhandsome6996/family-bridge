@@ -1,5 +1,26 @@
 # Family Bridge project instructions
 
+## Frontend stack update (2026-10-11 — supersedes React/zmp-ui for new frontend work)
+
+On 11 October 2026 the repository owner finalized the frontend stack for all
+new frontend work: **HTML5, CSS3 and vanilla JavaScript ES Modules, bundled
+with Vite, using `zmp-sdk` for Zalo interaction**, built as a Zalo Mini App
+mobile SPA. React, React Native and `zmp-ui` are superseded for new frontend
+modules; do not add React-based code paths for them. Documents/rules that
+still mention React/Vite/zmp-ui remain valid for backend/API/stack history
+and for the existing `zalo-mini-app/` scaffold owned by the US-003 frontend
+agent, but new feature modules live under `packages/family_bridge_mobile/`
+and follow `packages/family_bridge_mobile_core/` contracts. Product goals,
+API backend, MySQL and privacy invariants are unchanged by this update.
+
+Feature module packaging (full-build program): Django feature apps live in
+`packages/family_bridge_features/<label>/` with their own app label and
+migrations; shared JS contracts live in `packages/family_bridge_mobile_core/`;
+the explicit feature registry is `packages/family_bridge_core/registry.py`;
+module tests run in the isolated harness under `tests/feature-lab/` (test-only
+user app; not a production login path). Read `docs/project/full-build/plan.md`
+and `docs/project/full-build/ownership.md` before touching shared files.
+
 ## Mandatory reading at the start of every task
 
 Read this file, `docs/project-scope.md`, `.agents/skills/family-bridge-dsa/SKILL.md`, and `docs/engineering/dsa-rules.md` before planning or changing code. Follow applicable nested AGENTS.md files too. On a resumed task, reread files changed since the last read; do not repeat an unchanged full read within the same task.
