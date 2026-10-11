@@ -55,3 +55,20 @@ class TestSession(models.Model):
 
 def hash_token(raw: str) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+class TestConnection(models.Model):
+    """TEST-ONLY connection rows for feature branches without F01."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    party_low_id = models.CharField(max_length=64)
+    party_high_id = models.CharField(max_length=64)
+    relationship_kind = models.CharField(max_length=16, default="primary")
+    status = models.CharField(max_length=16, default="active")
+    generation = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        app_label = "labgrants"
+
+    def involves(self, user_id: str) -> bool:
+        return str(user_id) in {self.party_low_id, self.party_high_id}

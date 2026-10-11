@@ -1,0 +1,25 @@
+{
+  "feature_id": "F05",
+  "branch": "feat/f05-inbox-replies",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-021", "US-028"],
+  "backend": {
+    "app_label": "f05_inbox",
+    "package": "family_bridge_features.f05_inbox",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/messages (cursor inbox, metadata only)",
+      "POST /api/v1/messages (explicit send, X-Idempotency-Key + payload hash)",
+      "GET /api/v1/messages/{id} (participant-only detail)",
+      "POST /api/v1/messages/{id}/read (recipient-only receipt)",
+      "GET /api/v1/messages/quick-replies (published templates via port)",
+      "GET /api/v1/operations/{idempotency_key} (unknown-outcome lookup)"
+    ],
+    "models": ["Message"],
+    "ports_provided": ["MessageTransportService (send/mark_read/lookup/inbox_page)", "quick-reply provider registry"],
+    "ports_consumed": ["ConnectionReader (generation check)", "session resolver", "reply-context validator (F07/F08 wire ở B18)", "quick-reply content provider (B16 wire)"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f05_inbox", "pages": ["inbox", "message-detail"]},
+  "tests": {"backend": "27 PASS (SQLite; 55/55 gồm harness+labgrants)", "mobile": "2 PASS", "not_run": ["MySQL race send/revoke (FB_TEST_DB=mysql)"]},
+  "status": "implemented"
+}

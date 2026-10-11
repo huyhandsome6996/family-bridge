@@ -75,7 +75,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F05", "title": "Hop thu va phan hoi nhanh",
         "branch": "feat/f05-inbox-replies", "us_ids": ["US-021", "US-028"],
         "backend": {"package": "family_bridge_features.f05_inbox",
-                    "app_label": "f05_inbox", "routes": "messages"},
+                    "app_label": "f05_inbox", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f05_inbox"},
         "docs": "docs/features/f05",
         "depends_on": ["F01"],
