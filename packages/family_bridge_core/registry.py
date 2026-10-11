@@ -53,7 +53,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F03", "title": "Bo the cam xuc",
         "branch": "feat/f03-emotion-cards", "us_ids": ["US-027"],
         "backend": {"package": "family_bridge_features.f03_cards",
-                    "app_label": "f03_cards", "routes": "cards"},
+                    "app_label": "f03_cards", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f03_cards"},
         "docs": "docs/features/f03",
         "depends_on": ["F01", "F05"],
