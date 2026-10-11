@@ -141,7 +141,7 @@ FEATURES: List[Dict[str, Any]] = [
         "id": "F11", "title": "Diem tua du phong",
         "branch": "feat/f11-backup-supporters", "us_ids": ["US-022", "US-035"],
         "backend": {"package": "family_bridge_features.f11_supporters",
-                    "app_label": "f11_supporters", "routes": "supporters"},
+                    "app_label": "f11_supporters", "routes": ""},
         "mobile": {"module": "packages/family_bridge_mobile/f11_supporters"},
         "docs": "docs/features/f11",
         "depends_on": ["F01"],
