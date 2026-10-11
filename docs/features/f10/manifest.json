@@ -1,0 +1,24 @@
+{
+  "feature_id": "F10",
+  "branch": "feat/f10-listening-signal",
+  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "us": ["US-032"],
+  "backend": {
+    "app_label": "f10_signal",
+    "package": "family_bridge_features.f10_signal",
+    "routes_prefix": "",
+    "endpoints": [
+      "GET /api/v1/signals/meta (need allowlist + labels)",
+      "POST /api/v1/signals/preview (bind need+recipient, canonical body)",
+      "POST /api/v1/signals/send (explicit, X-Idempotency-Key, DTO tối thiểu)",
+      "GET /api/v1/signals/{message_id} (participant-only, truthful state)",
+      "POST /api/v1/signals/{message_id}/ack (recipient-only receipt)"
+    ],
+    "models": [],
+    "ports_provided": ["SignalService (meta/preview/send/view/ack)"],
+    "ports_consumed": ["MessageTransport (F05 — kind listening_signal)", "ConnectionReader (F01)", "session resolver"]
+  },
+  "mobile": {"module": "packages/family_bridge_mobile/f10_signal", "pages": ["signal"]},
+  "tests": {"backend": "15 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL race send/ack"]},
+  "status": "implemented"
+}
