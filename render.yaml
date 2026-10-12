@@ -1,29 +1,33 @@
-# Render configuration PREPARED for the Antigravity deployment team.
-# Nothing here is deployed by this branch/task (US-003 backend foundation):
-# creating the service, granting secrets and the first migrate are one-off
-# steps owned by Antigravity - see docs/handover/backend-foundation/antigravity-checklist.md.
-# migrate deliberately stays OUT of startCommand; run it one-off (Render shell/job)
-# after secrets exist. healthCheckPath uses the liveness endpoint, which never
-# touches the DB and is exempt from throttling so monitoring is never rate-limited.
+﻿# Render Blueprint Specification for Family Bridge Backend
+# Official Docs: https://render.com/docs/blueprint-spec
+#
+# Arch Decision: Uses Docker runtime (context: repo root) to provide MySQL C development
+# headers (default-libmysqlclient-dev, pkg-config) required to compile mysqlclient==2.2.8
+# on Linux, while preserving monorepo access to both backend/ and packages/.
+#
+# Migrations are executed once per deploy via preDeployCommand, keeping startup clean.
+# healthCheckPath probes the liveness endpoint (/api/v1/health/), which never touches DB.
 services:
   - type: web
     name: family-bridge-backend
-    runtime: python
-    rootDir: backend
-    plan: starter
-    buildCommand: pip install -r requirements-mysql.txt
-    startCommand: gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    runtime: docker
+    plan: free
+    region: singapore
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: 'off'
+    preDeployCommand: python backend/manage.py migrate --noinput
     healthCheckPath: /api/v1/health/
-    autoDeploy: false
     envVars:
       - key: DJANGO_ENV
         value: production
       - key: DJANGO_SECRET_KEY
         generateValue: true
-      - key: PYTHON_VERSION
-        value: 3.12.15
-      # Values below are supplied by Antigravity from the real environment/secret
-      # manager (sync: false). Never put real credentials in this file (SEC-19).
+      - key: DB_ENGINE
+        value: mysql
+      # Real environment/secret variables supplied by Huy on Render Dashboard (sync: false).
+      # Never commit real credentials to Git (SEC-19).
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
       - key: CORS_ALLOWED_ORIGINS
@@ -38,7 +42,14 @@ services:
         sync: false
       - key: MYSQL_PORT
         sync: false
-      # Path to a CA certificate when the MySQL provider requires TLS
-      # (settings then enforce ssl_mode=VERIFY_IDENTITY).
+      # Path to CA certificate Secret File (e.g. /etc/secrets/ca.pem) if TLS is required by DB provider.
       - key: MYSQL_SSL_CA
+        sync: false
+      # Zalo verification credentials (SEC-01). Fails closed when missing.
+      - key: ZALO_APP_ID
+        sync: false
+      - key: ZALO_APP_SECRET
+        sync: false
+      # Feature set selection allowlist (optional, defaults to all 15 features mounted).
+      - key: FB_FEATURES
         sync: false

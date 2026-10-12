@@ -5,15 +5,16 @@ dưới đây cần giá trị thật từ môi trường/secret manager; không
 chat, không commit secret (SEC-19).
 
 ## 1. Tạo dịch vụ Render từ `render.yaml`
+*(Hướng dẫn chi tiết toàn diện: xem `docs/handover/blueprint-deployment-guide.md`)*
 
-- render.yaml đã khai báo 1 web service `family-bridge-backend` (runtime python,
-  `rootDir: backend`, plan `starter`, `autoDeploy: false`).
-- `buildCommand`: `pip install -r requirements-mysql.txt`
-- `startCommand`: `gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --timeout 60`
+- render.yaml khai báo 1 web service `family-bridge-backend` (runtime docker,
+  context repo root `.`, plan `free`, region `singapore`, `autoDeployTrigger: 'off'`).
+- `dockerfilePath`: `./Dockerfile` (cài đặt `default-libmysqlclient-dev` và copy cả `backend/` + `packages/`).
+- `preDeployCommand`: `python backend/manage.py migrate --noinput`
 - `healthCheckPath`: `/api/v1/health/`
-- `DJANGO_SECRET_KEY` dùng `generateValue: true` của Render (Render sinh chuỗi random 128 ký tự — đạt yêu cầu ≥50 của settings; nếu tự cấp, dùng generator, không dùng chuỗi đoán được); `PYTHON_VERSION = 3.12.15`.
-- Tạo service từ Blueprint/`render.yaml` của nhánh này. **Migrate không nằm trong
-  startCommand** — chạy one-off theo bước 3.
+- `DJANGO_SECRET_KEY` dùng `generateValue: true` của Render (sinh chuỗi random an toàn).
+- Tạo service từ Blueprint/`render.yaml` trên nhánh `main`. Migrate được chạy tự động một lần
+  trước khi container live khởi động qua `preDeployCommand`.
 
 ## 2. Cấp secrets/biến môi trường (Render dashboard hoặc secret manager)
 

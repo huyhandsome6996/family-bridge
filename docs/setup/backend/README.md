@@ -1,8 +1,8 @@
 # Setup backend Family Bridge (máy dev local)
 
 Hướng dẫn cài đặt và kiểm tra cục bộ cho **nền tảng backend** (US-003). Tài liệu
-này mô tả máy dev; deploy production là việc của đội Antigravity, xem
-`docs/handover/backend-foundation/antigravity-checklist.md`.
+này mô tả máy dev; hướng dẫn deploy production lên Render bằng Blueprint xem
+`docs/handover/blueprint-deployment-guide.md`.
 
 > Quy ước quan trọng: **SQLite chỉ dùng để kiểm tra nền tảng local**. Production
 > dùng MySQL. Kết quả chạy SQLite không được ghi nhận là bằng chứng MySQL hay
@@ -119,7 +119,7 @@ quyền nghiệp vụ (quyền admin thật thuộc US sau, theo DEC-05 và scop
   hệ thống (máy không có sudo thì dùng SQLite local hoặc Docker):
   `sudo apt-get install build-essential pkg-config default-libmysqlclient-dev`
   rồi cài lại. Lỗi `pkg-config not found` / `mysql_config not found` đều cùng
-  nguyên nhân trên. `backend/Dockerfile` đã cài sẵn các gói này.
+  nguyên nhân trên. `Dockerfile` tại repository root đã cài sẵn các gói này.
 - **`ImproperlyConfigured: DJANGO_SECRET_KEY is required`**: đang chạy
   `DJANGO_ENV=production` thiếu secret. Local hãy dùng `development`/`test`.
 - **`Production requires MySQL; SQLite is only for local checks`**: đang đặt
