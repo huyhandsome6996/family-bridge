@@ -24,12 +24,18 @@ const assert = (await import("node:assert/strict")).default;
 const { initStore, setRole, getState, resetState } = await import("../src/app/store.js");
 const { createMockAdapter } = await import("../src/core/adapter/mock-adapter.js");
 const { ApiError } = await import("../src/core/api/client.mjs");
+const {
+  setSession, clearSession, hasLiveSession,
+} = await import("../src/core/session.js");
 
 const PAGE_LOADERS = {
   welcome: () => import("../src/pages/welcome/index.js"),
   howToUse: () => import("../src/pages/how-to-use/index.js"),
   roleSelect: () => import("../src/pages/role-select/index.js"),
   home: () => import("../src/pages/home/index.js"),
+  login: () => import("../src/pages/login/index.js"),
+  consent: () => import("../src/pages/consent/index.js"),
+  connect: () => import("../src/pages/connect/index.js"),
   companion: () => import("../src/pages/companion/index.js"),
   mailbox: () => import("../src/pages/mailbox/index.js"),
   diary: () => import("../src/pages/diary/index.js"),
@@ -59,7 +65,28 @@ const productionLikeAdapter = {
   getConnectionStatus: async () => {
     throw new ApiError("Tính năng kết nối chưa được triển khai ở bản nền tảng.", 501);
   },
+  listConnections: async () => {
+    throw new ApiError("Chưa cấu hình địa chỉ máy chủ.", 0, "configuration");
+  },
+  listInvites: async () => {
+    throw new ApiError("Chưa cấu hình địa chỉ máy chủ.", 0, "configuration");
+  },
 };
+
+/** Adapter trả danh sách kết nối thật (mô phỏng backend, dùng chung session). */
+function backendConnectionsAdapter(rows, { failLists = false } = {}) {
+  return {
+    mode: "zalo",
+    listConnections: async () => {
+      if (failLists) throw new ApiError("Không thể hoàn tất yêu cầu.", 503, "http");
+      return rows;
+    },
+    listInvites: async () => [],
+    getConnectionStatus: async () => {
+      throw new ApiError("boundary cũ", 501);
+    },
+  };
+}
 
 /** Adapter ném lỗi timeout ngay lập tức (thay vì chờ 4.5s của mock). */
 const timeoutAdapter = {
@@ -126,6 +153,9 @@ describe("Page contract (shape)", () => {
     ["howToUse", { id: "u02-how-to-use", title: "Cách dùng Family Bridge", requiresRole: false, showBottomNav: false }],
     ["roleSelect", { id: "u04-role-select", title: "Chọn vai trò xem trước", requiresRole: false, showBottomNav: false }],
     ["home", { id: "u08-home", title: "Trang chủ", requiresRole: true, showBottomNav: true }],
+    ["login", { id: "f01-login", title: "Đăng nhập", requiresRole: false, showBottomNav: false }],
+    ["consent", { id: "f01-consent", title: "Đồng ý & quyền riêng tư", requiresRole: false, showBottomNav: false }],
+    ["connect", { id: "f01-connect", title: "Kết nối người đồng hành", requiresRole: false, showBottomNav: false }],
     ["companion", { id: "companion", title: "Đồng hành", requiresRole: true, showBottomNav: true }],
     ["mailbox", { id: "mailbox", title: "Hộp thư", requiresRole: true, showBottomNav: true }],
     ["diary", { id: "diary", title: "Nhật ký", requiresRole: true, showBottomNav: true }],
@@ -161,15 +191,19 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("U02 how-to-use: 4 bước + ghi chú demo + CTA 'Tiếp tục'", () => {
-    const { ctx } = makeCtx({});
+  it("U02 how-to-use: 4 bước + ghi chú demo + CTA 'Tiếp tục' về đăng nhập", () => {
+    const { ctx, navigateCalls } = makeCtx({});
     const { host, el } = mount(pages.howToUse, ctx);
     const text = textOf(el);
-    for (const step of ["Chọn vai trò xem trước", "mã mời", "thẻ cảm xúc và hộp thư", "Đồng hành 4 tuần tự nguyện"]) {
+    for (const step of ["Đăng nhập bằng Zalo", "mã mời", "thẻ cảm xúc và hộp thư", "Đồng hành 4 tuần tự nguyện"]) {
       assert.ok(text.includes(step), `thiếu bước/copy: ${step}`);
     }
-    assert.ok(text.includes("Bản xem trước dùng dữ liệu minh họa, chưa có đăng nhập."));
-    assert.ok(findButton(el, "Tiếp tục"));
+    assert.ok(text.includes("Cả hai bên đều phải đồng ý thì kết nối mới được tạo"));
+    assert.ok(text.includes("Chế độ xem trước (?demo=1) dùng dữ liệu minh họa, không tạo phiên thật."));
+    const cta = findButton(el, "Tiếp tục");
+    assert.ok(cta, "thiếu CTA Tiếp tục");
+    cta.click();
+    assert.ok(navigateCalls.includes("/login"), "CTA phải dẫn sang /login");
     unmount(host);
   });
 
@@ -252,15 +286,76 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Home production (getConnectionStatus ném 501): trạng thái CHƯA KẾT NỐI, không phải lỗi hệ thống", async () => {
+  it("Home production chưa đăng nhập: trạng thái mời đăng nhập, không gọi adapter", async () => {
+    clearSession();
     const { ctx } = makeCtx({ demo: false, role: "student", adapter: productionLikeAdapter });
     const { host, el } = mount(pages.home, ctx);
-    await wait(120);
+    await wait(60);
     const text = textOf(el);
-    assert.ok(text.includes("Chưa kết nối với người đồng hành"));
-    assert.ok(text.includes("Tìm hiểu cách kết nối"));
+    assert.ok(text.includes("Chưa đăng nhập"), `nhưng thấy: ${text}`);
+    assert.ok(findButton(el, "Đăng nhập"));
     assert.ok(!text.includes("Dữ liệu minh họa"), "production không được hiện nhãn demo");
-    assert.ok(!text.includes("fb-demo-banner"));
+    unmount(host);
+  });
+
+  it("Home production đã đăng nhập + chưa có kết nối: mời sang /connect", async () => {
+    clearSession();
+    setSession({ token: "t-production", userId: "u-1", expiresAt: Date.now() + 3600_000 });
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: backendConnectionsAdapter([]),
+    });
+    const { host, el } = mount(pages.home, ctx);
+    await wait(80);
+    const text = textOf(el);
+    assert.ok(text.includes("Chưa kết nối với người đồng hành"), `nhưng thấy: ${text}`);
+    const connectBtn = findButton(el, "Kết nối với người đồng hành");
+    assert.ok(connectBtn, "phải có CTA kết nối thật");
+    connectBtn.click();
+    assert.ok(navigateCalls.includes("/connect"), "CTA phải dẫn sang /connect");
+    assert.ok(!text.includes("Dữ liệu minh họa"), "production không được hiện nhãn demo");
+    clearSession();
+    unmount(host);
+  });
+
+  it("Home production đã đăng nhập + có kết nối: 'Đang đồng hành' không lộ danh tính", async () => {
+    clearSession();
+    setSession({ token: "t-production", userId: "u-1", expiresAt: Date.now() + 3600_000 });
+    const { ctx } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: backendConnectionsAdapter([
+        { connection_id: "c1", other_party_id: "uuid-nguoi-kia", relationship_kind: "primary", generation: 1, status: "active" },
+      ]),
+    });
+    const { host, el } = mount(pages.home, ctx);
+    await wait(80);
+    const text = textOf(el);
+    assert.ok(text.includes("Đang đồng hành"), `nhưng thấy: ${text}`);
+    assert.ok(text.includes("Người đồng hành chính"));
+    assert.ok(!text.includes("uuid-nguoi-kia"), "không được hiện UUID của người kia");
+    assert.ok(text.includes("Quản lý kết nối"));
+    assert.ok(text.includes("Thẻ cảm xúc"), "home student vẫn giữ các card nền tảng");
+    clearSession();
+    unmount(host);
+  });
+
+  it("Home production lỗi máy chủ: ErrorState + Thử lại, không fallback mock", async () => {
+    clearSession();
+    setSession({ token: "t-production", userId: "u-1", expiresAt: Date.now() + 3600_000 });
+    const { ctx } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: backendConnectionsAdapter([], { failLists: true }),
+    });
+    const { host, el } = mount(pages.home, ctx);
+    await wait(80);
+    const text = textOf(el);
+    assert.ok(text.includes("Không tải được trang chủ"), `nhưng thấy: ${text}`);
+    assert.ok(findButton(el, "Thử lại"));
+    assert.ok(!text.includes("Dữ liệu minh họa"), "không được tự chuyển sang dữ liệu minh họa khi API lỗi");
+    clearSession();
     unmount(host);
   });
 

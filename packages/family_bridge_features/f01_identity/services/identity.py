@@ -20,6 +20,8 @@ import secrets
 import datetime as dt
 from typing import Optional
 
+from django.db import IntegrityError
+
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
@@ -45,11 +47,16 @@ class SessionService:
     def _now(self) -> dt.datetime:
         return self.clock.now() if self.clock else dt.datetime.now(tz=UTC)
 
-    @transaction.atomic
     def login_with_zalo_token(self, *, access_token: str):
-        """Verify -> map subject -> issue session. Returns (user, raw_token)."""
+        """Verify -> map subject -> issue session. Returns (user, raw_token).
+
+        No DB transaction is held open across the provider HTTP call
+        (WF-11): verification runs first, provisioning runs in its own
+        short transaction, session issuance in another.
+        """
         if not isinstance(access_token, str) or not (8 <= len(access_token) <= 2048):
             raise InputInvalid({"field": "access_token", "reason": "malformed"})
+        # Provider call OUTSIDE any DB transaction (WF-11).
         try:
             identity = self.verifier.verify(access_token=access_token)
         except TemporarilyUnavailable:
@@ -60,38 +67,69 @@ class SessionService:
             # Wrong parent app: refuse, never map the subject.
             raise InputInvalid({"reason": "wrong_app_id"})
 
-        User = get_user_model()
-        from ..models import ProviderIdentity, Session, hash_token
+        user = self._resolve_user(identity)
+
+        if not user.is_active:
+            raise NotAuthenticated({"reason": "user_disabled"})
+
+        raw_token, session = self._issue_session(user)
+        return user, raw_token, session
+
+    def _resolve_user(self, identity):
+        """Map a verified subject to the internal user (provision if new).
+
+        Concurrent first logins of the same identity: the UNIQUE(provider,
+        app_id, provider_subject) constraint decides the winner; the loser
+        re-fetches and continues on the winning account — no duplicate user,
+        no unhandled 500.
+        """
+        from ..models import ProviderIdentity
 
         existing = (ProviderIdentity.objects
                     .select_related("user")
                     .filter(provider=PROVIDER, app_id=self.app_id,
                             provider_subject=identity.provider_subject)
                     .first())
-        if existing is None:
-            user = User.objects.create_user(
-                username=f"zalo_{self.app_id}_{identity.provider_subject}"[:150],
-                password=secrets.token_urlsafe(32),  # unusable random; login is provider-only
-                first_name="",
-            )
-            ProviderIdentity.objects.create(
-                user=user, provider=PROVIDER, app_id=self.app_id,
-                provider_subject=identity.provider_subject,
-            )
-        else:
-            user = existing.user
+        if existing is not None:
+            return existing.user
+        try:
+            with transaction.atomic():
+                User = get_user_model()
+                user = User.objects.create_user(
+                    username=f"zalo_{self.app_id}_{identity.provider_subject}"[:150],
+                    password=secrets.token_urlsafe(32),  # unusable random; login is provider-only
+                    first_name="",
+                )
+                ProviderIdentity.objects.create(
+                    user=user, provider=PROVIDER, app_id=self.app_id,
+                    provider_subject=identity.provider_subject,
+                )
+                return user
+        except IntegrityError:
+            # Lost the provisioning race: another transaction inserted the
+            # same identity row first. Roll nothing forward — re-read the
+            # winner and continue with it.
+            existing = (ProviderIdentity.objects
+                        .select_related("user")
+                        .filter(provider=PROVIDER, app_id=self.app_id,
+                                provider_subject=identity.provider_subject)
+                        .first())
+            if existing is None:
+                raise
+            return existing.user
 
-        if not user.is_active:
-            raise NotAuthenticated({"reason": "user_disabled"})
+    def _issue_session(self, user):
+        from ..models import Session, hash_token
 
         raw_token = secrets.token_urlsafe(32)
         now = self._now()
-        session = Session.objects.create(
-            user=user,
-            token_hash=hash_token(raw_token),
-            expires_at=now + dt.timedelta(seconds=self.ttl_seconds),
-        )
-        return user, raw_token, session
+        with transaction.atomic():
+            session = Session.objects.create(
+                user=user,
+                token_hash=hash_token(raw_token),
+                expires_at=now + dt.timedelta(seconds=self.ttl_seconds),
+            )
+        return raw_token, session
 
     @staticmethod
     def resolve_session(raw_token: str):

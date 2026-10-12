@@ -1,11 +1,12 @@
-// Entry chính của Family Bridge Mini App (US-003 frontend foundation).
+// Entry chính của Family Bridge Mini App (US-003 foundation + F01 login).
 // Lead sở hữu file này — thay đổi lớn cần phối hợp.
 
 import "./styles/index.css"; // tokens -> base -> components
 
 import { initStore, getState, setRole, resetState, setMockScenario } from "./app/store.js";
 import { createRouter, navigate } from "./app/router.js";
-import { isDemoModeRequested } from "./core/config.js";
+import { isDemoModeRequested, isZaloHost } from "./core/config.js";
+import { hasLiveSession } from "./core/session.js";
 import { resolveAdapterMode, createAdapter } from "./core/adapter/adapter.js";
 
 async function boot() {
@@ -39,6 +40,13 @@ async function boot() {
   const root = document.getElementById("app");
   const router = createRouter({ root, ctx });
   router.start();
+
+  // F01: mở lại Mini App trong Zalo thật -> thử đăng nhập lại IM LẶNG đúng
+  // MỘT lần (getAccessToken + POST /auth/session). Không lặp, không polling:
+  // thất bại thì người dùng vẫn đăng nhập thủ công từ trang /login.
+  if (!demoMode && isZaloHost() && !hasLiveSession() && adapter.trySilentLogin) {
+    adapter.trySilentLogin().catch(() => false);
+  }
 }
 
 boot().catch((error) => {
