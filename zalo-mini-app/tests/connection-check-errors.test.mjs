@@ -632,23 +632,32 @@ describe("Tầng API client — FIX 1: baseUrl sai cú pháp -> configuration, c
 });
 
 describe("Tầng API client — FIX 2: timeout khi đang đọc body (HTTP server thật node:http + fetch thật của Node)", () => {
-  it("SC15-client: server 200 + giữ body chưa hoàn tất, timer 150ms hủy giữa lúc đọc json() -> kind 'timeout' (KHÔNG phải invalid_response)", async () => {
+  it("SC15-client: server 200 + giữ body chưa hoàn tất, timer 500ms hủy giữa lúc đọc json() -> kind 'timeout' (KHÔNG phải invalid_response)", async () => {
     let serverSawRequest = false;
+    let clientReceivedHeaders = false;
     const { server, port } = await listenLocalhostServer((_req, res) => {
       serverSawRequest = true;
-      // Flush headers + một phần body, rồi GIỮ body chưa hoàn tất.
+      // Flush headers ngay lập tức + một phần body, rồi GIỮ body chưa hoàn tất.
       res.writeHead(200, { "Content-Type": "application/json" });
+      if (typeof res.flushHeaders === "function") res.flushHeaders();
       res.write('{ "status":');
       // KHÔNG gọi res.end() — body bị server giữ lại không bao giờ hoàn tất.
       res.on("error", () => {}); // client abort socket -> không làm nổ server
     });
-    // fetch THẬT của Node (undici) — không stub; phòng hộ trả lại nếu test khác rò rỉ.
+    // fetch THẬT của Node (undici) — bọc để ghi nhận thời điểm headers đã đến client.
     const realFetch = globalThis.fetch;
     assert.equal(typeof realFetch, "function", "cần fetch thật của Node cho test này");
-    const restoreFetch = stubFetch(realFetch);
+    const restoreFetch = stubFetch(async (url, init) => {
+      const response = await realFetch(url, init);
+      clientReceivedHeaders = true;
+      return response;
+    });
     try {
       // 127.0.0.1 được client cho phép HTTP localhost.
-      const request = createApiClient({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 150 });
+      // Dùng timer 500ms để đảm bảo kết nối TCP + handshake headers (thường <30ms)
+      // hoàn tất trước khi timer hủy giữa lúc đọc body trên mọi môi trường CI.
+      const timeoutMs = 500;
+      const request = createApiClient({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs });
       const startedAt = Date.now();
       await assert.rejects(request("/api/v1/health/"), (error) => {
         assert.ok(error instanceof ApiError);
@@ -661,8 +670,9 @@ describe("Tầng API client — FIX 2: timeout khi đang đọc body (HTTP serve
         return true;
       });
       const elapsed = Date.now() - startedAt;
-      assert.ok(elapsed >= 140, `timeout phải đến từ timer thật (~150ms), elapsed=${elapsed}ms`);
+      assert.ok(elapsed >= 400, `timeout phải đến từ timer thật (~500ms), elapsed=${elapsed}ms`);
       assert.ok(serverSawRequest, "server thật phải nhận được request (chứng minh HTTP roundtrip thật)");
+      assert.ok(clientReceivedHeaders, "client phải đã nhận headers 200 trước khi timer hủy lúc đọc body");
     } finally {
       restoreFetch();
       // Đóng server + mọi socket — luôn chạy kể cả khi assert fail.
