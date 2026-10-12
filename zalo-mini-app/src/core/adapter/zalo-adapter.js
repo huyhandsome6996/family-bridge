@@ -13,10 +13,13 @@ export function createZaloAdapter({ baseUrl } = {}) {
   const request = createApiClient({ baseUrl, timeoutMs: TIMEOUT_MS });
 
   function requireBaseUrl() {
+    // Thiếu cấu hình là lỗi kind "configuration" — KHÔNG phải timeout/mạng,
+    // dù status = 0 (status 0 chỉ nghĩa "không có HTTP status").
     if (!baseUrl) {
       throw new ApiError(
         "Chưa cấu hình địa chỉ máy chủ. Thêm VITE_API_BASE_URL khi build.",
         0,
+        "configuration",
       );
     }
   }
@@ -38,6 +41,8 @@ export function createZaloAdapter({ baseUrl } = {}) {
       } catch (error) {
         // 503 {"status":"unavailable"} là trạng thái HỢP LỆ của ready,
         // không phải lỗi mạng — trả về trạng thái để UI hiển thị đúng.
+        // (ApiError từ HTTP lỗi có kind "http" + status = mã HTTP thật;
+        // hợp đồng ready-503 này giữ nguyên khi thêm phân loại kind.)
         if (error instanceof ApiError && error.status === 503) return "unavailable";
         throw error;
       }
@@ -49,7 +54,7 @@ export function createZaloAdapter({ baseUrl } = {}) {
      * để UI hiển thị "chưa triển khai" thay vì fake-success.
      */
     async getConnectionStatus() {
-      throw new ApiError("Tính năng kết nối chưa được triển khai ở bản nền tảng.", 501);
+      throw new ApiError("Tính năng kết nối chưa được triển khai ở bản nền tảng.", 501, "http");
     },
 
     /**
@@ -58,13 +63,14 @@ export function createZaloAdapter({ baseUrl } = {}) {
      * ở bản nền tảng; SDK trên localhost còn trả mock cứng — không tin.
      */
     async getProfile() {
-      throw new ApiError("Định danh người dùng chưa được triển khai ở bản nền tảng.", 501);
+      throw new ApiError("Định danh người dùng chưa được triển khai ở bản nền tảng.", 501, "http");
     },
 
     /** Helper cho US-004 sau này: chỉ cho phép gọi SDK trong Zalo thật. */
     assertZaloHost() {
+      // Thiếu môi trường Zalo là lỗi cấu hình/môi trường, không phải timeout.
       if (!isZaloHost()) {
-        throw new ApiError("Tính năng này chỉ hoạt động trong Zalo.", 0);
+        throw new ApiError("Tính năng này chỉ hoạt động trong Zalo.", 0, "configuration");
       }
     },
   };

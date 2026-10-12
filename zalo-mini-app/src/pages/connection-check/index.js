@@ -1,8 +1,17 @@
 // Connection-check — chạy kiểm tra một lần khi mở màn: getBackendHealth()
 // rồi getBackendReady() qua ctx.adapter (không import trực tiếp src/core).
-// Trạng thái: loading -> success | unavailable | error | timeout. Demo mode
+// Trạng thái: loading -> success | unavailable | error. Demo mode
 // (bật rõ ràng) cho phép chọn kịch bản ok/error/timeout qua ctx.rebuildAdapter;
 // production KHÔNG có nút giả lập. destroy() huỷ mọi cập nhật đang chờ.
+//
+// Phân loại lỗi: CHỈ đọc thuộc tính `kind` của ApiError (không suy loại từ
+// status 0, không dò câu thông báo). Năm loại:
+//   - "timeout"          -> "Kết nối quá thời gian chờ" (AbortError từ timer client).
+//   - "configuration"    -> "Chưa cấu hình địa chỉ máy chủ" (thiếu/sai địa chỉ backend).
+//   - "network"          -> "Chưa kết nối được máy chủ" (fetch ném lỗi mạng).
+//   - "invalid_response" -> "Không kiểm tra được kết nối" (JSON trả về không hợp lệ).
+//   - "http" / không kind -> "Không kiểm tra được kết nối" (fallback lỗi chung an toàn:
+//     ApiError cũ hoặc Error thường KHÔNG BAO GIỜ bị coi là timeout).
 import { h, clear } from "../../app/dom.js";
 import {
   createButton,
@@ -23,13 +32,10 @@ function readState(store) {
   return store || {};
 }
 
-function isTimeoutError(error) {
-  return Boolean(
-    error &&
-    // ApiError từ timeout có status 0 (AbortError); dò message là phụ trợ.
-    (error.status === 0 ||
-      (typeof error.message === "string" && error.message.includes("quá thời gian"))),
-  );
+function errorKind(error) {
+  // Fallback an toàn: lỗi không có `kind` (ApiError cũ, Error thường) là
+  // "unknown" — rơi vào nhánh lỗi chung, KHÔNG BAO GIỜ nhánh timeout.
+  return error && typeof error.kind === "string" ? error.kind : "unknown";
 }
 
 function messageOf(error, fallback) {
@@ -37,6 +43,42 @@ function messageOf(error, fallback) {
     return error.message;
   }
   return fallback;
+}
+
+/** Chọn nội dung ErrorState theo `kind` của lỗi — không suy loại từ status/message. */
+function failureFor(error) {
+  switch (errorKind(error)) {
+    case "timeout":
+      return {
+        title: "Kết nối quá thời gian chờ",
+        description: "Máy chủ không phản hồi trong thời gian cho phép. Vui lòng thử lại.",
+      };
+    case "configuration":
+      // Màn kiểm tra kỹ thuật: được phép nêu tên biến cấu hình.
+      return {
+        title: "Chưa cấu hình địa chỉ máy chủ",
+        description: messageOf(
+          error,
+          "Ứng dụng chưa biết địa chỉ máy chủ. Cần cấu hình địa chỉ backend khi build trước khi kiểm tra kết nối.",
+        ),
+      };
+    case "network":
+      return {
+        title: "Chưa kết nối được máy chủ",
+        description: messageOf(error, "Không tiếp cận được máy chủ. Kiểm tra mạng rồi thử lại."),
+      };
+    case "invalid_response":
+      return {
+        title: "Không kiểm tra được kết nối",
+        description: messageOf(error, "Máy chủ trả về dữ liệu không hợp lệ. Vui lòng thử lại sau."),
+      };
+    default:
+      // "http", "unknown" (ApiError cũ không kind, Error thường) — lỗi chung.
+      return {
+        title: "Không kiểm tra được kết nối",
+        description: messageOf(error, "Không thể hoàn tất yêu cầu. Vui lòng thử lại sau."),
+      };
+  }
 }
 
 export const page = {
@@ -143,17 +185,7 @@ export const page = {
         })
         .catch((error) => {
           if (cancelled || current !== runId) return;
-          if (isTimeoutError(error)) {
-            renderFailure({
-              title: "Kết nối quá thời gian chờ",
-              description: "Máy chủ không phản hồi trong thời gian cho phép. Vui lòng thử lại.",
-            });
-          } else {
-            renderFailure({
-              title: "Không kiểm tra được kết nối",
-              description: messageOf(error, "Không thể hoàn tất yêu cầu. Vui lòng thử lại sau."),
-            });
-          }
+          renderFailure(failureFor(error));
         });
     }
 

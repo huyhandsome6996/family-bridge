@@ -51,10 +51,10 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const productionLikeAdapter = {
   mode: "zalo",
   getBackendHealth: async () => {
-    throw new ApiError("Chưa cấu hình địa chỉ máy chủ.", 0);
+    throw new ApiError("Chưa cấu hình địa chỉ máy chủ.", 0, "configuration");
   },
   getBackendReady: async () => {
-    throw new ApiError("Chưa cấu hình địa chỉ máy chủ.", 0);
+    throw new ApiError("Chưa cấu hình địa chỉ máy chủ.", 0, "configuration");
   },
   getConnectionStatus: async () => {
     throw new ApiError("Tính năng kết nối chưa được triển khai ở bản nền tảng.", 501);
@@ -65,7 +65,7 @@ const productionLikeAdapter = {
 const timeoutAdapter = {
   mode: "zalo",
   getBackendHealth: async () => {
-    throw new ApiError("Kết nối quá thời gian chờ. Vui lòng thử lại.", 0);
+    throw new ApiError("Kết nối quá thời gian chờ. Vui lòng thử lại.", 0, "timeout");
   },
   getBackendReady: async () => "ok",
   getConnectionStatus: async () => {

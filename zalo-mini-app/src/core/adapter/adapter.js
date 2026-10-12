@@ -18,6 +18,11 @@ export const ADAPTER_METHODS = [
   "getBackendReady",    // GET /api/v1/ready/  -> 'ok' | 'unavailable' | throws
   "getConnectionStatus",// trạng thái kết nối gia đình (fixture ở mock; boundary ở zalo)
 ];
+// ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
+//   "configuration" | "network" | "timeout" | "http" | "invalid_response".
+// UI PHẢI phân loại theo `kind`, không suy loại từ status 0 hay từ câu thông báo.
+// Riêng ready: ApiError kind "http" + status 503 -> adapter trả 'unavailable'
+// (trạng thái hợp lệ, không phải lỗi) — hợp đồng ready-503 giữ nguyên.
 
 export function createAdapter({ mode, scenario = null } = {}) {
   if (mode === "mock") {
