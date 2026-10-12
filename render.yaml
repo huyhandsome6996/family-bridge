@@ -55,9 +55,10 @@ services:
         sync: false
       - key: MYSQL_PORT
         sync: false
-      # Path to CA certificate Secret File (e.g. /etc/secrets/ca.pem) if TLS is required.
+      # Path to CA certificate for TLS verification.
+      # Defaults to /etc/ssl/certs/ca-certificates.crt inside the container image.
       - key: MYSQL_SSL_CA
-        sync: false
+        value: /etc/ssl/certs/ca-certificates.crt
       # Zalo verification credentials (SEC-01). Fails closed when missing.
       - key: ZALO_APP_ID
         sync: false

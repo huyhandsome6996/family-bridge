@@ -120,8 +120,11 @@ elif DB_ENGINE == "mysql":
         "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         "connect_timeout": 10,
     }
-    if os.getenv("MYSQL_SSL_CA"):
-        db_options["ssl"] = {"ca": os.environ["MYSQL_SSL_CA"]}
+    ca_path = os.getenv("MYSQL_SSL_CA")
+    if not ca_path and os.path.exists("/etc/ssl/certs/ca-certificates.crt"):
+        ca_path = "/etc/ssl/certs/ca-certificates.crt"
+    if ca_path:
+        db_options["ssl"] = {"ca": ca_path}
         db_options["ssl_mode"] = "VERIFY_IDENTITY"
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.mysql",

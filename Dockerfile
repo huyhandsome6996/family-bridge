@@ -10,6 +10,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     pkg-config \
     default-libmysqlclient-dev \
+    ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
