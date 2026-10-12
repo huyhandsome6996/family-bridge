@@ -499,3 +499,266 @@ describe("Tầng hiển thị connection-check — mount page thật (happy-dom)
     }
   });
 });
+
+// =====================================================================
+// Task 14-c — bổ sung kiểm thử độc lập cho PR #25 (commit fix 71e765d;
+// head đã review CHỨA BUG: 3c7ac4a). Phủ 2 lỗi reviewer yêu cầu:
+//
+//   FIX 1 — baseUrl sai cú pháp ("not-a-url", "https://", "http://[:"):
+//     trước fix `new URL(baseUrl)` nằm ngoài try/catch → TypeError
+//     "Invalid URL" nguyên trạng xuyên lên UI. Sau fix → ApiError
+//     kind "configuration", thông báo tiếng Việt về cấu hình, KHÔNG gọi
+//     fetch, KHÔNG lộ baseUrl gốc hay exception thô.
+//   FIX 2 — server trả headers HTTP 200 rồi GIỮ body chưa hoàn tất:
+//     timer client hủy request giữa lúc đang đọc body, catch mù cũ quanh
+//     response.json() đổi AbortError thành invalid_response. Sau fix:
+//     abort do timer (kể cả đang đọc body) → kind "timeout" (check
+//     signal.aborted TRƯỚC SyntaxError); JSON sai cú pháp thật →
+//     invalid_response; lỗi truyền tải khác khi đọc body → network.
+//
+// Các test SC12–SC15, SC17, SC18 phải THẤT BẠI trên 3c7ac4a rồi ĐẠT trên
+// bản fix. SC16 là ĐỐI CHỨNG: JSON hỏng thật (body hoàn chỉnh, không
+// abort) luôn là invalid_response — PASS trên cả code cũ và mới.
+// SC15/SC16 dùng HTTP server THẬT (node:http, 127.0.0.1 port động) +
+// fetch THẬT của Node (không stub, không fake timer); server/socket luôn
+// được đóng trong finally (closeAllConnections + close) để không treo
+// event loop.
+// =====================================================================
+const { createServer } = await import("node:http");
+
+/** Đóng server + mọi socket còn nối — không bỏ lại socket/timer treo. */
+async function closeServer(server) {
+  if (!server || typeof server.close !== "function") return;
+  server.closeAllConnections();
+  await new Promise((resolve) => {
+    try {
+      server.close(() => resolve());
+    } catch {
+      resolve(); // server không listening — coi như đã đóng
+    }
+  });
+}
+
+/** node:http server lắng nghe 127.0.0.1 port 0; trả về { server, port }. */
+async function listenLocalhostServer(handler) {
+  const server = createServer(handler);
+  // Phòng hộ: client abort socket giữa chừng không được làm nổ test runner.
+  server.on("clientError", (_err, socket) => socket.destroy());
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", () => resolve());
+  });
+  return { server, port: server.address().port };
+}
+
+describe("Tầng API client — FIX 1: baseUrl sai cú pháp -> configuration, chặn trước fetch", () => {
+  it("SC12-client: baseUrl 'not-a-url' -> ApiError kind 'configuration', status 0, KHÔNG gọi fetch, không lộ URL/exception", async () => {
+    let fetchCalled = false;
+    const restore = stubFetch(() => {
+      fetchCalled = true;
+      return Promise.resolve(okResponse());
+    });
+    try {
+      const request = createApiClient({ baseUrl: "not-a-url", timeoutMs: 50 });
+      const startedAt = Date.now();
+      await assert.rejects(request("/api/v1/health/"), (error) => {
+        assert.ok(error instanceof ApiError, "phải là ApiError, không phải TypeError nguyên trạng");
+        assert.equal(error.kind, "configuration");
+        assert.equal(error.status, 0);
+        const message = String(error.message);
+        assert.ok(
+          message.includes("cấu hình") || message.includes("địa chỉ"),
+          `message phải nói về cấu hình/địa chỉ: ${message}`,
+        );
+        assert.ok(message.includes("VITE_API_BASE_URL"), `message phải gợi ý biến cấu hình: ${message}`);
+        assert.ok(!message.includes("not-a-url"), "không được lộ baseUrl gốc trong message");
+        assert.ok(!message.includes("Invalid URL"), "không được lộ exception thô của URL parser");
+        return true;
+      });
+      assert.equal(fetchCalled, false, "URL sai cú pháp phải bị chặn TRƯỚC lớp mạng");
+      assert.ok(Date.now() - startedAt < 1000, "lỗi cấu hình phải ném tức thời, không chờ timeout");
+    } finally {
+      restore();
+    }
+  });
+
+  it("SC13-client: baseUrl 'https://' -> ApiError kind 'configuration', status 0, KHÔNG gọi fetch", async () => {
+    let fetchCalled = false;
+    const restore = stubFetch(() => {
+      fetchCalled = true;
+      return Promise.resolve(okResponse());
+    });
+    try {
+      const request = createApiClient({ baseUrl: "https://", timeoutMs: 50 });
+      await assert.rejects(request("/api/v1/health/"), (error) => {
+        assert.ok(error instanceof ApiError);
+        assert.equal(error.kind, "configuration");
+        assert.equal(error.status, 0);
+        const message = String(error.message);
+        assert.ok(message.includes("cấu hình") || message.includes("địa chỉ"), `message: ${message}`);
+        assert.ok(!message.includes("https://"), "không được lộ baseUrl gốc trong message");
+        assert.ok(!message.includes("Invalid URL"), "không được lộ exception thô của URL parser");
+        return true;
+      });
+      assert.equal(fetchCalled, false, "URL sai cú pháp phải bị chặn TRƯỚC lớp mạng");
+    } finally {
+      restore();
+    }
+  });
+
+  it("SC14-client: baseUrl 'http://[:' -> ApiError kind 'configuration', status 0, KHÔNG gọi fetch", async () => {
+    let fetchCalled = false;
+    const restore = stubFetch(() => {
+      fetchCalled = true;
+      return Promise.resolve(okResponse());
+    });
+    try {
+      const request = createApiClient({ baseUrl: "http://[:", timeoutMs: 50 });
+      await assert.rejects(request("/api/v1/health/"), (error) => {
+        assert.ok(error instanceof ApiError);
+        assert.equal(error.kind, "configuration");
+        assert.equal(error.status, 0);
+        const message = String(error.message);
+        assert.ok(message.includes("cấu hình") || message.includes("địa chỉ"), `message: ${message}`);
+        assert.ok(!message.includes("http://["), "không được lộ baseUrl gốc trong message");
+        assert.ok(!message.includes("Invalid URL"), "không được lộ exception thô của URL parser");
+        return true;
+      });
+      assert.equal(fetchCalled, false, "URL sai cú pháp phải bị chặn TRƯỚC lớp mạng");
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("Tầng API client — FIX 2: timeout khi đang đọc body (HTTP server thật node:http + fetch thật của Node)", () => {
+  it("SC15-client: server 200 + giữ body chưa hoàn tất, timer 150ms hủy giữa lúc đọc json() -> kind 'timeout' (KHÔNG phải invalid_response)", async () => {
+    let serverSawRequest = false;
+    const { server, port } = await listenLocalhostServer((_req, res) => {
+      serverSawRequest = true;
+      // Flush headers + một phần body, rồi GIỮ body chưa hoàn tất.
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.write('{ "status":');
+      // KHÔNG gọi res.end() — body bị server giữ lại không bao giờ hoàn tất.
+      res.on("error", () => {}); // client abort socket -> không làm nổ server
+    });
+    // fetch THẬT của Node (undici) — không stub; phòng hộ trả lại nếu test khác rò rỉ.
+    const realFetch = globalThis.fetch;
+    assert.equal(typeof realFetch, "function", "cần fetch thật của Node cho test này");
+    const restoreFetch = stubFetch(realFetch);
+    try {
+      // 127.0.0.1 được client cho phép HTTP localhost.
+      const request = createApiClient({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 150 });
+      const startedAt = Date.now();
+      await assert.rejects(request("/api/v1/health/"), (error) => {
+        assert.ok(error instanceof ApiError);
+        assert.equal(
+          error.kind,
+          "timeout",
+          `hủy do timer giữa lúc đọc body phải là timeout, nhận: ${error.kind}`,
+        );
+        assert.equal(error.status, 0);
+        return true;
+      });
+      const elapsed = Date.now() - startedAt;
+      assert.ok(elapsed >= 140, `timeout phải đến từ timer thật (~150ms), elapsed=${elapsed}ms`);
+      assert.ok(serverSawRequest, "server thật phải nhận được request (chứng minh HTTP roundtrip thật)");
+    } finally {
+      restoreFetch();
+      // Đóng server + mọi socket — luôn chạy kể cả khi assert fail.
+      await closeServer(server);
+    }
+  });
+
+  // ĐỐI CHỨNG cho FIX 2: JSON hỏng THẬT (body hoàn chỉnh, không có abort)
+  // phải là invalid_response trên CẢ code cũ và mới — phân biệt rõ với
+  // trường hợp timer hủy giữa lúc đọc body (SC15).
+  it("SC16-client (đối chứng): server 200 + body hoàn chỉnh KHÔNG phải JSON rồi end() -> kind 'invalid_response', status 200 (PASS trên cả code cũ và mới)", async () => {
+    let serverSawRequest = false;
+    const { server, port } = await listenLocalhostServer((_req, res) => {
+      serverSawRequest = true;
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end("<html>not json</html>"); // body HOÀN CHỈNH nhưng không phải JSON
+    });
+    const realFetch = globalThis.fetch;
+    const restoreFetch = stubFetch(realFetch);
+    try {
+      const request = createApiClient({ baseUrl: `http://127.0.0.1:${port}`, timeoutMs: 1500 });
+      await assert.rejects(request("/api/v1/health/"), (error) => {
+        assert.ok(error instanceof ApiError);
+        assert.equal(error.kind, "invalid_response", "JSON hỏng thật (không abort) phải là invalid_response");
+        assert.equal(error.status, 200, "invalid_response phải giữ mã HTTP thật (200)");
+        return true;
+      });
+      assert.ok(serverSawRequest, "server thật phải nhận được request");
+    } finally {
+      restoreFetch();
+      await closeServer(server);
+    }
+  });
+});
+
+describe("Tầng hiển thị — FIX 1: baseUrl sai cú pháp ở UI (mount page connection-check thật)", () => {
+  it("SC17-UI: baseUrl 'not-a-url' -> 'Chưa cấu hình địa chỉ máy chủ' + gợi ý VITE_API_BASE_URL, không lộ URL/exception, không phải timeout, có nút Thử lại", async () => {
+    let fetchCalled = false;
+    const restore = stubFetch(() => {
+      fetchCalled = true;
+      return Promise.resolve(okResponse());
+    });
+    try {
+      const adapter = createZaloAdapter({ baseUrl: "not-a-url" });
+      const { ctx } = makeCtx({ demo: false, adapter });
+      const mounted = await mountAndSettle(ctx);
+      try {
+        const text = textOf(mounted.el);
+        assert.ok(text.includes("Chưa cấu hình địa chỉ máy chủ"), `title cấu hình: ${text}`);
+        assert.ok(text.includes("VITE_API_BASE_URL"), `phải gợi ý biến cấu hình: ${text}`);
+        assert.ok(!text.includes("quá thời gian"), "URL sai cú pháp không được hiện thông báo timeout");
+        assert.ok(!text.includes("not-a-url"), "không được hiển thị baseUrl gốc cho người dùng");
+        assert.ok(!text.includes("Invalid URL"), "không được lộ exception thô của URL parser");
+        assert.ok(findButton(mounted.el, "Thử lại"), "ErrorState vẫn phải có nút Thử lại");
+        assert.equal(fetchCalled, false, "URL sai cú pháp phải bị chặn trước lớp mạng");
+      } finally {
+        teardown(mounted);
+      }
+    } finally {
+      restore();
+    }
+  });
+});
+
+describe("Tầng hiển thị — FIX 2: timeout khi đang đọc body ở UI (timer thật 15s của adapter)", () => {
+  it("SC18-UI: fetch trả headers 200 rồi json() treo đến khi timer 15s hủy -> 'Kết nối quá thời gian chờ' (không phải 'Không kiểm tra được kết nối')", async () => {
+    // createZaloAdapter hardcode TIMEOUT_MS = 15000 — KHÔNG đổi. json() chỉ
+    // reject khi init.signal bắn "abort" — mô phỏng đúng hành vi fetch thật
+    // bị timer hủy giữa lúc đọc body (headers đã nhận, body chưa xong).
+    // Không fake timer: chờ THẬT ~15.5s (chấp nhận test này chậm).
+    let mounted = null;
+    const restore = stubFetch((_url, init) => {
+      const bodyRead = new Promise((_resolve, reject) => {
+        init.signal.addEventListener("abort", () => {
+          const abortError = new Error("The operation was aborted");
+          abortError.name = "AbortError";
+          reject(abortError);
+        });
+      });
+      return Promise.resolve({ ok: true, status: 200, json: () => bodyRead });
+    });
+    try {
+      const adapter = createZaloAdapter({ baseUrl: OK_BASE }); // timeout 15s mặc định của adapter
+      const { ctx } = makeCtx({ demo: false, adapter });
+      mounted = await mountAndSettle(ctx, 15600); // chờ timer 15s bắn thật + biên
+      const text = textOf(mounted.el);
+      assert.ok(text.includes("Kết nối quá thời gian chờ"), `title timeout: ${text}`);
+      assert.ok(
+        !text.includes("Không kiểm tra được kết nối"),
+        "abort giữa lúc đọc body không được bị đổi thành invalid_response/lỗi chung",
+      );
+      assert.ok(findButton(mounted.el, "Thử lại"), "phải có nút Thử lại");
+    } finally {
+      // LUÔN destroy + restore fetch — không bỏ lại timer/pending treo.
+      if (mounted) teardown(mounted);
+      restore();
+    }
+  });
+});
