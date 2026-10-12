@@ -44,6 +44,12 @@ if DJANGO_ENV != "production":
     ALLOWED_HOSTS += ["localhost", "127.0.0.1", "testserver"]
 if "*" in ALLOWED_HOSTS:
     raise ImproperlyConfigured("Use explicit DJANGO_ALLOWED_HOSTS")
+# Render automatically injects RENDER_EXTERNAL_HOSTNAME for web services.
+# Adding it here avoids the need to know the hostname before the first deploy.
+# Source: https://render.com/docs/environment-variables#render_external_hostname
+_render_hostname = os.getenv("RENDER_EXTERNAL_HOSTNAME", "")
+if _render_hostname:
+    ALLOWED_HOSTS.append(_render_hostname)
 
 INSTALLED_APPS = [
     "django.contrib.auth", "django.contrib.contenttypes", "django.contrib.sessions",

@@ -1,4 +1,4 @@
-# Checklist tích hợp/deploy cho Antigravity — backend foundation US-003
+﻿# Checklist tích hợp/deploy cho Antigravity — backend foundation US-003
 
 Người thực hiện: **đội Antigravity** (agent tạo nhánh KHÔNG deploy). Mọi bước
 dưới đây cần giá trị thật từ môi trường/secret manager; không nhận secret qua
@@ -10,53 +10,46 @@ chat, không commit secret (SEC-19).
 - render.yaml khai báo 1 web service `family-bridge-backend` (runtime docker,
   context repo root `.`, plan `free`, region `singapore`, `autoDeployTrigger: 'off'`).
 - `dockerfilePath`: `./Dockerfile` (cài đặt `default-libmysqlclient-dev` và copy cả `backend/` + `packages/`).
-- `preDeployCommand`: `python backend/manage.py migrate --noinput`
+- **Không có `preDeployCommand`**: Render Free plan không hỗ trợ pre-deploy command (chỉ dành cho paid services).
+  Migration phải chạy từ máy Huy trước khi bấm Deploy — xem mục 3.
 - `healthCheckPath`: `/api/v1/health/`
 - `DJANGO_SECRET_KEY` dùng `generateValue: true` của Render (sinh chuỗi random an toàn).
-- Tạo service từ Blueprint/`render.yaml` trên nhánh `main`. Migrate được chạy tự động một lần
-  trước khi container live khởi động qua `preDeployCommand`.
+- Tạo service từ Blueprint/`render.yaml` trên nhánh `main`.
 
 ## 2. Cấp secrets/biến môi trường (Render dashboard hoặc secret manager)
 
 | Key | Yêu cầu |
 | --- | --- |
 | `DJANGO_SECRET_KEY` | Random ≥50 ký tự (Render `generateValue` sinh 128 ký tự — đáp ứng; nếu tự cấp, dùng generator, không dùng chuỗi đoán được) |
-| `DJANGO_ALLOWED_HOSTS` | Host thật của service Render (vd `<service>.onrender.com` + domain tùy chỉnh), phân tách bằng dấu phẩy |
-| `CORS_ALLOWED_ORIGINS` | Origin thật của Mini App quan sát được trên **Android/iOS Zalo** (không dùng origin localhost ở production) |
+| `DJANGO_ALLOWED_HOSTS` | **Tùy chọn cho lần đầu**: hostname `onrender.com` được tự động thêm từ `RENDER_EXTERNAL_HOSTNAME` (xem `settings.py`). Chỉ cần điền cho custom domain. |
+| `CORS_ALLOWED_ORIGINS` | Origin frontend thực tế dùng để test (ví dụ `http://localhost:3000`). Origin Zalo WebView xác minh sau khi thử thiết bị thật, không đoán trước. Không dùng wildcard. |
 | `MYSQL_DATABASE` / `MYSQL_USER` / `MYSQL_PASSWORD` | Từ MySQL provider; user runtime **ít quyền** (SEC-20 — không root/superuser) |
 | `MYSQL_HOST` / `MYSQL_PORT` | Endpoint MySQL provider |
 | `MYSQL_SSL_CA` | Chỉ khi provider yêu cầu TLS client-CA; khi có, settings bật `VERIFY_IDENTITY` |
 | `DJANGO_ENV` | `production` (đã mặc định trong render.yaml) |
+| `FB_FEATURES` | **Không khai báo** trong Blueprint; để vắng mặt để load đủ 16 feature labels. Chỉ set thủ công khi cần thu hẹp tính năng với danh sách label cụ thể. |
 
 Kiểm tra lại: không secret nào nằm trong repo/log/issue; nếu lộ, revoke/rotate
 trước khi tiếp tục.
 
-## 3. Chạy migrate lần đầu (one-off, không nằm trong startCommand)
+## 3. Chạy migrate lần đầu từ máy Huy (TRƯỚC khi bấm Deploy)
 
-Sau khi service tạo xong và env đã cấp, chạy một lần từ máy có access hoặc Render
-Shell/one-off job:
+> **Lưu ý:** Render Free plan không có Dashboard Shell, one-off jobs, hay preDeployCommand.
+> Migration BẮT BUỘC phải chạy từ máy Huy trước khi ứng dụng nhận traffic.
 
-```bash
-pip install -r requirements-mysql.txt
-DJANGO_ENV=production DJANGO_SECRET_KEY='<secret thật, ≥50 ký tự>' \
-DB_ENGINE=mysql MYSQL_HOST='<host thật>' MYSQL_PORT='<port>' \
-MYSQL_DATABASE='<db>' MYSQL_USER='<user ít quyền>' MYSQL_PASSWORD='<password>' \
-[MYSQL_SSL_CA='<ca.pem nếu cần>'] \
-python manage.py migrate --noinput
-```
+Xem hướng dẫn đầy đủ từng bước tại `docs/handover/blueprint-deployment-guide.md`, mục 4.
 
-Lưu ý `DJANGO_SECRET_KEY` bắt buộc trong lệnh trên: settings production fail-closed
-khi thiếu secret, migrate sẽ từ chối chạy nếu không cấp (hành vi kiểm soát chủ đích).
-
-Phân biệt hai đường triển khai: nếu chạy bằng **Docker image** (backend/Dockerfile),
-CMD hiện có chạy `migrate --noinput` tự động trước gunicorn — chấp nhận được cho
-môi trường testing nhưng lưu ý instance không boot khi MySQL chưa sẵn sàng; nếu
-cảo thiện hơn, tách migrate one-off như đường Render python runtime ở trên và
-để CMD chỉ chạy gunicorn (quyết định thuộc Antigravity, không bắt buộc đổi trong đợt này).
+Tóm tắt quy trình:
+1. Tạo file `.env.migrate` tại `backend/` (không commit).
+2. Xác nhận đang ở đúng commit sẽ deploy (`git rev-parse HEAD`).
+3. Kích hoạt virtualenv và kiểm tra kết nối: `python manage.py check --database default`.
+4. Kiểm tra migration pending: `python manage.py migrate --noinput --check`.
+5. Chạy migration: `python manage.py migrate --noinput`.
+6. Xác nhận hoàn tất (exit code 0).
+7. Xóa file `.env.migrate` và thu hồi IP tạm khỏi MySQL allowlist.
 
 Kỳ vọng: `accounts.0001_initial` (và migrations auth đi kèm) được áp dụng lên
-MySQL thật. Nếu dùng account migrate riêng nhiều quyền hơn user runtime (SEC-20),
-hãy tách và chỉ cấp cho bước one-off này.
+MySQL thật.
 
 ## 4. Verify sau deploy
 
@@ -74,10 +67,11 @@ Kiểm tra thêm:
 
 ## 5. ALLOWED_HOSTS / CORS với origin thật
 
+- Backend đã tự động thêm `RENDER_EXTERNAL_HOSTNAME` vào `ALLOWED_HOSTS` khi khởi động.
+  Không cần điền hostname đoán trước vào `DJANGO_ALLOWED_HOSTS`.
 - Bật Mini App qua Zalo Android/iOS thật, ghi lại origin thực tế mà webview dùng.
-- Đưa origin đó vào `CORS_ALLOWED_ORIGINS`; host Render vào
-  `DJANGO_ALLOWED_HOSTS`. Settings **từ chối** `*` và từ chối khởi động nếu thiếu
-  secret/đặt cấu hình sai — đó là hành vi mong muốn, đừng "nới" để qua.
+- Đưa origin đó vào `CORS_ALLOWED_ORIGINS` sau khi xác minh. Settings **từ chối** `*`
+  và từ chối khởi động nếu thiếu secret/đặt cấu hình sai — đó là hành vi mong muốn.
 - Xác nhận request từ origin khác bị chặn CORS trên `/api/.*` và
   `CORS_ALLOW_CREDENTIALS = False` (không dùng cookie auth).
 

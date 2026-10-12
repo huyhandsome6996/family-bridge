@@ -1,21 +1,32 @@
 ﻿# Hướng Dẫn Triển Khai Backend Family Bridge Lên Render Bằng Blueprint
 
-Tài liệu này cung cấp hướng dẫn đầy đủ, chi tiết và chuẩn hóa theo đặc tả [Render Blueprint](https://render.com/docs/blueprint-spec) để triển khai dịch vụ backend **Family Bridge** (`family-bridge-backend`) từ repository [huyhandsome6996/family-bridge](https://github.com/huyhandsome6996/family-bridge) trên nhánh `main`.
+Tài liệu này cung cấp hướng dẫn đầy đủ và chính xác để triển khai dịch vụ backend **Family Bridge** (`family-bridge-backend`) lên Render bằng Blueprint từ repository [huyhandsome6996/family-bridge](https://github.com/huyhandsome6996/family-bridge), nhánh `main`.
+
+> [!IMPORTANT]
+> **Điều kiện cần thiết duy nhất chưa có**: Database MySQL từ xa. Phần code và cấu hình repo đã sẵn sàng; deploy thực chất chỉ bắt đầu được khi Huy có thông tin kết nối MySQL.
 
 ---
 
 ## 1. Quyết định kiến trúc & Cấu hình Blueprint
 
-### 1.1. Lý do lựa chọn Docker Runtime trên Render
-* **Ràng buộc mã nguồn:** Backend sử dụng `mysqlclient==2.2.8`. Trên nền tảng Linux, package này chỉ được phân phối dưới dạng source distribution (`.tar.gz`), không có pre-built binary wheel trên PyPI. Quá trình cài đặt bắt buộc phải biên dịch C và yêu cầu các thư viện hệ thống `default-libmysqlclient-dev` và `pkg-config`.
-* **Ràng buộc Render Native Runtime:** Render Native Python Runtime chạy trong môi trường unprivileged (không có quyền root/sudo), không thể chạy `apt-get` trong lệnh build (sẽ gặp lỗi `Permission denied`). Đồng thời, bộ công cụ mặc định của Render Native Runtime chỉ có `postgresql-client`, không có các thư viện phát triển MySQL C.
-* **Giải pháp chuẩn hóa:** Sử dụng **Docker Runtime (`runtime: docker`)** với `Dockerfile` tại repository root (`dockerContext: .`). Điều này đảm bảo:
-  1. Biên dịch và import `mysqlclient` ổn định 100% nhờ các gói hệ thống được cài đặt trong image build.
-  2. Build context bao gồm toàn bộ repository root, sao chép cả `backend/` và `packages/` (nạp đủ 15 feature modules).
-  3. Hoạt động trên **Render Free Plan** (`plan: free`) mà không phát sinh chi phí bắt buộc.
-  4. Giữ nguyên 100% stack kỹ thuật (`Django 5.2.18`, `DRF 3.17.2`, `mysqlclient 2.2.8`), không phải thay thế bằng `PyMySQL` hay viết lại driver.
+### 1.1. Lý do lựa chọn Docker Runtime
 
-### 1.2. Cấu hình dịch vụ trong `render.yaml`
+* **Ràng buộc mã nguồn:** Backend sử dụng `mysqlclient==2.2.8`. Trên Linux, package này chỉ phân phối dưới dạng source distribution (không có binary wheel), bắt buộc phải biên dịch C với `default-libmysqlclient-dev` và `pkg-config`.
+* **Ràng buộc Render Native Runtime:** Chạy không có quyền root; thiếu công cụ phát triển MySQL. `pip install mysqlclient` thất bại với `Permission denied`.
+* **Giải pháp:** Docker runtime với `dockerContext: .` (repo root) — cài đủ thư viện hệ thống, copy cả `backend/` lẫn `packages/`, hoạt động trên gói Free.
+* **Lưu ý về image:** `Dockerfile` hiện tại là single-stage build với `FROM python:3.12-slim`. Phiên bản Python trong container do Docker Hub quyết định theo image tag, **không phải** do file `.python-version` (file đó chỉ dùng cho Render Native Runtime hoặc pyenv).
+
+### 1.2. Migration trên Render Free Plan
+
+> [!WARNING]
+> **`preDeployCommand` KHÔNG được hỗ trợ trên Render Free plan.**
+> Nguồn chính thức: https://render.com/docs/deploys#pre-deploy-command
+> *"The pre-deploy command is available for paid web services, private services, and background workers."*
+>
+> Render Free plan cũng không có Dashboard Shell hay one-off jobs. Migration phải chạy từ máy Huy trước khi ứng dụng nhận traffic.
+
+### 1.3. Cấu hình `render.yaml` (phiên bản hiện tại)
+
 ```yaml
 services:
   - type: web
@@ -27,7 +38,6 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     autoDeployTrigger: 'off'
-    preDeployCommand: python backend/manage.py migrate --noinput
     healthCheckPath: /api/v1/health/
     envVars:
       - key: DJANGO_ENV
@@ -40,169 +50,297 @@ services:
         sync: false
       - key: CORS_ALLOWED_ORIGINS
         sync: false
-      - key: MYSQL_DATABASE
-        sync: false
-      - key: MYSQL_USER
-        sync: false
-      - key: MYSQL_PASSWORD
-        sync: false
-      - key: MYSQL_HOST
-        sync: false
-      - key: MYSQL_PORT
+      - key: MYSQL_DATABASE / MYSQL_USER / MYSQL_PASSWORD / MYSQL_HOST / MYSQL_PORT
         sync: false
       - key: MYSQL_SSL_CA
         sync: false
-      - key: ZALO_APP_ID
+      - key: ZALO_APP_ID / ZALO_APP_SECRET
         sync: false
-      - key: ZALO_APP_SECRET
-        sync: false
-      - key: FB_FEATURES
-        sync: false
+      # FB_FEATURES không khai báo ở đây (xem mục 2.3)
 ```
 
-* **`autoDeployTrigger: 'off'`**: Tắt tính năng tự động deploy sau mỗi lần push code (theo chuẩn Render mới nhất, thay thế `autoDeploy: false`).
-* **`preDeployCommand: python backend/manage.py migrate --noinput`**: Chạy database migration một lần duy nhất trong quá trình deploy trước khi container live nhận traffic. Nếu kết nối database thất bại, quá trình deploy sẽ dừng lại một cách an toàn mà không làm gián đoạn hệ thống.
-* **`healthCheckPath: /api/v1/health/`**: Endpoint kiểm tra liveness độc lập, không truy vấn database và được miễn trừ rate limit throttling, giúp Render giám sát trạng thái container ổn định.
+---
+
+## 2. Biến môi trường
+
+### 2.1. Bảng biến môi trường đầy đủ
+
+| Tên biến | Khi nào bắt buộc | Giá trị / Ví dụ | Ghi chú |
+|:---------|:-----------------|:----------------|:--------|
+| `DJANGO_ENV` | Luôn | `production` | Đặt sẵn trong `render.yaml` |
+| `DJANGO_SECRET_KEY` | Luôn | Chuỗi ngẫu nhiên ≥50 ký tự | `generateValue: true` — Render tự sinh |
+| `DB_ENGINE` | Luôn | `mysql` | Đặt sẵn trong `render.yaml` |
+| `DJANGO_ALLOWED_HOSTS` | Tùy chọn\* | `my-custom-domain.com` | \*Không bắt buộc cho lần đầu — xem mục 2.2 |
+| `CORS_ALLOWED_ORIGINS` | Cho frontend | `http://localhost:3000,http://127.0.0.1:3000` | Xem mục 2.2 |
+| `MYSQL_HOST` | Luôn | `gateway01.ap-southeast-1.prod.aws.tidbcloud.com` | Từ nhà cung cấp MySQL |
+| `MYSQL_PORT` | Luôn | `3306` hoặc `4000` (TiDB) | Từ nhà cung cấp MySQL |
+| `MYSQL_DATABASE` | Luôn | `family_bridge` | Từ nhà cung cấp MySQL |
+| `MYSQL_USER` | Luôn | `family_bridge_user` | Từ nhà cung cấp MySQL |
+| `MYSQL_PASSWORD` | Luôn | — | Từ nhà cung cấp MySQL |
+| `MYSQL_SSL_CA` | Khi DB yêu cầu TLS | `/etc/secrets/ca.pem` | Xem mục 3.2 |
+| `ZALO_APP_ID` | Khi dùng auth Zalo | `3813524408107862261` | Zalo Developers Console |
+| `ZALO_APP_SECRET` | Khi dùng auth Zalo | — | Zalo Developers Console |
+| `FB_FEATURES` | **Không khai báo** | — | Xem mục 2.3 |
+
+### 2.2. Hostname và CORS — Không phải đoán hostname trước
+
+**ALLOWED_HOSTS:**
+Render tự động inject biến `RENDER_EXTERNAL_HOSTNAME` (ví dụ: `family-bridge-backend.onrender.com`) cho web services khi chạy. Backend Family Bridge đã được cập nhật để đọc biến này và tự động thêm vào `ALLOWED_HOSTS` (xem `backend/config/settings.py`).
+
+→ **Huy không cần điền `DJANGO_ALLOWED_HOSTS` để bắt đầu deploy.** Chỉ cần điền khi sử dụng custom domain.
+
+**CORS:**
+Điền các origin frontend thực tế đang dùng để test:
+```
+http://localhost:3000,http://127.0.0.1:3000
+```
+> [!IMPORTANT]
+> Origin của Zalo Mini App WebView **chưa được xác minh**. Không thêm vào CORS cho đến khi đã kiểm tra thực tế trên thiết bị. Không dùng wildcard.
+
+### 2.3. FB_FEATURES — Không khai báo trong Blueprint
+
+**Lý do:** Khi `FB_FEATURES` vắng mặt, `settings.py` dùng default (toàn bộ 16 label). Khi `FB_FEATURES=""` (chuỗi rỗng), `csv_env` trả `[]` → load 0 feature → app khởi động thiếu tính năng mà không có lỗi rõ ràng.
+
+**Cách thu hẹp tính năng (khi cần):** Vào Render Dashboard → Environment tab → thêm biến `FB_FEATURES` với giá trị là danh sách label phân tách bởi dấu phẩy. Sử dụng đúng tên label:
+```
+f01_identity,f02_program,f03_cards,f04_ai,f05_inbox,f06_drafts,
+f07_mood,f08_journal,f09_activities,f10_signal,f11_supporters,
+f12_appointments,f13_help,f14_surveys,f15_privacy,admin_core
+```
 
 ---
 
-## 2. Bảng biến môi trường đầy đủ (Environment Variables)
-
-| Tên biến | Bắt buộc khi nào | Định dạng / Ví dụ | Nơi lấy giá trị | Cách nhập trên Render Dashboard |
-| :--- | :--- | :--- | :--- | :--- |
-| **Nhóm A: Khởi động Backend** | | | | |
-| `DJANGO_ENV` | **Bắt buộc** | `production` | Cố định cho môi trường triển khai | Đã đặt sẵn trong `render.yaml` |
-| `DJANGO_SECRET_KEY` | **Bắt buộc** | Chuỗi ngẫu nhiên ≥ 50 ký tự | Tự động sinh | `generateValue: true` (Render tự sinh chuỗi 128 ký tự base64 an toàn) |
-| `DJANGO_ALLOWED_HOSTS` | **Bắt buộc** | Hostname phân tách dấu phẩy (vd: `family-bridge-backend.onrender.com`) | Hostname do Render cấp cho dịch vụ | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `CORS_ALLOWED_ORIGINS` | **Bắt buộc** | URL origin đầy đủ (vd: `https://zalo.me,http://localhost:3000`) | Origin của client frontend Zalo Mini App / web | Nhập trong màn hình Environment lúc tạo Blueprint |
-| **Nhóm B: Kết nối Database** | | | | |
-| `DB_ENGINE` | **Bắt buộc** | `mysql` | Cố định cho backend MySQL | Đã đặt sẵn trong `render.yaml` |
-| `MYSQL_HOST` | **Bắt buộc** | Địa chỉ IP hoặc FQDN (vd: `gateway01.ap-southeast-1.prod.aws.tidbcloud.com`) | Từ nhà cung cấp MySQL từ xa | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `MYSQL_PORT` | **Bắt buộc** | Số nguyên (vd: `3306` hoặc `4000`) | Từ nhà cung cấp MySQL từ xa | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `MYSQL_DATABASE` | **Bắt buộc** | Tên database (vd: `family_bridge`) | Từ nhà cung cấp MySQL từ xa | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `MYSQL_USER` | **Bắt buộc** | Tên tài khoản runtime (vd: `family_bridge_user`) | Tạo trên MySQL, cấp quyền vừa đủ (SEC-20) | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `MYSQL_PASSWORD` | **Bắt buộc** | Mật khẩu tài khoản database | Tạo trên MySQL | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `MYSQL_SSL_CA` | Tùy chọn (khi TLS yêu cầu CA) | Đường dẫn file (vd: `/etc/secrets/ca.pem`) | Tải file chứng thư CA từ nhà cung cấp | Tạo qua Secret File trên Render (xem mục 3.2) |
-| **Nhóm C: Xác thực Zalo** | | | | |
-| `ZALO_APP_ID` | Bắt buộc khi dùng auth Zalo | Chuỗi số (vd: `3411096375330044972`) | Zalo Developers Console | Nhập trong màn hình Environment lúc tạo Blueprint |
-| `ZALO_APP_SECRET` | Bắt buộc khi dùng auth Zalo | Chuỗi bí mật | Zalo Developers Console | Nhập trong màn hình Environment lúc tạo Blueprint |
-| **Nhóm D: Tùy chọn bổ sung** | | | | |
-| `FB_FEATURES` | Tùy chọn | Danh sách nhãn tính năng phân tách dấu phẩy | Mặc định nạp đủ 16 app labels | Để trống (hoặc điền khi cần thu hẹp tính năng) |
-| `DJANGO_LOG_LEVEL` | Tùy chọn | `INFO`, `WARNING`, `ERROR` | Mặc định `INFO` | Có thể bỏ qua |
-
----
-
-## 3. Điều kiện cần chuẩn bị: Cơ sở dữ liệu MySQL từ xa
+## 3. Điều kiện cần thiết: Database MySQL từ xa
 
 > [!WARNING]
-> MySQL chạy tại `localhost:3306` trên máy tính cá nhân **không thể truy cập được từ Render**. Render không cung cấp MySQL miễn phí trên Dashboard. Do đó, bạn cần chuẩn bị một cơ sở dữ liệu MySQL từ xa trước khi bấm Deploy.
+> **MySQL `localhost:3306` trên máy tính cá nhân không thể truy cập được từ Render.** Huy cần chuẩn bị một database MySQL từ xa có thể truy cập qua internet trước khi bấm Deploy.
 
-### 3.1. Các phương án Database MySQL khả dụng
-1. **Phương án 1: TiDB Serverless (Khuyên dùng - Miễn phí trọn đời)**
-   * **Chi phí:** Hoàn toàn miễn phí (5 GB lưu trữ, 50 triệu request/tháng).
-   * **Trang chủ:** [https://tidbcloud.com](https://tidbcloud.com)
-   * **Cách lấy thông tin:**
-     - Đăng ký tài khoản và chọn tạo **Serverless Cluster** (chọn Region `Singapore` hoặc `Tokyo` để tối ưu tốc độ).
-     - Vào Cluster -> Bấm **Connect** -> Chọn ngôn ngữ **General** hoặc **Python**.
-     - Ghi lại: `Host`, `Port` (thường là `4000`), `User`, `Password`, và tải file CA certificate (nếu có).
-2. **Phương án 2: Aiven for MySQL**
-   * **Trang chủ:** [https://aiven.io/mysql](https://aiven.io/mysql)
-   * **Đặc điểm:** MySQL 8.0 chuẩn, hỗ trợ gói dùng thử miễn phí, bắt buộc chứng thư TLS CA.
-3. **Phương án 3: Render Private Service với Docker MySQL**
-   * **Chi phí:** Yêu cầu gói trả phí của Render (tối thiểu $7/tháng cho dịch vụ Private Service + $0.25/GB/tháng cho Persistent Disk). Hướng dẫn chính thức tại [Render MySQL Guide](https://render.com/docs/deploy-mysql).
+### 3.1. Các phương án Database
 
-### 3.2. Cấu hình chứng thư TLS CA (`MYSQL_SSL_CA`) trên Render
-Khi nhà cung cấp MySQL (như TiDB hoặc Aiven) yêu cầu chứng thực TLS:
-1. Tải file chứng thư `ca.pem` từ nhà cung cấp về máy tính.
-2. Trên Render Dashboard, tại trang cấu hình dịch vụ, chọn mục **Environment** -> cuộn xuống phần **Secret Files**.
-3. Bấm **Add Secret File**:
-   * **Filename:** `ca.pem`
-   * **Contents:** Mở file `ca.pem` bằng Notepad/text editor, sao chép toàn bộ nội dung (bắt đầu bằng `-----BEGIN CERTIFICATE-----`) và dán vào ô nội dung.
-4. Render sẽ mount file này vào đường dẫn `/etc/secrets/ca.pem` bên trong container.
-5. Đặt biến môi trường:
-   `MYSQL_SSL_CA = /etc/secrets/ca.pem`
-*(Lưu ý: `MYSQL_SSL_CA` phải là đường dẫn file trong container, không được dán trực tiếp nội dung chuỗi chứng thư).*
+**Phương án A — MySQL chuẩn (khuyên dùng cho độ tương thích tối đa):**
+- [Aiven for MySQL](https://aiven.io/mysql): MySQL 8.0 chuẩn, gói dùng thử miễn phí (thời hạn theo chính sách Aiven tại thời điểm đăng ký — kiểm tra tại trang chính thức). Bắt buộc chứng thư TLS CA.
+- Render MySQL Private Service: yêu cầu gói trả phí Render. Xem [Render MySQL Guide](https://render.com/docs/deploy-mysql).
 
----
+**Phương án B — TiDB Serverless (phương án thay thế cần đánh giá):**
 
-## 4. Các bước thao tác trên Render Dashboard
+> [!NOTE]
+> TiDB tương thích giao thức MySQL nhưng **không phải MySQL nguyên bản**. Có một số khác biệt cần kiểm tra trước khi cam kết:
+> - **DDL transactions**: TiDB không hỗ trợ DDL trong transaction — `ALTER TABLE` bên trong transaction sẽ bị rollback khác với MySQL.
+> - **AUTO_INCREMENT**: TiDB tăng theo bước lớn hơn (step = 30000 theo mặc định) thay vì tăng 1, có thể gây ID gap lớn.
+> - **Foreign key**: Mặc định disabled trên TiDB Serverless; cần bật `foreign_key_checks=ON`.
+> - **Gói miễn phí**: Kiểm tra giới hạn và điều khoản dịch vụ tại [tidbcloud.com/pricing](https://www.pingcap.com/tidb-serverless/) — điều khoản có thể thay đổi.
+>
+> **Không tự quyết định dùng TiDB.** Đây là thông tin để Huy cân nhắc, không phải lựa chọn mặc định.
 
-1. Truy cập [Render Dashboard](https://dashboard.render.com).
-2. Bấm nút **New +** ở góc trên cùng bên phải và chọn **Blueprint**.
-3. Kết nối tài khoản GitHub và chọn repository: `huyhandsome6996/family-bridge`.
-4. Điền cấu hình cơ bản:
-   * **Branch:** `main`
-   * **Blueprint Path:** `render.yaml`
-5. Render sẽ đọc file `render.yaml` và liệt kê tài nguyên:
-   * Service Name: `family-bridge-backend`
-   * Type: Web Service
-   * Environment: Docker
-   * Plan: Free
-   * Region: Singapore
-6. Điền các giá trị cho các biến môi trường được đánh dấu `sync: false`:
-   * `DJANGO_ALLOWED_HOSTS`: Tạm thời điền hostname dự kiến (ví dụ: `family-bridge-backend.onrender.com`).
-   * `CORS_ALLOWED_ORIGINS`: Điền `https://zalo.me,http://localhost:3000,http://127.0.0.1:3000`.
-   * Điền `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`.
-   * Nếu có Secret File CA: Tải file `ca.pem` lên và điền `MYSQL_SSL_CA = /etc/secrets/ca.pem`.
-   * Điền `ZALO_APP_ID`, `ZALO_APP_SECRET` (nếu đã có).
-7. Bấm **Apply** / **Deploy Blueprint**.
-8. Render sẽ tiến hành build Docker image và chạy tự động `preDeployCommand: python backend/manage.py migrate --noinput` trước khi bật service.
+### 3.2. Cấu hình TLS CA Certificate
+
+Khi nhà cung cấp MySQL yêu cầu TLS:
+1. Tải file `ca.pem` từ dashboard của nhà cung cấp.
+2. Trên Render Dashboard → service → **Environment** → cuộn xuống **Secret Files**.
+3. Bấm **Add Secret File**: Filename = `ca.pem`, dán toàn bộ nội dung file (bắt đầu bằng `-----BEGIN CERTIFICATE-----`).
+4. Render mount tại `/etc/secrets/ca.pem` trong container.
+5. Điền biến môi trường: `MYSQL_SSL_CA = /etc/secrets/ca.pem`
+
+*(Lưu ý: giá trị phải là đường dẫn file trong container, không dán nội dung chứng thư trực tiếp vào biến.)*
 
 ---
 
-## 5. Kiểm tra và kết nối sau khi Deploy
+## 4. Quy trình chạy Migration từ máy Huy
 
-### 5.1. Lấy URL HTTPS và cập nhật ALLOWED_HOSTS
-1. Sau khi deploy thành công, Render sẽ hiển thị URL chính thức của Web Service ở đầu trang (ví dụ: `https://family-bridge-backend-xxxx.onrender.com`).
-2. Trích xuất hostname (bỏ phần `https://` và dấu `/` ở cuối), ví dụ: `family-bridge-backend-xxxx.onrender.com`.
-3. Kiểm tra biến `DJANGO_ALLOWED_HOSTS` trong tab **Environment**: nếu chưa khớp với hostname chính thức, hãy sửa lại cho đúng và bấm **Save Changes** (Render sẽ tự khởi động lại dịch vụ với cấu hình mới).
+> [!IMPORTANT]
+> Chạy migration **trước khi** bấm Deploy lần đầu và **trước** mỗi lần deploy có schema thay đổi. Không đưa migration vào Docker CMD hay build command.
 
-### 5.2. Kiểm tra Health Check và Readiness Check
-Mở terminal hoặc trình duyệt để kiểm tra 2 endpoint probe của backend:
+### Bước 1 — Chuẩn bị môi trường local an toàn
 
-```bash
-# 1. Kiểm tra Liveness (phải trả về 200 OK ngay cả khi DB chưa sẵn sàng)
-curl -i https://family-bridge-backend-xxxx.onrender.com/api/v1/health/
+Tạo file `.env.migrate` tại thư mục `backend/` (file này **không được commit** — kiểm tra `.gitignore`):
 
-# Kết quả kỳ vọng:
-# HTTP/2 200
-# cache-control: no-store
-# {"status":"ok"}
-
-# 2. Kiểm tra Readiness (xác nhận kết nối Database MySQL thành công)
-curl -i https://family-bridge-backend-xxxx.onrender.com/api/v1/ready/
-
-# Kết quả kỳ vọng:
-# HTTP/2 200
-# cache-control: no-store
-# {"status":"ok"}
+```dotenv
+# backend/.env.migrate — KHÔNG COMMIT FILE NÀY
+DJANGO_ENV=production
+DB_ENGINE=mysql
+DJANGO_SECRET_KEY=du-lieu-gia-chi-de-chay-migrate
+MYSQL_HOST=<host từ nhà cung cấp>
+MYSQL_PORT=<port từ nhà cung cấp>
+MYSQL_DATABASE=<tên database>
+MYSQL_USER=<username>
+MYSQL_PASSWORD=<password>
+# Nếu cần TLS:
+MYSQL_SSL_CA=<đường dẫn tuyệt đối tới file ca.pem trên máy Huy>
 ```
 
-### 5.3. Cấu hình Frontend Mini App kết nối tới Backend mới
-1. Mở terminal trên máy dev, đặt biến môi trường cho Vite trỏ về backend Render:
-   ```powershell
-   $env:VITE_API_BASE_URL = "https://family-bridge-backend-xxxx.onrender.com"
-   cd zalo-mini-app
-   npm start
-   ```
-2. Mở trình duyệt tại trang `http://localhost:3000/#/connection-check`:
-   * Trang kiểm tra kết nối sẽ tự động gọi `/api/v1/health/` và `/api/v1/ready/` của backend trên Render.
-   * Khi kết nối thành công, badge trạng thái màu xanh **"Đã kết nối tới máy chủ"** sẽ xuất hiện!
+Xác nhận file này trong `.gitignore`:
+```powershell
+# Kiểm tra .gitignore đã bao gồm .env.migrate chưa
+Select-String ".env" C:\Users\PC\.gemini\antigravity\scratch\family-bridge\.gitignore
+```
+
+### Bước 2 — Xác nhận đang ở đúng commit sẽ deploy
+
+```powershell
+cd C:\Users\PC\.gemini\antigravity\scratch\family-bridge
+git log --oneline -3
+# Đảm bảo HEAD trỏ về commit sẽ deploy (main mới nhất)
+git rev-parse HEAD
+```
+
+### Bước 3 — Kích hoạt virtualenv và kiểm tra kết nối database
+
+```powershell
+cd C:\Users\PC\.gemini\antigravity\scratch\family-bridge\backend
+
+# Kích hoạt virtualenv
+.\.venv\Scripts\Activate.ps1
+
+# Set biến môi trường từ file (không source vào shell — đọc từng dòng)
+Get-Content .\.env.migrate | ForEach-Object {
+    if ($_ -match '^([^#][^=]+)=(.*)$') {
+        [System.Environment]::SetEnvironmentVariable($Matches[1].Trim(), $Matches[2].Trim())
+    }
+}
+
+# Kiểm tra kết nối database
+python manage.py check --database default
+# Kết quả mong đợi: "System check identified no issues (0 silenced)."
+```
+
+Nếu cần TLS và CA file, đặt `MYSQL_SSL_CA` trỏ tới đường dẫn tuyệt đối file `.pem` trên máy Huy (ví dụ: `C:\Users\PC\Downloads\ca.pem`).
+
+### Bước 4 — Kiểm tra migration chưa áp dụng
+
+```powershell
+# Xem danh sách migration cần chạy (dry run)
+python manage.py migrate --noinput --check
+# Nếu có migration pending, lệnh này exit code != 0 và liệt kê các migration.
+# Nếu tất cả đã áp dụng, không có output và exit code = 0.
+```
+
+### Bước 5 — Chạy migration
+
+```powershell
+python manage.py migrate --noinput
+# Kết quả mong đợi: dòng "Running migrations: No migrations to apply." (lần đầu)
+# hoặc danh sách các migration đã áp dụng thành công.
+```
+
+### Bước 6 — Xác nhận hoàn tất
+
+```powershell
+# Chạy lại check để xác nhận không còn migration pending
+python manage.py migrate --noinput --check
+# Phải exit code 0.
+
+# Kiểm tra ready endpoint có thể kết nối DB thành công
+# (Không chạy được từ local với DB từ xa qua HTTP, nhưng check --database đã đủ)
+python manage.py check --database default
+```
+
+### Bước 7 — Xóa biến môi trường và file tạm
+
+```powershell
+# Xóa biến môi trường đã set (tắt và mở lại PowerShell, hoặc):
+[System.Environment]::SetEnvironmentVariable("MYSQL_PASSWORD", $null)
+[System.Environment]::SetEnvironmentVariable("DJANGO_SECRET_KEY", $null)
+# ... các biến khác
+
+# Xóa file .env.migrate
+Remove-Item backend\.env.migrate
+```
 
 ---
 
-## 6. Xử lý sự cố thường gặp (Troubleshooting)
+## 5. Các bước Deploy trên Render Dashboard
 
-| Hiện tượng | Nguyên nhân | Cách khắc phục |
-| :--- | :--- | :--- |
-| **`preDeployCommand` báo lỗi kết nối MySQL** | Host/Port hoặc mật khẩu MySQL sai; hoặc MySQL chặn IP | Kiểm tra thông tin kết nối; trên database provider (vd TiDB Cloud), mở Allowlist IP cho phép `0.0.0.0/0` để Render có thể kết nối |
-| **`/api/v1/ready/` trả về `503 Unavailable`** | Kết nối DB bị ngắt hoặc truy vấn kiểm tra `SELECT 1` thất bại | Xem log trên Render Dashboard (chỉ hiển thị tên exception, không lộ DSN); kiểm tra trạng thái cụm MySQL |
-| **`400 Bad Request` khi gọi API** | Hostname của request không nằm trong `DJANGO_ALLOWED_HOSTS` | Vào Render Dashboard -> Environment -> bổ sung hostname thật vào `DJANGO_ALLOWED_HOSTS` |
-| **Lỗi `CORS policy` trên trình duyệt** | Origin của frontend chưa được cấp phép | Bổ sung origin (vd `http://localhost:3000` hoặc domain webview) vào `CORS_ALLOWED_ORIGINS` |
-| **Lần truy cập đầu tiên phản hồi chậm (~50s)** | Cơ chế "Spin down" của Render Free Plan sau 15 phút không có request | Đây là đặc tính bình thường của gói Free. Container sẽ thức dậy và phản hồi nhanh chóng ở các request tiếp theo |
+1. Truy cập [dashboard.render.com](https://dashboard.render.com).
+2. Bấm **New +** → chọn **Blueprint**.
+3. Kết nối GitHub và chọn repo `huyhandsome6996/family-bridge`.
+4. Branch: **`main`**, Blueprint Path: `render.yaml`.
+5. Render liệt kê service `family-bridge-backend` (Type: Web, Runtime: Docker, Plan: Free, Region: Singapore).
+6. Điền các biến `sync: false`:
+   - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`
+   - `CORS_ALLOWED_ORIGINS`: ví dụ `http://localhost:3000,http://127.0.0.1:3000`
+   - `DJANGO_ALLOWED_HOSTS`: **để trống** (hostname tự động thêm qua `RENDER_EXTERNAL_HOSTNAME`)
+   - `MYSQL_SSL_CA`: `/etc/secrets/ca.pem` nếu đã upload CA file
+   - `ZALO_APP_ID`, `ZALO_APP_SECRET` nếu đã có
+7. Bấm **Apply**.
+8. Render build Docker image và khởi động Gunicorn. Khi health check `/api/v1/health/` trả 200, service Live.
 
 ---
 
-## 7. Quy trình Rollback & Khôi phục
-* **Rollback code:** Trong Render Dashboard -> Web Service -> tab **Deploys** -> tìm bản build thành công gần nhất -> bấm **Rollback to this deploy**.
-* **Lưu ý dữ liệu:** Rollback phiên bản code không tự động hoàn tác (revert) các migration đã chạy trên database. Tuyệt đối không xóa database hay rollback migration nếu chưa có kế hoạch backup.
+## 6. Lấy Outbound IP của Render để cấu hình Database Allowlist
+
+> [!IMPORTANT]
+> Outbound IP của Render service chỉ có được **sau khi tạo service**. Không có danh sách tĩnh tra trước. Nguồn: https://render.com/docs/outbound-ip-addresses
+
+**Sau khi tạo service:**
+1. Vào Render Dashboard → trang service `family-bridge-backend`.
+2. Bấm nút **Connect** (góc trên phải) → chọn tab **Outbound**.
+3. Sao chép danh sách CIDR ranges.
+4. Vào database provider dashboard → thêm các CIDR này vào IP allowlist.
+
+**Khi chạy migration từ máy Huy:**
+- Thêm IP công khai của máy Huy (`curl ifconfig.me`) vào allowlist tạm thời.
+- Sau khi migration xong, **thu hồi** IP máy Huy khỏi allowlist (chỉ giữ CIDR của Render).
+
+> [!CAUTION]
+> Không cấu hình allowlist `0.0.0.0/0` (toàn bộ internet) như cách khắc phục mặc định. Chỉ thêm CIDR cần thiết và thu hồi khi xong.
+
+---
+
+## 7. Kiểm tra sau Deploy
+
+```bash
+# 1. Health check (liveness — không kết nối DB)
+curl -i https://family-bridge-backend.onrender.com/api/v1/health/
+# Kết quả mong đợi: HTTP/2 200, {"status":"ok"}
+
+# 2. Readiness check (xác nhận kết nối MySQL thành công)
+curl -i https://family-bridge-backend.onrender.com/api/v1/ready/
+# Kết quả mong đợi: HTTP/2 200, {"status":"ok"}
+```
+
+Sau khi cả 2 endpoint trả 200, frontend có thể kết nối:
+```powershell
+$env:VITE_API_BASE_URL = "https://family-bridge-backend.onrender.com"
+cd zalo-mini-app
+npm start
+# Mở http://localhost:3000/#/connection-check để xác nhận kết nối
+```
+
+---
+
+## 8. Phân biệt các tầng kiểm chứng
+
+| Tầng | Trạng thái | Ghi chú |
+|------|-----------|---------|
+| YAML parse (`render.yaml`) | ✅ Đạt | Parse bằng Python yaml |
+| Django system check (development) | ✅ Đạt | 0 issues |
+| Django system check (production/--deploy) | ✅ Đạt | Chỉ W005/W021 HSTS expected |
+| Backend unit tests | ✅ 40/40 PASS | Chạy trên SQLite local |
+| Frontend unit tests | ✅ 104/104 PASS | Bao gồm SEC-19 secret scan |
+| Feature Lab tests | ✅ 333 PASS, 2 skipped | **Chạy trên SQLite local**, không phải MySQL |
+| Docker build | ❌ Chưa kiểm chứng | Docker không có trên máy Windows này |
+| Kết nối MySQL từ xa | ❌ Chưa kiểm chứng | Chưa có MySQL từ xa |
+| Migration trên MySQL từ xa | ❌ Chưa kiểm chứng | Phụ thuộc MySQL từ xa |
+
+---
+
+## 9. Thứ tự thực hiện tổng thể
+
+```
+1. Huy chọn và tạo MySQL từ xa
+2. Huy lấy outbound CIDR của Render service (sau khi tạo service trên Render)
+3. Huy thêm CIDR Render + IP máy Huy vào MySQL allowlist
+4. Huy chạy migration từ máy (theo mục 4)
+5. Huy thu hồi IP máy khỏi MySQL allowlist
+6. Huy bấm Deploy Blueprint trên Render (theo mục 5)
+7. Kiểm tra /health/ và /ready/ (theo mục 7)
+8. Cấu hình frontend kết nối backend Render
+9. Xác minh origin Zalo Mini App WebView → thêm vào CORS_ALLOWED_ORIGINS
+```
+
+---
+
+## 10. Rollback
+
+- **Rollback code**: Render Dashboard → service → tab **Deploys** → bản deploy thành công gần nhất → **Rollback to this deploy**.
+- **Lưu ý**: Rollback code không tự động revert migration đã chạy trên MySQL. Không xóa database hay rollback migration nếu chưa có kế hoạch backup.

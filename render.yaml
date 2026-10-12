@@ -1,11 +1,17 @@
-﻿# Render Blueprint Specification for Family Bridge Backend
+# Render Blueprint Specification for Family Bridge Backend
 # Official Docs: https://render.com/docs/blueprint-spec
 #
 # Arch Decision: Uses Docker runtime (context: repo root) to provide MySQL C development
 # headers (default-libmysqlclient-dev, pkg-config) required to compile mysqlclient==2.2.8
 # on Linux, while preserving monorepo access to both backend/ and packages/.
 #
-# Migrations are executed once per deploy via preDeployCommand, keeping startup clean.
+# Migration strategy (Free plan):
+#   preDeployCommand is NOT available on Render Free plan (paid web services only).
+#   Source: https://render.com/docs/deploys#pre-deploy-command
+#   Run migrations from your local machine against the remote MySQL DB before the first
+#   deploy and before each schema-changing deploy.
+#   See docs/handover/blueprint-deployment-guide.md for the complete procedure.
+#
 # healthCheckPath probes the liveness endpoint (/api/v1/health/), which never touches DB.
 services:
   - type: web
@@ -17,7 +23,6 @@ services:
     dockerfilePath: ./Dockerfile
     dockerContext: .
     autoDeployTrigger: 'off'
-    preDeployCommand: python backend/manage.py migrate --noinput
     healthCheckPath: /api/v1/health/
     envVars:
       - key: DJANGO_ENV
@@ -28,8 +33,16 @@ services:
         value: mysql
       # Real environment/secret variables supplied by Huy on Render Dashboard (sync: false).
       # Never commit real credentials to Git (SEC-19).
+      #
+      # DJANGO_ALLOWED_HOSTS: comma-separated list of custom domain hostnames only.
+      # The service's onrender.com hostname is automatically added at runtime via
+      # RENDER_EXTERNAL_HOSTNAME (injected by Render, read in backend/config/settings.py).
       - key: DJANGO_ALLOWED_HOSTS
         sync: false
+      # CORS_ALLOWED_ORIGINS: comma-separated frontend origins permitted to call the API.
+      # Set to your actual local dev origins for testing (e.g. http://localhost:3000).
+      # Zalo Mini App WebView origins must be verified during device integration before adding.
+      # Do NOT use wildcards.
       - key: CORS_ALLOWED_ORIGINS
         sync: false
       - key: MYSQL_DATABASE
@@ -42,7 +55,7 @@ services:
         sync: false
       - key: MYSQL_PORT
         sync: false
-      # Path to CA certificate Secret File (e.g. /etc/secrets/ca.pem) if TLS is required by DB provider.
+      # Path to CA certificate Secret File (e.g. /etc/secrets/ca.pem) if TLS is required.
       - key: MYSQL_SSL_CA
         sync: false
       # Zalo verification credentials (SEC-01). Fails closed when missing.
@@ -50,6 +63,10 @@ services:
         sync: false
       - key: ZALO_APP_SECRET
         sync: false
-      # Feature set selection allowlist (optional, defaults to all 15 features mounted).
-      - key: FB_FEATURES
-        sync: false
+      # FB_FEATURES is intentionally NOT declared here.
+      # When the variable is absent, settings.py defaults to loading all 16 feature app labels.
+      # Declaring it as sync:false risks an accidental empty string being entered,
+      # which causes settings.py to load 0 features (FB_FEATURES="" -> csv split -> []).
+      # To narrow the feature set for ops/rollback, set FB_FEATURES manually in the
+      # Render Dashboard Environment tab using explicit labels separated by commas:
+      #   e.g. f01_identity,f02_program,f15_privacy,admin_core
