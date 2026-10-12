@@ -15,8 +15,24 @@ from ..models import AppointmentRequest, AppointmentSlot
 from ..services import registry
 from .helpers import auth_header, make_session
 
-START = dt.datetime(2026, 10, 11, 3, 0, 0, tzinfo=dt.timezone.utc)
-SLOT_ISO = "2026-10-12T09:00:00+00:00"
+# Time stability: every timestamp derives from ONE timezone-aware anchor
+# taken at import time, so the suite cannot rot when the real calendar
+# moves (previously SLOT_ISO hardcoded 2026-10-12T09:00Z and the service
+# correctly returned 400 must_be_in_future once that instant passed,
+# failing CI through no code change). Relative offsets preserve the
+# contract relationships of FL-18 (UTC times):
+#   SLOT_ISO          = anchor + 24 h -> a future slot (proposable 201)
+#   stale replacement = SLOT + 1 day  -> a different, still-future slot
+#   clash             = SLOT + 15 min -> overlaps [SLOT, SLOT+30') so the
+#                                       overlap guard 409s (SLOT_MINUTES=30)
+#   past slot         = anchor - 1 h  -> just-passed history, still 400
+# No production validation is relaxed; the past-rejection test asserts the
+# exact "must_be_in_future" reason. No clocks are mocked; _now() stays real.
+TEST_ANCHOR = dt.datetime.now(dt.timezone.utc)
+SLOT_ISO = (TEST_ANCHOR + dt.timedelta(hours=24)).isoformat()
+SLOT_REPLACEMENT_ISO = (TEST_ANCHOR + dt.timedelta(hours=24, days=1)).isoformat()
+SLOT_OVERLAP_ISO = (TEST_ANCHOR + dt.timedelta(hours=24, minutes=15)).isoformat()
+SLOT_PAST_ISO = (TEST_ANCHOR - dt.timedelta(hours=1)).isoformat()
 
 
 class F12ApiBase(TestCase):
@@ -117,7 +133,7 @@ class FlowTests(F12ApiBase):
             **auth_header(self.teacher_token)).data["slot"]["slot_id"]
         slot2 = self.client.post(
             f"/api/v1/appointments/requests/{request_id}/slots",
-            {"start_at": "2026-10-13T09:00:00+00:00"}, format="json",
+            {"start_at": SLOT_REPLACEMENT_ISO}, format="json",
             **auth_header(self.teacher_token)).data["slot"]["slot_id"]
         stale = self.client.post(
             f"/api/v1/appointments/requests/{request_id}"
@@ -149,7 +165,7 @@ class FlowTests(F12ApiBase):
                          {}, format="json", **auth_header(self.teacher_token))
         clash = self.client.post(
             f"/api/v1/appointments/requests/{other_id}/slots",
-            {"start_at": "2026-10-12T09:15:00+00:00"}, format="json",
+            {"start_at": SLOT_OVERLAP_ISO}, format="json",
             **auth_header(self.teacher_token))
         self.assertEqual(clash.status_code, 409)
         self.assertEqual(clash.data["error"]["code"], "slot_unavailable")
@@ -215,12 +231,18 @@ class FlowTests(F12ApiBase):
         self.assertEqual(self._create(note="x" * 4001).status_code, 400)
 
     def test_past_slot_rejected(self):
+        # Relative "just passed" history (-1 h) — proves the production
+        # future-validation stays enforced for slots that USED to be future
+        # (the exact case that used to rot the suite), not just ancient dates.
         request_id = self._claimed_request()
         response = self.client.post(
             f"/api/v1/appointments/requests/{request_id}/slots",
-            {"start_at": "2020-01-01T00:00:00+00:00"}, format="json",
+            {"start_at": SLOT_PAST_ISO}, format="json",
             **auth_header(self.teacher_token))
         self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["error"]["details"]["field"], "start_at")
+        self.assertEqual(response.data["error"]["details"]["reason"],
+                         "must_be_in_future")
 
     def test_unauthenticated_401(self):
         response = self.client.get("/api/v1/appointments/requests")
