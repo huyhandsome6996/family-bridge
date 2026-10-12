@@ -120,18 +120,25 @@ elif DB_ENGINE == "mysql":
         "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         "connect_timeout": 10,
     }
-    ca_path = os.getenv("MYSQL_SSL_CA")
-    if not ca_path and os.path.exists("/etc/ssl/certs/ca-certificates.crt"):
-        ca_path = "/etc/ssl/certs/ca-certificates.crt"
-    if ca_path:
-        db_options["ssl"] = {"ca": ca_path}
-        db_options["ssl_mode"] = "VERIFY_IDENTITY"
+    db_host = os.getenv("MYSQL_HOST", "127.0.0.1")
+    # TLS fallback (c977543) chỉ dành cho provider ngoài như TiDB. Với
+    # loopback (local dev, CI service container mysql:8.4), cert self-signed
+    # của container không khớp hostname → VERIFY_IDENTITY luôn fail; không
+    # ép TLS trên kết nối trong cùng máy để CI/dev chạy bình thường.
+    _loopback_hosts = {"localhost", "127.0.0.1", "::1", "0.0.0.0"}
+    if db_host not in _loopback_hosts:
+        ca_path = os.getenv("MYSQL_SSL_CA")
+        if not ca_path and os.path.exists("/etc/ssl/certs/ca-certificates.crt"):
+            ca_path = "/etc/ssl/certs/ca-certificates.crt"
+        if ca_path:
+            db_options["ssl"] = {"ca": ca_path}
+            db_options["ssl_mode"] = "VERIFY_IDENTITY"
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": os.getenv("MYSQL_DATABASE", "family_bridge"),
         "USER": os.getenv("MYSQL_USER", "family_bridge"),
         "PASSWORD": os.getenv("MYSQL_PASSWORD", ""),
-        "HOST": os.getenv("MYSQL_HOST", "127.0.0.1"),
+        "HOST": db_host,
         "PORT": os.getenv("MYSQL_PORT", "3306"),
         "CONN_MAX_AGE": 60,
         "CONN_HEALTH_CHECKS": True,
