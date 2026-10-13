@@ -138,6 +138,8 @@ Reviewer đã chỉ 5 lỗi; tất cả đã sửa kèm test tái hiện. Phạm
    trước POST và BỎ kết quả lỗi thời (logout không bị response đăng nhập
    chậm khôi phục phiên); `logout` chốt cặp (token, generation) và chỉ xóa
    phiên của mình. Trang connect chỉ đá về /login khi phiên THẬT SỰ chết.
+   (Bổ sung đợt sau: `logout` vô hiệu hóa NGAY khi gọi, `authed` bỏ cả
+   response thành công của thế hệ cũ — xem 3c.)
 5. **LỖI TRANSPORT ZALO** (`services/zalo_provider.py`): mapping lỗi
    transport đặt tại `_fetch_token_info` — `URLError`, `socket.timeout`/
    `TimeoutError`, `OSError` → 503 `temporarily_unavailable` /
@@ -146,13 +148,36 @@ Reviewer đã chỉ 5 lỗi; tất cả đã sửa kèm test tái hiện. Phạm
    (lỗi lập trình vẫn lan lên). Giữ nguyên HTTPS, allowlist, giới hạn 16KiB,
    timeout 10s, header proof.
 
+## 3c. Đợt sửa review vòng 2 (cùng phiên trên head 8733561a)
+
+Củng cố cô lập phiên theo thế hệ cho CẢ luồng đăng nhập và THÀNH CÔNG của
+request (đợt trước chỉ chặn 401 + kết quả đăng nhập chậm). Phạm vi: chỉ
+`src/core/api/client.mjs` + `src/core/adapter/zalo-adapter.js`; test deferred
+promises điều khiển chính xác thứ tự async (6 test mới trong `f01-flows`).
+
+1. **`loginWithZaloToken`**: chốt generation TRƯỚC bước await ĐẦU TIÊN
+   (SDK `getAccessToken`) — logout/đổi phiên trong lúc SDK chờ ⇒ luồng cũ
+   chết ngay khi SDK trả: KHÔNG phát hành (không POST access token), KHÔNG
+   cài phiên; kiểm tra lại sau POST trước `setSession`.
+2. **`logout`**: vô hiệu hóa NGAY LẶC TỨC khi gọi (không đợi response thu
+   hồi) — mọi luồng đăng nhập/request bắt đầu trước logout đều mất hiệu lực
+   từ thời điểm đó; vẫn gửi thu hồi ĐÚNG token cũ đã chụp (option `token`
+   từng request trong `client.mjs` — vẫn in-memory, không vào URL/storage);
+   response thu hồi cũ (kể cả lỗi) KHÔNG đụng vào phiên mới do người dùng
+   chủ động đăng nhập sau logout.
+3. **`authed`**: response THÀNH CÔNG thuộc thế hệ đã hết hiệu lực cũng bị
+   BỎ — dữ liệu actor cũ không trả cho UI phiên mới; response lỗi (kể cả
+   401) của thế hệ cũ bị thay bằng `stale_session`, không dùng để xóa phiên
+   mới; KHÔNG tự retry ghi; thông báo giữ bất định “máy chủ có thể đã xử lý
+   trước khi phiên đổi” — UI kiểm tra lại trạng thái trước khi thử lại.
+
 ## 4. Kiểm thử + kết quả
 
 | Bộ | Lệnh | Kết quả |
 |---|---|---|
 | Backend F01 (SQLite) | `cd tests/feature-lab && DJANGO_SETTINGS_MODULE=harness.settings DJANGO_ENV=test FB_FEATURES=f01_identity PYTHONPATH=. python manage.py test family_bridge_features.f01_identity` | **88 tests: 84 pass + 4 skip (MySQL-gated: 2 race confirm/claim + 2 race login đồng thời)** |
 | Backend toàn harness (SQLite) | `... FB_FEATURES="f01_identity,f15_privacy,...,admin_core" python manage.py test harness labgrants family_bridge_features.*` | **373 tests OK, 4 skip** |
-| Frontend full | `cd zalo-mini-app && npm test` | **149/149 pass** (trong đó: 39 test f01-flows gồm test tái hiện từng lỗi review) |
+| Frontend full | `cd zalo-mini-app && npm test` | **155/155 pass** (trong đó: 45 test f01-flows gồm 6 test deferred-promise của review vòng 2) |
 | Mobile packages | `node --test packages/family_bridge_mobile/*/tests/*.test.mjs` | 16/16 file OK |
 | Build | `cd zalo-mini-app && npm run build` | OK + `Verified Zalo app-config and all referenced assets` |
 | Docs checker | `python scripts/check_agent_docs.py` | OK (files/links, skills, wiring, SEC register, FL/AF/CAP/WF/DEC/CFG mapping) |

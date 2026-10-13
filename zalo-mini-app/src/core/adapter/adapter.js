@@ -20,7 +20,7 @@ export const ADAPTER_METHODS = [
   // ---- F01: đăng nhập + đồng ý + kết nối hai phía ----
   "loginWithZaloToken", // getAccessToken (SDK) -> POST /api/v1/auth/session
   "trySilentLogin",     // đăng nhập lại im lặng một lần khi mở app
-  "logout",             // POST /api/v1/auth/logout + clear session (theo generation)
+  "logout",             // POST /api/v1/auth/logout (token cũ đã chụp) + vô hiệu hóa phiên NGAY khi gọi
   "getMyProfile",       // GET /api/v1/auth/me — tên tự khai báo của mình
   "updateMyProfile",    // PUT  /api/v1/auth/me — đặt tên tự khai báo
   "listConsents",       // GET  /api/v1/consents

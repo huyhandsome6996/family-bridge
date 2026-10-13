@@ -26,7 +26,7 @@ export class ApiError extends Error {
 
 // Auth modules supply tokens in memory. No automatic retry of writes.
 export function createApiClient({ baseUrl, getToken = () => null, timeoutMs = 15000 }) {
-  return async function request(path, { method = "GET", body } = {}) {
+  return async function request(path, { method = "GET", body, token } = {}) {
     if (!baseUrl) throw new ApiError("Chưa cấu hình địa chỉ backend.", 0, "configuration");
     let base;
     try {
@@ -44,8 +44,12 @@ export function createApiClient({ baseUrl, getToken = () => null, timeoutMs = 15
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       const headers = { Accept: "application/json" };
-      const token = getToken();
-      if (token) headers.Authorization = `Bearer ${token}`;
+      // `token` (tùy chọn): dùng token CHỤP TRƯỚC cho request đi kèm — logout
+      // cần thu hồi đúng token cũ dù phiên tại client đã bị vô hiệu hóa ngay
+      // từ đầu logout (getToken() lúc đó đã trả null). Vẫn là in-memory,
+      // không bao giờ vào URL/storage (SEC-10).
+      const bearer = token === undefined ? getToken() : token;
+      if (bearer) headers.Authorization = `Bearer ${bearer}`;
       if (body !== undefined) headers["Content-Type"] = "application/json";
       const response = await fetch(`${baseUrl.replace(/\/$/, "")}${path}`, {
         method, headers, credentials: "omit", signal: controller.signal,

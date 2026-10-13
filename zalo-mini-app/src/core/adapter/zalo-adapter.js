@@ -16,7 +16,7 @@
 import { ApiError, createApiClient } from "../api/client.mjs";
 import { isZaloHost } from "../config.js";
 import {
-  clearSessionIfUnchanged, getSession, getSessionGeneration,
+  clearSession, clearSessionIfUnchanged, getSession, getSessionGeneration,
   getToken, hasLiveSession, setSession,
 } from "../session.js";
 
@@ -43,22 +43,46 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
     }
   }
 
-  // Wrapper cho các call cần đăng nhập: 401 từ backend nghĩa là phiên dùng
-  // cho REQUEST NÀY hết hạn/thu hồi/user bị vô hiệu. Chỉ xóa phiên khi thế hệ
-  // phiên CHƯA ĐỔI kể từ lúc gọi — request thuộc phiên cũ (đã có đăng nhập
-  // mới trong lúc request chạy) KHÔNG được xóa phiên mới (review: "CÔ LẬP
-  // REQUEST THEO PHIÊN"). Kết quả lỗi thời được ném đi, UI hiển thị lỗi;
-  // không tự retry.
+  // Lỗi "kết quả lỗi thời do phiên đã đổi" — dùng chung cho login/authed.
+  // KHÔNG báo chắc chắn thất bại: với thao tác ghi, máy chủ CÓ THỂ đã xử lý
+  // trước khi response bị bỏ theo phiên — UI phải kiểm tra lại trạng thái
+  // mới nhất, KHÔNG tự retry (cả đọc lẫn ghi) để tránh nhân đôi mutation.
+  function staleSessionError() {
+    return new ApiError(
+      "Phiên đã thay đổi khi yêu cầu đang chạy — kết quả của phiên cũ bị bỏ qua. " +
+      "Với thao tác ghi, máy chủ có thể đã xử lý trước khi phiên đổi: hãy kiểm " +
+      "tra lại trạng thái mới nhất trước khi thử lại.",
+      0,
+      "stale_session",
+    );
+  }
+
+  // Wrapper cho các call cần đăng nhập (review vòng 2 — cô lập theo thế hệ
+  // phiên cho CẢ thành công lẫn lỗi):
+  // - 401 của request thuộc phiên HIỆN TẠI (generation chưa đổi) → xóa phiên
+  //   (hết hạn/thu hồi/user vô hiệu).
+  // - Response thành công thuộc thế hệ đã hết hiệu lực → BỎ: dữ liệu của
+  //   actor cũ không được trả cho UI của phiên mới.
+  // - Response lỗi (kể cả 401) thuộc thế hệ cũ → BỎ, thay bằng stale_session;
+  //   KHÔNG dùng nó để xóa phiên mới, KHÔNG tự retry.
   async function authed(run) {
     const capturedGeneration = getSessionGeneration();
+    let data;
     try {
-      return await run();
+      data = await run();
     } catch (error) {
+      if (getSessionGeneration() !== capturedGeneration) {
+        throw staleSessionError();
+      }
       if (error instanceof ApiError && error.status === 401) {
         clearSessionIfUnchanged(capturedGeneration);
       }
       throw error;
     }
+    if (getSessionGeneration() !== capturedGeneration) {
+      throw staleSessionError();
+    }
+    return data;
   }
 
   return {
@@ -111,18 +135,31 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
      * Backend tự xác minh với Zalo (appsecret_proof) rồi cấp phiên.
      * Không bao giờ gửi role/id/tên tự nhận từ client.
      *
-     * Chống phiên "hồi sinh": capture generation TRƯỚC khi POST; nếu giữa
-     * chừng có logout/clearSession (generation đã đổi) thì kết quả này là
-     * lỗi thời — BỎ, không setSession (review: logout không được bị response
-     * đăng nhập chậm khôi phục phiên).
+     * Chống phiên "hồi sinh" (review vòng 2): chốt thế hệ phiên TRƯỚC bước
+     * await ĐẦU TIÊN (SDK getAccessToken), rồi KIỂM TRA LẠI sau từng bước
+     * async cần thiết:
+     *  - sau SDK trả: nếu logout/đổi phiên xảy ra trong lúc SDK chờ thì toàn
+     *    bộ luồng này hết hiệu lực — KHÔNG phát hành (không POST access
+     *    token), KHÔNG cài phiên;
+     *  - sau POST trả: kết quả lỗi thời bị BỎ, không setSession.
+     * Không tự retry.
      */
     async loginWithZaloToken() {
       requireBaseUrl();
       this.assertZaloHost();
+      const capturedGeneration = getSessionGeneration();
       let accessToken = null;
+      let sdkError = null;
       try {
         accessToken = await getSdkAccessToken();
       } catch (error) {
+        sdkError = error;
+      }
+      if (getSessionGeneration() !== capturedGeneration) {
+        // Phiên đổi trong lúc SDK chờ: bỏ CẢ lỗi SDK lẫn token — luồng cũ chết.
+        throw staleSessionError();
+      }
+      if (sdkError) {
         throw new ApiError(
           "Không gọi được Zalo để lấy phiên đăng nhập. Vui lòng thử lại.",
           0,
@@ -136,17 +173,12 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
           "configuration",
         );
       }
-      const capturedGeneration = getSessionGeneration();
       const data = await request("/api/v1/auth/session", {
         method: "POST",
         body: { access_token: accessToken },
       });
       if (getSessionGeneration() !== capturedGeneration) {
-        throw new ApiError(
-          "Phiên đã thay đổi trong lúc đăng nhập. Kết quả bị bỏ qua — hãy kiểm tra trạng thái đăng nhập hiện tại.",
-          0,
-          "stale_session",
-        );
+        throw staleSessionError();
       }
       if (!data || typeof data.token !== "string" || !data.token) {
         throw new ApiError("Backend trả về phiên không hợp lệ.", 0, "invalid_response");
@@ -182,19 +214,21 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
 
     async logout() {
       requireBaseUrl();
-      // Chốt cặp (token, generation) cùng lúc: revoke đúng token đang thấy,
-      // và chỉ xóa phiên khi chưa có đăng nhập mới xen vào.
+      // Chụp token TRƯỚC khi vô hiệu hóa: request thu hồi phải đi đúng token
+      // cũ (explicit token override) dù phiên tại client đã xóa ngay sau đây.
       const token = getToken();
-      const capturedGeneration = getSessionGeneration();
+      // Vô hiệu hóa NGAY LẶC TỨC (review vòng 2 — không đợi response thu hồi):
+      // mọi luồng đăng nhập và request bắt đầu trước logout đều mất hiệu lực
+      // từ thời điểm này — response đăng nhập chậm không được cài phiên,
+      // response 200/401 của request phiên cũ không được trả cho UI.
+      clearSession();
       if (token) {
-        try {
-          await request("/api/v1/auth/logout", { method: "POST", body: {} });
-        } finally {
-          clearSessionIfUnchanged(capturedGeneration);
-        }
+        // Vẫn gửi thu hồi đúng token cũ đã chụp. Response này (kể cả lỗi)
+        // KHÔNG đụng vào phiên: đăng nhập mới do người dùng chủ động bắt đầu
+        // sau logout phải sống nguyên vẹn. Không retry thu hồi.
+        await request("/api/v1/auth/logout", { method: "POST", body: {}, token });
         return true;
       }
-      clearSessionIfUnchanged(capturedGeneration);
       return false;
     },
 

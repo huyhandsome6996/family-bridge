@@ -335,6 +335,219 @@ describe("zalo-adapter session generation", () => {
       restoreEnv();
     }
   });
+
+  // ------------------------------------------------- deferred-promise races
+  // Review vòng 2: điều khiển chính xác thứ tự async bằng deferred promises.
+  // (1) SDK còn chờ → logout hoàn tất → SDK trả.
+  it("login: logout hoàn tất trong lúc SDK còn chờ → KHÔNG phát hành hay cài phiên từ luồng cũ", async () => {
+    clearSession();
+    let releaseSdk;
+    const sdkGate = new Promise((resolve) => { releaseSdk = resolve; });
+    let sessionPostCalls = 0;
+    globalThis.fetch = async (url) => {
+      if (String(url).endsWith("/api/v1/auth/session")) {
+        sessionPostCalls += 1;
+        return jsonResponse(200, SESSION_BODY);
+      }
+      throw new Error(`unexpected ${url}`);
+    };
+    const restoreEnv = useZaloEnvironment();
+    try {
+      const a = adapter({
+        getSdkAccessToken: () => sdkGate.then(() => "sdk-token"),
+      });
+      const pending = a.loginWithZaloToken().catch((e) => e);
+      // Logout hoàn tất TRƯỚC khi SDK trả token (không có phiên → không revoke).
+      await a.logout();
+      releaseSdk();
+      const outcome = await pending;
+      assert.equal(sessionPostCalls, 0,
+        "luồng đăng nhập cũ không được gửi access_token đi phát hành phiên");
+      assert.ok(
+        outcome instanceof ApiError && outcome.kind === "stale_session",
+        `luồng cũ phải kết thúc stale_session, thấy: ${outcome && outcome.kind}`,
+      );
+      assert.equal(hasLiveSession(), false,
+        "logout phải thắng: SDK trả muộn không được cài phiên");
+      assert.equal(getSession(), null);
+    } finally {
+      delete globalThis.fetch;
+      restoreEnv();
+    }
+  });
+
+  // (2) Login và logout cùng chờ HTTP → login trả trước → logout trả sau.
+  it("login và logout cùng chờ HTTP: login trả trước bị BỎ, logout trả sau không hồi sinh phiên", async () => {
+    clearSession();
+    setSession({ token: "tok-prev", userId: "user-prev", expiresAt: Date.now() + 60_000 });
+    let releaseLogin, releaseLogout;
+    const loginGate = new Promise((resolve) => { releaseLogin = resolve; });
+    const logoutGate = new Promise((resolve) => { releaseLogout = resolve; });
+    const resolvedOrder = [];
+    const revokeAuthHeaders = [];
+    const restore = installFetch(async (url, options) => {
+      if (String(url).endsWith("/api/v1/auth/session")) {
+        await loginGate;
+        resolvedOrder.push("login");
+        return jsonResponse(200, SESSION_BODY);
+      }
+      if (String(url).endsWith("/api/v1/auth/logout")) {
+        revokeAuthHeaders.push(options && options.headers ? options.headers.Authorization : null);
+        await logoutGate;
+        resolvedOrder.push("logout");
+        return jsonResponse(200, { revoked: true });
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+    const restoreEnv = useZaloEnvironment();
+    try {
+      const a = adapter({ getSdkAccessToken: async () => "sdk-token" });
+      const pendingLogin = a.loginWithZaloToken().catch((e) => e);
+      await wait(0); // đảm bảo POST /auth/session đã bắt đầu
+      const pendingLogout = a.logout(); // gọi khi login còn đang chờ HTTP
+      releaseLogin(); // login trả TRƯỚC
+      const loginOutcome = await pendingLogin;
+      assert.ok(
+        loginOutcome instanceof ApiError && loginOutcome.kind === "stale_session",
+        `kết quả đăng nhập lỗi thời phải bị bỏ, thấy: ${loginOutcome && loginOutcome.kind}`,
+      );
+      assert.equal(hasLiveSession(), false,
+        "logout gọi sau nhưng vô hiệu hóa NGAY: login trả trước không được cài phiên");
+      releaseLogout(); // logout trả SAU
+      assert.equal(await pendingLogout, true);
+      assert.deepEqual(resolvedOrder, ["login", "logout"],
+        "đúng thứ tự: login trả trước, logout trả sau");
+      assert.equal(revokeAuthHeaders.length, 1,
+        "logout vẫn gửi đúng MỘT request thu hồi");
+      assert.equal(revokeAuthHeaders[0], "Bearer tok-prev",
+        "thu hồi phải đi đúng token cũ đã chụp tại thời điểm logout");
+      assert.equal(hasLiveSession(), false);
+    } finally {
+      restore();
+      restoreEnv();
+    }
+  });
+
+  // (3) Request phiên cũ trả 200 sau đổi phiên.
+  it("authed: response 200 của phiên cũ sau khi đổi phiên phải bị BỎ — không trả dữ liệu actor cũ", async () => {
+    clearSession();
+    setSession({ token: "tok-old", userId: "user-old", expiresAt: Date.now() + 60_000 });
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const restore = installFetch(async () => {
+      await gate;
+      return jsonResponse(200, {
+        results: [{ connection_id: "conn-old", counterpart: { display_name: "Actor CU" } }],
+      });
+    });
+    try {
+      const pending = adapter().listConnections().catch((e) => e);
+      // Đăng nhập mới (đổi phiên) trong khi request cũ còn treo.
+      setSession({ token: "tok-new", userId: "user-new", expiresAt: Date.now() + 60_000 });
+      release();
+      const outcome = await pending;
+      assert.ok(
+        outcome instanceof ApiError && outcome.kind === "stale_session",
+        `response thành công của phiên cũ phải bị bỏ với stale_session, thấy: ${JSON.stringify(outcome)}`,
+      );
+      assert.ok(!Array.isArray(outcome) && !(outcome && outcome.results),
+        "dữ liệu actor cũ không được trả cho UI của phiên mới");
+      assert.match(outcome.message, /có thể/,
+        "với thao tác ghi phải giữ bất định: server có thể đã xử lý trước khi response bị bỏ");
+      assert.equal(getToken(), "tok-new", "phiên mới phải còn nguyên");
+    } finally {
+      restore();
+    }
+  });
+
+  // (4) Đăng nhập mới chủ động sau logout vẫn hoạt động.
+  it("đăng nhập mới CHỦ ĐỘNG sau logout vẫn hoạt động bình thường", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    const restore = installFetch(async (url, options) => {
+      if (String(url).endsWith("/api/v1/auth/logout")) {
+        return jsonResponse(200, { revoked: true });
+      }
+      if (String(url).endsWith("/api/v1/auth/session")) {
+        return jsonResponse(200, SESSION_BODY);
+      }
+      if (String(url).endsWith("/api/v1/connections")) {
+        assert.equal(options.headers.Authorization, "Bearer backend-token-2",
+          "request sau đăng nhập mới phải mang token MỚI");
+        return jsonResponse(200, { results: [{ connection_id: "conn-new" }] });
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+    const restoreEnv = useZaloEnvironment();
+    try {
+      const a = adapter({ getSdkAccessToken: async () => "sdk-token" });
+      assert.equal(await a.logout(), true);
+      assert.equal(hasLiveSession(), false);
+      const me = await a.loginWithZaloToken();
+      assert.equal(getToken(), "backend-token-2");
+      assert.equal(me.userId, "user-2");
+      const conns = await a.listConnections();
+      assert.deepEqual(conns, [{ connection_id: "conn-new" }]);
+      assert.equal(hasLiveSession(), true, "phiên mới phải sống sau logout cũ");
+    } finally {
+      restore();
+      restoreEnv();
+    }
+  });
+
+  // (5a) Response logout cũ không xóa phiên mới do người dùng chủ động đăng nhập.
+  it("response logout CŨ không xóa phiên mới đăng nhập chủ động sau logout", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let releaseLogout;
+    const logoutGate = new Promise((resolve) => { releaseLogout = resolve; });
+    const restore = installFetch(async (url) => {
+      if (String(url).endsWith("/api/v1/auth/logout")) {
+        await logoutGate;
+        return jsonResponse(200, { revoked: true });
+      }
+      throw new Error(`unexpected ${url}`);
+    });
+    try {
+      const a = adapter({ getSdkAccessToken: async () => "sdk-token" });
+      const pendingLogout = a.logout(); // revoke tok-a đang chờ HTTP
+      // Người dùng chủ động có phiên mới trong lúc logout còn treo.
+      setSession({ token: "tok-new", userId: "user-new", expiresAt: Date.now() + 60_000 });
+      releaseLogout();
+      await pendingLogout;
+      assert.equal(getToken(), "tok-new",
+        "response logout cũ không được xóa phiên mới");
+      assert.equal(hasLiveSession(), true);
+    } finally {
+      restore();
+    }
+  });
+
+  // (5b) 401 của phiên cũ trả sau khi phiên mới đã cài: không xóa phiên mới,
+  // kết quả lỗi thời bị thay bằng stale_session (không trả lỗi gốc cho UI mới).
+  it("401 CŨ trả sau khi phiên mới đã cài: không xóa phiên mới, báo stale_session", async () => {
+    clearSession();
+    setSession({ token: "tok-old", userId: "u", expiresAt: Date.now() + 60_000 });
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const restore = installFetch(async () => {
+      await gate;
+      return jsonResponse(401, { error: { code: "not_authenticated", details: {} } });
+    });
+    try {
+      const pending = adapter().listConnections().catch((e) => e);
+      setSession({ token: "tok-new", userId: "u", expiresAt: Date.now() + 60_000 });
+      release();
+      const outcome = await pending;
+      assert.ok(
+        outcome instanceof ApiError && outcome.kind === "stale_session",
+        `lỗi thuộc phiên cũ phải bị thay bằng stale_session, thấy: ${outcome && outcome.kind}`,
+      );
+      assert.equal(getToken(), "tok-new", "phiên mới không bị xóa bởi 401 cũ");
+    } finally {
+      restore();
+    }
+  });
 });
 
 // ---------------------------------------------------------------- login page
