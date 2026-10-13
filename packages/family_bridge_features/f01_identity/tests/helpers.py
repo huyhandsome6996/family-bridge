@@ -1,6 +1,7 @@
 """Shared test helpers for F01 tests."""
 
 import datetime as dt
+import uuid
 
 from family_bridge_core.timeutils import UTC
 
@@ -21,7 +22,7 @@ def accept_service_consent(user, *, purpose: str = "service",
 
 def make_session(user, *, ttl_hours: float = 24, clock=None) -> tuple:
     """Create a live session directly; returns (raw_token, session)."""
-    raw = "test-token-" + user.username + "-" + dt.datetime.now(tz=UTC).isoformat()
+    raw = "test-token-" + user.username + "-" + uuid.uuid4().hex
     now = clock.now() if clock else dt.datetime.now(tz=UTC)
     session = Session.objects.create(
         user=user, token_hash=hash_token(raw),

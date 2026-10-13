@@ -3,9 +3,10 @@
 // hướng dẫn mở trong Zalo — KHÔNG đăng nhập giả. Demo (?demo=1): phiên fixture
 // có nhãn dữ liệu minh họa, không phải phiên thật.
 import { h } from "../../app/dom.js";
-import { isZaloHost } from "../../core/config.js";
+import { isZaloHost, getTestBuildLabel } from "../../core/config.js";
 import { hasLiveSession } from "../../core/session.js";
 import { POLICY_PURPOSES } from "../../core/policy.js";
+import { loginErrorMessage } from "../../core/login-error.js";
 import {
   createButton, createCard, createStatusBadge, createTopBar,
 } from "../../components/index.js";
@@ -35,6 +36,8 @@ export const page = {
 
     const body = h("div", { class: "fb-page__body" });
     root.appendChild(body);
+    const buildLabel = getTestBuildLabel();
+    if (buildLabel) body.appendChild(createStatusBadge({ tone: "info", label: buildLabel }));
 
     const state = ctx.store.getState();
     const demo = Boolean(state.demoMode);
@@ -127,18 +130,7 @@ export const page = {
     function fail(error) {
       if (cancelled) return;
       setBusy(false);
-      let message = "Đăng nhập chưa thành công. Vui lòng thử lại.";
-      if (error) {
-        if (error.kind === "timeout") message = "Kết nối quá thời gian chờ. Vui lòng thử lại.";
-        else if (error.kind === "network") message = "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
-        else if (error.kind === "configuration") message = error.message || message;
-        else if (error.status === 401 || error.status === 400) {
-          message = "Phiên Zalo không hợp lệ cho ứng dụng này. Vui lòng thử lại.";
-        } else if (error.status === 503) {
-          message = "Máy chủ đang bận hoặc chưa sẵn sàng. Vui lòng thử lại sau.";
-        }
-      }
-      statusLine.textContent = message;
+      statusLine.textContent = loginErrorMessage(error);
     }
 
     async function startLogin() {
