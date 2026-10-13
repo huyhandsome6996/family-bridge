@@ -21,6 +21,10 @@ export function getTestBuildLabel() {
   return typeof label === "string" ? label.trim().slice(0, 80) : "";
 }
 
+export function isManualLoginTest() {
+  return Boolean(import.meta.env && import.meta.env.VITE_MANUAL_LOGIN_TEST === "1");
+}
+
 /**
  * Demo mode chỉ bật khi được yêu cầu RÕ RÀNG qua query `?demo=1`.
  * Không có bất kỳ cơ chế fallback tự động nào từ API/auth lỗi sang demo.
