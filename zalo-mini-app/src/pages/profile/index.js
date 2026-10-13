@@ -43,14 +43,17 @@ export const page = {
       createCard({
         title: "Cài đặt",
         children: h("div", { class: "fb-profile__actions" },
+          // F15: trang quyền riêng tư chính thức (thu hồi chia sẻ, đồng ý,
+          // yêu cầu xóa). Phiên đăng nhập F01 chưa hợp nhất — trang sẽ hiển
+          // thị trung thực trạng thái "chưa có phiên" nếu chưa login.
           createButton({
-            label: "Quản lý chia sẻ & đồng ý — Sắp có",
+            label: "Quản lý chia sẻ & đồng ý",
             variant: "ghost",
-            disabled: true,
-            title: "Tính năng quản lý chia sẻ và đồng ý sẽ có ở bản đầy đủ.",
+            onClick: () => ctx.navigate("/privacy"),
           }),
           h("p", { class: "fb-page__note" },
-            "Khi có, bạn sẽ chọn rõ từng thông tin muốn chia sẻ với người đồng hành trước khi bật tính năng này.",
+            "Bạn chọn rõ từng thông tin muốn chia sẻ với người đồng hành; "
+            + "thu hồi từng mục ngay trong trang này.",
           ),
           createButton({
             label: "Kiểm tra kết nối máy chủ",

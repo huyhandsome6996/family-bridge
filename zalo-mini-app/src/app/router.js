@@ -22,6 +22,8 @@ export const routes = {
   "/profile": () => import("../pages/profile/index.js"),
   "/connection-check": () => import("../pages/connection-check/index.js"),
   "/help": () => import("../pages/help/index.js"),
+  // ---- F15: quyền riêng tư, thu hồi, yêu cầu xóa ----
+  "/privacy": () => import("../pages/privacy/index.js"),
 };
 
 export function parseHash() {
