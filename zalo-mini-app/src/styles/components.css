@@ -504,7 +504,7 @@
   display: flex;
   align-items: center;
   gap: var(--fb-space-2);
-  min-height: 56px;
+  min-height: 64px;
   max-width: var(--fb-container-max);
   margin: 0 auto;
   padding: var(--fb-space-2) var(--fb-space-4);
@@ -542,9 +542,9 @@
 }
 
 .fb-top-bar__title {
-  font-size: var(--fb-font-size-h2);
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: var(--fb-fs-headline-sm);
+  font-weight: 600;
+  line-height: var(--fb-lh-headline-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -661,6 +661,20 @@
    app header, thẻ/section, mood grid, tile, timer badge, progress bar…
    Motion chỉ transform/opacity 150–200ms + prefers-reduced-motion.
    ============================================================ */
+
+/* ---- Nhịp dọc giữa các section (Stitch: space-y-xl 24px; compose 16px) ---- */
+.fb-page__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-page__body > * + * {
+  margin-top: var(--fb-space-6);
+}
+
+.fb-page--compose .fb-page__body > * + * {
+  margin-top: var(--fb-space-4);
+}
 
 /* ---- Icon (Material Symbols local) ---- */
 .fb-icon {
@@ -848,6 +862,7 @@
 .fb-chip--high {
   background: var(--fb-surface-high);
   box-shadow: var(--fb-shadow-sm);
+  font-weight: 500;
 }
 
 .fb-chip--low {
@@ -915,7 +930,7 @@
   line-height: var(--fb-lh-label-sm);
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--fb-on-secondary-fixed-variant);
+  color: var(--fb-on-tertiary-fixed-variant);
 }
 
 .fb-warm-card__title {
@@ -1074,6 +1089,14 @@
 
 .fb-photo__caption--plain {
   background: transparent;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 500;
+}
+
+/* U10 activity caption giữ headline-sm (đúng reference U10) */
+.fb-photo__caption--headline {
+  background: transparent;
   font-size: var(--fb-fs-headline-sm);
   line-height: 1.3;
   font-weight: 600;
@@ -1229,7 +1252,7 @@
 .fb-rust-card__body {
   font-size: var(--fb-fs-body-sm);
   line-height: var(--fb-lh-body-sm);
-  color: var(--fb-primary-fixed);
+  color: var(--fb-primary-fixed-dim);
 }
 
 .fb-btn-inverse {
@@ -1741,10 +1764,16 @@
 
 .fb-journey__cta {
   width: 100%;
+  min-height: 48px;
+  padding: 8px var(--fb-space-3);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--fb-space-2);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .fb-care__kicker {
@@ -1971,6 +2000,42 @@
   color: var(--fb-text-secondary);
 }
 
+.fb-compose__change-btn {
+  min-height: 36px;
+  padding: 0 var(--fb-space-3);
+  border-radius: 9999px;
+  background: var(--fb-surface-container);
+  color: var(--fb-primary);
+  border: 0;
+  font-family: inherit;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fb-compose__change-btn:hover {
+  background: var(--fb-surface-high);
+}
+
+.fb-compose__ai-btn {
+  border-radius: 9999px;
+  padding: 8px var(--fb-space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  white-space: nowrap;
+}
+
+.fb-compose__help-circle {
+  width: 40px;
+  height: 40px;
+}
+
 .fb-compose__hourglass {
   width: 36px;
   height: 36px;
@@ -2008,13 +2073,27 @@
   padding-top: var(--fb-space-1);
 }
 
+.fb-btn--neutral {
+  background: var(--fb-surface-container);
+  color: var(--fb-text);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+}
+
+.fb-btn--neutral:hover {
+  background: var(--fb-surface-high);
+}
+
 .fb-compose__pause-btn {
   width: 100%;
   min-height: 48px;
+  padding: 8px var(--fb-space-3);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--fb-space-1);
+  white-space: nowrap;
 }
 
 .fb-compose__refresh-row {
@@ -2066,4 +2145,20 @@
   color: var(--fb-text);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ---- U01 CTA glyph Zalo (reference: svg fill-current 20px) ---- */
+.fb-welcome__cta-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.fb-welcome__cta {
+  min-height: 48px;
+  padding: 8px var(--fb-space-3);
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 500;
+  white-space: nowrap;
 }

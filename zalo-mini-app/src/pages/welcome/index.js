@@ -65,7 +65,7 @@ export const page = {
         }),
         h("figcaption", { class: "fb-photo__overlay" },
           h("span", { class: "fb-photo__caption fb-photo__caption--plain" },
-            createIcon({ name: "favorite", size: 16, fill: true, className: "fb-welcome__heart" }),
+            createIcon({ name: "favorite", size: 16, className: "fb-welcome__heart" }),
             " Không gian riêng tư cho gia đình bạn",
           ),
         ),
@@ -103,14 +103,19 @@ export const page = {
 
     // CTA chính + hành động phụ
     const actions = h("div", { class: "fb-welcome__actions" });
-    actions.appendChild(
-      createButton({
-        label: "Tiếp tục với Zalo",
-        variant: "cta",
-        size: "lg",
-        onClick: () => ctx.navigate("/login"),
-      }),
+    // CTA với glyph Zalo 20px như reference U01 (code.html lines 82-85).
+    // Class giữ đúng contract design-system (fb-btn fb-btn--cta fb-btn--lg);
+    // size 48px đặt qua class riêng của màn welcome.
+    const zaloCta = h("button", {
+      class: "fb-btn fb-btn--cta fb-btn--lg fb-welcome__cta",
+      type: "button",
+      onclick: () => ctx.navigate("/login"),
+    });
+    zaloCta.appendChild(
+      createIcon({ name: "zalo_chat", size: 20, className: "fb-welcome__cta-icon" }),
     );
+    zaloCta.appendChild(h("span", {}, "Tiếp tục với Zalo"));
+    actions.appendChild(zaloCta);
     actions.appendChild(
       h("div", { class: "fb-welcome__links" },
         h("button", {

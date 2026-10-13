@@ -723,7 +723,7 @@ function renderCaregiverHome(body, ctx, { isFixture }) {
         decoding: "async",
       }),
       h("figcaption", { class: "fb-photo__overlay" },
-        h("span", { class: "fb-photo__caption fb-photo__caption--plain" },
+        h("span", { class: "fb-photo__caption fb-photo__caption--headline" },
           "Cùng con: Bữa tối 15 phút không dùng điện thoại",
         ),
       ),
@@ -854,7 +854,9 @@ function renderConnectedProduction(body, ctx, role, rows) {
   connectCard.appendChild(connectHead);
   connectCard.appendChild(
     h("p", { class: "fb-page__note" },
-      "Bạn có một kết nối đang hoạt động." + countNote +
+      (rows.length > 1
+        ? `Bạn có ${rows.length} kết nối đang hoạt động.` + countNote
+        : "Bạn có một kết nối đang hoạt động.") +
       " Chúng tôi hiển thị kết nối mà không lộ thông tin cá nhân của hai bên.",
     ),
   );

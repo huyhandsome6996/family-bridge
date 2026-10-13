@@ -29,12 +29,14 @@
   --fb-primary-container: #BD543D;
   --fb-on-primary-container: #FFFBFF;
   --fb-primary-fixed: #FFDAD2;
+  --fb-primary-fixed-dim: #FFB4A3;
   --fb-secondary-fixed: #FFDAD3;
   --fb-on-secondary-fixed: #3E0500;
   --fb-on-secondary-fixed-variant: #802918;
   --fb-tertiary-fixed: #FFDDB2;   /* card amber nhạt (U08 tín hiệu) */
   --fb-on-tertiary-fixed: #291800;
   --fb-tertiary-fixed-dim: #F7BC65;
+  --fb-on-tertiary-fixed-variant: #624000;
   --fb-tertiary: #7E5300;
   --fb-inverse-surface: #502319;  /* gradient/overlay trên ảnh */
   --fb-inverse-on-surface: #FFEDE9;

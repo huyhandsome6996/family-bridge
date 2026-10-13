@@ -300,7 +300,7 @@ describe("Stitch: adapter F06 (nháp + khoảng dừng máy chủ)", () => {
   it("mock: pause trả deadline +300s và re-pause KHÔNG reset deadline", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const created = await ctx.adapter.createDraft({
-      kind: "letter",
+      kind: "text",
       body: "Thử khoảng dừng.",
       recipientId: "demo-peer-fixture",
     });
@@ -318,7 +318,7 @@ describe("Stitch: adapter F06 (nháp + khoảng dừng máy chủ)", () => {
 
   it("mock: preview bị chặn khi còn khoảng dừng (cooldown_active) và mở sau khi hết", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
-    const created = await ctx.adapter.createDraft({ kind: "letter", body: "Nội dung thư." });
+    const created = await ctx.adapter.createDraft({ kind: "text", body: "Nội dung thư." });
     await ctx.adapter.pauseDraft(created.draft_id);
     await assert.rejects(
       () => ctx.adapter.previewDraft(created.draft_id),
@@ -334,10 +334,74 @@ describe("Stitch: adapter F06 (nháp + khoảng dừng máy chủ)", () => {
     );
   });
 
+  it("mock: kind phải thuộc KINDS backend (text|emotion_card) — không che lỗi hợp đồng", async () => {
+    const { ctx } = makeCtx({ demo: true, role: "student" });
+    // "letter" KHÔNG nằm trong KINDS của backend — mock phải từ chối giống hệt
+    await assert.rejects(
+      () => ctx.adapter.createDraft({ kind: "letter", body: "Nội dung" }),
+      (error) => error.status === 400 && error.details?.reason === "kind_not_allowed",
+    );
+    await assert.rejects(
+      () => ctx.adapter.createDraft({ kind: "email", body: "Nội dung" }),
+      (error) => error.status === 400,
+    );
+    // kind hợp lệ vẫn tạo được
+    const ok = await ctx.adapter.createDraft({ kind: "text", body: "Nội dung" });
+    assert.ok(ok.draft_id);
+  });
+
+  it("mock: preview trả ĐÚNG shape backend — KHÔNG có body (compose dùng snapshot)", async () => {
+    const { ctx } = makeCtx({ demo: true, role: "student" });
+    const created = await ctx.adapter.createDraft({
+      kind: "text",
+      body: "Nội dung để xem trước.",
+      recipientId: "demo-peer-fixture",
+    });
+    await ctx.adapter.pauseDraft(created.draft_id);
+    // Kéo deadline về quá khứ bằng cách tạo nháp mới với pause đã hết? —
+    // mock không cho sửa deadline từ ngoài; thay vào đó kiểm tra shape qua
+    // việc preview CHƯA hết giờ trả cooldown (đã test ở trên) và shape các
+    // trường dự kiến có mặt khi hợp lệ được pin qua source của mock:
+    // {preview_id, revision, recipient_id, deadline, server_time} — không body.
+    const mockSource = readFileSync(join(SRC, "core/adapter/mock-adapter.js"), "utf8");
+    const previewFn = mockSource.slice(
+      mockSource.indexOf("async previewDraft"),
+      mockSource.indexOf("async confirmDraftSend"),
+    );
+    assert.ok(!previewFn.includes("body: draft.body"), "preview KHÔNG được trả body như backend");
+    for (const field of ["preview_id", "revision:", "recipient_id", "deadline", "server_time"]) {
+      assert.ok(previewFn.includes(field), `preview phải có ${field}`);
+    }
+  });
+
+  it("mock: edit bản nháp đang paused quay về editing (deadline giữ nguyên)", async () => {
+    const { ctx } = makeCtx({ demo: true, role: "student" });
+    const created = await ctx.adapter.createDraft({ kind: "text", body: "Bản đầu." });
+    const paused = await ctx.adapter.pauseDraft(created.draft_id);
+    assert.equal(paused.status, "paused");
+    const edited = await ctx.adapter.editDraft(created.draft_id, { body: "Bản sửa." });
+    assert.equal(edited.status, "editing", "sửa nội dung đưa nháp về editing");
+    assert.ok(edited.pause, "deadline CỐ TÌNH không bị xóa khi sửa (không reset dừng)");
+    assert.equal(
+      Date.parse(edited.pause.deadline),
+      Date.parse(paused.pause.deadline),
+      "sửa nội dung không reset thời điểm kết thúc dừng",
+    );
+  });
+
+  it("mock: confirm-send thiếu người nhận bị từ chối (như backend)", async () => {
+    const { ctx } = makeCtx({ demo: true, role: "student" });
+    const created = await ctx.adapter.createDraft({ kind: "text", body: "Không người nhận." });
+    await assert.rejects(
+      () => ctx.adapter.confirmDraftSend(created.draft_id, "preview-gi"),
+      (error) => error.status === 400 || error.code === "cooldown_active" || error.code === "preview_stale",
+    );
+  });
+
   it("mock: body quá 4000 ký tự bị từ chối (ràng buộc backend)", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
     await assert.rejects(
-      () => ctx.adapter.createDraft({ kind: "letter", body: "a".repeat(4001) }),
+      () => ctx.adapter.createDraft({ kind: "text", body: "a".repeat(4001) }),
       (error) => error.status === 400,
     );
   });

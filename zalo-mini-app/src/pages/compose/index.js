@@ -35,7 +35,7 @@ import {
 
 const BODY_MAX = 4000; // ràng buộc backend (f06 _content_fields)
 const PAUSE_SECONDS = 300; // hiển thị khoảng dừng chuẩn (máy chủ quyết thật)
-const DRAFT_KIND = "letter"; // ≤16 ký tự theo backend
+const DRAFT_KIND = "text"; // backend KINDS chỉ nhận ("text","emotion_card")
 
 /** ctx.store có thể là snapshot hoặc module store — đọc state an toàn. */
 function readState(store) {
@@ -148,6 +148,9 @@ export const page = {
         renderCompose(body, ctx, {
           connections,
           draft: activeDraft || null,
+          // Envelope list của backend kèm server_time — dùng để tính thời gian
+          // còn lại của bản nháp đang paused khi tải lại trang (QA fix 3).
+          listServerTimeIso: draftsPage && draftsPage.serverTime ? draftsPage.serverTime : null,
           demo,
         });
       })
@@ -181,7 +184,7 @@ function renderLoadError(body) {
 
 /* ------------------------------ Màn soạn chính ------------------------------ */
 
-function renderCompose(body, ctx, { connections, draft }) {
+function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
   clear(body);
 
   const guarded = busyGuard();
@@ -198,6 +201,7 @@ function renderCompose(body, ctx, { connections, draft }) {
     pauseInfo: null,
     recipientName: null,
     recipientAvatar: null,
+    privacyChipText: null,
   };
 
   const state = {
@@ -205,18 +209,24 @@ function renderCompose(body, ctx, { connections, draft }) {
     revision: draft ? draft.revision : null,
     status: draft ? draft.status : "editing",
     pause: draft ? draft.pause : null,
-    serverTimeIso: draft ? draft.server_time : null,
-    fetchedAtMs: draft ? Date.now() : null,
+    // Ưu tiên dữ liệu máy chủ gắn sẵn trên từng row (remaining_seconds /
+    // can_preview); server_time của envelope list dùng khi cần tính lại.
+    rowRemainingSeconds: draft && draft.pause ? draft.pause.remaining_seconds : null,
+    rowCanPreview: draft && draft.pause ? Boolean(draft.pause.can_preview) : false,
+    serverTimeIso: draft ? (draft.server_time || listServerTimeIso || null) : (listServerTimeIso || null),
+    fetchedAtMs: draft || listServerTimeIso ? Date.now() : null,
     recipientId: draft ? draft.recipient_id : null,
     connections,
   };
 
   // ---- Dòng trạng thái riêng tư ----
   const privacyRow = h("div", { class: "fb-compose__privacy-row" });
+  ui.privacyChipText = h("span", {},
+    state.status === "paused" ? "Bản nháp riêng tư • Đang tạm dừng" : "Bản nháp riêng tư • Chưa gửi");
   privacyRow.appendChild(
     h("span", { class: "fb-chip fb-chip--high" },
       createIcon({ name: "lock", size: 16 }),
-      h("span", {}, state.status === "paused" ? "Bản nháp riêng tư • Đang tạm dừng" : "Bản nháp riêng tư • Chưa gửi"),
+      ui.privacyChipText,
     ),
   );
   privacyRow.appendChild(
@@ -239,13 +249,15 @@ function renderCompose(body, ctx, { connections, draft }) {
   recipientText.appendChild(ui.recipientName);
   recipientWho.appendChild(recipientText);
   recipientRow.appendChild(recipientWho);
-  recipientRow.appendChild(
-    createButton({
-      label: "Đổi",
-      variant: "ghost",
-      onClick: () => guarded("recipient", () => openRecipientSheet(body, ctx, state, ui)),
-    }),
+  const changePill = h("button", {
+    class: "fb-compose__change-btn",
+    type: "button",
+    onclick: () => guarded("recipient", () => openRecipientSheet(body, ctx, state, ui)),
+  },
+    h("span", {}, "Đổi"),
+    createIcon({ name: "expand_more", size: 16 }),
   );
+  recipientRow.appendChild(changePill);
   recipientCard.appendChild(recipientRow);
   body.appendChild(recipientCard);
 
@@ -296,22 +308,26 @@ function renderCompose(body, ctx, { connections, draft }) {
     "aria-describedby": "fb-compose-counter",
   });
   if (draft && draft.body) ui.textarea.value = String(draft.body);
-  ui.textarea.addEventListener("input", () => {
+  const syncCounter = () => {
     ui.counter.textContent = `${ui.textarea.value.length} ký tự`;
-  });
+  };
+  ui.textarea.addEventListener("input", syncCounter);
+  syncCounter(); // đếm đúng cả khi tải lại bản nháp đã có nội dung
   editor.appendChild(ui.textarea);
 
   // Khối AI — cổng chưa nối (thiết kế): nút disabled + giải thích trung thực.
   const aiBox = h("div", { class: "fb-compose__ai" });
   const aiRow = h("div", { class: "fb-sec__row" });
-  aiRow.appendChild(
-    createButton({
-      label: "AI gợi ý cách diễn đạt êm ái hơn",
-      variant: "primary",
-      disabled: true,
-      title: "Tính năng gợi ý AI chưa được bật ở bản này.",
-    }),
+  const aiPill = h("button", {
+    class: "fb-btn fb-btn--primary fb-compose__ai-btn",
+    type: "button",
+    disabled: true,
+    title: "Tính năng gợi ý AI chưa được bật ở bản này.",
+  },
+    createIcon({ name: "auto_awesome", size: 18 }),
+    h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
   );
+  aiRow.appendChild(aiPill);
   aiRow.appendChild(
     h("span", { class: "fb-sec__sub", style: "display:inline-flex;align-items:center;gap:4px;" },
       createIcon({ name: "shield", size: 14 }),
@@ -355,7 +371,7 @@ function renderCompose(body, ctx, { connections, draft }) {
   pauseCard.appendChild(ui.pauseInfo);
 
   const pauseButtons = h("div", { class: "fb-compose__pause-buttons" });
-  const pauseBtn = h("button", { class: "fb-btn fb-btn--primary fb-compose__pause-btn", type: "button" });
+  const pauseBtn = h("button", { class: "fb-btn fb-btn--neutral fb-compose__pause-btn", type: "button" });
   ui.pauseBtnIcon = createIcon({ name: "play_arrow", size: 20 });
   ui.pauseBtnLabel = h("span", {}, "Bắt đầu 5 phút nghỉ");
   pauseBtn.appendChild(ui.pauseBtnIcon);
@@ -394,7 +410,7 @@ function renderCompose(body, ctx, { connections, draft }) {
   helpCard.appendChild(
     h("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:var(--fb-space-2);" },
       h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-3);min-width:0;" },
-        h("span", { class: "fb-compose__hourglass", "aria-hidden": "true" },
+        h("span", { class: "fb-compose__hourglass fb-compose__help-circle", "aria-hidden": "true" },
           createIcon({ name: "support_agent", size: 22 }),
         ),
         h("div", {},
@@ -605,6 +621,7 @@ function onPreview(ctx, state, ui) {
 
 function openConfirmSheet(ctx, state, ui, preview) {
   const recipientName = ui.recipientName.textContent || "người nhận";
+  const sheetError = h("div", { role: "alert" });
 
   const confirmBtn = createButton({
     label: `Gửi cho ${recipientName}`,
@@ -628,17 +645,26 @@ function openConfirmSheet(ctx, state, ui, preview) {
       };
       run().catch((error) => {
         confirmBtn.disabled = false;
-        ui.statusNote.textContent = describeError(
-          error,
-          "KẾT QUẢ CHƯA XÁC ĐỊNH: máy chủ có thể đã nhận lời nhắn. Kiểm tra hộp thư của người nhận trước khi thử lại — không gửi lại ngay.",
+        // Thông báo an toàn QUAN TRỌNG NHẤT phải nằm TRONG sheet (nơi người
+        // dùng đang nhìn), không chỉ ở statusNote phía sau overlay.
+        clear(sheetError);
+        sheetError.appendChild(
+          h("p", { class: "fb-compose__sheet-error", role: "alert" },
+            describeError(error,
+              "KẾT QUẢ CHƯA XÁC ĐỊNH: máy chủ có thể đã nhận lời nhắn. Kiểm tra hộp thư của người nhận trước khi thử lại — không gửi lại ngay."),
+          ),
         );
+        ui.statusNote.textContent = "Gửi thư chưa rõ kết quả — xem thông báo trong khung xác nhận.";
       });
     },
   });
 
   const content = h("div", {},
     h("p", {}, "Xem lại lời nhắn trước khi gửi. Đây là bước xác nhận cuối cùng — bạn vẫn có thể giữ lại làm nháp."),
-    h("div", { class: "fb-compose__preview-body" }, String(preview.body || "")),
+    h("div", { class: "fb-compose__preview-body" }, String(ui.textarea.value || "")),
+    h("p", { class: "fb-page__note" },
+      "Máy chủ đã chốt bản xem trước với người nhận và nội dung hiện tại — sửa nội dung sau bước này sẽ cần xem trước lại."),
+    sheetError,
     confirmBtn,
     createButton({
       label: "Giữ lại làm nháp",
@@ -660,13 +686,25 @@ function openConfirmSheet(ctx, state, ui, preview) {
 /* --------------------------- Hiển thị trạng thái dừng --------------------------- */
 
 function refreshPauseUi(state, ui) {
-  const remaining = state.pause && state.pause.deadline && state.serverTimeIso
-    ? remainingFromServer({
-      deadlineIso: state.pause.deadline,
-      serverTimeIso: state.serverTimeIso,
-      fetchedAtMs: state.fetchedAtMs,
-    })
-    : null;
+  if (ui.privacyChipText) {
+    ui.privacyChipText.textContent = state.status === "paused"
+      ? "Bản nháp riêng tư • Đang tạm dừng"
+      : "Bản nháp riêng tư • Chưa gửi";
+  }
+  // Ưu tiên remaining_seconds do máy chủ trả gắn trên row/pause; nếu chỉ có
+  // (deadline, server_time) thì tính elapsed từ lúc fetch.
+  let remaining = null;
+  if (state.status === "paused" && state.pause) {
+    if (Number.isFinite(state.rowRemainingSeconds)) {
+      remaining = Math.max(0, Math.ceil(state.rowRemainingSeconds));
+    } else if (state.pause.deadline && state.serverTimeIso) {
+      remaining = remainingFromServer({
+        deadlineIso: state.pause.deadline,
+        serverTimeIso: state.serverTimeIso,
+        fetchedAtMs: state.fetchedAtMs,
+      });
+    }
+  }
 
   clear(ui.pauseInfo);
   ui.pauseInfo.appendChild(
@@ -699,10 +737,11 @@ function refreshPauseUi(state, ui) {
         }, "Làm mới"),
       ),
     );
-    ui.previewBtn.disabled = remaining > 0;
-    ui.previewBtn.title = remaining > 0
-      ? "Máy chủ chưa mở xem trước — còn khoảng dừng."
-      : "";
+    const serverAllowsPreview = Boolean(state.rowCanPreview) || remaining === 0;
+    ui.previewBtn.disabled = !serverAllowsPreview;
+    ui.previewBtn.title = serverAllowsPreview
+      ? ""
+      : "Máy chủ chưa mở xem trước — còn khoảng dừng.";
     return;
   }
 

@@ -401,6 +401,10 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
       return {
         results: data && Array.isArray(data.results) ? data.results : [],
         nextCursor: (data && data.next_cursor) || null,
+        // Envelope list của backend kèm server_time + pause_seconds — cần
+        // cho UI tính thời gian dừng còn lại của row đang paused.
+        serverTime: (data && data.server_time) || null,
+        pauseSeconds: (data && data.pause_seconds) || null,
       };
     },
 

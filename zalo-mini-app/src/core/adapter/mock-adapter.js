@@ -297,17 +297,34 @@ export function createMockAdapter({ scenario = null } = {}) {
 
     async listDrafts() {
       await wait(150);
+      const now = new Date();
       return {
         results: Array.from(drafts.values()).map((draft) => ({
           ...draft,
-          pause: draft.pause ? { ...draft.pause } : null,
+          pause: draft.pause
+            ? {
+              ...draft.pause,
+              // remaining_seconds tính tại thời điểm list (như backend view)
+              remaining_seconds: Math.max(0, Math.round((Date.parse(draft.pause.deadline) - now.getTime()) / 1000)),
+              can_preview: Date.parse(draft.pause.deadline) <= now.getTime(),
+            }
+            : null,
         })),
         nextCursor: null,
+        server_time: now.toISOString(),
+        pause_seconds: 300,
+        source: "fixture",
       };
     },
 
     async createDraft({ kind, body, title = "", recipientId = null } = {}) {
       await simulate({ kind: "drafts", fallback: "ok" });
+      // Backend KINDS chỉ nhận ("text","emotion_card") — mock phải từ chối
+      // giống hệt để không che lỗi hợp đồng ở demo (QA fix 1).
+      const allowedKinds = ["text", "emotion_card"];
+      if (!allowedKinds.includes(String(kind || ""))) {
+        throw new ApiError("Loại thư không được hỗ trợ (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "kind", reason: "kind_not_allowed" } });
+      }
       const text = String(body || "");
       if (!text.trim()) {
         throw new ApiError("Lời nhắn không được bỏ trống (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "body", reason: "too_short" } });
@@ -356,6 +373,9 @@ export function createMockAdapter({ scenario = null } = {}) {
       draft.title = String(title || "").slice(0, 200);
       draft.recipient_id = recipientId;
       draft.revision += 1; // sửa nội dung làm preview cũ hết giá trị (contract)
+      // Backend: edit đặt lại status=editing, deadline CỐ TÌNH không xóa
+      // (sửa nội dung không reset khoảng dừng).
+      draft.status = "editing";
       return { ...draft, pause: draft.pause ? { ...draft.pause } : null };
     },
 
@@ -413,12 +433,13 @@ export function createMockAdapter({ scenario = null } = {}) {
           { code: "cooldown_active", details: { remaining_seconds: remaining } },
         );
       }
+      const nowIso = new Date().toISOString();
       return {
         preview_id: `demo-preview-${draftId}-${draft.revision}`,
-        draft_id: draftId,
         revision: draft.revision,
         recipient_id: draft.recipient_id,
-        body: draft.body,
+        deadline: draft.pause.deadline,
+        server_time: nowIso,
         source: "fixture",
       };
     },
@@ -432,6 +453,9 @@ export function createMockAdapter({ scenario = null } = {}) {
       const expected = `demo-preview-${draftId}-${draft.revision}`;
       if (previewId !== expected) {
         throw new ApiError("Bản xem trước đã cũ, cần xem lại trước khi gửi (dữ liệu minh họa).", 409, "http", { code: "preview_stale" });
+      }
+      if (!draft.recipient_id) {
+        throw new ApiError("Thiếu người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "recipient_id" } });
       }
       drafts.delete(draftId); // gửi xong nháp rời danh sách đang soạn
       return { draft_id: draftId, status: "sent", preview_id: previewId, source: "fixture" };
