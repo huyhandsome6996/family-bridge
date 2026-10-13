@@ -34,6 +34,19 @@ export const ADAPTER_METHODS = [
   "cancelInvite",       // POST /api/v1/connections/invites/{id}/cancel
   "listConnections",    // GET  /api/v1/connections
   "revokeConnection",   // POST /api/v1/connections/{id}/revoke
+  // ---- F06: nháp + tạm dừng 300s do MÁY CHỦ quyết + preview + xác nhận gửi ----
+  // Tên endpoint khớp packages/family_bridge_mobile/f06_drafts/api.js và
+  // backend family_bridge_features.f06_drafts (PAUSE_SECONDS = 300, cố định).
+  "listDrafts",         // GET    /api/v1/drafts (keyset { results, nextCursor })
+  "createDraft",        // POST   /api/v1/drafts
+  "getDraft",           // GET    /api/v1/drafts/{id} (kèm server_time)
+  "editDraft",          // POST   /api/v1/drafts/{id} (bump revision, giữ deadline)
+  "discardDraft",       // DELETE /api/v1/drafts/{id}
+  "pauseDraft",         // POST   /api/v1/drafts/{id}/pause (deadline máy chủ)
+  "cancelDraftPause",   // DELETE /api/v1/drafts/{id}/pause
+  "previewDraft",       // POST   /api/v1/drafts/{id}/preview (chỉ sau deadline)
+  "confirmDraftSend",   // POST   /api/v1/drafts/{id}/confirm-send — HÀNH ĐỘNG
+                        //   CUỐI CÙNG của người dùng, KHÔNG tự retry.
 ];
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".
