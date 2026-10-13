@@ -24,11 +24,9 @@ import { h, clear } from "../../app/dom.js";
 import { hasLiveSession, getSession } from "../../core/session.js";
 import {
   createButton,
-  createCard,
   createSheet,
   createEmptyState,
   createErrorState,
-  createStatusBadge,
   createDemoBanner,
   createAppHeader,
   createIcon,
