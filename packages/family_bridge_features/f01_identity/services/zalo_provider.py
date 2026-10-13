@@ -82,8 +82,8 @@ class ZaloPlatformVerifier:
             # the view layer; here we allow injection for tests only).
             app_id = app_id or ""
             app_secret = app_secret or ""
-        self.app_id = str(app_id)
-        self.app_secret = str(app_secret)
+        self.app_id = str(app_id).strip()
+        self.app_secret = str(app_secret).strip()
         self._http_get = http_get or self._default_http_get
 
     # -- port ----------------------------------------------------------------
@@ -101,7 +101,8 @@ class ZaloPlatformVerifier:
             # (returned for garbage tokens even with correct request shape).
             if code in {"-100", "-102", "-212", "-213", "452"}:
                 raise NotAuthenticated({"reason": "token_invalid_or_expired"})
-            raise NotAuthenticated({"reason": "provider_rejected"})
+            z_msg = str(data.get("message", "")).strip()
+            raise NotAuthenticated({"reason": f"provider_rejected [code {code}: {z_msg}]"})
         subject = data.get("id")
         # A03: validate the provider subject against the schema BEFORE using
         # it — provider_subject column is max_length=128, and bool is an int
