@@ -1,4 +1,4 @@
-# F15 — scope/test/manual (vòng 2; chi tiết trong report.md + api.md)
+# F15 — scope/test/manual (vòng 3; chi tiết trong report.md + api.md)
 
 ## Phạm vi
 
@@ -25,7 +25,7 @@
 | Overview | Cursor 7 mục qua trang 3 không mất mục; connections từ reader; shape mới | PASS |
 | Revoke API | Owner revoke → chặn đọc mới + ledger; stranger 404 không ledger | PASS |
 | Revoke API | expected_revision lệch → 409 revision_conflict; idempotent lần 2 revoked=false, đúng 1 event | PASS |
-| Connection revoke | Grants 2 chiều chết cùng transaction; ledger 2 phía (payload refs + owner_id) | PASS |
+| Connection revoke | Grants 2 chiều chết cùng transaction; ledger 2 phía (payload scope connection identity+generation, O(1) byte — R08) | PASS |
 | Connection revoke | Reconnect generation mới không hồi sinh; gọi lặp không spam event; stranger → 404 | PASS |
 | Consent | Withdraw research → 200 dứt khoát + F01 withdrawn + F14 withdrawn + F14 submit chặn consent_required + ledger | PASS |
 | Consent | AI withdrawal → has_active_consent False; chưa có đồng ý → declined được ghi nhận; unwired → 503 riêng | PASS |
@@ -38,6 +38,15 @@
 | Restore | Replay connection event hai phía + consent re-withdraw | PASS |
 | Restore | Provider thiếu → incomplete fail-closed; truncated → incomplete + next_after_seq; replay idempotent, không viết event mới | PASS |
 
+## Regression vòng 3 — 20 ca (R01–R12, `test_f15_regression.py`)
+
+| Nhóm | Case | Kết quả |
+| --- | --- | --- |
+| R01/R02 | Withdraw nhiều version → acceptance cũ không hồi sinh; accept mới sau rút vẫn hiệu lực; ledger lỗi → rollback consent | PASS |
+| R05/R08 | Restore revoke ROW connection; truncated refs fail-closed; 40/50 grants unlink được; replay KHÔNG đụng grant của connection KHÁC (isolation); watermark seq không bỏ event | PASS |
+| R04/R06/R07/R09/R12 | Overview đủ 125/125 qua cursor; actor handler xuyên view→service (2 lần gọi đúng actor); crash processing → recovery completed; replay giữ cutoff gốc; domain revoke có ledger; cursor UUID hỏng → 400; connections hook giữ session sau cutoff + giữ consent/provider identity | PASS |
+| R10 | F01 revoke endpoint thật → 2 event connection_revoked; F07/F08 fallback session F01 thật → 200 | PASS |
+
 ## Frontend
 
 | Suite | Case | Kết quả |
@@ -45,8 +54,10 @@
 | zalo-mini-app DOM (8) | Page contract; chưa có phiên → thông báo thật + không gọi API; có phiên → hiện mục + nút thu hồi; lỗi mạng → offline + Tải lại; cấu hình lỗi → thông báo cấu hình | 8/8 PASS |
 | zalo-mini-app DOM | Double-click thu hồi → đúng 1 POST; timeout → 1 GET đọc lại, không retry POST; destroy → response muộn không render | PASS |
 | package page-core (10) | classifyError 2 hình dạng lỗi; busy guard; confirm hủy; receipt một lần; destroy semantics; 401 → no_session | PASS |
+| package page-core regression (11) | R03 logout/đổi actor/no_session/destroy dọn private state; R12 reconcile deletion status; duplicate scope mismatch; loadMore cursor; unlink API thật + confirm; status map tiếng Việt; lỗi list không nuốt | PASS |
 | package contract (3 cũ) | api wrapper paths + empty-body revoke-all + factory export | PASS |
-| zalo-mini-app toàn app | 112/112 PASS (gồm profile patch test mới) | PASS |
+| miniapp artifact R11 (3) | Build có session.js tổng hợp → module BUNDLED + serve HTTP 200 (không 404); build không session.js → xanh + bridge null; nguồn bridge sạch pattern cũ | PASS |
+| zalo-mini-app toàn app | 115/115 PASS | PASS |
 | Build | `npm run build` OK, bundle /privacy xuất hiện, verify-build PASS | PASS |
 
 ## Regression các domain bị tác động (SQLite)

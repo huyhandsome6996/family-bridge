@@ -25,16 +25,18 @@ Owner-only. Trang dữ liệu quyền riêng tư của chính người gọi.
       {"connection_id": "<uuid>", "other_party_id": "<uuid>",
        "relationship_kind": "primary", "generation": 1, "status": "active"}
     ],
-    "next_cursor": "created_at|item_type|item_id|recipient_id" | null,
+    "next_cursor": "ov2|<created_at_iso>|<share_id>" | null,
     "has_more": false
   }
   ```
-- Cursor: ổn định theo khóa `(created_at, item_type, item_id, recipient_id)`,
-  mới nhất trước; KHÔNG mất mục giữa các trang (không còn full-scan + `[:50]`).
+- Cursor v2: khóa toàn cục `(created_at, share_id)` — nhất quán với ORDER BY
+  SQL của từng provider; cursor được áp dụng TRONG DATABASE trước LIMIT
+  (R09 fix: không còn chốt 100 mục/provider rồi lọc Python — domain lớn hơn
+  100 vẫn tới được 100% qua các trang). Sai định dạng cursor → 400.
 - `connections` lấy từ ConnectionReader production (F01 `InviteService`,
   `list_active_for_user`); khi port chưa nối thì mảng rỗng — không giả dữ liệu.
-- Mỗi `item_type` đọc tối đa 100 grant trước khi merge (bounded, không N+1:
-  1 truy vấn mỗi provider đã đăng ký).
+- Mỗi provider đọc theo lô 100 với cursor SQL riêng (bounded, không N+1);
+  provider lab không hỗ trợ cursor bị giới hạn 1 lô — chỉ tồn tại trong harness.
 
 ## 2. POST /api/v1/privacy/grants/{item_type}/{item_id}/revoke
 
@@ -76,7 +78,10 @@ Owner-only. Tạo yêu cầu xóa theo categories.
 Owner-only (MỚI). Phục hồi trạng thái sau mất response/mở lại app — KHÔNG
 dùng POST để tra cứu.
 
-- Query: `limit` (1..50, mặc định 20), `cursor` (`"<requested_at>|<id>"`).
+- Query: `limit` (1..50, mặc định 20), `cursor` (`"v2|<requested_at_iso>|<id>"`;
+  cursor cũ không prefix vẫn đọc được). Timestamp phải có timezone, id phải
+  UUID hợp lệ — sai → **400 `input_invalid`** (R12 fix: không còn 500 từ
+  UUID hỏng chạm ORM).
 - Response: `{"results":[{"request_id","status","scope_categories",
   "requested_at","revision"}],"next_cursor","has_more"}` — mới nhất trước.
 
@@ -103,17 +108,31 @@ Owner-only; chỉ khi `status=requested`. Body `{"expected_revision": int}`
     existence). `is_staff`/`dashboard.read` KHÔNG được chấp nhận.
   - B16 chưa ship code constant này: production fail-closed cho đến khi B16
     cấp được (đã ghi dependency trong report).
-- Body: `{"verifier_ref": "..."}` (≤64 ký tự, không PII) — mặc định actor id.
+- Body: `{"verifier_ref": "..."}` (tùy chọn, chuỗi 1..64, không PII).
+- R07 fix: actor/action/request context TIN CẬY được truyền xuyên view →
+  service; service authorize LẠI với actor id thực (không bao giờ actor rỗng,
+  không tin `verifier_ref` client làm audit actor). Event ledger ghi
+  `actor_ref` = actor đã xác thực; `verifier_ref` chỉ là tham chiếu trong
+  payload.
 - Hiệu quả: `requested → verified`, tạo `PrivacyCase`, ledger
   `deletion_requested(transition=verified)`.
 
 ## 8. POST /api/v1/privacy/deletion-requests/{id}/process — HANDLER ONLY
 
-- Authorizer như trên (fail-closed). Chỉ chạy từ `verified`/`failed_needs_action`.
+- Authorizer như trên (fail-closed). Chạy từ `verified`/`failed_needs_action`
+  VÀ từ `processing` bị bỏ dở (R06 fix: worker crash giữa chừng không còn
+  kẹt vĩnh viễn — chạy lại tiếp tục từ checkpoint per-category đã lưu bền;
+  category đã ok không chạy lại hook destructive; request `completed`/
+  `cancelled` không chạy lại).
 - 3 phase: (A) chốt `status=processing` + **cutoff snapshot** lưu vĩnh viễn;
-  (B) mỗi category chạy trong transaction riêng ngắn, checkpoint ngay sau mỗi
-  category, hook nhận `requested_at = cutoff` (không phải thời điểm chạy lại);
+  (B) mỗi category chạy trong transaction riêng ngắn, checkpoint được PERSIST
+  sau MỖI category (R06: crash giữa các category mất tối đa 1 category đang
+  chạy), hook nhận `requested_at = cutoff` (không phải thời điểm chạy lại);
   (C) trạng thái cuối trung thực + ledger event.
+- Event `deletion_applied` mang `cutoff` GỐC trong payload (R04 fix: replay
+  restore dùng lại đúng cutoff, không bao giờ lấy `occurred_at` của event —
+  thời điểm đó muộn hơn và sẽ MỞ RỘNG phạm vi xóa). Event cũ thiếu cutoff →
+  replay FAIL-CLOSED (`deletion_cutoff_missing`).
 - `completed` CHỈ khi toàn bộ categories đã xử lý thành công; một hook fail →
   `failed_needs_action` kèm outcome từng phần. Retry chỉ chạy lại category
   thiếu/thất bại, không mở rộng scope sang mục tạo sau cutoff.
@@ -126,6 +145,12 @@ Owner-only; `purpose ∈ {service, ai_processing, research}`.
 - Qua port consent đã nối production (F01 store; research rút ĐỒNG THỜI F01
   `ConsentRecord` + F14 `ResearchConsent` trong một transaction — hai store
   không bao giờ mâu thuẫn; rút research chặn submission/report F14).
+- R01 fix: rút đồng ý là tombstone THEO PURPOSE — MỌI row còn active của
+  purpose bị rút cùng lúc (không chỉ row mới nhất); lịch sử được giữ (row
+  giữ `withdrawn_at`) nhưng acceptance cũ không bao giờ "hồi sinh" qua
+  `latest_active`. Accept tường minh MỚI sau khi rút vẫn hiệu lực (WF-17).
+- R02 fix: mutation consent + event ledger commit MỘT transaction — ledger
+  lỗi → rút đồng ý bị roll back (trạng thái và event không bao giờ lệch nhau).
 - Chưa nối port → **503 fail-closed** (không bao giờ no-op giả thành công).
 - Response: `{"purpose","withdrawn":true|false}` — `false` khi không có đồng ý
   đang hiệu lực (vẫn ghi nhận quyết định `declined` để audit không bị hiểu
@@ -135,32 +160,51 @@ Owner-only; `purpose ∈ {service, ai_processing, research}`.
 ## 10. Kết nối (F01 là endpoint duy nhất)
 
 - Client hủy kết nối qua `POST /api/v1/connections/{id}/revoke` của F01
-  (KHÔNG có endpoint revoke riêng trong F15).
-- F15 cung cấp adapter `services.revocation.revoke_connection_with_privacy`:
-  trong MỘT transaction — F01 revoke (lock connection row trước) → thu hồi mọi
-  grant hai chiều giữa cặp theo providers đã đăng ký → ghi MỖI MỘT event
-  `connection_revoked` cho từng phía (payload có grant refs kèm owner_id, giới
-  hạn 50 + cờ truncated). Idempotent: gọi lại trên connection đã revoked không
-  viết thêm event.
+  (KHÔNG có endpoint revoke riêng trong F15). **Đã nối thật (R10 fix):** view
+  F01 gọi adapter `revoke_connection_with_privacy` khi f15_privacy được cài;
+  response có thêm `grants_revoked`. Không có f15 (build tối giản F01) thì
+  fallback service thuần F01 — coupling được ghi rõ, không tuyên bố wired.
+- Adapter trong MỘT transaction — F01 revoke (lock connection row trước) →
+  thu hồi mọi grant hai chiều giữa cặp theo providers đã đăng ký → ghi MỖI
+  MỘT event `connection_revoked` cho từng phía.
+- **Payload event (R08 fix):** `{"connection_id","generation",
+  "other_party_id","grants_revoked","scope":"connection_identity_generation"}`
+  — O(1) byte bất kể số grant; KHÔNG còn danh sách grant_refs (payload 50
+  grants cũ vượt cap 8 KiB và làm rollback cả unlink). Event cũ có
+  `grant_refs` vẫn replay được (nhánh legacy).
+- Idempotent: gọi lại trên connection đã revoked không viết thêm event.
 - Tái kết nối tạo generation mới: grant cũ (generation cũ) KHÔNG hồi sinh —
   adapter kiểm `connection_id` + `connection_generation` của grant so với
   connection hiện hành. Share lại sau thu hồi cùng revision bị từ chối
   (`reshare_after_revoke_requires_edit`, 400) — chủ sở hữu phải sửa mục (revision
-  mới) rồi chia sẻ lại. Patch tích hợp: view F01 gọi adapter này (patch map
-  trong report, pending F01 owner).
+  mới) rồi chia sẻ lại.
+- Domain revoke entry points (F07 `MoodShareService.revoke` / F08
+  `JournalShareService.revoke`) cũng append event `grant_revoked` (R10 fix)
+  — mọi đường thu hồi đều durable.
 
 ## 11. Restore (B17 runbook, không phải API user)
 
 `DeletionService.replay_ledger_for_restore(target_user_id, after_seq?,
-max_events?=10000)`: đọc ledger MỚI NHẤT theo `(occurred_at, seq)`, áp dụng
-idempotent: `grant_revoked` → revoke lại qua registry; `connection_revoked` →
-revoke refs của PHÍA ĐÓ (refs mang owner_id); `consent_withdrawn` → rút lại
-qua consent port; `deletion_applied` → chạy lại hook theo categories với
-`requested_at = occurred_at` của event. FAIL-CLOSED: hook/provider thiếu,
-`ok=false`, exception, hoặc bị cắt (`truncated`) → `incomplete: true` + danh
-sách `failures` — operator GIỮ cách ly, không cộng dồn "applied" như đã xong.
-Replay KHÔNG bao giờ viết event domain mới; `next_after_seq` hỗ trợ chạy tiếp
-có trần.
+max_events?=10000)`: đọc ledger theo **`seq`** (R05 fix: thứ tự append-only
+là thứ tự replay duy nhất — sort `(occurred_at, seq)` cũ kết hợp watermark
+`seq >` có thể bỏ event vĩnh viễn khi timestamp nghiệp vụ ngược thứ tự),
+ap dụng idempotent:
+- `grant_revoked` → revoke lại qua registry;
+- `connection_revoked` → (R05 fix) revoke lại ROW connection (id + generation
+  khớp) + revoke grant của PHÍA ĐÓ theo đúng connection scope trong payload;
+  connection thiếu → fail-closed; payload legacy có `grant_refs` vẫn xử lý
+  theo refs, `grant_refs_truncated` → **fail-closed** (bằng chứng không đầy đủ
+  không được báo hoàn tất);
+- `consent_withdrawn` → rút lại qua consent port;
+- `deletion_applied` → chạy lại hook theo categories với `requested_at =
+  cutoff` GỐC trong payload (R04 fix — KHÔNG dùng `occurred_at` của event);
+  thiếu cutoff → fail-closed.
+
+FAIL-CLOSED: hook/provider thiếu, `ok=false`, exception, bị cắt
+(`truncated`), truncated refs, thiếu/malformed cutoff, connection row thiếu →
+`incomplete: true` + danh sách `failures` — operator GIỮ cách ly, không cộng
+dồn "applied" như đã xong. Replay KHÔNG bao giờ viết event domain mới;
+`next_after_seq` hỗ trợ chạy tiếp có trần.
 
 ## Lỗi
 

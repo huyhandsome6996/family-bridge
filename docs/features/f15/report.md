@@ -86,8 +86,8 @@ không claim thiết bị Zalo thật.
 | --- | --- | --- | --- |
 | mood | MoodDeletionHook (F15) | MoodEntry của chủ (share cascade) theo cutoff | wired (test DB) |
 | journal | JournalDeletionHook (F15) | JournalPage của chủ (share/reply cascade) theo cutoff | wired (test DB) |
-| surveys | SurveysDeletionHook (F15) | SurveyResponse + ResearchConsent | wired (test DB) |
-| connections | ConnectionsDeletionHook (F15) | Connection 2 chiều, invite, claim attempt, session, provider identity, consent record | wired (test DB) |
+| surveys | SurveysDeletionHook (F15) | SurveyResponse + ResearchConsent TẠO TRƯỚC cutoff | wired (test DB) |
+| connections | ConnectionsDeletionHook (F15) | Connection 2 chiều, invite, claim attempt theo cutoff. KHÔNG còn đụng session/provider identity/consent record (R04: đó là phạm vi account, DEC-12/23 OPEN) | wired (test DB) |
 | account | — | User row | NOT wired — DEC-12/23 OPEN: không tự bật xóa User |
 | messages / ai / drafts / program_progress / appointments | — | domain owner hooks | NOT wired → processing trả `hook_not_registered` → `failed_needs_action` (trung thực) |
 
@@ -97,13 +97,15 @@ DEC-12 còn OPEN: KHÔNG chạy hook lên dữ liệu thật; chỉ test DB cô 
 
 | File | Owner | Thay đổi | Status |
 | --- | --- | --- | --- |
-| `packages/.../f07_mood/services/mood.py` | F07 branch | share(): không trả row revoked (`reshare_after_revoke_requires_edit`); read/list kiểm connection binding + fail-closed khi thiếu reader; list bounded | patch nhỏ, chờ owner confirm |
-| `packages/.../f08_journal/services/journal.py` | F08 branch | như trên cho page/reply context | patch nhỏ, chờ owner confirm |
+| `packages/.../f07_mood/services/mood.py` | F07 branch | share(): không trả row revoked; read/list kiểm connection binding + fail-closed; list: filter binding (connection_id+generation) TRONG SQL trước bound (R09); revoke() append ledger `grant_revoked` (R10) | patch nhỏ trong nhánh F15, chờ owner confirm |
+| `packages/.../f08_journal/services/journal.py` | F08 branch | như trên cho page/reply context (filter SQL + revoke ledger) | patch nhỏ trong nhánh F15, chờ owner confirm |
+| `packages/.../f07_mood/auth.py` + `services/registry.py` | F07 branch | fallback production: resolver/reader F01 thật khi không có lab registration (R10) | patch nhỏ trong nhánh F15, chờ owner confirm |
+| `packages/.../f08_journal/auth.py` + `services/registry.py` | F08 branch | như trên (R10) | patch nhỏ trong nhánh F15, chờ owner confirm |
+| `packages/.../f01_identity/api.py` ConnectionRevokeView | F01 owner | **ĐÃ SỬA trong nhánh F15 (R10):** view gọi `revoke_connection_with_privacy` (guarded import, fallback khi không có f15) | patched, chờ owner review |
 | `tests/feature-lab/harness/settings.py` | Lead/B00 | mở rộng HARNESS_DEPS cho f15 (f07/f08/f14/f13) | accepted trong PR này (diff + tests) |
 | `tests/feature-lab/labgrants/f05_fixtures.py` | Lead/B00 | TestConnectionReader implement `list_active_for_user` (port thiếu) | accepted trong PR này |
 | `zalo-mini-app/src/app/router.js` | US-003 Agent B (F01 cũng sửa file này) | +1 route `/privacy` | pending merge-reconcile với F01 |
 | `zalo-mini-app/src/pages/profile/index.js` | US-003 Agent B (F01 cũng sửa) | enable nút Quản lý chia sẻ & đồng ý → /privacy | pending merge-reconcile với F01 |
-| F01 `api.py` connection revoke view | F01 owner | gọi `revoke_connection_with_privacy` (tích hợp 1 dòng) | PATCH ĐỀ NGHỊ — chưa sửa file F01 |
 
 ## Kiểm tra đã chạy + lệnh
 
@@ -139,6 +141,35 @@ python scripts/check_agent_docs.py && git diff --check
   (SEC-03/04/05/08/14/19/21/22, WF-04/17/21/22) ngày 13/10/2026; Zalo
   developer program agreement đã được chat cố vấn đối chiếu 13/10/2026 (không
   mở lại link mới trong đợt này — không claim đọc thêm).
+
+## Vòng 3 — sửa 12 finding kiểm thử độc lập (R01–R12, PR #27)
+
+Kiểm thử độc lập 13/10/2026 tái hiện 14 ca backend (1 PASS / 10 FAIL /
+3 ERROR), 5 ca runtime real-config (2 PASS / 3 FAIL) và 4 ca frontend
+(0/4). Vòng này sửa toàn bộ; các suite trên giờ 100% PASS trong repo
+(`f15_privacy/tests/test_f15_regression.py` — 20 ca; các ca runtime tương
+đương chạy trên harness thật; frontend trong
+`page-core-regression.test.mjs` + artifact test R11).
+
+| Finding | Sửa cốt lõi | Test khóa |
+| --- | --- | --- |
+| R01 rút consent hồi sinh version cũ | rút theo PURPOSE (mọi row active của purpose, giữ history) | `test_withdraw_does_not_reactivate_earlier_consent_version`, accept-sau-rút vẫn hiệu lực |
+| R02 consent + ledger không atomic | view bọc withdraw + ledger trong MỘT transaction | `test_consent_and_ledger_are_atomic` |
+| R03 response cũ/metadata chưa dọn (frontend) | mọi request ghi token-at-start + kiểm lại trước commit; no_session/destroy dọn items/connections/receipt/deletionRequests/consent note/pagination; 401 của A không xóa session B | 4 ca reviewer + destroy/no_session/loadMore tests |
+| R04 replay mở rộng cutoff + hooks bỏ cutoff | `deletion_applied` mang cutoff gốc; replay thiếu cutoff fail-closed; Surveys/Connections hooks obey cutoff; connections KHÔNG còn reset identity surface (account policy) | `test_restore_preserves_original_deletion_cutoff`, `test_connections_deletion_does_not_delete_later_session`, identity-surface test |
+| R05 restore báo complete sai | replay revoke ROW connection + grant theo connection scope; truncated refs fail-closed; replay theo `seq` (watermark không bỏ event) | 3 ca reviewer + `test_reconnect_grants_of_other_connection_not_touched_by_replay` |
+| R06 crash processing kẹt | `_begin_processing` nhận lại `processing` (recovery có guard); checkpoint PERSIST sau từng category | `test_processing_can_recover_worker_crash` |
+| R07 handler actor không xuống service | verify: actor/action/request trusted xuyên view→service; audit actor = actor thật, không tin verifier_ref client | `test_handler_actor_reaches_service_verification` (calls=[handler,handler]) |
+| R08 50 grants vượt ledger 8 KiB | payload `connection_revoked` O(1) theo connection identity+generation (không refs); revoke trả count thật | 40/50/125-grant tests + replay isolation test |
+| R09 pagination giả 100/125 | cursor SQL trước LIMIT cho từng provider + k-way merge `(created_at, share_id)`; F07/F08 list filter binding trong SQL trước bound | `test_overview_reaches_all_125_grants` |
+| R10 wiring thật chưa nối | F01 revoke view gọi adapter F15; F07/F08 auth/reader fallback về F01 thật; domain revoke (F07/F08) append ledger | runtime equivalents trong regression + `test_domain_revoke_also_appends_ledger` |
+| R11 session bridge 404 | `import.meta.glob` (bundle-time) thay dynamic import đường nguồn; artifact test build+serve thật | `f15-session-bridge-artifact.test.mjs` (3 ca: bundled+200, no-session build xanh, source sạch) |
+| R12 unknown outcome + input | reconcile theo loại (overview + deletion list); duplicate `covers_requested_categories=false` giải thích phạm vi; cursor UUID/timezone validate 400; process view reject unknown fields; verifier_ref validate; status map tiếng Việt; load-more thật; connections/unlink UI thật; lỗi list không nuốt thành empty | reviewer frontend + 6 ca mới |
+
+Chưa sửa trong vòng này (ghi trung thực): B16 vẫn chưa cấp capability
+`privacy.case` (production verify/process fail-closed 503/404 đúng hợp đồng
+đã chốt — không bypass); Authorizer chưa kiểm scope/assignment per-case
+(CAP-20 phụ thuộc B16); MySQL/TiDB + thiết bị thật vẫn NOT_RUN.
 
 ## Còn cần quyết định / thao tác bên ngoài
 
