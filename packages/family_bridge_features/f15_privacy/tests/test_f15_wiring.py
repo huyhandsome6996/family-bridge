@@ -585,19 +585,33 @@ class DeletionWorkflowWiringTests(F15WiringTestCase):
             content="synthetic") for i in range(count)]
 
     def test_handler_endpoints_fail_closed_without_authorizer(self):
-        service = DeletionService()
-        result = service.request_deletion(user=self.owner, categories=["journal"])
-        token = self._make_session(self.owner)
-        client = APIClient()
-        rid = result["request_id"]
-        self.assertEqual(client.post(f"/api/v1/privacy/deletion-requests/{rid}/verify",
-                                     {}, format="json",
-                                     **self._auth(token)).status_code, 503)
-        self.assertEqual(client.post(f"/api/v1/privacy/deletion-requests/{rid}/process",
-                                     {}, format="json",
-                                     **self._auth(token)).status_code, 503)
-        row = DeletionRequest.objects.get(pk=rid)
-        self.assertEqual(row.status, DeletionRequest.STATUS_REQUESTED)
+        # Simulate "chưa cấu hình authorizer" một cách tường minh: trong môi
+        # trường cài admin_core, wiring đã đăng ký authorizer production →
+        # endpoint phải 404 cho actor thường; CONTRACT fail-closed 503 chỉ
+        # áp dụng khi KHÔNG có authorizer nào — test này khẳng định đúng
+        # nhánh đó bằng cách gỡ authorizer khỏi port (test-only) rồi trả lại.
+        from ..services.verification import AdminCapabilityAuthorizer
+
+        privacy_ports.reset_ports()
+        try:
+            service = DeletionService()
+            result = service.request_deletion(user=self.owner,
+                                              categories=["journal"])
+            token = self._make_session(self.owner)
+            client = APIClient()
+            rid = result["request_id"]
+            self.assertEqual(
+                client.post(f"/api/v1/privacy/deletion-requests/{rid}/verify",
+                            {}, format="json", **self._auth(token)).status_code,
+                503)
+            self.assertEqual(
+                client.post(f"/api/v1/privacy/deletion-requests/{rid}/process",
+                            {}, format="json", **self._auth(token)).status_code,
+                503)
+            row = DeletionRequest.objects.get(pk=rid)
+            self.assertEqual(row.status, DeletionRequest.STATUS_REQUESTED)
+        finally:
+            privacy_ports.register_handler_authorizer(AdminCapabilityAuthorizer())
 
     def test_handler_endpoints_deny_actor_without_capability(self):
         from ..services.verification import AdminCapabilityAuthorizer
