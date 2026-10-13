@@ -15,3 +15,5 @@ export { createTopBar } from "./top-bar.js";
 export { createBottomNav } from "./bottom-nav.js";
 export { createDemoBanner } from "./demo-banner.js";
 export { createLogo } from "./logo.js";
+export { createAppHeader } from "./app-header.js";
+export { createIcon } from "./icon.js";
