@@ -20,6 +20,13 @@ Nothing here is claimed as Zalo device evidence (US-049).
 The endpoint URL is an allowlisted constant (SEC-13: no user-controlled
 URLs). Redirects are followed only inside the same allowlisted host.
 Responses are bounded and TLS verification is never disabled.
+
+Transport failure classes (urllib.error.URLError, socket.timeout /
+TimeoutError, raw OSError) are mapped by _fetch_token_info to
+TemporarilyUnavailable(provider_unreachable) -> 503 for ANY transport
+(default or injected double). Mapping is deliberately not a catch-all:
+programming errors propagate so they get fixed instead of being reported
+as "provider down".
 """
 
 from __future__ import annotations
@@ -27,6 +34,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -108,7 +116,32 @@ class ZaloPlatformVerifier:
             "access_token": access_token,
             "appsecret_proof": appsecret_proof(access_token, self.app_secret),
         }
-        raw = self._http_get(url, headers)
+        try:
+            raw = self._http_get(url, headers)
+        except urllib.error.HTTPError as exc:
+            # The default transport classifies its own HTTPError (reads the
+            # bounded body so Zalo's error codes reach the mapper and never
+            # escapes). An injected double raising a bare HTTPError gets the
+            # transport verdict instead of a 500.
+            raise TemporarilyUnavailable(
+                {"reason": "provider_unreachable"}) from exc
+        except urllib.error.URLError as exc:
+            # Transport failure while establishing the request: DNS failure,
+            # connection refused/reset, TLS handshake error, urllib-wrapped
+            # timeout. 503 temporarily_unavailable — the provider is
+            # unreachable, NOT the caller's fault and NOT a token verdict.
+            # (HTTPError is handled above because it subclasses URLError.)
+            raise TemporarilyUnavailable(
+                {"reason": "provider_unreachable"}) from exc
+        except (socket.timeout, TimeoutError, OSError) as exc:
+            # Timeout/transport failure while reading the response body —
+            # urllib raises bare socket.timeout (== TimeoutError on 3.10+)
+            # from .read(), outside the URLError wrapper. Same verdict: 503,
+            # no token, no account. OSError also covers raw connection drops.
+            # Deliberately NOT a catch-all: programming errors (ValueError,
+            # KeyError, our own InputInvalid, ...) still propagate.
+            raise TemporarilyUnavailable(
+                {"reason": "provider_unreachable"}) from exc
         try:
             payload = json.loads(raw.decode("utf-8")[:MAX_RESPONSE_BYTES])
         except (ValueError, UnicodeDecodeError) as exc:
@@ -154,3 +187,6 @@ class ZaloPlatformVerifier:
                 if isinstance(payload, dict) and payload.get("error"):
                     return body
             raise TemporarilyUnavailable({"reason": "provider_unreachable"}) from exc
+        # URLError / socket.timeout / OSError are deliberately NOT caught here:
+        # _fetch_token_info owns the transport-to-503 mapping so that BOTH the
+        # default transport and any injected double are classified identically.

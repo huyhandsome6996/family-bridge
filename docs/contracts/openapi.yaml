@@ -86,6 +86,32 @@ paths:
         "200": { $ref: "#/components/responses/InviteCreated" }
         "401": { $ref: "#/components/responses/Error401" }
         "429": { $ref: "#/components/responses/Error429" }
+  /auth/me:
+    get:
+      summary: Danh tính hiển thị TỰ KHAI BÁO của chính mình (không phải Zalo xác minh)
+      x-owner-feature: F01
+      x-status: proposed
+      responses:
+        "200": { $ref: "#/components/responses/OperationStatus" }
+        "401": { $ref: "#/components/responses/Error401" }
+    put:
+      summary: Đặt/cập nhật tên gọi tự khai báo (display_name 1..80 ký tự)
+      x-owner-feature: F01
+      x-status: proposed
+      responses:
+        "200": { $ref: "#/components/responses/OperationStatus" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+  /connections/invites/preview:
+    post:
+      summary: Kiểm tra mã mời READ-ONLY trước khi chấp nhận (ai tạo mã, quan hệ gì)
+      x-owner-feature: F01
+      x-status: proposed
+      responses:
+        "200": { $ref: "#/components/responses/InviteClaimed" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+        "429": { $ref: "#/components/responses/Error429" }
   /connections/invites/claim:
     post:
       summary: Nhập mã mời và xác nhận phía người nhận

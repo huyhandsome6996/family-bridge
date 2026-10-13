@@ -30,38 +30,53 @@ Quy ước ghi kết quả: PASS / FAIL + mã lỗi hiển thị + screenshot.
     "Bạn đã đăng xuất." → API sau đó phải 401 (thử "Quản lý kết nối" sẽ dẫn
     về đăng nhập).
 
-## Phần 2 — Kết nối hai phía (A tạo, B nhập)
+## Phần 2 — Kết nối hai phía (A tạo, B nhập) — CÓ KIỂM TRA ĐÚNG NGƯỜI
 
+2.0 (A) và (B) CÀI TÊN GỌI trước khi kết nối: Kết nối → thẻ "Để hai bên
+    kiểm tra đúng người" → nhập tên gọi (vd A: "Mẹ Nam", B: "Nam — lớp 9A")
+    → "Lưu tên gọi" → thông báo "Tên gọi đã được cập nhật trên máy chủ".
+    - Nhãn bắt buộc trên màn: "Tên tự khai báo — KHÔNG phải danh tính Zalo
+      đã xác minh". App KHÔNG xin SĐT/GPS, KHÔNG ép quyền tên/avatar Zalo.
 2.1 (A) Trang chủ → "Kết nối với người đồng hành" → "Tạo mã mời".
 2.2 (A) Ghi nhận: mã 12 ký tự hiển thị ĐÚNG MỘT LẦN, có thời hạn (7 ngày),
     badge "Đã tạo mã mời — chưa có ai nhập mã". KHÔNG đóng trang vội — nếu
     đóng/mất mã phải tạo mã mới (mã cũ tự hủy).
-2.3 (B) Cũng mở app (đã đăng nhập) → Kết nối → nhập mã của A vào ô
-    "Nhập mã mời nhận được" (bảng chữ không có I/1/O/0 — gõ thường cũng được,
-    hệ thống tự in hoa) → "Nhập mã mời".
-    - Kỳ vọng: "Nhập mã thành công" + badge "Chờ người tạo mã xác nhận".
-2.4 (B) Kiểm tra: lúc NÀY kết nối CHƯA kích hoạt (trang chủ B vẫn "Chưa kết nối")
+    - Refresh bình thường: mã VẪN hiển thị (không mất mã hợp lệ).
+2.3 (B) Cũng mở app (đã đăng nhập) → Kết nối → nhập mã của A → bấm
+    "Kiểm tra mã" (KHÔNG còn nút nhập trực tiếp).
+    - Kỳ vọng: hiện thẻ "Kiểm tra đúng người trước khi đồng ý" với TÊN A
+      ("Mẹ Nam — tên tự khai báo, chưa xác minh Zalo") + quan hệ đề nghị.
+2.4 (B) Đối chiếu: gọi/đọc tin cho A xác nhận mã + tên. Đúng người → bấm
+    "Đồng ý kết nối" → "Bạn đã đồng ý kết nối" + badge "Chờ người tạo mã
+    xác nhận". Sai người → "Nhập lại mã khác".
+2.5 (B) Kiểm tra: lúc NÀY kết nối CHƯA kích hoạt (trang chủ B vẫn "Chưa kết nối")
     — không được kích hoạt ngay khi chỉ nhập mã.
-2.5 (A) Bấm "Làm mới" → lời mời hiện "Bạn tạo · Chờ xác nhận" → bấm
-    "Xác nhận kết nối" → thông báo "Hai bên đã kết nối (Người đồng hành chính)".
-2.6 (A) và (B) bấm "Làm mới"/về Trang chủ → cả hai thấy "Đang đồng hành"
-    (không hiện tên/UUID của nhau — chỉ nhãn quan hệ + generation).
+2.6 (A) Bấm "Làm mới" → thẻ "Mã mời đã có người nhập" (mã KHÔNG hiển thị lại)
+    + lời mời "Bạn tạo · Chờ xác nhận" với dòng "Người nhập mã: Nam — lớp 9A
+    (tên tự khai báo, chưa xác minh Zalo)" → "Xác nhận kết nối" → DIALOG hỏi
+    lại kèm tên người nhập mã → xác nhận → "Hai bên đã kết nối
+    (Người đồng hành chính)".
+2.7 (A) và (B) bấm "Làm mới"/về Trang chủ → thẻ kết nối hiện tên tự khai báo
+    của người kia (không hiện UUID). KHÔNG hiển thị UUID thô.
 
 ## Phần 3 — Các nhánh lỗi bắt buộc
 
 3.1 Mã sai: (B) nhập mã thừa/thiếu/sai (12 ký tự không I/1/O/0) →
     "Mã không đúng hoặc đã hết hạn. Kiểm tra lại mã được cấp."
-3.2 Self-connect: (A) tự nhập mã của chính mình → "Không thể tự kết nối với chính mình."
+3.2 Self-connect: (A) tự nhập mã của chính mình → "Đây là mã do chính bạn tạo —
+    không thể tự kết nối với mình." (preview và claim cùng báo vậy).
 3.3 Nhập 2 lần: (B) nhập lại đúng mã đã nhập → không lỗi (replay idempotent).
 3.4 Hủy lời mời: tạo mã mới rồi "Hủy lời mời này" → mã cũ không còn nhập được
-    (B nhập → báo mã không đúng/hết hạn).
-3.5 Từ chối: (B) sau khi nhập mã, bấm "Từ chối lời mời" → (A) làm mới thấy
-    trạng thái kết thúc, không xác nhận được nữa.
+    (B nhập → báo mã không đúng/hết hạn); mã đã hủy KHÔNG còn hiển thị ở trang
+    A như còn dùng — nút "Tạo mã mời" trở lại.
+3.5 Từ chối: (B) sau khi đồng ý, bấm "Từ chối lời mời" → (A) làm mới thấy
+    trạng thái kết thúc, không xác nhận được nữa; mã của A cũng ngừng hiển thị.
 3.6 Thứ ba: tài khoản C (không liên quan) cố mở trực tiếp lời mời của A/B qua
     thao tác UI → chỉ thấy danh sách rỗng; không xác nhận/hủy được (API 404).
 3.7 Rate limit: (B) nhập sai 30 lần trong 1 giờ → "Bạn đã thử quá nhiều lần."
     (có thể bỏ qua nếu tốn thời gian — backend đã có test).
-3.8 Hủy kết nối: (A) "Hủy kết nối" → dialog destructive → xác nhận →
+3.8 Hủy kết nối: (A) "Hủy kết nối" → dialog destructive NÊU TÊN người kia
+    ("Bạn sắp hủy kết nối với: Nam — lớp 9A (tên tự khai báo...)") → xác nhận →
     trạng thái về "Chưa kết nối" ở CẢ HAI; (B) mất quyền dựa trên kết nối.
 3.9 Kết nối lại: lặp Phần 2 → thành công với generation tăng 2 (đọc dòng
     "thế hệ kết nối (generation): 2").
@@ -78,4 +93,6 @@ Quy ước ghi kết quả: PASS / FAIL + mã lỗi hiển thị + screenshot.
 
 - Không tuyên bố "được Zalo duyệt" bất kỳ màn nào.
 - Không test getPhoneNumber/followOA (không thuộc F01).
+- Không coi tên tự khai báo là danh tính Zalo đã xác minh — nhãn phải luôn
+  hiện kèm tên.
 - Không upload bản production trước khi Huy duyệt.

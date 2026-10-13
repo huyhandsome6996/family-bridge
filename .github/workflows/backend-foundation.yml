@@ -115,6 +115,24 @@ jobs:
           MYSQL_USER: family_bridge
           MYSQL_PASSWORD: ci-family-bridge-password
         run: python manage.py test -v 2
+      # F01 race/concurrency suites are GATED on a real MySQL (SQLite cannot
+      # prove row-lock/unique semantics and must never be claimed as MySQL
+      # evidence). This runs them on the SAME mysql:8.4 service container.
+      # Django's test runner creates test_<FB_MYSQL_DB> = test_family_bridge,
+      # which the CI-only grant above already covers.
+      - name: F01 concurrency suites on real MySQL (feature-lab harness)
+        working-directory: tests/feature-lab
+        env:
+          DJANGO_SETTINGS_MODULE: harness.settings
+          DJANGO_ENV: test
+          FB_TEST_DB: mysql
+          FB_FEATURES: "f01_identity"
+          FB_MYSQL_HOST: 127.0.0.1
+          FB_MYSQL_PORT: "3306"
+          FB_MYSQL_DB: family_bridge
+          FB_MYSQL_USER: family_bridge
+          FB_MYSQL_PASSWORD: ci-family-bridge-password
+        run: python manage.py test family_bridge_features.f01_identity -v 1
 
   production-guard:
     runs-on: ubuntu-latest

@@ -22,12 +22,16 @@ from family_bridge_core.validation import (
 
 from .auth import FBSDSessionAuthentication
 from .models import Connection, ConnectionInvite, ConsentRecord
+from .services.display import (
+    display_name_of, display_profiles_for, save_display_name,
+)
 from .services.identity import (
     SessionService, has_active_consent, record_consent,
 )
 from .services.invites import (
     ClaimRateGuard, InviteService,
 )
+from .services.preview import preview_invite
 from .services.zalo_provider import ZaloPlatformVerifier
 from django.conf import settings as dj_settings
 
@@ -57,6 +61,34 @@ def _get_invite_service() -> InviteService:
     return InviteService()
 
 
+def _invite_payload(invite: ConnectionInvite, viewer_id,
+                    profiles=None) -> dict:
+    """display_for + revision + counterpart display profile (view-layer
+    composition — models.py stays untouched, W036 ownership).
+
+    `counterpart` is the OTHER party relative to the viewer with the
+    self-declared display name (identity_basis="self_declared"); raw UUIDs
+    and provider_subject are never included. revision lets the inviter send
+    a real expected_revision on confirm (review finding: display_for alone
+    carries no revision, so the UI used to send null unconditionally).
+
+    `profiles` is a prebuilt {user_id: profile} map — list endpoints pass
+    ONE batched lookup (no N+1); single-item responses omit it.
+    """
+    payload = dict(invite.display_for(viewer_id))
+    payload["revision"] = invite.revision
+    is_inviter = str(invite.inviter_id) == str(viewer_id)
+    counterpart_id = invite.candidate_id if is_inviter else invite.inviter_id
+    if counterpart_id is None:
+        payload["counterpart"] = None
+    elif profiles is not None:
+        payload["counterpart"] = profiles.get(str(counterpart_id))
+    else:
+        payload["counterpart"] = display_profiles_for(
+            [counterpart_id]).get(str(counterpart_id))
+    return payload
+
+
 class AuthSessionView(APIView):
     """POST /api/v1/auth/session — exchange Zalo credential for app session."""
     authentication_classes = []
@@ -75,9 +107,39 @@ class AuthSessionView(APIView):
             "token": raw_token,
             "token_type": "Bearer",
             "expires_at": session.expires_at.isoformat(),
-            "user": {"id": str(user.pk)},
+            "user": {"id": str(user.pk),
+                     "display_name": display_name_of(user)},
             # Consent snapshot: nothing is implied by login (WF-17).
             "consents_required": list(ConsentRecord.PURPOSES),
+        }, status=200)
+
+
+class AuthProfileView(APIView):
+    """GET/PUT /api/v1/auth/me — own minimal profile.
+
+    display_name is SELF-DECLARED (identity_basis=self_declared): the UI
+    must label it as not Zalo-verified. It exists so the two parties can
+    check they connect with the right person (FL-02); it grants nothing and
+    never feeds authorization decisions.
+    """
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        return Response({
+            "user_id": str(request.user.pk),
+            "display_name": display_name_of(request.user),
+            "identity_basis": "self_declared",
+        }, status=200)
+
+    def put(self, request):
+        payload = _json_body(request)
+        reject_unknown_fields(payload, allowed={"display_name"})
+        name = save_display_name(request.user, payload.get("display_name"))
+        return Response({
+            "user_id": str(request.user.pk),
+            "display_name": name,
+            "identity_basis": "self_declared",
         }, status=200)
 
 
@@ -139,11 +201,42 @@ class InviteView(APIView):
         }, status=201)
 
     def get(self, request):
-        rows = (ConnectionInvite.objects
-                .filter(Q(inviter=request.user) | Q(candidate=request.user))
-                .exclude(status=ConnectionInvite.INVITE_ACTIVE)
-                .order_by("-created_at")[:50])
-        return Response({"results": [row.display_for(request.user.pk) for row in rows]})
+        rows = list(ConnectionInvite.objects
+                    .filter(Q(inviter=request.user) | Q(candidate=request.user))
+                    .exclude(status=ConnectionInvite.INVITE_ACTIVE)
+                    .order_by("-created_at")[:50])
+        # ONE batched profile lookup for the whole page (no N+1).
+        counterpart_ids = [
+            (row.candidate_id if str(row.inviter_id) == str(request.user.pk)
+             else row.inviter_id) for row in rows]
+        profiles = display_profiles_for(
+            cid for cid in counterpart_ids if cid is not None)
+        return Response({"results": [
+            _invite_payload(row, request.user.pk, profiles) for row in rows]})
+
+
+class InvitePreviewView(APIView):
+    """POST /api/v1/connections/invites/preview — read-only code check.
+
+    Lets the code holder see WHO created the code (self-declared display
+    name, labeled) and the proposed relationship BEFORE deciding to accept.
+    Shares the claim rate budget; changes no state.
+    """
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+    throttle_scope = "invite_claim"
+
+    def post(self, request):
+        payload = _json_body(request)
+        reject_unknown_fields(payload, allowed={"code"})
+        code = validate_text(payload.get("code"), field="code",
+                             min_len=4, max_len=64)
+        meta = preview_invite(candidate=request.user, raw_code=code,
+                              rate_guard=ClaimRateGuard())
+        inviter_id = meta.pop("inviter_user_id")
+        meta["counterpart"] = display_profiles_for([inviter_id]).get(inviter_id)
+        meta["identity_basis"] = "self_declared"
+        return Response(meta, status=200)
 
 
 class InviteClaimView(APIView):
@@ -160,7 +253,7 @@ class InviteClaimView(APIView):
         service = _get_invite_service()
         invite = service.claim_invite(candidate=request.user, raw_code=code,
                                       rate_guard=ClaimRateGuard())
-        return Response(invite.display_for(request.user.pk), status=200)
+        return Response(_invite_payload(invite, request.user.pk), status=200)
 
 
 class InviteConfirmView(APIView):
@@ -182,7 +275,7 @@ class InviteConfirmView(APIView):
             inviter=request.user, invite_id=str(invite_uuid),
             expected_revision=expected)
         return Response({
-            "invite": invite.display_for(request.user.pk),
+            "invite": _invite_payload(invite, request.user.pk),
             "connection": {
                 "connection_id": str(connection.id),
                 "status": connection.status,
@@ -200,7 +293,7 @@ class InviteDeclineView(APIView):
         invite_uuid = validate_uuid(invite_id, field="invite_id")
         invite = _get_invite_service().candidate_decline(
             candidate=request.user, invite_id=str(invite_uuid))
-        return Response(invite.display_for(request.user.pk), status=200)
+        return Response(_invite_payload(invite, request.user.pk), status=200)
 
 
 class InviteCancelView(APIView):
@@ -211,7 +304,7 @@ class InviteCancelView(APIView):
         invite_uuid = validate_uuid(invite_id, field="invite_id")
         invite = _get_invite_service().inviter_cancel(
             inviter=request.user, invite_id=str(invite_uuid))
-        return Response(invite.display_for(request.user.pk), status=200)
+        return Response(_invite_payload(invite, request.user.pk), status=200)
 
 
 class ConnectionListView(APIView):
@@ -222,12 +315,18 @@ class ConnectionListView(APIView):
     def get(self, request):
         service = _get_invite_service()
         rows = service.list_active_for_user(user_id=str(request.user.pk))
+        counterpart_ids = [
+            (v.party_b if v.party_a == str(request.user.pk) else v.party_a)
+            for v in rows]
+        profiles = display_profiles_for(counterpart_ids)
         return Response({"results": [
             {"connection_id": v.connection_id,
              "other_party_id": v.party_b if v.party_a == str(request.user.pk) else v.party_a,
              "relationship_kind": v.relationship_kind,
              "generation": v.generation,
-             "status": v.status}
+             "status": v.status,
+             "counterpart": profiles.get(
+                 v.party_b if v.party_a == str(request.user.pk) else v.party_a)}
             for v in rows
         ]})
 

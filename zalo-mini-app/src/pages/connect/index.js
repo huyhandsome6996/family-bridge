@@ -1,7 +1,20 @@
-// F01 — Kết nối người đồng hành: tạo mã mời, nhập mã, xác nhận hai phía,
-// danh sách lời mời, hủy lời mời, hủy kết nối (có xác nhận), làm mới thủ công.
-// Luồng: A tạo mã -> B nhập mã + đồng ý -> A xác nhận -> backend kích hoạt.
-// KHÔNG polling tự động (chỉ nút Làm mới); KHÔNG tự gửi lại thao tác ghi khi
+// F01 — Kết nối người đồng hành: tạo mã mời, KIỂM TRA ĐÚNG NGƯỜI trước khi
+// đồng ý, xác nhận hai phía, danh sách lời mời, hủy lời mời, hủy kết nối
+// (có xác nhận), làm mới thủ công.
+//
+// Luồng: A tạo mã -> B nhập mã + KIỂM TRA (preview: ai tạo mã?) -> B đồng ý
+// -> A đối chiếu tên người nhập mã rồi xác nhận -> backend kích hoạt.
+//
+// Review fixes ghi nhớ ở đây:
+// - "XÁC NHẬN ĐÚNG NGƯỜI": hai bên xem tên TỰ KHAI BÁO của nhau (nhãn rõ:
+//   không phải danh tính Zalo đã xác minh) trước khi chấp nhận/xác nhận/hủy
+//   kết nối. Không xin số điện thoại/GPS, không ép quyền tên/avatar Zalo.
+// - "PHỤC HỒI SAU LỖI MẠNG": refresh lỗi KHÔNG phá ô nhập mã; Thử lại thành
+//   công khôi phục đúng trạng thái (giữ mã đã gõ), không tự replay thao tác ghi.
+// - "MÃ MỜI HẾT HIỆU LỰC": mã vừa tạo luôn được đối chiếu với trạng thái
+//   backend theo invite_id; mã canceled/expired/đã active không còn hiển thị
+//   như còn dùng được; mã còn hợp lệ KHÔNG bị mất sau một refresh bình thường.
+// KHÔNG polling tự động (chỉ nút Làm mới); không tự gửi lại thao tác ghi khi
 // mất response — hiển thị "chưa xác định" và cho làm mới.
 import { h } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
@@ -26,6 +39,10 @@ const INVITE_STATUS_LABELS = {
   expired: "Đã hết hạn",
 };
 
+const SELF_DECLARED_NOTE =
+  "Tên tự khai báo — KHÔNG phải danh tính Zalo đã xác minh. " +
+  "Hãy đối chiếu với nhau ngoài ứng dụng trước khi xác nhận.";
+
 function formatExpiry(iso) {
   const ms = Date.parse(iso || "");
   if (Number.isNaN(ms)) return "";
@@ -33,6 +50,20 @@ function formatExpiry(iso) {
     day: "2-digit", month: "2-digit", year: "numeric",
     hour: "2-digit", minute: "2-digit",
   });
+}
+
+function isUnexpired(iso) {
+  const ms = Date.parse(iso || "");
+  if (Number.isNaN(ms)) return true; // không rõ hạn -> không tự hủy hiển thị
+  return ms > Date.now();
+}
+
+/** Nhãn danh tính của người kia: tên tự khai báo hoặc trạng thái chưa đặt. */
+function counterpartLabel(counterpart) {
+  if (counterpart && counterpart.display_name) {
+    return `${counterpart.display_name} (tên tự khai báo, chưa xác minh Zalo)`;
+  }
+  return "Người này chưa đặt tên gọi — hãy hỏi trực tiếp để chắc chắn đúng người";
 }
 
 /** Thông điệp tiếng Việt cho lỗi nghiệp vụ (theo envelope code/details). */
@@ -49,7 +80,7 @@ function messageFor(error) {
     case "already_connected":
       return "Hai bên đã có kết nối đang hoạt động.";
     case "self_connect_denied":
-      return "Không thể tự kết nối với chính mình.";
+      return "Đây là mã do chính bạn tạo — không thể tự kết nối với mình.";
     case "candidate_not_claimed_yet":
       return "Chưa có ai nhập mã này nên chưa thể xác nhận.";
     case "invite_not_open":
@@ -78,7 +109,6 @@ export const page = {
   render(ctx) {
     let cancelled = false;
     let runId = 0;
-    const pendingOps = new Set();
     markRenderCancelled = () => {
       cancelled = true;
       runId += 1;
@@ -108,9 +138,10 @@ export const page = {
 
     body.appendChild(
       h("p", { class: "fb-page__lead" },
-        "Hai bên cùng xác nhận mới tạo được kết nối: một bên tạo mã mời, bên kia nhập mã, " +
-        "người tạo mã xác nhận cuối cùng. Kết nối không cho phép đọc nhật ký hay nội dung " +
-        "riêng của nhau — mọi mục chia sẻ vẫn do bạn quyết định.",
+        "Hai bên cùng xác nhận mới tạo được kết nối: một bên tạo mã mời, bên kia nhập mã và " +
+        "KIỂM TRA đúng người trước khi đồng ý, người tạo mã đối chiếu lại rồi xác nhận cuối cùng. " +
+        "Kết nối không cho phép đọc nhật ký hay nội dung riêng của nhau — mọi mục chia sẻ vẫn " +
+        "do bạn quyết định.",
       ),
     );
 
@@ -118,6 +149,8 @@ export const page = {
     const noticeLine = h("p", { class: "fb-page__note", role: "status" });
     function notify(text) { noticeLine.textContent = text || ""; }
 
+    // ---- tên gọi tự khai báo ----
+    const nameArea = h("section", {});
     // ---- danh sách kết nối đang hoạt động ----
     const connectionsArea = h("section", {});
     // ---- tạo mã mời ----
@@ -127,6 +160,7 @@ export const page = {
     // ---- danh sách lời mời ----
     const invitesArea = h("section", {});
 
+    body.appendChild(nameArea);
     body.appendChild(connectionsArea);
     body.appendChild(noticeLine);
     body.appendChild(inviteArea);
@@ -156,12 +190,77 @@ export const page = {
     }
 
     // ------------------------------------------------------------------
+    // Tên gọi tự khai báo (để hai bên đối chiếu đúng người)
+    // ------------------------------------------------------------------
+    const nameState = { value: "", loaded: false };
+
+    function renderNameCard() {
+      nameArea.replaceChildren();
+      const nameField = createInput({
+        id: "fb-display-name",
+        label: "Tên gọi của bạn (tự khai báo)",
+        hint: "Ví dụ: “Mẹ Nam” hoặc “Minh — lớp 9A”. Bên kia sẽ thấy tên này để " +
+          "kiểm tra đúng người trước khi kết nối và trước khi hủy kết nối.",
+        maxlength: 80,
+        placeholder: "Chưa đặt tên gọi",
+        onInput: () => {
+          nameState.value = nameField.input.value;
+          saveRef.current.disabled = nameField.input.value.trim().length === 0;
+        },
+      });
+      nameField.input.value = nameState.value;
+      const saveRef = { current: null };
+      const saveButton = createButton({
+        label: "Lưu tên gọi",
+        variant: "ghost",
+        disabled: nameState.value.trim().length === 0,
+        onClick: guarded("save-name", saveRef, async () => {
+          try {
+            const saved = await ctx.adapter.updateMyProfile({
+              displayName: nameState.value.trim(),
+            });
+            if (cancelled) return;
+            nameState.value = (saved && saved.display_name) || nameState.value.trim();
+            notify("Tên gọi đã được cập nhật trên máy chủ. " + SELF_DECLARED_NOTE);
+            renderNameCard();
+          } catch (error) {
+            if (cancelled) return;
+            notify(messageFor(error));
+          }
+        }),
+      });
+      saveRef.current = saveButton;
+      nameArea.appendChild(
+        createCard({
+          title: "Để hai bên kiểm tra đúng người",
+          description: SELF_DECLARED_NOTE +
+            " Không xin số điện thoại, vị trí hay ép quyền tên/avatar Zalo.",
+          children: [nameField, saveButton],
+        }),
+      );
+    }
+
+    async function loadName() {
+      try {
+        const profile = await ctx.adapter.getMyProfile();
+        if (cancelled) return;
+        nameState.value = (profile && profile.display_name) || "";
+        nameState.loaded = true;
+        renderNameCard();
+      } catch {
+        if (cancelled) return;
+        // Không chặn trang: chỉ ghi chú nhỏ.
+        nameState.loaded = true;
+        renderNameCard();
+      }
+    }
+
+    // ------------------------------------------------------------------
     // Tạo mã mời
     // ------------------------------------------------------------------
-    let createdInvite = null; // mã vừa tạo — hiển thị cho tới khi rời trang
+    let createdInvite = null; // {invite_id, code, expires_at} — còn hợp lệ mới hiển thị
 
     function showCreatedInvite(created) {
-      createdInvite = created || null;
       inviteArea.replaceChildren();
       const codeText = h("p", {
         class: "fb-page__title",
@@ -183,43 +282,79 @@ export const page = {
       );
     }
 
-    function renderInviteSection(openInvite) {
+    /** Card "đang có lời mời chờ người kia nhập mã" (không còn raw code). */
+    function showOpenPendingCard(openInvite) {
       inviteArea.replaceChildren();
+      const replaceRef = { current: null };
+      const replaceButton = createButton({
+        label: "Tạo mã mới thay thế",
+        variant: "ghost",
+        onClick: guarded("create", replaceRef, async () => {
+          await createInvite();
+        }),
+      });
+      replaceRef.current = replaceButton;
+      inviteArea.appendChild(
+        createCard({
+          title: "Mã mời đang mở",
+          description:
+            "Bạn đã có một lời mời đang chờ (hết hạn lúc " +
+            (formatExpiry(openInvite.expires_at) || "không rõ") +
+            "). Vì lý do bảo mật bạn không xem lại được mã này — hãy dùng mã " +
+            "đã chuyển cho bên kia, hoặc tạo mã mới (mã cũ tự bị hủy).",
+          children: replaceButton,
+        }),
+      );
+    }
+
+    /** Card "đã có người nhập mã" — mã KHÔNG còn dùng được. */
+    function showClaimedCard(openInvite) {
+      inviteArea.replaceChildren();
+      const replaceRef = { current: null };
+      const replaceButton = createButton({
+        label: "Tạo mã mới thay thế",
+        variant: "ghost",
+        onClick: guarded("create", replaceRef, async () => {
+          await createInvite();
+        }),
+      });
+      replaceRef.current = replaceButton;
+      inviteArea.appendChild(
+        createCard({
+          title: "Mã mời đã có người nhập",
+          description:
+            "Mã này đã được dùng — KHÔNG còn sử dụng được. Kiểm tra tên người nhập " +
+            "(" + counterpartLabel(openInvite.counterpart) + ") trong thẻ lời mời bên dưới, " +
+            "rồi xác nhận hoặc từ chối ở đó.",
+          children: replaceButton,
+        }),
+      );
+    }
+
+    function renderInviteSection(openInvite) {
       if (createdInvite) {
-        // Mã vừa tạo luôn được ưu tiên hiển thị (không bị vẽ đè khi refresh).
+        // Mã hợp lệ (backend xác nhận vẫn pending + chưa hết hạn) giữ nguyên
+        // hiển thị sau một refresh bình thường.
         showCreatedInvite(createdInvite);
         return;
       }
-      const createRef = { current: null };
-      const onCreate = guarded("create", createRef, async () => {
-        await createInvite();
-      });
-      if (openInvite) {
-        // Đang có lời mời mở của chính mình: không tạo thêm (backend cũng tự
-        // hủy mã mở cũ khi tạo mã mới) — cho tạo mã mới thay thế.
-        const replaceButton = createButton({
-          label: "Tạo mã mới thay thế",
-          variant: "ghost",
-          onClick: onCreate,
-        });
-        createRef.current = replaceButton;
-        inviteArea.appendChild(
-          createCard({
-            title: "Mã mời đang mở",
-            description:
-              "Bạn đã có một lời mời đang chờ (hết hạn lúc " +
-              (formatExpiry(openInvite.expires_at) || "không rõ") +
-              "). Tạo mã mới sẽ tự hủy mã này.",
-            children: replaceButton,
-          }),
-        );
+      if (openInvite && openInvite.status === "awaiting_confirmation") {
+        showClaimedCard(openInvite);
         return;
       }
+      if (openInvite && openInvite.status === "pending") {
+        showOpenPendingCard(openInvite);
+        return;
+      }
+      inviteArea.replaceChildren();
+      const createRef = { current: null };
       const createButtonEl = createButton({
         label: "Tạo mã mời",
         variant: "primary",
         size: "lg",
-        onClick: onCreate,
+        onClick: guarded("create", createRef, async () => {
+          await createInvite();
+        }),
       });
       createRef.current = createButtonEl;
       inviteArea.appendChild(
@@ -239,7 +374,8 @@ export const page = {
         const created = await ctx.adapter.createInvite({ relationshipKind: "primary" });
         if (cancelled) return;
         notify("");
-        showCreatedInvite(created);
+        createdInvite = created || null;
+        showCreatedInvite(createdInvite);
         await refresh({ silent: true });
       } catch (error) {
         if (cancelled) return;
@@ -248,10 +384,99 @@ export const page = {
     }
 
     // ------------------------------------------------------------------
-    // Nhập mã mời (phía bên kia)
+    // Nhập mã mời (phía bên kia) — kiểm tra đúng người TRƯỚC khi đồng ý
     // ------------------------------------------------------------------
+    // claimState sống qua các lần refresh: lỗi mạng không được phá trạng
+    // thái này, và KHÔNG BAO GIỜ tự replay thao tác ghi (claim chỉ chạy khi
+    // người dùng bấm nút).
+    const claimState = {
+      mode: "form",     // form | preview | claimed
+      typedCode: "",
+      preview: null,    // {code, relationship_kind, expires_at, counterpart}
+    };
+
     function renderClaimSection() {
+      const hadFocus = document.activeElement
+        && document.activeElement.id === "fb-invite-code";
       claimArea.replaceChildren();
+
+      if (claimState.mode === "claimed") {
+        const name = claimState.preview && claimState.preview.counterpart
+          && claimState.preview.counterpart.display_name;
+        claimArea.appendChild(
+          createCard({
+            title: "Bạn đã đồng ý kết nối",
+            description:
+              "Với " + (name
+                ? `${name} (tên tự khai báo). `
+                : "người tạo mã. ") +
+              "Bây giờ chờ người tạo mã đối chiếu và xác nhận phía còn lại — " +
+              "khi họ xác nhận, kết nối mới được kích hoạt cho cả hai.",
+            children: createStatusBadge({
+              tone: "warning",
+              label: "Chờ người tạo mã xác nhận",
+            }),
+          }),
+        );
+        return;
+      }
+
+      if (claimState.mode === "preview") {
+        const preview = claimState.preview;
+        const name = preview.counterpart && preview.counterpart.display_name;
+        const agreeRef = { current: null };
+        const agreeButton = createButton({
+          label: "Đồng ý kết nối",
+          variant: "cta",
+          onClick: guarded("claim", agreeRef, async () => {
+            notify("Đang gửi đồng ý…");
+            try {
+              const result = await ctx.adapter.claimInvite(preview.code);
+              if (cancelled) return;
+              notify("");
+              claimState.mode = "claimed";
+              claimState.preview = result || preview;
+              renderClaimSection();
+              await refresh({ silent: true });
+            } catch (error) {
+              if (cancelled) return;
+              claimState.mode = "form";
+              renderClaimSection();
+              notify(messageFor(error));
+            }
+          }),
+        });
+        agreeRef.current = agreeButton;
+        const retypeRef = { current: null };
+        const retypeButton = createButton({
+          label: "Nhập lại mã khác",
+          variant: "ghost",
+          onClick: () => {
+            claimState.mode = "form";
+            claimState.typedCode = "";
+            claimState.preview = null;
+            renderClaimSection();
+          },
+        });
+        retypeRef.current = retypeButton;
+        claimArea.appendChild(
+          createCard({
+            title: "Kiểm tra đúng người trước khi đồng ý",
+            description:
+              "Người tạo mã này: " + (name
+                ? `${name} — ${SELF_DECLARED_NOTE}`
+                : "chưa đặt tên gọi (" + SELF_DECLARED_NOTE + ")") +
+              ". Quan hệ đề nghị: " +
+              (RELATIONSHIP_LABELS[preview.relationship_kind]
+                || preview.relationship_kind) +
+              ". Chỉ đồng ý khi đúng là người bạn định kết nối.",
+            children: [agreeButton, retypeButton],
+          }),
+        );
+        return;
+      }
+
+      // mode "form"
       const codeField = createInput({
         id: "fb-invite-code",
         label: "Nhập mã mời nhận được",
@@ -259,17 +484,20 @@ export const page = {
         maxlength: 12,
         placeholder: "Ví dụ: AB2CD3EF4GH5",
         onInput: () => {
-          codeField.input.value = codeField.input.value.toUpperCase().replace(/[^A-Z2-9]/g, "");
-          claimButton.disabled = codeField.input.value.length !== 12;
+          claimState.typedCode = codeField.input.value
+            .toUpperCase().replace(/[^A-Z2-9]/g, "");
+          codeField.input.value = claimState.typedCode;
+          checkButton.disabled = claimState.typedCode.length !== 12;
         },
       });
-      const claimRef = { current: null };
-      const claimButton = createButton({
-        label: "Nhập mã mời",
+      codeField.input.value = claimState.typedCode;
+      const checkRef = { current: null };
+      const checkButton = createButton({
+        label: "Kiểm tra mã",
         variant: "primary",
-        disabled: true,
-        onClick: guarded("claim", claimRef, async () => {
-          const code = codeField.input.value.trim().toUpperCase();
+        disabled: claimState.typedCode.length !== 12,
+        onClick: guarded("preview", checkRef, async () => {
+          const code = claimState.typedCode.trim().toUpperCase();
           if (code.length !== 12) {
             codeField.setError("Mã phải đủ 12 ký tự.");
             return;
@@ -277,23 +505,12 @@ export const page = {
           codeField.setError(null);
           notify("Đang kiểm tra mã…");
           try {
-            const result = await ctx.adapter.claimInvite(code);
+            const preview = await ctx.adapter.previewInvite(code);
             if (cancelled) return;
             notify("");
-            claimArea.replaceChildren();
-            claimArea.appendChild(
-              createCard({
-                title: "Nhập mã thành công",
-                description:
-                  "Bạn đã đồng ý kết nối. Bây giờ chờ người tạo mã xác nhận phía còn lại — " +
-                  "khi họ xác nhận, kết nối mới được kích hoạt cho cả hai.",
-                children: createStatusBadge({
-                  tone: "warning",
-                  label: "Chờ người tạo mã xác nhận",
-                }),
-              }),
-            );
-            await refresh({ silent: true });
+            claimState.mode = "preview";
+            claimState.preview = { ...preview, code };
+            renderClaimSection();
           } catch (error) {
             if (cancelled) return;
             codeField.setError(messageFor(error));
@@ -301,19 +518,67 @@ export const page = {
           }
         }),
       });
-      claimRef.current = claimButton;
+      checkRef.current = checkButton;
       claimArea.appendChild(
         createCard({
           title: "Đã nhận được mã mời?",
-          description: "Nhập mã mời gồm 12 ký tự mà bên kia chuyển cho bạn.",
-          children: [codeField, claimButton],
+          description:
+            "Nhập mã mời gồm 12 ký tự mà bên kia chuyển cho bạn. Bạn sẽ thấy " +
+            "ai tạo mã trước khi quyết định đồng ý.",
+          children: [codeField, checkButton],
         }),
       );
+
+      if (hadFocus) {
+        const input = claimArea.querySelector("#fb-invite-code");
+        if (input) input.focus();
+      }
     }
 
     // ------------------------------------------------------------------
     // Danh sách lời mời + hành động
     // ------------------------------------------------------------------
+    function confirmDialog(invite) {
+      const name = counterpartLabel(invite.counterpart);
+      const dialog = createDialog({
+        title: "Xác nhận kết nối?",
+        message:
+          `Người nhập mã của bạn: ${name}. ` + SELF_DECLARED_NOTE +
+          " Chỉ xác nhận khi đúng là người bạn định kết nối. Sau khi xác nhận, " +
+          "kết nối được kích hoạt cho cả hai.",
+        actions: [
+          { label: "Xem lại", variant: "ghost", onClick: () => dialog.close() },
+          {
+            label: "Xác nhận kết nối",
+            variant: "cta",
+            onClick: () => {
+              dialog.close();
+              confirmNow(invite);
+            },
+          },
+        ],
+      });
+    }
+
+    async function confirmNow(invite) {
+      notify("Đang xác nhận…");
+      try {
+        const result = await ctx.adapter.confirmInvite(invite.invite_id, {
+          expectedRevision: typeof invite.revision === "number" ? invite.revision : null,
+        });
+        if (cancelled) return;
+        const connection = result && result.connection;
+        notify(connection
+          ? `Hai bên đã kết nối (${RELATIONSHIP_LABELS[connection.relationship_kind] || connection.relationship_kind}).`
+          : "Hai bên đã kết nối.");
+        await refresh({ silent: true });
+      } catch (error) {
+        if (cancelled) return;
+        notify(messageFor(error));
+        await refresh({ silent: true });
+      }
+    }
+
     function inviteActions(invite) {
       const actions = [];
       const isInviter = invite.role === "inviter";
@@ -343,21 +608,7 @@ export const page = {
           label: "Xác nhận kết nối",
           variant: "cta",
           onClick: guarded(`confirm-${invite.invite_id}`, confirmRef, async () => {
-            try {
-              const result = await ctx.adapter.confirmInvite(invite.invite_id, {
-                expectedRevision: typeof invite.revision === "number" ? invite.revision : null,
-              });
-              if (cancelled) return;
-              const connection = result && result.connection;
-              notify(connection
-                ? `Hai bên đã kết nối (${RELATIONSHIP_LABELS[connection.relationship_kind] || connection.relationship_kind}).`
-                : "Hai bên đã kết nối.");
-              await refresh({ silent: true });
-            } catch (error) {
-              if (cancelled) return;
-              notify(messageFor(error));
-              await refresh({ silent: true });
-            }
+            confirmDialog(invite);
           }),
         });
         confirmRef.current = confirmButton;
@@ -427,10 +678,17 @@ export const page = {
         const kind = RELATIONSHIP_LABELS[invite.relationship_kind] || invite.relationship_kind;
         const children = [
           createStatusBadge({ tone, label: `${side} · ${label}` }),
-          h("p", { class: "fb-page__note" },
-            (formatExpiry(invite.expires_at) ? `Hết hạn lúc ${formatExpiry(invite.expires_at)}.` : ""),
-          ),
         ];
+        if (invite.status === "awaiting_confirmation") {
+          // Nhận biết đúng người: ai đã nhập mã / ai tạo mã.
+          children.push(h("p", { class: "fb-page__note" },
+            invite.role === "inviter"
+              ? `Người nhập mã: ${counterpartLabel(invite.counterpart)}.`
+              : `Người tạo mã: ${counterpartLabel(invite.counterpart)}.`));
+        }
+        children.push(h("p", { class: "fb-page__note" },
+          (formatExpiry(invite.expires_at) ? `Hết hạn lúc ${formatExpiry(invite.expires_at)}.` : ""),
+        ));
         for (const action of inviteActions(invite)) children.push(action);
         invitesArea.appendChild(
           createCard({
@@ -472,6 +730,7 @@ export const page = {
             const dialog = createDialog({
               title: "Hủy kết nối này?",
               message:
+                `Bạn sắp hủy kết nối với: ${counterpartLabel(connection.counterpart)}. ` +
                 "Sau khi hủy, các quyền chia sẻ dựa trên kết nối này mất hiệu lực và " +
                 "không tự hồi sinh. Muốn kết nối lại, hai bên phải tạo và xác nhận một " +
                 "lời mời mới.",
@@ -497,7 +756,10 @@ export const page = {
         connectionsArea.appendChild(
           createCard({
             title: kind,
-            description: `Trạng thái: ${connection.status === "active" ? "đang hoạt động" : connection.status} · thế hệ kết nối (generation): ${connection.generation}.`,
+            description:
+              `Người đồng hành: ${counterpartLabel(connection.counterpart)}. ` +
+              `Trạng thái: ${connection.status === "active" ? "đang hoạt động" : connection.status} ` +
+              `· thế hệ kết nối (generation): ${connection.generation}.`,
             children: revokeButton,
           }),
         );
@@ -513,7 +775,7 @@ export const page = {
         await refresh({ silent: true });
       } catch (error) {
         if (cancelled) return;
-        if (error && error.status === 401) {
+        if (error && error.status === 401 && !hasLiveSession()) {
           ctx.navigate("/login?reason=expired");
           return;
         }
@@ -536,15 +798,36 @@ export const page = {
 
     let lastData = { connections: [], invites: [] };
 
+    /**
+     * Đồng bộ mã đang hiển thị với trạng thái backend theo invite_id:
+     * - còn pending + chưa hết hạn -> giữ (không mất mã hợp lệ sau refresh);
+     * - awaiting/canceled/expired/biến mất -> ngừng hiển thị mã như còn dùng.
+     */
+    function reconcileCreatedInvite() {
+      if (!createdInvite) return;
+      const row = lastData.invites.find(
+        (invite) => invite && invite.invite_id === createdInvite.invite_id,
+      );
+      const stillUsable = Boolean(
+        row && row.role === "inviter"
+        && row.status === "pending"
+        && isUnexpired(row.expires_at),
+      );
+      if (!stillUsable) createdInvite = null;
+    }
+
     function paint() {
       renderConnections(lastData.connections);
       renderInvites(lastData.invites);
-      // Mã mời đang mở (pending/awaiting) của chính mình -> section tạo mã hiển thị khác
+      reconcileCreatedInvite();
       const openInvite = lastData.invites.find(
         (invite) => invite.role === "inviter"
           && (invite.status === "pending" || invite.status === "awaiting_confirmation"),
       );
       renderInviteSection(openInvite || null);
+      // Ô nhập mã luôn được dựng lại TỪ claimState — lỗi mạng trước đó không
+      // thể để trống vĩnh viễn, và mã đã gõ được giữ lại.
+      renderClaimSection();
     }
 
     async function refresh({ silent = false } = {}) {
@@ -565,7 +848,9 @@ export const page = {
         paint();
       } catch (error) {
         if (cancelled || thisRun !== runId) return;
-        if (error && error.status === 401) {
+        // 401 của response lỗi thời (phiên đã được đổi mới) KHÔNG đá người
+        // dùng ra đăng nhập — chỉ khi phiên hiện tại thật sự đã chết.
+        if (error && error.status === 401 && !hasLiveSession()) {
           ctx.navigate("/login?reason=expired");
           return;
         }
@@ -579,8 +864,9 @@ export const page = {
           }),
         );
         invitesArea.replaceChildren();
-        claimArea.replaceChildren();
         inviteArea.replaceChildren();
+        // claimArea KHÔNG bị xóa: dựng lại từ claimState (giữ mã đã gõ).
+        renderClaimSection();
       }
     }
 
@@ -589,7 +875,9 @@ export const page = {
       h("div", { class: "fb-page__aside" }, refreshButton),
       connectionsArea,
     );
+    renderNameCard();
     renderClaimSection();
+    loadName();
     refresh({});
 
     return root;

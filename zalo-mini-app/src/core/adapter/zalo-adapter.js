@@ -16,12 +16,19 @@
 import { ApiError, createApiClient } from "../api/client.mjs";
 import { isZaloHost } from "../config.js";
 import {
-  clearSession, getToken, getSession, hasLiveSession, setSession,
+  clearSessionIfUnchanged, getSession, getSessionGeneration,
+  getToken, hasLiveSession, setSession,
 } from "../session.js";
 
 const TIMEOUT_MS = 15000;
 
-export function createZaloAdapter({ baseUrl } = {}) {
+/** Đường SDK mặc định: zmp-sdk chỉ được import động trong môi trường Zalo. */
+async function defaultGetSdkAccessToken() {
+  const sdk = await import("zmp-sdk");
+  return sdk.getAccessToken();
+}
+
+export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAccessToken } = {}) {
   const request = createApiClient({ baseUrl, getToken, timeoutMs: TIMEOUT_MS });
 
   function requireBaseUrl() {
@@ -36,15 +43,19 @@ export function createZaloAdapter({ baseUrl } = {}) {
     }
   }
 
-  // Wrapper cho các call cần đăng nhập: nhận 401 từ backend nghĩa là phiên
-  // hết hạn/thu hồi/user bị vô hiệu — xóa phiên trong memory để UI dẫn về
-  // đăng nhập. Không tự retry (không gọi lại getAccessToken ngầm).
+  // Wrapper cho các call cần đăng nhập: 401 từ backend nghĩa là phiên dùng
+  // cho REQUEST NÀY hết hạn/thu hồi/user bị vô hiệu. Chỉ xóa phiên khi thế hệ
+  // phiên CHƯA ĐỔI kể từ lúc gọi — request thuộc phiên cũ (đã có đăng nhập
+  // mới trong lúc request chạy) KHÔNG được xóa phiên mới (review: "CÔ LẬP
+  // REQUEST THEO PHIÊN"). Kết quả lỗi thời được ném đi, UI hiển thị lỗi;
+  // không tự retry.
   async function authed(run) {
+    const capturedGeneration = getSessionGeneration();
     try {
       return await run();
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        clearSession();
+        clearSessionIfUnchanged(capturedGeneration);
       }
       throw error;
     }
@@ -99,14 +110,18 @@ export function createZaloAdapter({ baseUrl } = {}) {
      * Đăng nhập: getAccessToken (SDK) -> POST /api/v1/auth/session.
      * Backend tự xác minh với Zalo (appsecret_proof) rồi cấp phiên.
      * Không bao giờ gửi role/id/tên tự nhận từ client.
+     *
+     * Chống phiên "hồi sinh": capture generation TRƯỚC khi POST; nếu giữa
+     * chừng có logout/clearSession (generation đã đổi) thì kết quả này là
+     * lỗi thời — BỎ, không setSession (review: logout không được bị response
+     * đăng nhập chậm khôi phục phiên).
      */
     async loginWithZaloToken() {
       requireBaseUrl();
       this.assertZaloHost();
       let accessToken = null;
       try {
-        const sdk = await import("zmp-sdk");
-        accessToken = await sdk.getAccessToken();
+        accessToken = await getSdkAccessToken();
       } catch (error) {
         throw new ApiError(
           "Không gọi được Zalo để lấy phiên đăng nhập. Vui lòng thử lại.",
@@ -121,21 +136,31 @@ export function createZaloAdapter({ baseUrl } = {}) {
           "configuration",
         );
       }
+      const capturedGeneration = getSessionGeneration();
       const data = await request("/api/v1/auth/session", {
         method: "POST",
         body: { access_token: accessToken },
       });
+      if (getSessionGeneration() !== capturedGeneration) {
+        throw new ApiError(
+          "Phiên đã thay đổi trong lúc đăng nhập. Kết quả bị bỏ qua — hãy kiểm tra trạng thái đăng nhập hiện tại.",
+          0,
+          "stale_session",
+        );
+      }
       if (!data || typeof data.token !== "string" || !data.token) {
         throw new ApiError("Backend trả về phiên không hợp lệ.", 0, "invalid_response");
       }
       setSession({
         token: data.token,
         userId: data.user && data.user.id,
+        displayName: data.user && data.user.display_name,
         expiresAt: data.expires_at,
         consentsRequired: data.consents_required,
       });
       return {
         userId: getSession().userId,
+        displayName: getSession().displayName || null,
         expiresAt: getSession().expiresAt,
         consentsRequired: getSession().consentsRequired || [],
       };
@@ -157,17 +182,40 @@ export function createZaloAdapter({ baseUrl } = {}) {
 
     async logout() {
       requireBaseUrl();
+      // Chốt cặp (token, generation) cùng lúc: revoke đúng token đang thấy,
+      // và chỉ xóa phiên khi chưa có đăng nhập mới xen vào.
       const token = getToken();
+      const capturedGeneration = getSessionGeneration();
       if (token) {
         try {
           await request("/api/v1/auth/logout", { method: "POST", body: {} });
         } finally {
-          clearSession();
+          clearSessionIfUnchanged(capturedGeneration);
         }
         return true;
       }
-      clearSession();
+      clearSessionIfUnchanged(capturedGeneration);
       return false;
+    },
+
+    // --------------------- F01: danh tính tự khai báo ------------------------
+
+    /** GET /api/v1/auth/me — tên tự khai báo của chính mình (không phải
+     * danh tính Zalo xác minh; UI phải gắn nhãn rõ). */
+    async getMyProfile() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/auth/me"));
+      return data || null;
+    },
+
+    /** PUT /api/v1/auth/me — đặt/cập nhật tên tự khai báo. */
+    async updateMyProfile({ displayName }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/auth/me", {
+        method: "PUT",
+        body: { display_name: displayName },
+      }));
+      return data;
     },
 
     // ------------------------- F01: đồng ý ----------------------------------
@@ -206,6 +254,21 @@ export function createZaloAdapter({ baseUrl } = {}) {
       requireBaseUrl();
       const data = await authed(() => request("/api/v1/connections/invites"));
       return data && Array.isArray(data.results) ? data.results : [];
+    },
+
+    /**
+     * Kiểm tra mã TRƯỚC khi chấp nhận (read-only): ai tạo mã, quan hệ đề
+     * nghị. Trả về { invite_id, relationship_kind, status, expires_at,
+     * counterpart: { display_name, identity_basis } } — counterpart là TÊN
+     * TỰ KHAI BÁO, không phải danh tính Zalo xác minh.
+     */
+    async previewInvite(code) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/connections/invites/preview", {
+        method: "POST",
+        body: { code },
+      }));
+      return data;
     },
 
     async claimInvite(code) {

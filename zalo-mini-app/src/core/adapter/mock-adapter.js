@@ -40,9 +40,11 @@ export function createMockAdapter({ scenario = null } = {}) {
       relationship_kind: "primary",
       generation: 1,
       status: "active",
+      counterpart: { display_name: fixtures.demoPeer.displayLabel, identity_basis: "self_declared" },
     },
   ];
   const consents = new Map();
+  let myDisplayName = null; // tên tự khai báo demo (fixture, trong bộ nhớ)
 
   async function simulate({ kind, fallback }) {
     const mode = pick(fallback);
@@ -115,6 +117,32 @@ export function createMockAdapter({ scenario = null } = {}) {
       return hasLiveSession();
     },
 
+    // Danh tính tự khai báo (demo): đối xứng với GET/PUT /api/v1/auth/me.
+    async getMyProfile() {
+      await wait(100);
+      return {
+        user_id: "demo-user-fixture",
+        display_name: myDisplayName,
+        identity_basis: "self_declared",
+        source: "fixture",
+      };
+    },
+
+    async updateMyProfile({ displayName } = {}) {
+      await wait(150);
+      const text = String(displayName || "").trim().slice(0, 80);
+      if (!text) {
+        throw new ApiError("Tên gọi không được bỏ trống (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "display_name", reason: "too_short" } });
+      }
+      myDisplayName = text;
+      return {
+        user_id: "demo-user-fixture",
+        display_name: myDisplayName,
+        identity_basis: "self_declared",
+        source: "fixture",
+      };
+    },
+
     async logout() {
       await wait(150);
       clearSession();
@@ -153,6 +181,8 @@ export function createMockAdapter({ scenario = null } = {}) {
         status: "pending",
         expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
         role: "inviter",
+        revision: 1,
+        counterpart: null,
       };
       invites.set(id, invite);
       return { invite_id: id, code, expires_at: invite.expires_at, status: "pending", source: "fixture" };
@@ -161,6 +191,24 @@ export function createMockAdapter({ scenario = null } = {}) {
     async listInvites() {
       await wait(150);
       return Array.from(invites.values()).map((invite) => ({ ...invite }));
+    },
+
+    /** Kiểm tra mã TRƯỚC khi chấp nhận (demo): chỉ mã fixture hợp lệ. */
+    async previewInvite(code) {
+      await simulate({ kind: "claim", fallback: "ok" });
+      const normalized = String(code || "").trim().toUpperCase();
+      if (normalized !== DEMO_CLAIMABLE_CODE) {
+        throw new ApiError("Mã không đúng hoặc đã hết hạn (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "invalid_or_expired_code" } });
+      }
+      return {
+        invite_id: "demo-invite-claimed",
+        relationship_kind: "primary",
+        status: "pending",
+        expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
+        counterpart: { display_name: fixtures.demoPeer.displayLabel, identity_basis: "self_declared" },
+        identity_basis: "self_declared",
+        source: "fixture",
+      };
     },
 
     async claimInvite(code) {
@@ -177,11 +225,13 @@ export function createMockAdapter({ scenario = null } = {}) {
           status: "awaiting_confirmation",
           expires_at: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
           role: "candidate",
+          revision: 2,
+          counterpart: { display_name: fixtures.demoPeer.displayLabel, identity_basis: "self_declared" },
         });
       }
       const invite = invites.get(id);
       invite.status = "awaiting_confirmation";
-      return { invite_id: id, relationship_kind: invite.relationship_kind, status: invite.status, expires_at: invite.expires_at, role: "candidate", source: "fixture" };
+      return { invite_id: id, relationship_kind: invite.relationship_kind, status: invite.status, expires_at: invite.expires_at, role: "candidate", revision: invite.revision, counterpart: { ...invite.counterpart }, source: "fixture" };
     },
 
     async confirmInvite(inviteId, { expectedRevision = null } = {}) {

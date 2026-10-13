@@ -99,19 +99,76 @@ Frontend (`zalo-mini-app/`):
 - Tests: `tests/f01-flows.test.mjs` (25 test mới) + `tests/pages.test.mjs`
   cập nhật contract 14 pages + 4 test home production mới.
 
+## 3b. Đợt sửa theo review (PR #26 — 2026-10-13, sau head 968d418)
+
+Reviewer đã chỉ 5 lỗi; tất cả đã sửa kèm test tái hiện. Phạm vi vẫn tránh
+`models.py`, `migrations/`, `services/invites.py` (khu W036 của Antigravity).
+
+1. **XÁC NHẬN ĐÚNG NGƯỜI** — hai bên kiểm tra được ai trước khi chấp nhận/
+   xác nhận/hủy kết nối:
+   - Backend MỚI (view-layer, không đụng models): `GET/PUT /api/v1/auth/me`
+     (tên gọi TỰ KHAI BÁO lưu vào cột `auth_user.first_name` có sẵn — không
+     migration); `POST /api/v1/connections/invites/preview` — đọc mã
+     read-only để xem ai tạo mã TRƯỚC khi đồng ý (dùng chung budget rate
+     limit với claim, cùng mã lỗi anti-enumeration).
+   - Mọi read trả thêm `counterpart: {display_name, identity_basis:
+     "self_declared"}` (không UUID, không provider_subject; batch 1 query).
+   - Frontend: thẻ "Tên gọi của bạn" (nhãn rõ không phải Zalo xác minh);
+     nhập mã 2 bước (Kiểm tra mã → thấy tên người tạo → Đồng ý kết nối);
+     dialog xác nhận của A nêu tên người nhập mã; dialog hủy kết nối nêu tên
+     người kia; danh sách lời mời/kết nối hiện tên + nhãn tự khai báo.
+     KHÔNG xin SĐT/GPS, KHÔNG ép quyền tên/avatar Zalo.
+   - `revision`: GET invites/claim/confirm/decline/cancel trả `revision` →
+     frontend confirm gửi `expected_revision` thật (trước đó null vì
+     `display_for` không có revision — đã bù ở view layer, giữ nguyên models).
+2. **PHỤC HỘI SAU LỖI MẠNG** (`src/pages/connect/index.js`): refresh lỗi
+   KHÔNG còn xóa ô nhập mã — claimArea được dựng lại từ `claimState`
+   (giữ mã đã gõ, giữ trạng thái preview/claimed); Thử lại thành công khôi
+   phục đúng trạng thái; KHÔNG tự replay thao tác ghi (claim/confirm/revoke
+   chỉ chạy khi bấm nút).
+3. **MÃ MỜI HẾT HIỆU LỰC**: mã vừa tạo được đối chiếu backend theo
+   `invite_id` sau mỗi refresh (`reconcileCreatedInvite`): còn pending +
+   chưa hết hạn → giữ hiển thị (không mất mã hợp lệ); canceled/expired/
+   đã có người nhập/biến mất → ngừng hiển thị như còn dùng, trả nút tạo mã
+   mới/phù hợp.
+4. **CÔ LẬP REQUEST THEO PHIÊN** (`src/core/session.js` + `zalo-adapter.js`):
+   thêm session generation (số tăng mỗi lần setSession/clearSession).
+   `authed()` chỉ `clearSessionIfUnchanged(generation)` khi 401 — request
+   của phiên cũ KHÔNG xóa phiên mới; `loginWithZaloToken` capture generation
+   trước POST và BỎ kết quả lỗi thời (logout không bị response đăng nhập
+   chậm khôi phục phiên); `logout` chốt cặp (token, generation) và chỉ xóa
+   phiên của mình. Trang connect chỉ đá về /login khi phiên THẬT SỰ chết.
+5. **LỖI TRANSPORT ZALO** (`services/zalo_provider.py`): mapping lỗi
+   transport đặt tại `_fetch_token_info` — `URLError`, `socket.timeout`/
+   `TimeoutError`, `OSError` → 503 `temporarily_unavailable` /
+   `provider_unreachable` cho CẢ transport mặc định lẫn injected double;
+   KHÔNG cấp token, KHÔNG tạo user khi verify thất bại; KHÔNG catch-all
+   (lỗi lập trình vẫn lan lên). Giữ nguyên HTTPS, allowlist, giới hạn 16KiB,
+   timeout 10s, header proof.
+
 ## 4. Kiểm thử + kết quả
 
 | Bộ | Lệnh | Kết quả |
 |---|---|---|
-| Backend F01 (SQLite) | `cd tests/feature-lab && DJANGO_SETTINGS_MODULE=harness.settings DJANGO_ENV=test FB_FEATURES=f01_identity PYTHONPATH=. python manage.py test family_bridge_features.f01_identity` | **55 tests: 53 pass + 2 skip (MySQL-gated)** |
-| Frontend full | `cd zalo-mini-app && npm test` | **135/135 pass** (79 cũ + 56 mới/cập nhật) |
+| Backend F01 (SQLite) | `cd tests/feature-lab && DJANGO_SETTINGS_MODULE=harness.settings DJANGO_ENV=test FB_FEATURES=f01_identity PYTHONPATH=. python manage.py test family_bridge_features.f01_identity` | **88 tests: 84 pass + 4 skip (MySQL-gated: 2 race confirm/claim + 2 race login đồng thời)** |
+| Backend toàn harness (SQLite) | `... FB_FEATURES="f01_identity,f15_privacy,...,admin_core" python manage.py test harness labgrants family_bridge_features.*` | **373 tests OK, 4 skip** |
+| Frontend full | `cd zalo-mini-app && npm test` | **149/149 pass** (trong đó: 39 test f01-flows gồm test tái hiện từng lỗi review) |
+| Mobile packages | `node --test packages/family_bridge_mobile/*/tests/*.test.mjs` | 16/16 file OK |
 | Build | `cd zalo-mini-app && npm run build` | OK + `Verified Zalo app-config and all referenced assets` |
-| Secret scan | grep mẫu secret trên src/tests/www/docs/.env.example | CLEAN (chỉ tên biến, không giá trị) |
-| Live smoke Zalo | curl `graph.zalo.me/v2.0/me` với token rác + proof đúng shape | `{"error":452,...}` — endpoint chấp nhận shape; 452 đã map thành token_invalid (có test) |
+| Docs checker | `python scripts/check_agent_docs.py` | OK (files/links, skills, wiring, SEC register, FL/AF/CAP/WF/DEC/CFG mapping) |
+| `git diff --check` | trên toàn working tree | CLEAN |
 
-SQLite/test doubles chỉ chứng minh phạm vi đã kiểm tra. **KHÔNG** claim
-MySQL/TiDB PASS hay Zalo device PASS từ chúng (2 test race vẫn skip nếu không
-đặt `FB_TEST_DB=mysql`).
+**Phân loại môi trường kiểm chứng (bắt buộc đọc trước khi tin kết quả):**
+
+| Môi trường | Chứng minh được | KHÔNG chứng minh được |
+|---|---|---|
+| SQLite local (đã chạy) | logic nghiệp vụ, error mapping, view-layer enrichment, session generation, UI state | row-lock/unique race thật, charset/collation MySQL, latency/device |
+| MySQL CI 8.4 (`mysql-checks` job, chạy sau khi push) | migration thật + 4 test race (2 confirm/claim + 2 login đồng thời: 1 identity/1 user, không mồ côi, không 500) | hành vi TiDB (Render dùng TiDB — tiếng nói MySQL nhưng không 100% giống) |
+| TiDB trên Render | chỉ smoke health/ready đã thấy trước đó | race semantics — phải quan sát log/số liệu thật khi chạy thử |
+| Thiết bị Zalo thật | SDK getAccessToken, verify token thật, hiển thị webview | chưa chạy — Antigravity theo `two-account-script.md` |
+
+Không được dùng kết quả SQLite để tuyên bố MySQL/TiDB PASS, và không có bất kỳ
+tuyên bố Zalo device PASS nào từ đợt này.
 
 ## 5. Chính sách Zalo (nguồn → ngày → yêu cầu → triển khai → bằng chứng)
 
