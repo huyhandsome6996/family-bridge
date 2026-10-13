@@ -24,7 +24,7 @@ function zaloManifest() {
               .filter((f) => f.type === "chunk" && f.isEntry)
               .map((f) => f.fileName),
             listAsyncJS: files
-              .filter((f) => f.type === "chunk" && !f.isEntry && !f.isDynamicEntry)
+              .filter((f) => f.type === "chunk" && !f.isEntry)
               .map((f) => f.fileName),
           },
           null,

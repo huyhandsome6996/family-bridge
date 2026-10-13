@@ -6,6 +6,7 @@ import { h } from "../../app/dom.js";
 import { isZaloHost } from "../../core/config.js";
 import { hasLiveSession } from "../../core/session.js";
 import { POLICY_PURPOSES } from "../../core/policy.js";
+import { loginErrorMessage } from "../../core/login-error.js";
 import {
   createButton, createCard, createStatusBadge, createTopBar,
 } from "../../components/index.js";
@@ -127,18 +128,7 @@ export const page = {
     function fail(error) {
       if (cancelled) return;
       setBusy(false);
-      let message = "Đăng nhập chưa thành công. Vui lòng thử lại.";
-      if (error) {
-        if (error.kind === "timeout") message = "Kết nối quá thời gian chờ. Vui lòng thử lại.";
-        else if (error.kind === "network") message = "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
-        else if (error.kind === "configuration") message = error.message || message;
-        else if (error.status === 401 || error.status === 400) {
-          message = "Phiên Zalo không hợp lệ cho ứng dụng này. Vui lòng thử lại.";
-        } else if (error.status === 503) {
-          message = "Máy chủ đang bận hoặc chưa sẵn sàng. Vui lòng thử lại sau.";
-        }
-      }
-      statusLine.textContent = message;
+      statusLine.textContent = loginErrorMessage(error);
     }
 
     async function startLogin() {
