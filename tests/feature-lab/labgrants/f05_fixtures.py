@@ -1,7 +1,25 @@
 """TEST-ONLY doubles for F05: connection reader, reply-context validator,
 quick reply templates."""
 
+from django.db.models import Q
+
 from labgrants.models import GrantRow, TestConnection
+
+
+class _ConnectionView:
+    pass
+
+
+def _connection_view(row) -> _ConnectionView:
+    view = _ConnectionView()
+    view.connection_id = str(row.id)
+    view.party_a = row.party_low_id
+    view.party_b = row.party_high_id
+    view.relationship_kind = row.relationship_kind
+    view.status = row.status
+    view.generation = row.generation
+    view.revision = 1
+    return view
 
 
 class TestConnectionReader:
@@ -9,27 +27,17 @@ class TestConnectionReader:
         low, high = sorted([str(user_a), str(user_b)])
         row = TestConnection.objects.filter(
             party_low_id=low, party_high_id=high, status="active").first()
-        if row is None:
-            return None
-
-        class View:
-            pass
-
-        view = View()
-        view.connection_id = str(row.id)
-        view.party_a = row.party_low_id
-        view.party_b = row.party_high_id
-        view.relationship_kind = row.relationship_kind
-        view.status = row.status
-        view.generation = row.generation
-        view.revision = 1
-        return view
+        return _connection_view(row) if row else None
 
     def get_connection(self, *, connection_id: str):
         return None
 
     def list_active_for_user(self, *, user_id: str):
-        return []
+        rows = (TestConnection.objects.filter(status="active")
+                .filter(Q(party_low_id=str(user_id))
+                        | Q(party_high_id=str(user_id)))
+                .order_by("id"))
+        return [_connection_view(row) for row in rows]
 
 
 def _uid(value) -> str:

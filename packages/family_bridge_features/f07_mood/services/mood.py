@@ -150,12 +150,17 @@ class MoodShareService:
             user_a=str(owner_id), user_b=str(recipient_id))
         if connection is None:
             raise NotFound({"reason": "no_active_connection"})
-        share, _ = MoodShare.objects.get_or_create(
+        share, created = MoodShare.objects.get_or_create(
             entry=entry, recipient_id=str(recipient_id),
             approved_revision=entry.revision,
             defaults={"owner_id": str(owner_id),
                       "connection_id": str(connection.connection_id),
                       "connection_generation": connection.generation})
+        if not created and share.revoked_at is not None:
+            # A revoked grant is TERMINAL for this (entry, recipient, revision)
+            # (FL-05): re-sharing the same revision would silently revive it.
+            # The owner edits the entry (new revision) and shares that.
+            raise InputInvalid({"reason": "reshare_after_revoke_requires_edit"})
         return share
 
     def revoke(self, *, owner_id: str, share_id: str) -> MoodShare:
@@ -174,17 +179,35 @@ class MoodShareService:
 
     def list_shared_with_me(self, *, recipient_id: str):
         """Active grants for the recipient whose revision is STILL current
-        (edited entries disappear until re-shared) — filtered in the DB."""
-        return (MoodShare.objects
+        (edited entries disappear until re-shared) AND whose recorded
+        connection is still the ACTIVE connection at the SAME generation
+        (a reconnect never revives stale bindings — F15/WF-04)."""
+        rows = (MoodShare.objects
                 .filter(recipient_id=str(recipient_id),
                         revoked_at__isnull=True,
                         approved_revision=models_f7_entry_revision())
-                .select_related("entry", "owner"))
+                .select_related("entry", "owner")
+                .order_by("-created_at", "-id"))
+        reader = registry.get_connection_reader()
+        if reader is None:
+            return []  # fail-closed: cannot verify connection state
+        active = {}
+        for connection in reader.list_active_for_user(
+                user_id=str(recipient_id)):
+            other = connection.party_b if connection.party_a == str(recipient_id) \
+                else connection.party_a
+            active[str(other)] = connection
+        bounded = list(rows[:_LIST_BINDING_BOUND])
+        return [row for row in bounded
+                if _binding_current(row, owner_id=str(row.owner_id),
+                                    recipient_id=str(recipient_id),
+                                    active=active)]
 
     def read_shared(self, *, recipient_id: str, share_id: str) -> Dict[str, Any]:
         """Recipient read path — re-checks EVERYTHING at read time:
         grant unrevoked + revision still current + connection ACTIVE at the
-        CURRENT generation. Any drift -> 404 (fail closed, no cache)."""
+        CURRENT generation AND the grant's recorded connection binding is
+        still the live one. Any drift -> 404 (fail closed, no cache)."""
         share = MoodShare.objects.select_related("entry").filter(
             pk=share_id).first()
         if share is None or str(share.recipient_id) != str(recipient_id):
@@ -194,11 +217,17 @@ class MoodShareService:
         if share.approved_revision != share.entry.revision:
             raise NotFound({"reason": "entry_edited_not_reshared"})
         reader = registry.get_connection_reader()
-        if reader is not None:
-            connection = reader.active_connection_between(
-                user_a=str(share.owner_id), user_b=str(recipient_id))
-            if connection is None:
-                raise NotFound({"reason": "share_not_found"})
+        if reader is None:
+            raise NotFound({"reason": "share_not_found"})
+        connection = reader.active_connection_between(
+            user_a=str(share.owner_id), user_b=str(recipient_id))
+        if connection is None:
+            raise NotFound({"reason": "share_not_found"})
+        if (str(getattr(connection, "connection_id", ""))
+                != str(share.connection_id)
+                or int(getattr(connection, "generation", -1))
+                != int(share.connection_generation)):
+            raise NotFound({"reason": "share_not_found"})
         return {
             "share_id": str(share.id),
             "entry": share.entry.view(),
@@ -211,3 +240,19 @@ def models_f7_entry_revision():
     """F(...) helper keeping the queryset import local for readability."""
     from django.db.models import F
     return F("entry__revision")
+
+
+_LIST_BINDING_BOUND = 200  # DSA bound before the binding filter
+
+
+def _binding_current(share, *, owner_id: str, recipient_id: str,
+                     active: dict) -> bool:
+    """True when the grant's recorded connection is STILL the active
+    connection between the pair at the SAME generation."""
+    connection = active.get(str(owner_id))
+    if connection is None:
+        return False
+    return (str(getattr(connection, "connection_id", ""))
+            == str(share.connection_id)
+            and int(getattr(connection, "generation", -1))
+            == int(share.connection_generation))

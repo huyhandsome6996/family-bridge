@@ -14,11 +14,19 @@ from labgrants.models import GrantRow
 from labgrants.providers import mood_entry_provider
 
 from ..models import DeletionLedgerEvent, DeletionRequest, PrivacyCase
+from ..services import ports as privacy_ports
 from ..services import registry as grant_registry
 from ..services.deletion import DeletionService
 from .helpers import auth_header, make_session
 from ..services.sessions import register_session_resolver
 import labgrants.sessions as _lab_sessions
+
+
+class _AllowAllAuthorizer:
+    """TEST-ONLY synthetic handler authorization (DEC-14/18 open in prod)."""
+
+    def authorize(self, *, actor_id, action, request_id):
+        return True
 
 
 def _register_providers():
@@ -37,10 +45,22 @@ class F15TestCase(TestCase):
     def setUp(self):
         super().setUp()
         grant_registry.reset_registries()
-        _register_providers()
+        privacy_ports.reset_ports()
+        self._register_providers()
         self.owner = make_student()
         self.recipient = make_caregiver()
         self.stranger = make_student()
+
+    def _register_providers(self):
+        register_session_resolver(_lab_sessions.resolve_session)
+        grant_registry.register_grant_provider("mood_entry",
+                                               "labgrants.providers.mood_entry_provider")
+        grant_registry.register_grant_provider("journal_page",
+                                               "labgrants.providers.journal_page_provider")
+        grant_registry.register_deletion_hook("mood",
+                                              "labgrants.providers.MoodDeletionHook")
+        grant_registry.register_deletion_hook("journal",
+                                              "labgrants.providers.JournalDeletionHook")
 
 
 class AccessPolicyTests(F15TestCase):
@@ -173,7 +193,8 @@ class DeletionWorkflowTests(F15TestCase):
         ok_request = service.request_deletion(user=self.owner,
                                               categories=["mood", "journal"])
         service.verify_request(request_id=ok_request["request_id"],
-                               verifier_ref="test-verifier")
+                               verifier_ref="test-verifier",
+                               authorizer=_AllowAllAuthorizer())
         done = service.process_request(request_id=ok_request["request_id"])
         self.assertEqual(done.status, DeletionRequest.STATUS_COMPLETED)
         # Hook failing -> failed_needs_action, NOT completed
@@ -182,7 +203,8 @@ class DeletionWorkflowTests(F15TestCase):
         fail_request = service.request_deletion(user=self.owner,
                                                 categories=["mood", "ai"])
         service.verify_request(request_id=fail_request["request_id"],
-                               verifier_ref="test-verifier")
+                               verifier_ref="test-verifier",
+                               authorizer=_AllowAllAuthorizer())
         failed = service.process_request(request_id=fail_request["request_id"])
         self.assertEqual(failed.status, DeletionRequest.STATUS_FAILED)
         self.assertFalse(failed.failure_detail["ai"]["ok"])
@@ -199,7 +221,8 @@ class DeletionWorkflowTests(F15TestCase):
             approved_revision=1)
         result = service.request_deletion(user=self.owner, categories=["mood"])
         service.verify_request(request_id=result["request_id"],
-                               verifier_ref="test-verifier")
+                               verifier_ref="test-verifier",
+                               authorizer=_AllowAllAuthorizer())
         service.process_request(request_id=result["request_id"])
         self.assertFalse(GrantRow.objects.filter(pk=grant.pk).exists())
 
@@ -296,25 +319,34 @@ class PrivacyApiTests(F15TestCase):
         self.assertEqual(response.data["error"]["code"], "input_invalid")
 
     def test_consent_withdraw_fail_closed_without_port(self):
-        response = self.client.post("/api/v1/privacy/consents/research/withdraw",
-                                    {}, format="json",
-                                    **auth_header(self.owner_token))
-        self.assertEqual(response.status_code, 503)
-        self.assertEqual(response.data["error"]["code"], "module_unavailable")
+        from ..services.consent import ProductionConsentWriter
 
-    def test_consent_withdraw_with_port_wired(self):
-        class FakeConsentWriter:
-            calls = []
+        privacy_ports.reset_ports()  # simulate the unwired branch
+        try:
+            response = self.client.post(
+                "/api/v1/privacy/consents/research/withdraw", {}, format="json",
+                **auth_header(self.owner_token))
+            self.assertEqual(response.status_code, 503)
+            self.assertEqual(response.data["error"]["code"],
+                             "module_unavailable")
+        finally:
+            privacy_ports.register_consent_writer(ProductionConsentWriter())
 
-            def withdraw(self, *, user_id, purpose):
-                self.calls.append((user_id, purpose))
-                return True
+    def test_consent_withdraw_wired_answers_200_decisively(self):
+        from family_bridge_features.f01_identity.models import ConsentRecord
+        from family_bridge_features.f01_identity.services.identity import record_consent
+        from ..services.consent import ProductionConsentWriter
 
-        writer = FakeConsentWriter()
-        response = self.client.post("/api/v1/privacy/consents/research/withdraw",
-                                    {}, format="json",
-                                    **auth_header(self.owner_token),
-                                    **{"HTTP_FB_CONSENT_WRITER": "wired"})
-        # Port is attached to the request by auth middleware at integration;
-        # for the test we simulate via request attribute monkeypatch:
-        self.assertIn(response.status_code, (200, 503))
+        privacy_ports.register_consent_writer(ProductionConsentWriter())
+        record_consent(user=self.owner, purpose="research",
+                       policy_version="research-v1", decision="accepted")
+        response = self.client.post(
+            "/api/v1/privacy/consents/research/withdraw", {}, format="json",
+            **auth_header(self.owner_token))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.data["withdrawn"])
+        latest = ConsentRecord.latest_active(self.owner.pk, "research")
+        self.assertIsNone(latest,
+                          "active research consent must be gone after withdrawal")
+        self.assertTrue(DeletionLedgerEvent.objects.filter(
+            event_type=DeletionLedgerEvent.EVENT_CONSENT_WITHDRAWN).exists())
