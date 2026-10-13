@@ -79,6 +79,17 @@ export const page = {
     });
     reloadBtn.style.display = "none";
 
+    // -- kết nối ---------------------------------------------------------------
+    // R12: kết nối hiện thật trên trang + hành động hủy kết nối (API thật,
+    // có confirm) thay vì chỉ có dữ liệu ngầm trong core.
+    const connectionsCard = createCard({
+      title: "Kết nối",
+      description: "Quyền chia sẻ gắn với từng kết nối; hủy kết nối sẽ "
+        + "chấm dứt mọi chia sẻ giữa hai bên.",
+      children: h("div", { dataset: { role: "connections-list" } },
+        h("p", { class: "fb-page__note" }, "Đang tải…")),
+    });
+
     // -- đang chia sẻ ---------------------------------------------------------
     const sharedCard = createCard({
       title: "Đang chia sẻ",
@@ -143,18 +154,34 @@ export const page = {
       dataset: { role: "receipt" },
     });
     const requestsList = h("ul", { dataset: { role: "deletion-requests" } });
+    const loadMoreRequestsBtn = createButton({
+      label: "Tải thêm yêu cầu", variant: "ghost",
+      onClick: () => Promise.resolve(core.loadMoreDeletionRequests()),
+    });
+    loadMoreRequestsBtn.style.display = "none";
+    const deletionErrorBox = h("p", {
+      class: "fb-status fb-status--warning", "aria-live": "polite",
+      dataset: { role: "deletion-requests-error" },
+    });
     const deletionCard = createCard({
       title: "Yêu cầu xóa dữ liệu",
       description: "Yêu cầu được xác minh bởi người phụ trách trước khi xử "
         + "lý; trạng thái luôn phản ánh thật, chưa xong sẽ ghi rõ.",
       children: h("div", null, ...checkboxRows, requestBtn, receiptBox,
-                  requestsList),
+                  requestsList, deletionErrorBox, loadMoreRequestsBtn),
     });
+    const loadMoreSharesBtn = createButton({
+      label: "Tải thêm mục đang chia sẻ", variant: "ghost",
+      onClick: () => Promise.resolve(core.loadMoreShares()),
+    });
+    loadMoreSharesBtn.style.display = "none";
 
     body.appendChild(statusBox);
     body.appendChild(reloadBtn);
     body.appendChild(sharedCard);
+    body.appendChild(loadMoreSharesBtn);
     body.appendChild(consentCard);
+    body.appendChild(connectionsCard);
     body.appendChild(deletionCard);
 
     function renderView(view) {
@@ -190,9 +217,35 @@ export const page = {
           }
           sharedHost.appendChild(row);
         }
-        if (view.hasMore) {
-          sharedHost.appendChild(h("p", { class: "fb-page__note" },
-            "Vẫn còn mục khác — bản đầy đủ sẽ phân trang trong bản sau."));
+      }
+      // R09/R12: load-more thật (cursor của API), không còn lời hứa
+      // "phân trang trong bản sau".
+      loadMoreSharesBtn.style.display =
+        (view.status === "ready" && view.hasMore) ? "" : "none";
+
+      // connections (R12)
+      const connectionsHost =
+        connectionsCard.querySelector("[data-role=connections-list]");
+      connectionsHost.replaceChildren();
+      if (view.status !== "ready") {
+        connectionsHost.appendChild(h("p", { class: "fb-page__note" },
+          view.status === "loading" ? "Đang tải…"
+            : "Kết nối chỉ hiện khi có phiên đăng nhập."));
+      } else if (!view.connections.length) {
+        connectionsHost.appendChild(h("p", { class: "fb-page__note" },
+          "Bạn chưa kết nối với ai. Kết nối mới tạo qua lời mời hai bên."));
+      } else {
+        for (const conn of view.connections) {
+          const row = h("div", { class: "fb-shared__row" },
+            h("span", null, `Kết nối đang hoạt động (đối tác: `
+              + `${conn.other_party_id.slice(0, 8)}…, thế hệ: `
+              + `${conn.generation})`));
+          row.appendChild(createButton({
+            label: "Hủy kết nối", variant: "danger",
+            onClick: () => Promise.resolve(
+              core.unlinkConnection(conn.connection_id)),
+          }));
+          connectionsHost.appendChild(row);
         }
       }
 
@@ -203,16 +256,24 @@ export const page = {
         : (view.receiptNote || "");
 
       // deletion requests
+      deletionErrorBox.textContent = view.deletionRequestsError
+        ? "Chưa đọc được danh sách yêu cầu xóa (lỗi mạng/máy chủ). "
+          + "Trạng thái bên dưới có thể chưa mới — thử tải lại."
+        : "";
       requestsList.replaceChildren();
       if (view.status !== "ready") {
         requestsList.appendChild(h("li", null,
           "Trạng thái yêu cầu chỉ hiện khi có phiên đăng nhập."));
       } else if (!view.deletionRequests.length) {
-        requestsList.appendChild(h("li", null, "Chưa có yêu cầu xóa nào."));
+        requestsList.appendChild(h("li", null,
+          view.deletionRequestsError
+            ? "Chưa đọc được danh sách yêu cầu."
+            : "Chưa có yêu cầu xóa nào."));
       } else {
         for (const req of view.deletionRequests) {
+          // R12: trạng thái máy chủ được map tiếng Việt, không render raw.
           const row = h("li", null,
-            `Yêu cầu ${req.status} — phạm vi: `
+            `Yêu cầu ${core.deletionStatusLabel(req.status)} — phạm vi: `
             + `${(req.scope_categories || []).map((c) => core.categoryLabel(c)).join(", ")}`);
           if (req.status === "requested") {
             row.appendChild(createButton({
@@ -224,6 +285,8 @@ export const page = {
           requestsList.appendChild(row);
         }
       }
+      loadMoreRequestsBtn.style.display =
+        (view.status === "ready" && view.deletionHasMore) ? "" : "none";
     }
 
     const unsubscribe = core.subscribe(renderView);

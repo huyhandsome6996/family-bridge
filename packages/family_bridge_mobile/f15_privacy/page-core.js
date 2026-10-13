@@ -6,9 +6,17 @@
 // outcome sau mutation (K7), cleanup khi destroy. KHÔNG đụng DOM ở đây —
 // hai wrapper DOM render từ getView() và gọi các action.
 //
-// An toàn (K7 + SEC): token chỉ trong bộ nhớ qua getToken(); mutation KHÔNG
-// tự retry; sau mutation mất response -> trạng thái "unknown_outcome" và
-// CHÍNH XÁC MỘT lần GET đọc lại để đối chiếu (có trần, không polling).
+// An toàn (K7 + SEC + R03):
+//   - token chỉ trong bộ nhớ qua getToken(); không storage, không URL;
+//   - mutation KHÔNG tự retry;
+//   - MỐC PHIÊN (session guard): mọi request ghi token-at-start lại và
+//     KIỂM LẠI token trước khi commit state — response của actor cũ không
+//     bao giờ ghi đè state của actor mới, logout giữa chừng thì response
+//     muộn bị bỏ và state riêng tư bị dọn (items/connections/receipt/
+//     deletionRequests/consent note/pagination);
+//   - sau mutation mất response -> "unknown_outcome" và ĐÚNG MỘT lần GET
+//     đọc lại theo LOẠI tài nguyên (overview + deletion list) — có trần,
+//     không polling.
 
 const STATUS = {
   LOADING: "loading",
@@ -35,6 +43,18 @@ const CATEGORY_LABELS = {
 const ITEM_TYPE_LABELS = {
   mood_entry: "Tâm trạng",
   journal_page: "Trang nhật ký",
+};
+
+// R12: trạng thái máy chủ (tiếng Anh kỹ thuật) được map sang tiếng Việt —
+// không render raw enum cho người dùng.
+const DELETION_STATUS_LABELS = {
+  requested: "chờ xác minh",
+  verified: "đã xác minh",
+  processing: "đang xử lý",
+  completed: "hoàn tất",
+  failed_needs_action: "cần can thiệp thủ công",
+  rejected: "bị từ chối",
+  cancelled: "đã hủy",
 };
 
 export function classifyError(err) {
@@ -80,6 +100,9 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
     hasMore: false,
     nextCursor: null,
     deletionRequests: [],
+    deletionHasMore: false,
+    deletionNextCursor: null,
+    deletionRequestsError: false,
     receipt: null,
     receiptNote: null,
     consentNote: null,
@@ -93,12 +116,32 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
     }
   }
 
+  // R03: private state bị xóa khỏi bộ nhớ khi mất phiên/destroy — status
+  // giữ nguyên cho renderer, dữ liệu riêng tư thì không lưu lại.
+  const PRIVATE_VIEW_DEFAULTS = {
+    items: [], connections: [], deletionRequests: [],
+    receipt: null, receiptNote: null, consentNote: null,
+    hasMore: false, nextCursor: null,
+    deletionHasMore: false, deletionNextCursor: null,
+  };
+
+  function clearPrivateState() {
+    receipt = null;
+    receiptNote = null;
+    unknownOutcomeNote = null;
+    view = { ...view, ...PRIVATE_VIEW_DEFAULTS };
+  }
+
   function itemLabel(itemType) {
     return ITEM_TYPE_LABELS[itemType] || itemType;
   }
 
   function categoryLabel(cat) {
     return CATEGORY_LABELS[cat] || cat;
+  }
+
+  function deletionStatusLabel(status) {
+    return DELETION_STATUS_LABELS[status] || status;
   }
 
   async function currentToken() {
@@ -109,19 +152,54 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
     }
   }
 
-  async function refreshDeletionRequests() {
+  // R03: vào trạng thái no_session một cách TƯỚC MINH — dọn toàn bộ dữ
+  // liệu riêng tư của actor cũ, không giữ lại gì để "hồi sau hiện lại".
+  function enterNoSession(message) {
+    clearPrivateState();
+    setView({
+      status: STATUS.NO_SESSION,
+      statusText: message
+        || "Chưa có phiên đăng nhập. Mở lại Mini App để đăng nhập, "
+          + "hoặc quay lại sau khi phiên đăng nhập được tích hợp.",
+      busy: false,
+    });
+  }
+
+  // R03: mỗi lần đọc/mutation ghi lại token lúc bắt đầu; trước khi commit
+  // state kiểm tra lại — token đổi (logout / đổi actor) thì response cũ bị
+  // bỏ, không chạm vào view của actor hiện tại.
+  async function tokenChangedSince(tokenAtStart) {
+    if (destroyed) return true;
+    const tokenNow = await currentToken();
+    return tokenNow !== tokenAtStart;
+  }
+
+  async function refreshDeletionRequests({ cursor = null, append = false } = {}) {
     // Owner-only recovery: đọc lại trạng thái yêu cầu sau mất response/khi
     // mở lại app (GET có trần, không phải POST tra cứu).
+    const tokenAtStart = await currentToken();
+    if (!tokenAtStart) return; // không gọi API riêng tư khi mất phiên
     try {
-      const data = await api.get(
-        "/api/v1/privacy/deletion-requests/list?limit=10", {});
+      const path = "/api/v1/privacy/deletion-requests/list?limit=10"
+        + (cursor ? `&cursor=${encodeURIComponent(cursor)}` : "");
+      const data = await api.get(path, {});
       if (destroyed) return;
+      if (await tokenChangedSince(tokenAtStart)) return; // R03: actor đổi
+      const results = Array.isArray(data && data.results) ? data.results : [];
       setView({
-        deletionRequests: Array.isArray(data && data.results)
-          ? data.results : [],
+        deletionRequests: append
+          ? [...view.deletionRequests, ...results]
+          : results,
+        deletionHasMore: Boolean(data && data.has_more),
+        deletionNextCursor: (data && data.next_cursor) || null,
+        deletionRequestsError: false,
       });
     } catch {
-      // trạng thái yêu cầu là phụ; lỗi không che trạng thái chính
+      // R12: lỗi đọc list KHÔNG bị nuốt thành "empty im lặng" — ghi cờ để
+      // UI báo thật; dữ liệu cũ không bị xóa oan.
+      if (!destroyed && !append) {
+        setView({ deletionRequestsError: true });
+      }
     }
   }
 
@@ -129,20 +207,22 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
     if (destroyed) return;
     const seq = ++loadSeq;
     if (!silent) setView({ status: STATUS.LOADING, statusText: "Đang tải quyền riêng tư…" });
-    const token = await currentToken();
+    const tokenAtStart = await currentToken();
     if (destroyed || seq !== loadSeq) return;
-    if (!token) {
-      setView({
-        status: STATUS.NO_SESSION,
-        statusText: "Chưa có phiên đăng nhập. Mở lại Mini App để đăng nhập, "
-          + "hoặc quay lại sau khi phiên đăng nhập được tích hợp.",
-        items: [], connections: [], busy: false,
-      });
+    if (!tokenAtStart) {
+      enterNoSession();
       return;
     }
     try {
       const data = await api.get("/api/v1/privacy/overview", {});
       if (destroyed || seq !== loadSeq) return;
+      if (await tokenChangedSince(tokenAtStart)) {
+        // R03: response của actor cũ về sau logout/đổi actor — bỏ, dọn
+        // state riêng tư và đọc lại theo phiên hiện tại (một lần, có trần).
+        enterNoSession();
+        void load({ silent: true });
+        return;
+      }
       const shared = Array.isArray(data && data.shared_by_me)
         ? data.shared_by_me : [];
       setView({
@@ -159,9 +239,13 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
         nextCursor: (data && data.next_cursor) || null,
         busy: busyCount > 0,
       });
-      refreshDeletionRequests();
+      void refreshDeletionRequests();
     } catch (err) {
       if (destroyed || seq !== loadSeq) return;
+      if (await tokenChangedSince(tokenAtStart)) {
+        // 401/lỗi của phiên cũ không được xóa state của phiên mới (R03).
+        return;
+      }
       const cls = classifyError(err);
       if (cls === "transient") {
         setView({
@@ -171,12 +255,8 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
           busy: false,
         });
       } else if (cls === "unauthenticated") {
-        setView({
-          status: STATUS.NO_SESSION,
-          statusText: "Phiên đăng nhập đã hết hạn hoặc không hợp lệ. "
-            + "Mở lại Mini App để đăng nhập lại.",
-          items: [], connections: [], busy: false,
-        });
+        enterNoSession("Phiên đăng nhập đã hết hạn hoặc không hợp lệ. "
+          + "Mở lại Mini App để đăng nhập lại.");
       } else {
         setView({
           status: STATUS.ERROR,
@@ -187,6 +267,50 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
         });
       }
     }
+  }
+
+  // -- load-more (R09/R12: phân trang thật trên UI) ---------------------------
+  async function loadMoreShares() {
+    if (!view.nextCursor) return { status: "end" };
+    if (busyCount > 0) return { status: "busy" };
+    const tokenAtStart = await currentToken();
+    if (!tokenAtStart) return { status: "no_session" };
+    try {
+      const path = "/api/v1/privacy/overview?cursor="
+        + encodeURIComponent(view.nextCursor);
+      const data = await api.get(path, {});
+      if (destroyed) return { status: "destroyed" };
+      if (await tokenChangedSince(tokenAtStart)) return { status: "stale" };
+      const shared = Array.isArray(data && data.shared_by_me)
+        ? data.shared_by_me : [];
+      const known = new Set(view.items.map((it) =>
+        `${it.item_type}|${it.item_id}|${it.share_id || ""}`));
+      const fresh = shared
+        .filter((it) => !known.has(`${it.item_type}|${it.item_id}|${it.share_id || ""}`))
+        .map((item) => ({ ...item, label: itemLabel(item.item_type), busy: false }));
+      setView({
+        items: [...view.items, ...fresh],
+        hasMore: Boolean(data && data.has_more),
+        nextCursor: (data && data.next_cursor) || null,
+      });
+      return { status: "ok" };
+    } catch (err) {
+      if (destroyed) return { status: "destroyed" };
+      const cls = classifyError(err);
+      setView({
+        statusText: cls === "transient"
+          ? "Chưa tải thêm được (mạng). Thử lại."
+          : "Chưa tải thêm được. Đọc lại trang.",
+      });
+      return { status: cls === "transient" ? "transient" : "rejected" };
+    }
+  }
+
+  async function loadMoreDeletionRequests() {
+    if (!view.deletionNextCursor) return { status: "end" };
+    await refreshDeletionRequests({ cursor: view.deletionNextCursor,
+                                    append: true });
+    return { status: "ok" };
   }
 
   // -- mutations (double-submit guard + unknown-outcome reconcile) -----------
@@ -208,6 +332,8 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
 
   async function reconcileAfterUnknown() {
     // Đúng MỘT lần GET đọc lại (có trần) — không polling, không tự mutation.
+    // R12: đối chiếu THEO LOẠI — đọc cả overview (quyền/kết nối) VÀ danh
+    // sách yêu cầu xóa (kết quả POST xóa đã được máy chủ nhận hay chưa).
     try {
       const data = await api.get("/api/v1/privacy/overview", {});
       if (destroyed) return;
@@ -233,6 +359,7 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
         });
       }
     }
+    await refreshDeletionRequests();
   }
 
   async function revokeGrant(item) {
@@ -291,7 +418,18 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
       if (destroyed) return { status: "destroyed" };
       if (result && result.duplicate) {
         receipt = null;
-        receiptNote = "Bạn đã có yêu cầu đang mở — xem trạng thái bên dưới.";
+        if (result.covers_requested_categories === false) {
+          // R12: mismatch phạm vi phải được giải thích thật — không báo
+          // thành công giả cho ý định chưa nằm trong yêu cầu đang mở.
+          const pendingScope = (Array.isArray(result.scope_categories)
+            ? result.scope_categories : []).map(categoryLabel).join(", ");
+          receiptNote = "Bạn đã có yêu cầu đang mở (phạm vi: "
+            + (pendingScope || "—")
+            + "). Ý định lần này CHƯA nằm trong yêu cầu đó; yêu cầu chỉ "
+            + "được nhận mới khi yêu cầu hiện tại hoàn tất hoặc bị hủy.";
+        } else {
+          receiptNote = "Bạn đã có yêu cầu đang mở — xem trạng thái bên dưới.";
+        }
       } else {
         receipt = (result && result.receipt) || null;
         receiptNote = receipt
@@ -301,7 +439,7 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
       unknownOutcomeNote = null;
       setView({ receipt, receiptNote });
       endBusy();
-      refreshDeletionRequests();
+      await refreshDeletionRequests();
       return { status: "ok", receipt };
     } catch (err) {
       endBusy();
@@ -335,7 +473,7 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
         receiptNote = "Đã hủy yêu cầu xóa.";
         setView({ receiptNote });
       }
-      refreshDeletionRequests();
+      await refreshDeletionRequests();
       return { status: "ok" };
     } catch (err) {
       endBusy();
@@ -351,6 +489,44 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
         statusText: "Không hủy được (yêu cầu có thể đang xử lý). "
           + "Đọc lại trạng thái thật trên trang.",
       });
+      return { status: "rejected" };
+    }
+  }
+
+  async function unlinkConnection(connectionId) {
+    // R12: hành động hủy kết nối trên trang quyền riêng tư dùng API thật
+    // của F01 + confirm; mất response -> đối chiếu lại trạng thái kết nối.
+    if (!connectionId) return { status: "invalid_input" };
+    if (!beginBusy()) return { status: "busy" };
+    if (typeof confirm === "function"
+        && !confirm("Hủy kết nối này? Mọi chia sẻ giữa hai bên sẽ chấm dứt "
+          + "và kết nối mới phải qua lời mời hai bên.")) {
+      endBusy();
+      return { status: "cancelled" };
+    }
+    try {
+      await api.post(
+        `/api/v1/connections/${encodeURIComponent(connectionId)}/revoke`,
+        { body: {} });
+      endBusy();
+      if (!destroyed) {
+        setView({ statusText: "Đã hủy kết nối. Quyền chia sẻ liên quan "
+          + "chấm dứt từ lúc này." });
+      }
+      await load({ silent: true });
+      return { status: "ok" };
+    } catch (err) {
+      endBusy();
+      if (destroyed) return { status: "destroyed" };
+      if (isTransient(err)) {
+        await reconcileAfterUnknown();
+        return { status: "unknown" };
+      }
+      setView({
+        statusText: "Không hủy được kết nối lúc này (yêu cầu bị từ chối). "
+          + "Đọc lại trang để thấy trạng thái thật.",
+      });
+      await load({ silent: true });
       return { status: "rejected" };
     }
   }
@@ -402,11 +578,16 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
     destroyed = true;
     loadSeq += 1; // mọi response đang bay sẽ bị bỏ qua
     listeners.clear();
+    // R03: dọn dữ liệu riêng tư khỏi bộ nhớ khi rời trang (không phát
+    // event — renderer đã unmount; hợp đồng cũ "state đóng băng lúc
+    // destroy" vẫn đúng với status).
+    clearPrivateState();
   }
 
   return {
     STATUS,
     categoryLabel,
+    deletionStatusLabel,
     getView: () => view,
     subscribe(fn) {
       if (destroyed || typeof fn !== "function") return () => {};
@@ -416,10 +597,13 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
     },
     load,
     refreshDeletionRequests,
+    loadMoreShares,
+    loadMoreDeletionRequests,
     showLocalNote,
     revokeGrant,
     requestDeletion,
     cancelDeletionRequest,
+    unlinkConnection,
     withdrawConsent,
     destroy,
     get destroyed() { return destroyed; },
