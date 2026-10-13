@@ -167,6 +167,24 @@ class JournalShareService:
         if share.revoked_at is None:
             share.revoked_at = _now()
             share.save(update_fields=["revoked_at"])
+            # R10 fix: EVERY revoke entry point is durable — the domain path
+            # appends the same ``grant_revoked`` ledger event as the F15 API
+            # so a backup restore replays it. ImportError-guarded: standalone
+            # runs without f15_privacy keep working (coupling documented).
+            try:
+                from family_bridge_features.f15_privacy.models import (
+                    DeletionLedgerEvent,
+                )
+
+                DeletionLedgerEvent.objects.create(
+                    target_user_id=str(owner_id), actor_ref=str(owner_id),
+                    event_type=DeletionLedgerEvent.EVENT_GRANT_REVOKED,
+                    payload={"item_type": "journal_page",
+                             "item_id": str(share.page_id),
+                             "recipient_id": str(share.recipient_id),
+                             "entry_point": "f08_domain_service"})
+            except ImportError:
+                pass
         return share
 
     def list_shared_by_me(self, *, owner_id: str, page_id: str):
@@ -175,7 +193,8 @@ class JournalShareService:
             revoked_at__isnull=True).select_related("page")
 
     def list_shared_with_me(self, *, recipient_id: str):
-        from django.db.models import F
+        from django.db.models import F, Q
+
         rows = (JournalShare.objects
                 .filter(recipient_id=str(recipient_id),
                         revoked_at__isnull=True,
@@ -186,11 +205,23 @@ class JournalShareService:
         if reader is None:
             return []  # fail-closed: cannot verify connection state
         active = {}
+        bindings = []
         for connection in reader.list_active_for_user(
                 user_id=str(recipient_id)):
             other = connection.party_b if connection.party_a == str(recipient_id) \
                 else connection.party_a
             active[str(other)] = connection
+            bindings.append(Q(connection_id=str(connection.connection_id),
+                              connection_generation=int(connection.generation)))
+        # R09 fix: the (connection_id, generation) binding filter runs in SQL
+        # BEFORE any bound, so stale rows on old connections can no longer
+        # push valid grants past the list bound. The Python re-check below
+        # remains the authoritative second line of defense.
+        if bindings:
+            pair_q = bindings[0]
+            for q in bindings[1:]:
+                pair_q |= q
+            rows = rows.filter(pair_q)
         bounded = list(rows[:_LIST_BINDING_BOUND])
         return [row for row in bounded
                 if _binding_current(row, owner_id=str(row.owner_id),

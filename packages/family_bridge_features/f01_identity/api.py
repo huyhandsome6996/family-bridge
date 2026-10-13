@@ -233,12 +233,37 @@ class ConnectionListView(APIView):
 
 
 class ConnectionRevokeView(APIView):
-    """POST /api/v1/connections/{id}/revoke — unlink (atomic, generation kept)."""
+    """POST /api/v1/connections/{id}/revoke — unlink (atomic, generation kept).
+
+    R10 fix: the ACTUAL endpoint now invokes the F15 privacy adapter
+    (revoke_connection_with_privacy) so dependent grants die in the SAME
+    transaction and the per-party ``connection_revoked`` ledger events are
+    appended on the real call path. When the f15_privacy package is not
+    installed (minimal standalone F01 runs) the plain F01 service is used
+    and the privacy coupling is documented as pending — never silently
+    claimed as wired."""
     authentication_classes = [FBSDSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, connection_id: str):
         connection_uuid = validate_uuid(connection_id, field="connection_id")
+        try:
+            from family_bridge_features.f15_privacy.services.revocation import (
+                revoke_connection_with_privacy,
+            )
+        except ImportError:
+            revoke_connection_with_privacy = None
+        if revoke_connection_with_privacy is not None:
+            summary = revoke_connection_with_privacy(
+                actor=request.user, connection_id=str(connection_uuid))
+            return Response({
+                "connection_id": summary["connection_id"],
+                "status": summary["status"],
+                "revoked_at": summary.get("revoked_at"),
+                "generation": summary["generation"],
+                "grants_revoked": summary.get("grants_revoked", 0),
+                "note": "Kết nối mới phải qua lời mời hai bên; quyền đã thu hồi không hồi sinh.",
+            }, status=200)
         connection = _get_invite_service().revoke_connection(
             actor=request.user, connection_id=str(connection_uuid))
         return Response({

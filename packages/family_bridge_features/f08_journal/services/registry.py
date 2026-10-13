@@ -42,7 +42,20 @@ def get_prompt_provider() -> Optional[Callable]:
 
 
 def get_connection_reader() -> Optional[Callable]:
-    return _connection_reader
+    """Registered reader wins (tests/standalone composition). R10 fix: when
+    nothing is registered (real config boot, no lab fixtures), the
+    production fallback is F01's real InviteService so share/list flows use
+    the SAME connection substrate as the rest of the product. ImportError-
+    guarded: standalone runs without f01 stay fail-closed (None)."""
+    if _connection_reader is not None:
+        return _connection_reader
+    try:
+        from family_bridge_features.f01_identity.services.invites import (
+            InviteService,
+        )
+        return InviteService()
+    except ImportError:
+        return None
 
 
 def get_session_resolver() -> Optional[Callable]:
