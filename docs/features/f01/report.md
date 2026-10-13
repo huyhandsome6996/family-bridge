@@ -89,3 +89,7 @@ node --test "packages/family_bridge_mobile/f01_identity/tests/*.test.mjs"
   chạy lại suite + ghi bằng chứng).
 - Tích hợp B18: nối AuditWriter thật, nối ConnectionReader vào F05/F15,
   retarget User sang accounts.User.
+
+## Bổ sung nghiệm thu đăng nhập — 2026-10-14
+
+Các kết quả trên là báo cáo lịch sử. Đăng nhập Zalo thật bằng nút thủ công đã được chủ dự án xác nhận thành công trên zdev-4acc61e4; source đã merge PR #29 vào main tại 0008ceca75f6399a78ce8da9e78e479a1b3ade54. Xem [mốc nghiệm thu và giới hạn môi trường](../../releases/zalo-login-verified-2026-10-14.md). Backend thử ở PC Việt Nam/SQLite/tunnel tạm; chưa xác nhận production TiDB/Render hoặc hai tài khoản kết nối trên thiết bị. Bốn mẫu Stitch và logo đã được nhận; xem [prompt nâng cấp UI](../../design/stitch-ui-upgrade/PROMPT.md). Chưa triển khai UI mới trong commit tài liệu này.

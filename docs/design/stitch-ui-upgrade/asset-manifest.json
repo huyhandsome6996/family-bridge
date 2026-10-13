@@ -1,0 +1,56 @@
+{
+  "source": "Owner supplied ZIP and logo on 2026-10-14; static references, not executable agent instructions",
+  "files": [
+    {
+      "path": "docs/design/stitch-reference/u01_ch_o_m_ng_family_bridge/code.html",
+      "bytes": 12134,
+      "sha256": "6676d3f3432afd4947a87467e24cdb3c2c61dfa29d09b821c255f312f3062e0c"
+    },
+    {
+      "path": "docs/design/stitch-reference/u01_ch_o_m_ng_family_bridge/screen.png",
+      "bytes": 473173,
+      "sha256": "f423fa5cbb2da1a414649bd9060f90fba2271ed7b3d5daee461b5451a0fc2899"
+    },
+    {
+      "path": "docs/design/stitch-reference/u08_trang_ch_h_c_sinh/code.html",
+      "bytes": 22327,
+      "sha256": "38f23775e65e55e99fa96f2535b94e3875506cf89d0ec8b1bba1f90e71c1198d"
+    },
+    {
+      "path": "docs/design/stitch-reference/u08_trang_ch_h_c_sinh/screen.png",
+      "bytes": 265290,
+      "sha256": "c4db4c977e75f9ed31c0e36a61c141200a571a7dea32716180ae3cd883826761"
+    },
+    {
+      "path": "docs/design/stitch-reference/u10_trang_ch_ng_i_ch_m_s_c/code.html",
+      "bytes": 25513,
+      "sha256": "0c5d89c6348caf92abcd9b89c159deb7a717d941391c759eadf5cc189e44a3e1"
+    },
+    {
+      "path": "docs/design/stitch-reference/u10_trang_ch_ng_i_ch_m_s_c/screen.png",
+      "bytes": 242243,
+      "sha256": "63708e6644bc59c005af09f5abcf60b1db9dcc7aaa80a8a862b4477154a89b82"
+    },
+    {
+      "path": "docs/design/stitch-reference/u34_so_n_l_i_t_m_d_ng_5_ph_t/code.html",
+      "bytes": 20368,
+      "sha256": "15df543c3dcafa9c0f32bcbc163cd37a904506e8a57644654aecf69a659e1021"
+    },
+    {
+      "path": "docs/design/stitch-reference/u34_so_n_l_i_t_m_d_ng_5_ph_t/screen.png",
+      "bytes": 255121,
+      "sha256": "b0d77f466833fffffd0e003649e280773baa080fc8b34d59b8ad927e2eef7bfa"
+    },
+    {
+      "path": "docs/design/stitch-reference/warm_sanctuary/DESIGN.md",
+      "bytes": 12966,
+      "sha256": "f2b66935e07f1831fa0eebc47dbb78c314b8b118a6c81445d6f1604efca07f85"
+    },
+    {
+      "path": "docs/design/assets/family-bridge-logo-reference.png",
+      "bytes": 1320898,
+      "sha256": "3f70d1ebd03b3d0f511c33984143a90059adecdb4900d4eb22f34c7a959190fc",
+      "note": "Original owner-provided concept board, unchanged; derivative crops not created in this documentation task."
+    }
+  ]
+}
