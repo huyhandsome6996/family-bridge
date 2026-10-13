@@ -71,14 +71,25 @@ class AdminCapabilityService:
                 raise InputInvalid({"field": "ttl_days",
                                     "reason": "must_be_1_365"})
             ttl = _now() + dt.timedelta(days=ttl_days)
+        existing = AdminCapabilityGrant.objects.filter(
+            user_id=str(user_id), capability=capability,
+            scope_type=scope_type, scope_ref=str(scope_ref or ""),
+            revoked_at__isnull=True,
+        ).first()
+        if existing is not None:
+            audit(actor_id=actor_id, action="cap.grant",
+                  target_ref=f"grant:{existing.id}", outcome="ok",
+                  reason=capability)
+            return existing
+
         from django.db import IntegrityError
         try:
             with transaction.atomic():
-                grant, _ = AdminCapabilityGrant.objects.get_or_create(
+                grant = AdminCapabilityGrant.objects.create(
                     user_id=str(user_id), capability=capability,
                     scope_type=scope_type, scope_ref=str(scope_ref or ""),
-                    revoked_at__isnull=True,
-                    defaults={"granted_by": str(actor_id), "expires_at": ttl})
+                    granted_by=str(actor_id), expires_at=ttl,
+                )
         except IntegrityError:
             grant = AdminCapabilityGrant.objects.filter(
                 user_id=str(user_id), capability=capability,

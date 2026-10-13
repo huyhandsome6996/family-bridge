@@ -182,6 +182,24 @@ class ConfirmActivateTests(InviteServiceBase):
             self.service.claim_invite(candidate=self.candidate, raw_code=raw2)
         self.assertIn("already_connected", str(ctx.exception.details))
 
+    def test_unrelated_integrity_error_not_misclassified_as_already_connected(self):
+        """R2 requirement: If an IntegrityError occurs during Connection creation that is
+        NOT due to an existing active connection between the pair (e.g. synthetic DB error),
+        it must NOT be misclassified as already_connected.
+        """
+        from unittest.mock import patch
+        from django.db import IntegrityError
+
+        invite, _ = self._awaiting()
+        with patch.object(Connection.objects, "create", side_effect=IntegrityError("synthetic_unrelated_db_error")):
+            with self.assertRaises(IntegrityError):
+                self.service.inviter_confirm(inviter=self.inviter, invite_id=str(invite.pk))
+
+        # Assert invite was rolled back
+        invite.refresh_from_db()
+        self.assertEqual(invite.status, ConnectionInvite.INVITE_AWAITING)
+        self.assertIsNone(invite.inviter_confirmed_at)
+
 
 @override_settings(ZALO_APP_ID=APP_ID)
 class LifecycleTests(InviteServiceBase):

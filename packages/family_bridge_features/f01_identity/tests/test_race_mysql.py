@@ -86,8 +86,11 @@ class BilateralConfirmRaceTests(TransactionTestCase):
         """Two different invites between the same pair of users confirmed concurrently:
         database-enforced uniqueness guarantees exactly 1 active connection,
         and the losing request cleanly receives InputInvalid(already_connected).
+        The loser's invite transaction rolls back completely: remains awaiting_confirmation,
+        confirmation timestamp is None, and revision is unchanged.
         Revoking the connection allows reconnecting with generation 2.
         """
+        from django.db import connection
         invite1, raw1 = self.service.create_invite(
             inviter=self.inviter, relationship_kind="primary")
         self.service.claim_invite(candidate=self.candidate, raw_code=raw1)
@@ -100,19 +103,23 @@ class BilateralConfirmRaceTests(TransactionTestCase):
         barrier = threading.Barrier(2)
 
         def confirm(inviter_user, inv_id):
-            barrier.wait()
+            barrier.wait(timeout=10)
             try:
                 self.service.inviter_confirm(inviter=inviter_user, invite_id=str(inv_id))
                 outcomes.append("ok")
             except Exception as exc:
                 outcomes.append((type(exc).__name__, getattr(exc, "details", {})))
+            finally:
+                connection.close()
 
         t1 = threading.Thread(target=confirm, args=(self.inviter, invite1.pk))
         t2 = threading.Thread(target=confirm, args=(self.candidate, invite2.pk))
         t1.start()
         t2.start()
-        t1.join()
-        t2.join()
+        t1.join(timeout=10)
+        t2.join(timeout=10)
+        self.assertFalse(t1.is_alive())
+        self.assertFalse(t2.is_alive())
 
         low_id, high_id = sorted([str(self.inviter.pk), str(self.candidate.pk)])
         active_conns = Connection.objects.filter(
@@ -122,6 +129,21 @@ class BilateralConfirmRaceTests(TransactionTestCase):
         loser = [o for o in outcomes if o != "ok"][0]
         self.assertEqual(loser[0], "InputInvalid")
         self.assertEqual(loser[1].get("reason"), "already_connected")
+
+        # Refresh both invites and verify states
+        invite1.refresh_from_db()
+        invite2.refresh_from_db()
+        winner_invite = invite1 if invite1.status == ConnectionInvite.INVITE_ACTIVE else invite2
+        loser_invite = invite2 if invite1.status == ConnectionInvite.INVITE_ACTIVE else invite1
+
+        self.assertEqual(winner_invite.status, ConnectionInvite.INVITE_ACTIVE)
+        self.assertIsNotNone(winner_invite.inviter_confirmed_at)
+        self.assertEqual(winner_invite.revision, 3)
+
+        # Loser invite must remain untouched in awaiting_confirmation state
+        self.assertEqual(loser_invite.status, ConnectionInvite.INVITE_AWAITING)
+        self.assertIsNone(loser_invite.inviter_confirmed_at)
+        self.assertEqual(loser_invite.revision, 2)
 
         # Lifecycle: revoke and reconnect creates generation 2
         conn = active_conns.first()
@@ -135,3 +157,43 @@ class BilateralConfirmRaceTests(TransactionTestCase):
         _, conn2 = self.service.inviter_confirm(inviter=self.inviter, invite_id=str(invite3.pk))
         self.assertEqual(conn2.status, "active")
         self.assertEqual(conn2.generation, 2)
+
+    def test_direct_db_constraint_and_lifecycle(self):
+        """Direct database constraint tests:
+        1. Cannot insert two active connections for the same pair (violates uniq_active_pair).
+        2. Revoking connection sets active_marker to NULL, allowing new active connection.
+        3. Multiple revoked connections can coexist peacefully.
+        """
+        from django.db import IntegrityError
+        low_id, high_id = sorted([str(self.inviter.pk), str(self.candidate.pk)])
+        conn1 = Connection.objects.create(
+            party_low_id=low_id, party_high_id=high_id,
+            status="active", relationship_kind="primary", generation=1,
+        )
+        from django.db import transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                Connection.objects.create(
+                    party_low_id=low_id, party_high_id=high_id,
+                    status="active", relationship_kind="primary", generation=2,
+                )
+
+        # Revoke conn1 -> active_marker becomes NULL
+        conn1.status = "revoked"
+        conn1.save()
+
+        # Now creating a new active connection succeeds
+        conn2 = Connection.objects.create(
+            party_low_id=low_id, party_high_id=high_id,
+            status="active", relationship_kind="primary", generation=2,
+        )
+        self.assertNotEqual(conn1.id, conn2.id)
+
+        # Revoke conn2 as well
+        conn2.status = "revoked"
+        conn2.save()
+
+        # Both revoked connections coexist
+        self.assertEqual(Connection.objects.filter(
+            party_low_id=low_id, party_high_id=high_id, status="revoked"
+        ).count(), 2)

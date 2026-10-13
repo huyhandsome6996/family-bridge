@@ -165,3 +165,88 @@ class InviteTests(F09ApiBase):
         paths = [str(p.pattern) for p in urlpatterns]
         self.assertFalse(any("remind" in p or "schedule" in p
                              for p in paths))
+
+    def test_invite_same_revision_idempotent_different_revision_conflicts(self):
+        """R1 regression:
+        1. Inviting same content_key and revision returns the invite idempotently.
+        2. Inviting same content_key with a DIFFERENT revision raises RevisionConflict (409)
+           and does NOT silently return success or overwrite the existing invite.
+        """
+        class MultiRevContentReader(TestContentReader):
+            def list_published(self, *, kind=None, audience=None, limit=50):
+                items = super().list_published(kind=kind, audience=audience, limit=limit)
+                items.append({
+                    "content_key": "act-meal", "kind": "activity", "revision": 3,
+                    "title": "Bữa cơm không điện thoại v3", "audience": "joint",
+                    "status": "published", "body": "Bữa ăn không điện thoại v3.",
+                    "minutes": 30,
+                })
+                return items
+
+        registry.register_content_reader(MultiRevContentReader())
+
+        # First invite at revision 2 -> created (201)
+        res1 = self._invite(content_key="act-meal", content_revision=2)
+        self.assertEqual(res1.status_code, 201)
+        invite_id = res1.data["invite_id"]
+
+        # Second invite at same revision 2 -> returns existing invite idempotently
+        res2 = self._invite(content_key="act-meal", content_revision=2)
+        self.assertEqual(res2.status_code, 201)
+        self.assertEqual(res2.data["invite_id"], invite_id)
+
+        # Third invite at revision 3 -> fails with 409 revision_conflict
+        res3 = self._invite(content_key="act-meal", content_revision=3)
+        self.assertEqual(res3.status_code, 409)
+        self.assertEqual(res3.data["error"]["code"], "revision_conflict")
+        self.assertEqual(res3.data["error"]["details"]["reason"], "pending_invite_revision_mismatch")
+
+        # Verify DB: exactly 1 pending invite, still at revision 2
+        invites = SharedActivityInvite.objects.filter(
+            content_key="act-meal", inviter_id=self.student.pk,
+            invitee_id=self.caregiver.pk, status="pending"
+        )
+        self.assertEqual(invites.count(), 1)
+        self.assertEqual(invites.first().content_revision, 2)
+
+    def test_direct_database_unique_constraint_and_lifecycle(self):
+        """Direct DB tests:
+        1. Cannot insert two pending invites for same key & pair (violates uniq_f09_open_invite).
+        2. Changing status to accepted sets active_marker to NULL, allowing new pending invite.
+        3. Multiple accepted/cancelled invites can coexist (NULL active_marker).
+        """
+        from django.db import IntegrityError
+        inv1 = SharedActivityInvite.objects.create(
+            content_key="act-meal", content_revision=2,
+            inviter=self.student, invitee=self.caregiver,
+            status="pending",
+        )
+        from django.db import transaction
+        with self.assertRaises(IntegrityError):
+            with transaction.atomic():
+                SharedActivityInvite.objects.create(
+                    content_key="act-meal", content_revision=3,
+                    inviter=self.student, invitee=self.caregiver,
+                    status="pending",
+                )
+
+        # Transition inv1 to accepted -> active_marker becomes NULL
+        inv1.status = "accepted"
+        inv1.save()
+
+        # Now creating a new pending invite succeeds
+        inv2 = SharedActivityInvite.objects.create(
+            content_key="act-meal", content_revision=3,
+            inviter=self.student, invitee=self.caregiver,
+            status="pending",
+        )
+        self.assertNotEqual(inv1.id, inv2.id)
+
+        # Cancelling inv2 also sets active_marker to NULL
+        inv2.status = "cancelled"
+        inv2.save()
+
+        # Both past invites coexist
+        self.assertEqual(SharedActivityInvite.objects.filter(
+            content_key="act-meal", inviter=self.student, invitee=self.caregiver
+        ).count(), 2)

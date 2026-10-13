@@ -148,16 +148,19 @@ class InviteService:
         from django.db import IntegrityError
         User = get_user_model()
         try:
-            connection = Connection.objects.create(
-                party_low=User.objects.get(pk=low_id),
-                party_high=User.objects.get(pk=high_id),
-                invite=invite,
-                relationship_kind=invite.relationship_kind,
-                status=CONNECTION_ACTIVE,
-                generation=generation,
-            )
+            with transaction.atomic():
+                connection = Connection.objects.create(
+                    party_low=User.objects.get(pk=low_id),
+                    party_high=User.objects.get(pk=high_id),
+                    invite=invite,
+                    relationship_kind=invite.relationship_kind,
+                    status=CONNECTION_ACTIVE,
+                    generation=generation,
+                )
         except IntegrityError:
-            raise InputInvalid({"reason": "already_connected"})
+            if self._pair_has_active_connection(invite.inviter_id, invite.candidate_id):
+                raise InputInvalid({"reason": "already_connected"})
+            raise
         return invite, connection
 
     # -- decline / cancel ------------------------------------------------------
