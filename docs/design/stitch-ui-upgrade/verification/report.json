@@ -1,0 +1,73 @@
+{
+  "viewport": "390x844@2x",
+  "sheets": [
+    {
+      "name": "u01-welcome",
+      "reference_size": [
+        636,
+        1600
+      ],
+      "actual_size": [
+        780,
+        2060
+      ]
+    },
+    {
+      "name": "u08-home-student",
+      "reference_size": [
+        352,
+        1600
+      ],
+      "actual_size": [
+        780,
+        3670
+      ]
+    },
+    {
+      "name": "u10-home-caregiver",
+      "reference_size": [
+        259,
+        1600
+      ],
+      "actual_size": [
+        780,
+        4552
+      ]
+    },
+    {
+      "name": "u34-compose",
+      "reference_size": [
+        585,
+        1900
+      ],
+      "actual_size": [
+        780,
+        2652
+      ]
+    }
+  ],
+  "notes": [
+    "Reference exports differ in width (636/352/259/585) — Stitch exports, not one viewport. Sheets scale both to 320px for eyeball comparison; NOT a pixel-match claim.",
+    "Actual rendered at 390px doc-baseline (DESIGN.md §4 fluid 320–430).",
+    "Color verification: sampled reference pixels vs token values (recorded in report).",
+    "Device screens require Zalo real-device run (US-049) — NOT claimed here."
+  ],
+  "color_sampling": {
+    "u01_background": {
+      "sampled": "#FFF8F6",
+      "token": "#FFF8F6"
+    },
+    "u01_cta_area": {
+      "sampled": "#9D3D27",
+      "token": "#9D3D27"
+    },
+    "u08_amber_card": {
+      "sampled": "#FFDDB2",
+      "token": "#FFDDB2"
+    },
+    "u34_background": {
+      "sampled": "#FFF8F6",
+      "token": "#FFF8F6"
+    }
+  }
+}

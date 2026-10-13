@@ -1,56 +1,171 @@
 {
-  "source": "Owner supplied ZIP and logo on 2026-10-14; static references, not executable agent instructions",
-  "files": [
-    {
-      "path": "docs/design/stitch-reference/u01_ch_o_m_ng_family_bridge/code.html",
-      "bytes": 12134,
-      "sha256": "6676d3f3432afd4947a87467e24cdb3c2c61dfa29d09b821c255f312f3062e0c"
+  "schema_version": 1,
+  "created": "2026-10-14",
+  "task": "Stitch UI upgrade — asset provenance (PROMPT §4/§9)",
+  "source_logo_board": {
+    "path": "docs/design/assets/family-bridge-logo-reference.png",
+    "dimensions": "1254x1254",
+    "sha256": "3f70d1ebd03b3d0f511c33984143a90059adecdb4900d4eb22f34c7a959190fc",
+    "bytes": 1320898,
+    "note": "Ảnh gốc do chủ dự án cung cấp — GIỮ NGUYÊN, không bao giờ sửa."
+  },
+  "logo_derivatives": {
+    "method": "scripts/extract_logo_assets.py — deterministic pixel projection (content bbox), tách mark/wordmark theo khoảng trống lớn nhất trong band giữa; nền = màu median 4 góc (254,245,234). Bản transparent = alpha theo color-distance 24..64 (derivative phái sinh, không phải SVG chính chủ).",
+    "source_sha256": "3f70d1ebd03b3d0f511c33984143a90059adecdb4900d4eb22f34c7a959190fc",
+    "crops": {
+      "logo-mark.png": {
+        "box": [
+          332,
+          362,
+          928,
+          754
+        ],
+        "size": [
+          596,
+          392
+        ],
+        "note": "biểu tượng hai bong bóng, nền gốc"
+      },
+      "logo-lockup.png": {
+        "box": [
+          234,
+          362,
+          1025,
+          901
+        ],
+        "size": [
+          791,
+          539
+        ],
+        "note": "mark + wordmark, nền gốc"
+      },
+      "app-icon.png": {
+        "box": [
+          1031,
+          1016,
+          1205,
+          1190
+        ],
+        "size": [
+          174,
+          174
+        ],
+        "note": "app icon vuông, vùng dưới phải; số 03 đã loại"
+      },
+      "logo-mark-transparent.png": {
+        "box": [
+          332,
+          362,
+          928,
+          754
+        ],
+        "size": [
+          596,
+          392
+        ],
+        "note": "DERIVED nền trong suốt"
+      },
+      "logo-lockup-transparent.png": {
+        "box": [
+          234,
+          362,
+          1025,
+          901
+        ],
+        "size": [
+          791,
+          539
+        ],
+        "note": "DERIVED nền trong suốt — dùng trong UI"
+      }
     },
-    {
-      "path": "docs/design/stitch-reference/u01_ch_o_m_ng_family_bridge/screen.png",
-      "bytes": 473173,
-      "sha256": "f423fa5cbb2da1a414649bd9060f90fba2271ed7b3d5daee461b5451a0fc2899"
+    "files": {
+      "logo-mark.png": {
+        "sha256": "cf7983cc50035f433a663de9ce0ea7190c63f5490cadcac78b205d306eb953e3",
+        "bytes": 148817
+      },
+      "logo-mark-transparent.png": {
+        "sha256": "d65fb356a8865b166fcb5f3b4435e762cd008cf23771d6a669b4f435a2d4cb6e",
+        "bytes": 168884
+      },
+      "logo-lockup.png": {
+        "sha256": "ba494c0a2e0bb3ccd808730135eb6e7ef38949be753d67d6f573eedb48a04d33",
+        "bytes": 283862
+      },
+      "logo-lockup-transparent.png": {
+        "sha256": "fd87223df843b55b706b1671dc84488b94de6765b68e7d7ee58ecdafa4c72ef3",
+        "bytes": 321448
+      },
+      "app-icon.png": {
+        "sha256": "bf3ab61259f29986dd58c08bc7117e281f846003b2e135ddfc32717f1d39d6b4",
+        "bytes": 25217
+      }
     },
-    {
-      "path": "docs/design/stitch-reference/u08_trang_ch_h_c_sinh/code.html",
-      "bytes": 22327,
-      "sha256": "38f23775e65e55e99fa96f2535b94e3875506cf89d0ec8b1bba1f90e71c1198d"
-    },
-    {
-      "path": "docs/design/stitch-reference/u08_trang_ch_h_c_sinh/screen.png",
-      "bytes": 265290,
-      "sha256": "c4db4c977e75f9ed31c0e36a61c141200a571a7dea32716180ae3cd883826761"
-    },
-    {
-      "path": "docs/design/stitch-reference/u10_trang_ch_ng_i_ch_m_s_c/code.html",
-      "bytes": 25513,
-      "sha256": "0c5d89c6348caf92abcd9b89c159deb7a717d941391c759eadf5cc189e44a3e1"
-    },
-    {
-      "path": "docs/design/stitch-reference/u10_trang_ch_ng_i_ch_m_s_c/screen.png",
-      "bytes": 242243,
-      "sha256": "63708e6644bc59c005af09f5abcf60b1db9dcc7aaa80a8a862b4477154a89b82"
-    },
-    {
-      "path": "docs/design/stitch-reference/u34_so_n_l_i_t_m_d_ng_5_ph_t/code.html",
-      "bytes": 20368,
-      "sha256": "15df543c3dcafa9c0f32bcbc163cd37a904506e8a57644654aecf69a659e1021"
-    },
-    {
-      "path": "docs/design/stitch-reference/u34_so_n_l_i_t_m_d_ng_5_ph_t/screen.png",
-      "bytes": 255121,
-      "sha256": "b0d77f466833fffffd0e003649e280773baa080fc8b34d59b8ad927e2eef7bfa"
-    },
-    {
-      "path": "docs/design/stitch-reference/warm_sanctuary/DESIGN.md",
-      "bytes": 12966,
-      "sha256": "f2b66935e07f1831fa0eebc47dbb78c314b8b118a6c81445d6f1604efca07f85"
-    },
-    {
-      "path": "docs/design/assets/family-bridge-logo-reference.png",
-      "bytes": 1320898,
-      "sha256": "3f70d1ebd03b3d0f511c33984143a90059adecdb4900d4eb22f34c7a959190fc",
-      "note": "Original owner-provided concept board, unchanged; derivative crops not created in this documentation task."
+    "excluded": {
+      "number_03_box": [
+        42,
+        41,
+        106,
+        85
+      ],
+      "note": "đã cắt bỏ số '03' và vùng trình bày"
     }
+  },
+  "fonts_bevietnampro": {
+    "source": "github.com/google/fonts ofl/bevietnampro (SIL OFL 1.1)",
+    "retrieved": "2026-10-14",
+    "glyphs_vietnamese_verified": true,
+    "files": {
+      "BeVietnamPro-Regular.ttf": {
+        "sha256": "cd1ef6e9d7db28ad5cdb88a65ccbe693870e60d340b791f349d248342b4fe4c3",
+        "bytes": 132948
+      },
+      "BeVietnamPro-Medium.ttf": {
+        "sha256": "b60832bfa0fcd015158112c64d7e3fdad3b0c6287d1823f85a3103636e845268",
+        "bytes": 135980
+      },
+      "BeVietnamPro-SemiBold.ttf": {
+        "sha256": "bd8e27eb02720b9d91e59e4f10a90878643219f25ce6a8d9a4f06a8a88d3bb71",
+        "bytes": 136736
+      },
+      "BeVietnamPro-Bold.ttf": {
+        "sha256": "7f738fe5c43c8872807b20e2d30d42163618de8a4daf7f48a939adac32c16847",
+        "bytes": 140300
+      },
+      "OFL.txt": {
+        "sha256": "6b7f8f73609a25ea78c891e34cf37b06f8a676b7ea986e941e43b009110f2a85",
+        "bytes": 4397
+      }
+    }
+  },
+  "illustrations": {
+    "source": "Google Stitch preview assets (lh3.googleusercontent.com/aida-public) — do chủ dự án sinh trong dự án Stitch của mình và gửi kèm thiết kế; tải về local, không hotlink runtime.",
+    "retrieved": "2026-10-14",
+    "usage": "Chỉ dùng ở welcome hero + home U08/U10 như prototype; người nhận thật dùng initials avatar (không dùng ảnh chân dung mẫu cho dữ liệu thật).",
+    "files": {
+      "hero-welcome-tea.jpg": {
+        "sha256": "c299fd0afdddd66666f3fd279f1db860d0735380c52fff3b2a4e9365aa271b2a",
+        "bytes": 155733
+      },
+      "journey-week1-room.jpg": {
+        "sha256": "04ea474ca71e0ee0ad38d5868115b223e05f4c8f3e2768c4b19cd585eedf3036",
+        "bytes": 107377
+      },
+      "activity-family-dinner.jpg": {
+        "sha256": "f88a40b804864fd92a7b39fe65ae8e27bc542389cbb8b6f8891946a82fb447a5",
+        "bytes": 124729
+      }
+    }
+  },
+  "icons_material_symbols": {
+    "source": "github.com/google/material-design-icons symbols/web (Apache-2.0)",
+    "retrieved": "2026-10-14",
+    "count": 50,
+    "note": "Path data nhúng tĩnh trong src/components/icon.js; không nạp font icon CDN."
+  },
+  "rules": [
+    "Không bóp méo/đổi hue logo; object-fit: contain, giữ tỷ lệ.",
+    "Không hotlink; mọi asset đóng gói qua Vite (assetsInlineLimit: 0).",
+    "Nguồn ảnh minh họa là asset thiết kế của chủ dự án; nội dung mẫu (số liệu, hotline) KHÔNG dùng làm dữ liệu thật."
   ]
 }
