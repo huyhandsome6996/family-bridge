@@ -3,7 +3,7 @@
 // hướng dẫn mở trong Zalo — KHÔNG đăng nhập giả. Demo (?demo=1): phiên fixture
 // có nhãn dữ liệu minh họa, không phải phiên thật.
 import { h } from "../../app/dom.js";
-import { isZaloHost } from "../../core/config.js";
+import { isZaloHost, getTestBuildLabel } from "../../core/config.js";
 import { hasLiveSession } from "../../core/session.js";
 import { POLICY_PURPOSES } from "../../core/policy.js";
 import { loginErrorMessage } from "../../core/login-error.js";
@@ -36,6 +36,8 @@ export const page = {
 
     const body = h("div", { class: "fb-page__body" });
     root.appendChild(body);
+    const buildLabel = getTestBuildLabel();
+    if (buildLabel) body.appendChild(createStatusBadge({ tone: "info", label: buildLabel }));
 
     const state = ctx.store.getState();
     const demo = Boolean(state.demoMode);

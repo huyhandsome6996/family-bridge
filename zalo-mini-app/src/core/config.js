@@ -15,6 +15,12 @@ export function getApiBaseUrl() {
 
 export const isProductionBuild = Boolean(import.meta.env && import.meta.env.PROD);
 
+/** Visible label for an explicitly configured device-test build. */
+export function getTestBuildLabel() {
+  const label = (import.meta.env && import.meta.env.VITE_TEST_LABEL) || "";
+  return typeof label === "string" ? label.trim().slice(0, 80) : "";
+}
+
 /**
  * Demo mode chỉ bật khi được yêu cầu RÕ RÀNG qua query `?demo=1`.
  * Không có bất kỳ cơ chế fallback tự động nào từ API/auth lỗi sang demo.
