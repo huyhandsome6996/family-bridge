@@ -13,6 +13,7 @@ from __future__ import annotations
 import json
 from urllib.parse import unquote
 
+from django.db import transaction
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import SimpleRateThrottle
@@ -34,7 +35,7 @@ from .services.verification import ACTION_PROCESS, ACTION_VERIFY
 
 _PAGE_LIMIT_DEFAULT = 20
 _PAGE_LIMIT_MAX = 50
-_OVERVIEW_MERGE_LIMIT = 100  # per provider before merge (providers bound too)
+_PROVIDER_BATCH = 100  # per-provider fetch batch (providers bound too)
 
 
 class PrivacyMutationThrottle(SimpleRateThrottle):
@@ -82,37 +83,114 @@ def _parse_cursor(raw: str) -> str:
         raise InputInvalid({"field": "cursor", "reason": "malformed"}) from exc
 
 
-def _grant_sort_key(grant: dict) -> str:
-    """Stable, monotonic string key (created_at desc handled by reverse)."""
-    return "|".join([
-        str(grant.get("created_at") or ""),
-        str(grant.get("item_type") or ""),
-        str(grant.get("item_id") or ""),
-        str(grant.get("recipient_id") or ""),
-    ])
+# -- overview pagination (R09) -------------------------------------------------
+# Cursor v2: "ov2|<created_at_iso>|<share_id>". The (created_at, share_id)
+# pair is a TOTAL order across providers (share ids are unique) and matches
+# each provider's SQL ORDER BY (created_at DESC, id DESC), so the merge below
+# cannot drop or duplicate rows at any depth.
+_CURSOR_V2_PREFIX = "ov2|"
+
+
+def _grant_order_key(grant: dict) -> tuple:
+    """Descending order key: (created_at, share_id). Both fixed-shape
+    strings; max() = newest. ``share_id`` falls back to item_id for
+    minimal lab providers without a share id."""
+    return (str(grant.get("created_at") or ""),
+            str(grant.get("share_id") or grant.get("item_id") or ""))
+
+
+def _parse_overview_cursor(cursor: str):
+    if not cursor:
+        return None
+    if not cursor.startswith(_CURSOR_V2_PREFIX):
+        raise InputInvalid({"field": "cursor", "reason": "malformed"})
+    raw = cursor[len(_CURSOR_V2_PREFIX):]
+    parts = raw.split("|", 1)
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        raise InputInvalid({"field": "cursor", "reason": "malformed"})
+    try:
+        import datetime as _dt
+        parsed = _dt.datetime.fromisoformat(parts[0])
+    except ValueError as exc:
+        raise InputInvalid({"field": "cursor", "reason": "malformed"}) from exc
+    if parsed.tzinfo is None:
+        raise InputInvalid({"field": "cursor",
+                            "reason": "cursor_time_must_be_tz_aware"})
+    return parts[0], parts[1]
 
 
 def _overview_page(owner_id: str, cursor: str, limit: int) -> dict:
-    """Merge bounded per-provider lists (stable order), cursor-filter, slice.
-    No N+1: one bounded query per registered item_type."""
-    merged = []
-    for item_type in grant_registry.registered_item_types():
-        provider = grant_registry.get_grant_provider(item_type)
-        if grant_registry.provider_accepts(provider, "list_grants", "limit"):
-            grants = provider.list_grants(owner_id=str(owner_id),
-                                          limit=_OVERVIEW_MERGE_LIMIT)
+    """K-way merge over per-provider streams with DATABASE-level cursors
+    (R09 fix). The previous implementation fetched the newest 100 rows per
+    provider and Python-filtered the cursor afterwards, so a domain with
+    more than 100 grants was silently unreachable past item 100. Now each
+    provider is pulled in bounded batches with an exclusive (created_at,
+    share_id) SQL cursor until ``limit + 1`` merged items are collected —
+    no missing, no duplicates, at any total count.
+
+    Providers that do not support cursor kwargs (lab fixtures) degrade to a
+    single bounded batch — documented limitation, never used in production
+    wiring."""
+    after = _parse_overview_cursor(cursor)
+    item_types = list(grant_registry.registered_item_types())
+
+    buffers: dict = {}
+    exhausted: set = set()
+    provider_cursors: dict = {it: after for it in item_types}
+
+    def fetch(it):
+        provider = grant_registry.get_grant_provider(it)
+        if provider is None:
+            exhausted.add(it)
+            return
+        supports = (grant_registry.provider_accepts(provider, "list_grants",
+                                                    "after_created_at")
+                    and grant_registry.provider_accepts(provider, "list_grants",
+                                                        "after_share_id"))
+        if supports:
+            after_at, after_id = provider_cursors[it] or (None, None)
+            batch = provider.list_grants(
+                owner_id=str(owner_id), limit=_PROVIDER_BATCH,
+                after_created_at=after_at, after_share_id=after_id)
+            if len(batch) < _PROVIDER_BATCH:
+                exhausted.add(it)
+            elif batch:
+                last = batch[-1]
+                provider_cursors[it] = (str(last.get("created_at") or ""),
+                                        str(last.get("share_id")
+                                            or last.get("item_id") or ""))
         else:
-            grants = provider.list_grants(owner_id=str(owner_id))
-        for grant in grants:
-            grant.setdefault("item_type", item_type)
-            merged.append(grant)
-    merged.sort(key=_grant_sort_key, reverse=True)  # newest first, stable
-    if cursor:
-        cursor_key = cursor
-        merged = [g for g in merged if _grant_sort_key(g) < cursor_key]
-    page = merged[:limit]
-    has_more = len(merged) > limit
-    next_cursor = _grant_sort_key(page[-1]) if page and has_more else None
+            batch = provider.list_grants(owner_id=str(owner_id))
+            if provider_cursors[it] is not None and batch:
+                at, sid = provider_cursors[it]
+                batch = [g for g in batch if _grant_order_key(g) < (at, sid)]
+            exhausted.add(it)  # legacy provider: single bounded batch only
+        for g in batch:
+            g.setdefault("item_type", it)
+            buffers.setdefault(it, []).append(g)
+
+    page: list = []
+    while len(page) < limit + 1:
+        pending = [it for it in item_types
+                   if it not in exhausted and not buffers.get(it)]
+        if not pending and not any(buffers.get(it) for it in item_types):
+            break
+        for it in pending:
+            fetch(it)
+        heads = [(it, _grant_order_key(buffers[it][0]))
+                 for it in item_types if buffers.get(it)]
+        if not heads:
+            break
+        # max() = newest (descending order)
+        it_pick, _key = max(heads, key=lambda pair: pair[1])
+        page.append(buffers[it_pick].pop(0))
+
+    has_more = len(page) > limit
+    page = page[:limit]
+    next_cursor = None
+    if page and has_more:
+        last_at, last_sid = _grant_order_key(page[-1])
+        next_cursor = f"{_CURSOR_V2_PREFIX}{last_at}|{last_sid}"
     return {"page": page, "next_cursor": next_cursor, "has_more": has_more}
 
 
@@ -320,10 +398,22 @@ class DeletionRequestVerifyView(_HandlerRequestMixin, APIView):
         reject_unknown_fields(payload, allowed={"verifier_ref"})
         validate_uuid(request_id, field="request_id")
         self._authorized(request, request_id, ACTION_VERIFY)
-        verifier_ref = payload.get("verifier_ref") or str(request.user.pk)
+        # R07 fix: the TRUSTED actor/action/request context travels to the
+        # service — the service re-authorizes with the REAL actor id (never an
+        # empty actor, never a client-supplied verifier_ref pretending to be
+        # the audit actor). verifier_ref stays an optional bounded reference.
+        verifier_ref = payload.get("verifier_ref")
+        if verifier_ref is not None and (
+                not isinstance(verifier_ref, str)
+                or not (1 <= len(verifier_ref) <= 64)):
+            raise InputInvalid({"field": "verifier_ref",
+                                "reason": "malformed"})
         service = DeletionService()
-        row = service.verify_request(request_id=request_id,
-                                     verifier_ref=str(verifier_ref)[:64])
+        row = service.verify_request(
+            request_id=request_id,
+            verifier_ref=verifier_ref or str(request.user.pk),
+            actor_id=str(request.user.pk),
+            authorizer=privacy_ports.get_handler_authorizer())
         return Response({"request_id": str(row.pk), "status": row.status,
                          "revision": row.revision})
 
@@ -338,7 +428,9 @@ class DeletionRequestProcessView(_HandlerRequestMixin, APIView):
     throttle_classes = [PrivacyMutationThrottle]
 
     def post(self, request, request_id: str):
-        _json_body(request)  # unknown-field rejection; empty body allowed
+        # R12 fix: unknown fields are rejected (the comment used to promise
+        # this without doing it).
+        reject_unknown_fields(_json_body(request), allowed=set())
         validate_uuid(request_id, field="request_id")
         self._authorized(request, request_id, ACTION_PROCESS)
         service = DeletionService()
@@ -362,12 +454,18 @@ class ConsentWithdrawView(APIView):
         writer = privacy_ports.get_consent_writer()
         if writer is None:
             raise ModuleUnavailable({"reason": "consent_port_not_wired"})
-        result = writer.withdraw(user_id=str(request.user.pk), purpose=purpose)
-        changed = bool(result)
-        if changed:
-            DeletionLedgerEvent.objects.create(
-                target_user_id=str(request.user.pk),
-                actor_ref=str(request.user.pk),
-                event_type=DeletionLedgerEvent.EVENT_CONSENT_WITHDRAWN,
-                payload={"purpose": purpose})
+        # R02 fix: consent mutation (F01/F14 stores) + durable ledger event
+        # commit in ONE transaction. The writer's internal atomic joins this
+        # transaction as a savepoint, so a failed ledger append rolls the
+        # withdrawal back (state and event can never drift apart).
+        with transaction.atomic():
+            result = writer.withdraw(user_id=str(request.user.pk),
+                                     purpose=purpose)
+            changed = bool(result)
+            if changed:
+                DeletionLedgerEvent.objects.create(
+                    target_user_id=str(request.user.pk),
+                    actor_ref=str(request.user.pk),
+                    event_type=DeletionLedgerEvent.EVENT_CONSENT_WITHDRAWN,
+                    payload={"purpose": purpose})
         return Response({"purpose": purpose, "withdrawn": changed})

@@ -48,16 +48,32 @@ class ShareGrantProvider:
         self.recipient_field = recipient_field
 
     # -- list -------------------------------------------------------------------
-    def list_grants(self, *, owner_id: str, limit: int = _LIST_HARD_BOUND) -> List[Dict[str, Any]]:
+    def list_grants(self, *, owner_id: str, limit: int = _LIST_HARD_BOUND,
+                    after_created_at=None, after_share_id=None) -> List[Dict[str, Any]]:
         """Owner's grants for this item_type, newest first, bounded.
+
+        R09 fix: the cursor filter runs in the DATABASE (before LIMIT) so
+        pagination reaches EVERY grant — the old implementation always took
+        the newest 100 rows and Python-filtered, silently capping large
+        domains at 100 items.
 
         Each row carries ``share_id`` + ``connection_generation`` so the
         overview can show stale (connection-changed) grants truthfully.
-        """
+        ``after_created_at``/``after_share_id`` form the exclusive SQL cursor
+        (created_at, id) matching the provider's stable ORDER BY."""
         limit = max(1, min(int(limit), _LIST_HARD_BOUND))
-        rows = (self.model.objects
-                .filter(**{self.owner_field: str(owner_id)})
-                .order_by("-created_at", "-id")
+        qs = (self.model.objects
+              .filter(**{self.owner_field: str(owner_id)}))
+        if after_created_at is not None and after_share_id is not None:
+            from django.db.models import Q
+            from family_bridge_core.timeutils import parse_iso
+            after_at = (parse_iso(str(after_created_at))
+                        if not isinstance(after_created_at, dt.datetime)
+                        else after_created_at)
+            qs = qs.filter(
+                Q(created_at__lt=after_at)
+                | Q(created_at=after_at, id__lt=str(after_share_id)))
+        rows = (qs.order_by("-created_at", "-id")
                 .values("id", self.item_field, self.recipient_field,
                         "approved_revision", "revoked_at", "created_at",
                         "connection_id", "connection_generation")
@@ -173,14 +189,26 @@ class ShareGrantProvider:
                             "recipient_id": str(row[self.recipient_field])})
         return out
 
-    def revoke_grants_between(self, *, user_a: str, user_b: str) -> int:
+    def revoke_grants_between(self, *, user_a: str, user_b: str,
+                              connection_id: Optional[str] = None,
+                              connection_generation: Optional[int] = None) -> int:
+        """Revoke live grants in either direction of the pair; returns the
+        number of rows actually changed. R08 fix: optional exact-scope
+        filters (connection identity + generation) let REPLAY re-revoke only
+        the grants of the revoked connection — never a different connection's
+        grants. The live disconnect path passes no filter (every live grant
+        between the pair dies, as before)."""
         changed = 0
         for direction in ((user_a, user_b), (user_b, user_a)):
-            changed += (self.model.objects
-                        .filter(revoked_at__isnull=True)
-                        .filter(**{self.owner_field: str(direction[0]),
-                                   self.recipient_field: str(direction[1])})
-                        .update(revoked_at=_now()))
+            qs = (self.model.objects
+                  .filter(revoked_at__isnull=True)
+                  .filter(**{self.owner_field: str(direction[0]),
+                             self.recipient_field: str(direction[1])}))
+            if connection_id is not None:
+                qs = qs.filter(connection_id=str(connection_id))
+            if connection_generation is not None:
+                qs = qs.filter(connection_generation=int(connection_generation))
+            changed += qs.update(revoked_at=_now())
         return changed
 
 
@@ -231,15 +259,20 @@ def all_providers() -> Dict[str, ShareGrantProvider]:
     return dict(_PROVIDERS)
 
 
-def revoke_grants_between(*, user_a: str, user_b: str) -> List[Dict[str, Any]]:
+def revoke_grants_between(*, user_a: str, user_b: str,
+                          connection_id: Optional[str] = None,
+                          connection_generation: Optional[int] = None) -> int:
     """Revoke every live grant between the pair across providers (used when
-    the F01 connection is revoked). Returns the grant refs that changed
-    (each ref carries its owner_id so per-party replay can scope itself)."""
-    changed: List[Dict[str, Any]] = []
+    the F01 connection is revoked, and by restore replay with the exact
+    connection scope). R08 fix: returns the COUNT of grants actually
+    revoked (previously it returned a ≤50-per-provider snapshot list while
+    the provider updated ALL rows — the refs could not represent the real
+    scope). Ledger payloads no longer embed refs; they carry the connection
+    identity scope instead."""
+    changed = 0
     for item_type, provider in all_providers().items():
-        before = provider.grants_between(user_a=str(user_a), user_b=str(user_b))
-        if not before:
-            continue
-        provider.revoke_grants_between(user_a=str(user_a), user_b=str(user_b))
-        changed.extend(before)
+        changed += provider.revoke_grants_between(
+            user_a=str(user_a), user_b=str(user_b),
+            connection_id=connection_id,
+            connection_generation=connection_generation)
     return changed

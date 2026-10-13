@@ -27,6 +27,7 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import secrets
+import uuid as uuid_module
 from typing import Any, Dict, List, Optional
 
 from django.db import transaction
@@ -121,19 +122,44 @@ class DeletionService:
                 "receipt": receipt_raw, "duplicate": False}
 
     # -- owner list (recover after lost response / reopen app) ------------------
+    _CURSOR_V2 = "v2|"  # "v2|<requested_at_iso>|<uuid>"
+
+    @classmethod
+    def _parse_request_cursor(cls, cursor: str):
+        """R12 fix: the cursor carries a timestamp AND a UUID. Both parts are
+        validated here (timezone-aware ISO datetime + real UUID) so a
+        malformed cursor is a clean 400 ``input_invalid`` — never a 500 from
+        a half-parsed value reaching the ORM."""
+        if cursor.startswith(cls._CURSOR_V2):
+            raw = cursor[len(cls._CURSOR_V2):]
+        else:
+            # Legacy cursors (issued before the v2 prefix) are still accepted:
+            # they were "requested_at_iso|uuid".
+            raw = cursor
+        try:
+            cur_at_raw, cur_id = raw.split("|", 1)
+            cur_at = dt.datetime.fromisoformat(cur_at_raw)
+        except (ValueError, AttributeError):
+            raise InputInvalid({"field": "cursor", "reason": "malformed"})
+        if cur_at.tzinfo is None:
+            raise InputInvalid({"field": "cursor",
+                                "reason": "cursor_time_must_be_tz_aware"})
+        try:
+            cur_uuid = uuid_module.UUID(cur_id)
+        except (ValueError, AttributeError, TypeError):
+            raise InputInvalid({"field": "cursor",
+                                "reason": "cursor_id_must_be_uuid"})
+        return cur_at, str(cur_uuid)
+
     def list_requests(self, *, user, cursor: Optional[str] = None,
                       limit: int = 20) -> Dict[str, Any]:
         """Owner-only, bounded, stable order (requested_at desc, id desc).
-        Cursor = opaque "requested_at_iso|id" of the last row."""
+        Cursor = opaque "v2|requested_at_iso|id" of the last row."""
         limit = max(1, min(int(limit), 50))
         qs = (DeletionRequest.objects.filter(user=user)
               .order_by("-requested_at", "-id"))
         if cursor:
-            try:
-                cur_at_raw, cur_id = cursor.split("|", 1)
-                cur_at = dt.datetime.fromisoformat(cur_at_raw)
-            except (ValueError, AttributeError):
-                raise InputInvalid({"field": "cursor", "reason": "malformed"})
+            cur_at, cur_id = self._parse_request_cursor(cursor)
             qs = qs.filter(
                 requested_at__lt=cur_at) | qs.filter(requested_at=cur_at,
                                                      id__lt=cur_id)
@@ -151,7 +177,8 @@ class DeletionService:
         next_cursor = None
         if has_more and rows:
             last = rows[-1]
-            next_cursor = f"{last.requested_at.isoformat()}|{last.pk}"
+            next_cursor = (f"{self._CURSOR_V2}{last.requested_at.isoformat()}"
+                           f"|{last.pk}")
         return {"results": items, "next_cursor": next_cursor,
                 "has_more": has_more}
 
@@ -178,14 +205,20 @@ class DeletionService:
     # -- verification (authorized entrypoint; DEC-14/18 gate) -------------------
     @transaction.atomic
     def verify_request(self, *, request_id: str, verifier_ref: str,
-                       authorizer=None) -> DeletionRequest:
+                       authorizer=None,
+                       actor_id: str = "") -> DeletionRequest:
         """Verified ownership step. The CALLER must already be authorized
         (handler capability privacy.case via services.verification); this
-        method records the transition and the verifier REFERENCE (bounded,
-        non-PII). It is intentionally NOT reachable from the owner API."""
+        method re-authorizes with the TRUSTED actor id passed down from the
+        view (R07: never an empty actor, never the client verifier_ref) and
+        records the transition with the REAL actor as the audit subject; the
+        optional ``verifier_ref`` is kept as a bounded, non-PII reference in
+        the event payload. It is intentionally NOT reachable from the owner
+        API."""
         from .verification import ACTION_VERIFY, authorize_handler_action
 
-        if not authorize_handler_action(action=ACTION_VERIFY,
+        if not authorize_handler_action(actor_id=str(actor_id),
+                                        action=ACTION_VERIFY,
                                         request_id=str(request_id),
                                         authorizer=authorizer):
             from family_bridge_core.errors import ModuleUnavailable
@@ -203,22 +236,30 @@ class DeletionService:
         request.revision += 1
         request.save(update_fields=["status", "revision"])
         PrivacyCase.objects.create(deletion_request=request)
+        # Audit actor = the authenticated handler (trusted context), never a
+        # client-provided string (R07).
         _ledger(target_user_id=str(request.user_id),
-                actor_ref=verifier_ref[:64],
+                actor_ref=(str(actor_id) if actor_id
+                           else verifier_ref[:64]),
                 event_type=DeletionLedgerEvent.EVENT_DELETION_REQUESTED,
                 payload={"request_id": str(request.pk),
-                         "transition": "verified"})
+                         "transition": "verified",
+                         "verifier_ref": verifier_ref[:64]})
         return request
 
     # -- processing (phase/checkpoint rework) -----------------------------------
     @transaction.atomic
     def _begin_processing(self, request) -> Dict[str, Any]:
-        """Phase A: only verified/failed -> processing; capture/persist the
-        cutoff ONCE; preserve the per-category checkpoint across retries."""
+        """Phase A: only verified/failed -> processing; a request already
+        stuck in ``processing`` (worker crashed mid-run, R06) RESUMES with
+        its persisted scope/checkpoint instead of being rejected forever.
+        The cutoff is captured ONCE and persisted in the request checkpoint;
+        retries/replays never extend the scope."""
         request = (DeletionRequest.objects.select_for_update()
                    .filter(pk=request.pk).first())
         if request.status not in {DeletionRequest.STATUS_VERIFIED,
-                                  DeletionRequest.STATUS_FAILED}:
+                                  DeletionRequest.STATUS_FAILED,
+                                  DeletionRequest.STATUS_PROCESSING}:
             raise InputInvalid({"reason": "not_processable",
                                 "status": request.status})
         detail = dict(request.failure_detail or {})
@@ -233,6 +274,18 @@ class DeletionService:
         request.failure_detail = {**outcomes, _SCOPE_KEY: scope}
         request.save(update_fields=["status", "revision", "failure_detail"])
         return scope, outcomes
+
+    @transaction.atomic
+    def _persist_checkpoint(self, request, outcomes: Dict[str, Any]) -> None:
+        """R06 fix: durable per-category progress. Written after EVERY
+        category run (short transaction, request row locked), so a crash
+        between categories loses at most the one in-flight category and a
+        resumed run skips everything already reported ok."""
+        request = (DeletionRequest.objects.select_for_update()
+                   .filter(pk=request.pk).first())
+        scope = (request.failure_detail or {}).get(_SCOPE_KEY, {})
+        request.failure_detail = {**outcomes, _SCOPE_KEY: scope}
+        request.save(update_fields=["failure_detail"])
 
     def _run_category(self, *, user_id: str, category: str,
                       cutoff: dt.datetime) -> Dict[str, Any]:
@@ -254,14 +307,18 @@ class DeletionService:
             return {"ok": False, "error": "hook_error"}
 
     @transaction.atomic
-    def _finish_processing(self, request, outcomes: Dict[str, Any]) -> DeletionRequest:
-        """Phase C: truthful final status from the checkpoint + ledger."""
+    def _finish_processing(self, request, outcomes: Dict[str, Any],
+                           cutoff_iso: Optional[str] = None) -> DeletionRequest:
+        """Phase C: truthful final status from the checkpoint + ledger.
+        R04 fix: the ``deletion_applied`` event carries the ORIGINAL cutoff
+        so restore replay re-applies the SAME scope (never the event time,
+        which is later and would widen the deletion)."""
         request = (DeletionRequest.objects.select_for_update()
                    .filter(pk=request.pk).first())
         pending = [c for c in request.scope_categories if c not in outcomes]
         all_ok = all(bool(outcomes.get(c, {}).get("ok")) for c in request.scope_categories)
-        detail = {**outcomes,
-                  _SCOPE_KEY: (request.failure_detail or {}).get(_SCOPE_KEY, {})}
+        scope = (request.failure_detail or {}).get(_SCOPE_KEY, {})
+        detail = {**outcomes, _SCOPE_KEY: scope}
         if pending:
             detail["_pending"] = pending
         request.failure_detail = detail
@@ -273,19 +330,23 @@ class DeletionService:
             request.status = DeletionRequest.STATUS_FAILED
         request.save(update_fields=["status", "revision", "failure_detail",
                                     "completed_at"])
+        applied_payload = {"request_id": str(request.pk),
+                           "categories": request.scope_categories,
+                           "outcomes": {k: bool(v.get("ok"))
+                                        for k, v in outcomes.items()}}
+        if cutoff_iso:
+            applied_payload["cutoff"] = str(cutoff_iso)
         _ledger(target_user_id=str(request.user_id), actor_ref="system:deletion",
                 event_type=(DeletionLedgerEvent.EVENT_DELETION_APPLIED if all_ok and not pending
                             else DeletionLedgerEvent.EVENT_DELETION_FAILED),
-                payload={"request_id": str(request.pk),
-                         "categories": request.scope_categories,
-                         "outcomes": {k: bool(v.get("ok"))
-                                      for k, v in outcomes.items()}})
+                payload=applied_payload)
         return request
 
     def process_request(self, *, request_id: str) -> DeletionRequest:
         """3-phase processing: A mark+cutoff (atomic) -> B per-category
-        checkpoints (atomic each) -> C final status + ledger (atomic).
-        Retry re-runs only categories that are missing/failed."""
+        checkpoints (atomic each, progress persisted durably after EVERY
+        category — R06) -> C final status + ledger (atomic).
+        Retry/resume re-runs only categories that are missing/failed."""
         request = (DeletionRequest.objects.filter(pk=request_id).first())
         if request is None:
             raise NotFound({"reason": "deletion_request_not_found"})
@@ -301,7 +362,11 @@ class DeletionService:
                 continue  # checkpoint: already done in an earlier attempt
             outcomes[category] = self._run_category(
                 user_id=str(request.user_id), category=category, cutoff=cutoff)
-        return self._finish_processing(request, outcomes)
+            # Durable checkpoint after each category (R06): a crash right
+            # after this line resumes WITHOUT re-running finished categories.
+            self._persist_checkpoint(request, outcomes)
+        return self._finish_processing(request, outcomes,
+                                       cutoff_iso=scope.get("cutoff"))
 
     # -- restore replay (B17 runbook entry point) --------------------------------
     @staticmethod
@@ -311,23 +376,31 @@ class DeletionService:
         """Apply the LATEST ledger for a user (idempotent) — used by ops after
         restoring a backup so revoked grants/deletions never come back.
 
-        FAIL-CLOSED (AF-06/WF-21): a missing hook, a failed hook result, or a
-        replay error marks the whole replay ``incomplete`` so the operator
-        keeps the backup isolated. ``after_seq`` bounds restart; ``max_events``
-        bounds one run (``truncated`` flags a partial pass — the runbook must
-        loop until truncated is False). Events are read in (occurred_at, seq)
-        order; no new domain events are appended by replay itself.
+        FAIL-CLOSED (AF-06/WF-21): a missing hook, a failed hook result, a
+        replay error, a truncated event payload, or a missing original cutoff
+        marks the whole replay ``incomplete`` so the operator keeps the backup
+        isolated. ``after_seq`` bounds restart; ``max_events`` bounds one run
+        (``truncated`` flags a partial pass — the runbook must loop until
+        truncated is False).
+
+        Ordering (R05 fix): events are read in **seq** order — the
+        append-only sequence is the single authoritative replay order. The
+        previous (occurred_at, seq) sort combined with a ``seq >`` resume
+        watermark could permanently SKIP events whose business timestamps
+        are out of order relative to their insertion order.
+        Replay itself never appends new domain events.
         """
         from .revocation import replay_connection_revoked_event
-        from .verification import ACTION_PROCESS, authorize_handler_action
+        from .verification import ACTION_PROCESS, authorize_handler_action  # noqa: F401
 
+        bound = max(1, min(int(max_events), 50_000))
         qs = (DeletionLedgerEvent.objects
               .filter(target_user_id=str(target_user_id))
-              .order_by("occurred_at", "seq"))
+              .order_by("seq"))
         if after_seq is not None:
             qs = qs.filter(seq__gt=int(after_seq))
-        events = list(qs[:max(1, min(int(max_events), 50_000))])
-        truncated = len(events) >= max(1, min(int(max_events), 50_000))
+        events = list(qs[:bound])
+        truncated = len(events) >= bound
 
         applied = 0
         skipped = 0
@@ -360,7 +433,8 @@ class DeletionService:
                 applied += result["revoked"]
                 for item in result["failed"]:
                     failures.append({"seq": event.seq, "reason": item["reason"],
-                                     "item_type": item.get("item_type", "")})
+                                     "item_type": item.get("item_type", ""),
+                                     "category": item.get("category", "")})
             elif event.event_type == DeletionLedgerEvent.EVENT_CONSENT_WITHDRAWN:
                 from . import ports
                 writer = ports.get_consent_writer()
@@ -378,7 +452,26 @@ class DeletionService:
                                      "reason": "consent_withdraw_error",
                                      "detail": type(exc).__name__})
             elif event.event_type == DeletionLedgerEvent.EVENT_DELETION_APPLIED:
-                for category in (event.payload or {}).get("categories", []):
+                payload = event.payload or {}
+                # R04 fix: replay re-applies the ORIGINAL deletion cutoff
+                # persisted on the event. The event's own occurred_at is
+                # ALWAYS later than the cutoff — using it would widen the
+                # deletion to items created after the approved scope.
+                # Fail-closed when the cutoff is missing (legacy event).
+                cutoff_raw = payload.get("cutoff")
+                if not cutoff_raw:
+                    failures.append({"seq": event.seq,
+                                     "reason": "deletion_cutoff_missing",
+                                     "category": ""})
+                    continue
+                try:
+                    cutoff = dt.datetime.fromisoformat(str(cutoff_raw))
+                except (TypeError, ValueError):
+                    failures.append({"seq": event.seq,
+                                     "reason": "deletion_cutoff_malformed",
+                                     "category": ""})
+                    continue
+                for category in payload.get("categories", []):
                     hook = registry.get_deletion_hook(category)
                     if hook is None:
                         failures.append({"seq": event.seq,
@@ -389,7 +482,7 @@ class DeletionService:
                         hook_instance = hook() if isinstance(hook, type) else hook
                         result = hook_instance.apply_user_deletion(
                             user_id=event.target_user_id,
-                            requested_at=event.occurred_at)
+                            requested_at=cutoff)
                         if not (isinstance(result, dict) and result.get("ok")):
                             failures.append({"seq": event.seq,
                                              "reason": "hook_reported_failure",

@@ -14,15 +14,22 @@ approved production workflow):
 |--------------|-------------------------|-----------------------------------------|--------|
 | mood         | MoodDeletionHook        | owner's mood entries (shares cascade)   | wired  |
 | journal      | JournalDeletionHook     | owner's pages (shares/replies cascade)  | wired  |
-| surveys      | SurveysDeletionHook     | participant's responses + consents      | wired  |
-| connections  | ConnectionsDeletionHook | user's connections, invites, sessions, provider identities, consent records | wired (identity surface) |
-| account      | —                       | User deletion                            | NOT wired: DEC-12/23 open; no user deletion without approved policy |
+| surveys      | SurveysDeletionHook     | responses + consents created before the cutoff | wired |
+| connections  | ConnectionsDeletionHook | user's connections, invites, claim attempts created before the cutoff | wired (R04: identity surface split out) |
+| account      | —                       | User deletion + identity surface (sessions, provider identities, consent records) | NOT wired: DEC-12/23 open; identity reset is an ACCOUNT-policy action, not a connections action (R04) |
 | messages/ai/drafts/program_progress/appointments | — | domain owner hooks pending | NOT wired -> hook_not_registered -> failed_needs_action (truthful) |
 
 The reply rows of OTHER people referencing the requester's pages are removed
 with the page by FK cascade (they are context-bound to that page); replies
 the requester wrote on OTHERS' pages are the responder's living words and
 stay, per F08 contract — the hook reports leftover counts honestly.
+
+R04 fix on the connections hook: it previously ALSO deleted sessions,
+provider identities and consent records regardless of the approved cutoff —
+unlinking a relationship silently reset the identity surface. Removing the
+identity surface is an ACCOUNT-policy decision (DEC-12/23 still OPEN), so it
+is no longer part of the connections category; every table this hook touches
+is now filtered by the approved cutoff.
 """
 
 from __future__ import annotations
@@ -74,53 +81,99 @@ class JournalDeletionHook:
 
 
 class SurveysDeletionHook:
-    """Delete the participant's survey responses + research consents."""
+    """Delete the participant's survey responses + research consents created
+    before the cutoff (R04: previously deleted rows regardless of the
+    approved scope)."""
 
     def apply_user_deletion(self, *, user_id: str, requested_at) -> Dict[str, Any]:
         from family_bridge_features.f14_surveys.models import (
             ResearchConsent, SurveyResponse,
         )
 
-        responses, _ = SurveyResponse.objects.filter(
-            participant_id=str(user_id)).delete()
-        consents, _ = ResearchConsent.objects.filter(
-            participant_id=str(user_id)).delete()
-        return {"ok": True,
-                "detail": f"survey responses removed: {responses}; "
-                          f"research consents removed: {consents}",
-                "counts": {"responses": responses, "consents": consents}}
+        cutoff = _parse_cutoff(requested_at)
+        responses_qs = SurveyResponse.objects.filter(
+            participant_id=str(user_id), submitted_at__lte=cutoff)
+        expected_responses = responses_qs.count()
+        deleted_responses, _ = responses_qs.delete()
+        leftover_responses = SurveyResponse.objects.filter(
+            participant_id=str(user_id), submitted_at__lte=cutoff).exists()
+        consents_qs = ResearchConsent.objects.filter(
+            participant_id=str(user_id), updated_at__lte=cutoff)
+        expected_consents = consents_qs.count()
+        deleted_consents, _ = consents_qs.delete()
+        leftover_consents = ResearchConsent.objects.filter(
+            participant_id=str(user_id), updated_at__lte=cutoff).exists()
+        ok = ((expected_responses == 0 or
+               (deleted_responses > 0 and not leftover_responses))
+              and (expected_consents == 0 or
+                   (deleted_consents > 0 and not leftover_consents)))
+        return {"ok": ok,
+                "detail": f"survey responses removed: {deleted_responses}/"
+                          f"{expected_responses}; research consents removed: "
+                          f"{deleted_consents}/{expected_consents}",
+                "counts": {"responses": deleted_responses,
+                           "consents": deleted_consents}}
 
 
 class ConnectionsDeletionHook:
-    """Delete the user's identity/connection surface: connections (both
-    directions), invites, claim attempts, sessions, provider identities and
-    consent records. Provider identity rows are removed so a re-login maps
-    to a fresh subject mapping (account deletion itself stays gated by
-    DEC-12/23 — this hook never deletes the User row)."""
+    """Delete the user's CONNECTION surface created before the cutoff:
+    connections (both directions), invites, claim attempts. Sessions,
+    provider identities and consent records are the IDENTITY/ACCOUNT
+    surface — R04: they are no longer deleted by the connections category
+    (removing them without an approved account policy silently reset a
+    user's login and consent state just because a relationship was
+    unlinked). They stay gated behind DEC-12/23 (account hook, not wired)."""
 
     def apply_user_deletion(self, *, user_id: str, requested_at) -> Dict[str, Any]:
         from family_bridge_features.f01_identity.models import (
-            ClaimAttempt, Connection, ConnectionInvite, ConsentRecord,
-            ProviderIdentity, Session,
+            ClaimAttempt, Connection, ConnectionInvite,
         )
 
+        cutoff = _parse_cutoff(requested_at)
         counts: Dict[str, int] = {}
-        counts["connections"], _ = Connection.objects.filter(
-            party_low_id=str(user_id)).delete()
-        counts["connections"] += Connection.objects.filter(
-            party_high_id=str(user_id)).delete()[0]
-        counts["invites"], _ = ConnectionInvite.objects.filter(
-            inviter_id=str(user_id)).delete()
-        counts["invites"] += ConnectionInvite.objects.filter(
-            candidate_id=str(user_id)).delete()[0]
-        counts["claim_attempts"], _ = ClaimAttempt.objects.filter(
-            actor_id=str(user_id)).delete()
-        counts["sessions"], _ = Session.objects.filter(
-            user_id=str(user_id)).delete()
-        counts["provider_identities"], _ = ProviderIdentity.objects.filter(
-            user_id=str(user_id)).delete()
-        counts["consent_records"], _ = ConsentRecord.objects.filter(
-            user_id=str(user_id)).delete()
-        return {"ok": True,
+
+        connections_qs = Connection.objects.filter(
+            models_q_pair(user_id), created_at__lte=cutoff)
+        expected_connections = connections_qs.count()
+        deleted_connections = connections_qs.delete()[0]
+        leftover_connections = Connection.objects.filter(
+            models_q_pair(user_id), created_at__lte=cutoff).exists()
+        counts["connections"] = deleted_connections
+
+        invites_a = ConnectionInvite.objects.filter(
+            inviter_id=str(user_id), created_at__lte=cutoff)
+        invites_b = ConnectionInvite.objects.filter(
+            candidate_id=str(user_id), created_at__lte=cutoff)
+        expected_invites = invites_a.count() + invites_b.count()
+        deleted_invites = invites_a.delete()[0] + invites_b.delete()[0]
+        leftover_invites = (
+            ConnectionInvite.objects.filter(
+                inviter_id=str(user_id), created_at__lte=cutoff).exists()
+            or ConnectionInvite.objects.filter(
+                candidate_id=str(user_id), created_at__lte=cutoff).exists())
+        counts["invites"] = deleted_invites
+
+        claims_qs = ClaimAttempt.objects.filter(
+            actor_id=str(user_id), attempted_at__lte=cutoff)
+        expected_claims = claims_qs.count()
+        deleted_claims = claims_qs.delete()[0]
+        leftover_claims = ClaimAttempt.objects.filter(
+            actor_id=str(user_id), attempted_at__lte=cutoff).exists()
+        counts["claim_attempts"] = deleted_claims
+
+        ok = ((expected_connections == 0 or
+               (deleted_connections > 0 and not leftover_connections))
+              and (expected_invites == 0 or
+                   (deleted_invites > 0 and not leftover_invites))
+              and (expected_claims == 0 or
+                   (deleted_claims > 0 and not leftover_claims)))
+        return {"ok": ok,
                 "detail": "; ".join(f"{k}: {v}" for k, v in sorted(counts.items())),
                 "counts": counts}
+
+
+def models_q_pair(user_id: str):
+    """Q object covering both canonical directions of the pair."""
+    from django.db.models import Q
+
+    return Q(party_low_id=str(user_id)) | Q(party_high_id=str(user_id))

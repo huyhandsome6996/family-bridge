@@ -53,11 +53,21 @@ class ProductionConsentWriter:
         from family_bridge_features.f01_identity.models import ConsentRecord
         from family_bridge_features.f01_identity.services.identity import record_consent
 
-        latest = ConsentRecord.latest_active(user_id, purpose)
+        # R01 fix: withdrawal is a PURPOSE-SCOPE tombstone, not a single-row
+        # flip. Withdrawing only the latest row let an older accepted version
+        # fall back into ``latest_active`` and silently re-activate consent.
+        # Every still-active row of this purpose is withdrawn together so
+        # history is preserved (rows keep their withdrawn_at) but no earlier
+        # acceptance can revive. A newer EXPLICIT accept after this withdrawal
+        # creates a new row and stays active (user consent wins, per WF-17).
         changed = False
-        if latest is not None:
-            changed = latest.withdraw()
-        else:
+        for row in (ConsentRecord.objects
+                    .filter(user_id=str(user_id), purpose=purpose,
+                            withdrawn_at__isnull=True)
+                    .select_for_update().order_by("-recorded_at", "-id")):
+            if row.withdraw():
+                changed = True
+        if not changed:
             # No active consent to withdraw: still record the explicit
             # decision (declined) so the ledger never implies acceptance.
             record_consent(user=self._load_user(user_id), purpose=purpose,
@@ -74,10 +84,15 @@ class ProductionConsentWriter:
         )
 
         changed = False
-        latest = ConsentRecord.latest_active(user_id, "research")
-        if latest is not None:
-            changed = latest.withdraw() or changed
-        else:
+        # R01 fix: same purpose-scope withdrawal as _withdraw_f01 (research
+        # rows may span multiple policy versions).
+        for row in (ConsentRecord.objects
+                    .filter(user_id=str(user_id), purpose="research",
+                            withdrawn_at__isnull=True)
+                    .select_for_update().order_by("-recorded_at", "-id")):
+            if row.withdraw():
+                changed = True
+        if not changed:
             record_consent(user=self._load_user(user_id), purpose="research",
                            policy_version="withdraw-no-version",
                            decision="declined", now=_now())
