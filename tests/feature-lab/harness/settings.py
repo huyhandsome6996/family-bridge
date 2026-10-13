@@ -120,6 +120,11 @@ if DB_ENGINE == "sqlite":
     DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3",
                              "NAME": str(BASE_DIR / "feature-lab.sqlite3")}}
 elif DB_ENGINE == "mysql":
+    mysql_options = {"charset": "utf8mb4"}
+    ca_path = os.getenv("MYSQL_SSL_CA") or os.getenv("FB_MYSQL_SSL_CA")
+    if ca_path:
+        mysql_options["ssl"] = {"ca": ca_path}
+        mysql_options["ssl_mode"] = "VERIFY_IDENTITY"
     DATABASES = {"default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": os.getenv("FB_MYSQL_DB", "feature_lab"),
@@ -127,7 +132,7 @@ elif DB_ENGINE == "mysql":
         "PASSWORD": os.getenv("FB_MYSQL_PASSWORD", ""),
         "HOST": os.getenv("FB_MYSQL_HOST", "127.0.0.1"),
         "PORT": os.getenv("FB_MYSQL_PORT", "3306"),
-        "OPTIONS": {"charset": "utf8mb4"},
+        "OPTIONS": mysql_options,
         "TEST": {"CHARSET": "utf8mb4", "COLLATION": "utf8mb4_unicode_ci"},
     }}
 else:

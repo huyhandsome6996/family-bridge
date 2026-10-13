@@ -56,12 +56,23 @@ class SupporterService:
             if connection is None:
                 raise ModuleUnavailable(
                     {"reason": "invitation_flow_unavailable"})
-        role, _ = SupporterRole.objects.get_or_create(
-            student_id=str(student_id), supporter_id=str(supporter_id),
-            status__in=(STATUS_PENDING, STATUS_ACTIVE),
-            defaults={"relationship_kind": relationship_kind,
-                      "support_scope": SUPPORT_SCOPES[0]})
-        return role
+        from django.db import IntegrityError
+        try:
+            with transaction.atomic():
+                role, _ = SupporterRole.objects.get_or_create(
+                    student_id=str(student_id), supporter_id=str(supporter_id),
+                    status__in=(STATUS_PENDING, STATUS_ACTIVE),
+                    defaults={"relationship_kind": relationship_kind,
+                              "support_scope": SUPPORT_SCOPES[0]})
+                return role
+        except IntegrityError:
+            role = SupporterRole.objects.filter(
+                student_id=str(student_id), supporter_id=str(supporter_id),
+                status__in=(STATUS_PENDING, STATUS_ACTIVE),
+            ).first()
+            if role is not None:
+                return role
+            raise
 
     def _require_role(self, *, role_id: str) -> SupporterRole:
         role = SupporterRole.objects.filter(pk=role_id).first()

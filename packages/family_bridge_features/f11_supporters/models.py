@@ -58,13 +58,21 @@ class SupporterRole(models.Model):
     responded_at = models.DateTimeField(null=True, blank=True)
     expires_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
+    active_marker = models.GeneratedField(
+        expression=models.Case(
+            models.When(status__in=[STATUS_PENDING, STATUS_ACTIVE], then=models.Value("open")),
+            default=models.Value(None),
+            output_field=models.CharField(max_length=16, null=True),
+        ),
+        output_field=models.CharField(max_length=16, null=True),
+        db_persist=False,
+    )
 
     class Meta:
         app_label = "f11_supporters"
         constraints = [
             models.UniqueConstraint(
-                fields=["student", "supporter"],
-                condition=models.Q(status__in=["pending", "active"]),
+                fields=["student", "supporter", "active_marker"],
                 name="uniq_f11_open_role_per_pair"),
         ]
         indexes = [

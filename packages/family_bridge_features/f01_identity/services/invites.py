@@ -145,15 +145,19 @@ class InviteService:
         generation = self._next_generation(invite.inviter_id, invite.candidate_id)
         low_id, high_id = sorted([str(invite.inviter_id), str(invite.candidate_id)])
         from django.contrib.auth import get_user_model
+        from django.db import IntegrityError
         User = get_user_model()
-        connection = Connection.objects.create(
-            party_low=User.objects.get(pk=low_id),
-            party_high=User.objects.get(pk=high_id),
-            invite=invite,
-            relationship_kind=invite.relationship_kind,
-            status=CONNECTION_ACTIVE,
-            generation=generation,
-        )
+        try:
+            connection = Connection.objects.create(
+                party_low=User.objects.get(pk=low_id),
+                party_high=User.objects.get(pk=high_id),
+                invite=invite,
+                relationship_kind=invite.relationship_kind,
+                status=CONNECTION_ACTIVE,
+                generation=generation,
+            )
+        except IntegrityError:
+            raise InputInvalid({"reason": "already_connected"})
         return invite, connection
 
     # -- decline / cancel ------------------------------------------------------

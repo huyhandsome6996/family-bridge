@@ -79,13 +79,21 @@ class SharedActivityInvite(models.Model):
     invitee_response = models.CharField(max_length=16, blank=True, default="")
     created_at = models.DateTimeField(default=_utc_now, editable=False)
     updated_at = models.DateTimeField(default=_utc_now, editable=False)
+    active_marker = models.GeneratedField(
+        expression=models.Case(
+            models.When(status=INVITE_PENDING, then=models.Value("pending")),
+            default=models.Value(None),
+            output_field=models.CharField(max_length=16, null=True),
+        ),
+        output_field=models.CharField(max_length=16, null=True),
+        db_persist=False,
+    )
 
     class Meta:
         app_label = "f09_activities"
         constraints = [
             models.UniqueConstraint(
-                fields=["content_key", "inviter", "invitee"],
-                condition=models.Q(status="pending"),
+                fields=["content_key", "inviter", "invitee", "active_marker"],
                 name="uniq_f09_open_invite"),
         ]
         indexes = [

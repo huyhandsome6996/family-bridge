@@ -111,13 +111,25 @@ class ActivityService:
         if reader.active_connection_between(user_a=str(inviter_id),
                                             user_b=str(invitee_id)) is None:
             raise NotFound({"reason": "no_active_connection"})
-        invite, _ = SharedActivityInvite.objects.get_or_create(
-            content_key=str(content_key),
-            content_revision=int(content_revision),
-            inviter_id=str(inviter_id), invitee_id=str(invitee_id),
-            status=INVITE_PENDING,
-            defaults={})
-        return invite
+        from django.db import IntegrityError
+        try:
+            with transaction.atomic():
+                invite, _ = SharedActivityInvite.objects.get_or_create(
+                    content_key=str(content_key),
+                    content_revision=int(content_revision),
+                    inviter_id=str(inviter_id), invitee_id=str(invitee_id),
+                    status=INVITE_PENDING,
+                    defaults={})
+                return invite
+        except IntegrityError:
+            invite = SharedActivityInvite.objects.filter(
+                content_key=str(content_key),
+                inviter_id=str(inviter_id), invitee_id=str(invitee_id),
+                status=INVITE_PENDING,
+            ).first()
+            if invite is not None:
+                return invite
+            raise
 
     def _require_party(self, invite_id: str,
                        viewer_id: str) -> SharedActivityInvite:

@@ -221,12 +221,20 @@ class Connection(models.Model):
     revision = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(default=_utc_now)
     revoked_at = models.DateTimeField(null=True, blank=True)
+    active_marker = models.GeneratedField(
+        expression=models.Case(
+            models.When(status=CONNECTION_ACTIVE, then=models.Value("active")),
+            default=models.Value(None),
+            output_field=models.CharField(max_length=16, null=True),
+        ),
+        output_field=models.CharField(max_length=16, null=True),
+        db_persist=False,
+    )
 
     class Meta:
         app_label = "f01_identity"
         constraints = [
-            models.UniqueConstraint(fields=["party_low", "party_high"],
-                                    condition=models.Q(status="active"),
+            models.UniqueConstraint(fields=["party_low", "party_high", "active_marker"],
                                     name="uniq_active_pair"),
         ]
         indexes = [models.Index(fields=["party_low", "status"]),

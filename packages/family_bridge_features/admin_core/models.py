@@ -66,13 +66,21 @@ class AdminCapabilityGrant(models.Model):
     granted_at = models.DateTimeField(default=_utc_now, editable=False)
     expires_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
+    active_marker = models.GeneratedField(
+        expression=models.Case(
+            models.When(revoked_at__isnull=True, then=models.Value("active")),
+            default=models.Value(None),
+            output_field=models.CharField(max_length=16, null=True),
+        ),
+        output_field=models.CharField(max_length=16, null=True),
+        db_persist=False,
+    )
 
     class Meta:
         app_label = "admin_core"
         constraints = [
             models.UniqueConstraint(
-                fields=["user", "capability", "scope_type", "scope_ref"],
-                condition=models.Q(revoked_at__isnull=True),
+                fields=["user", "capability", "scope_type", "scope_ref", "active_marker"],
                 name="uniq_f16_active_grant"),
         ]
         indexes = [
