@@ -44,8 +44,18 @@ async function boot() {
   // F01: mở lại Mini App trong Zalo thật -> thử đăng nhập lại IM LẶNG đúng
   // MỘT lần (getAccessToken + POST /auth/session). Không lặp, không polling:
   // thất bại thì người dùng vẫn đăng nhập thủ công từ trang /login.
+  // A11: khi đăng nhập im lặng THÀNH CÔNG, view đang mở phải cập nhật theo
+  // auth transition — render lại route hiện tại (home đang "Chưa đăng nhập"
+  // phải chuyển thành trạng thái đã đăng nhập) một lần duy nhất.
   if (!demoMode && isZaloHost() && !hasLiveSession() && adapter.trySilentLogin) {
-    adapter.trySilentLogin().catch(() => false);
+    adapter.trySilentLogin().then((ok) => {
+      if (!ok) return false;
+      const path = window.location.hash.replace(/^#/, "").split("?")[0] || "/";
+      // Trang đăng nhập tự điều hướng theo luồng của nó — không đè lên.
+      if (path === "/login" || path === "/consent") return true;
+      router.render();
+      return true;
+    }).catch(() => false);
   }
 }
 

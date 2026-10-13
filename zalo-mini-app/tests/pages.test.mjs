@@ -79,9 +79,9 @@ function backendConnectionsAdapter(rows, { failLists = false } = {}) {
     mode: "zalo",
     listConnections: async () => {
       if (failLists) throw new ApiError("Không thể hoàn tất yêu cầu.", 503, "http");
-      return rows;
+      return { results: rows, nextCursor: null };
     },
-    listInvites: async () => [],
+    listInvites: async () => ({ results: [], nextCursor: null }),
     getConnectionStatus: async () => {
       throw new ApiError("boundary cũ", 501);
     },

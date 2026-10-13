@@ -190,7 +190,11 @@ export function createMockAdapter({ scenario = null } = {}) {
 
     async listInvites() {
       await wait(150);
-      return Array.from(invites.values()).map((invite) => ({ ...invite }));
+      // A09: envelope giống adapter thật ({ results, nextCursor }).
+      return {
+        results: Array.from(invites.values()).map((invite) => ({ ...invite })),
+        nextCursor: null,
+      };
     },
 
     /** Kiểm tra mã TRƯỚC khi chấp nhận (demo): chỉ mã fixture hợp lệ. */
@@ -264,7 +268,11 @@ export function createMockAdapter({ scenario = null } = {}) {
 
     async listConnections() {
       await wait(150);
-      return connections.map((connection) => ({ ...connection }));
+      // A09: envelope giống adapter thật ({ results, nextCursor }).
+      return {
+        results: connections.map((connection) => ({ ...connection })),
+        nextCursor: null,
+      };
     },
 
     async revokeConnection(connectionId) {

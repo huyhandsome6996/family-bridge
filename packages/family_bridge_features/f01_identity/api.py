@@ -14,7 +14,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from family_bridge_core.errors import (
-    InputInvalid, NotAuthenticated, NotFound, TemporarilyUnavailable,
+    ConsentRequired, InputInvalid, NotAuthenticated, NotFound,
+    TemporarilyUnavailable,
 )
 from family_bridge_core.validation import (
     reject_unknown_fields, validate_enum, validate_text, validate_uuid,
@@ -31,6 +32,8 @@ from .services.identity import (
 from .services.invites import (
     ClaimRateGuard, InviteService,
 )
+from .services.pagination import apply_keyset_page, clamp_limit
+from .services.policy import SERVICE_CONSENT_PURPOSE, CURRENT_POLICY_VERSIONS
 from .services.preview import preview_invite
 from .services.zalo_provider import ZaloPlatformVerifier
 from django.conf import settings as dj_settings
@@ -59,6 +62,17 @@ def _get_verifier() -> ZaloPlatformVerifier:
 
 def _get_invite_service() -> InviteService:
     return InviteService()
+
+
+def _require_service_consent(user) -> None:
+    """A05: connection-forming actions need an ACTIVE service consent.
+
+    The gate is enforced server-side (the UI checkbox alone is not the
+    control). Auth/consent/logout/help stay reachable without it, and
+    AI/research remain optional — nothing else is gated here.
+    """
+    if not has_active_consent(user.pk, SERVICE_CONSENT_PURPOSE):
+        raise ConsentRequired({"purpose": SERVICE_CONSENT_PURPOSE})
 
 
 def _invite_payload(invite: ConnectionInvite, viewer_id,
@@ -97,8 +111,14 @@ class AuthSessionView(APIView):
     def post(self, request):
         payload = _json_body(request)
         reject_unknown_fields(payload, allowed={"access_token"})
-        access_token = validate_text(payload.get("access_token"), field="access_token",
-                                     min_len=8, max_len=2048, strip=False)
+        # A03: the credential must NOT go through validate_text — its control
+        # char sanitizer silently rewrote tokens (e.g. stripped CR/NUL), which
+        # is exactly the "silent sanitizer" the audit forbids for credentials.
+        # Type check here; length + header-safe charset are enforced by the
+        # service BEFORE any transport call, with no value echoed back.
+        access_token = payload.get("access_token")
+        if not isinstance(access_token, str):
+            raise InputInvalid({"field": "access_token", "reason": "must_be_string"})
         service = SessionService(verifier=_get_verifier(),
                                  app_id=getattr(dj_settings, "ZALO_APP_ID", ""))
         user, raw_token, session = service.login_with_zalo_token(
@@ -109,8 +129,13 @@ class AuthSessionView(APIView):
             "expires_at": session.expires_at.isoformat(),
             "user": {"id": str(user.pk),
                      "display_name": display_name_of(user)},
-            # Consent snapshot: nothing is implied by login (WF-17).
-            "consents_required": list(ConsentRecord.PURPOSES),
+            # Consent snapshot: nothing is implied by login (WF-17). A05:
+            # only purposes WITHOUT an active current-version acceptance are
+            # listed — a stale list made the UI re-ask for settled consents.
+            "consents_required": [
+                purpose for purpose in ConsentRecord.PURPOSES
+                if not has_active_consent(user.pk, purpose)
+            ],
         }, status=200)
 
 
@@ -164,18 +189,25 @@ class ConsentView(APIView):
                          "recorded_at": record.recorded_at.isoformat()}, status=201)
 
     def get(self, request):
-        rows = (ConsentRecord.objects.filter(user=request.user)
-                .order_by("purpose", "-recorded_at"))
+        """A09: bounded O(P) read — one indexed latest-row lookup per known
+        purpose (3 purposes), never a full-history scan + Python dedupe.
+        Every known purpose is listed (decision "none" when absent) so the
+        contract stays stable for the UI."""
         latest: dict = {}
-        for row in rows:
-            if row.purpose not in latest:
-                latest[row.purpose] = row
+        for purpose in ConsentRecord.PURPOSES:
+            row = (ConsentRecord.objects.filter(user=request.user, purpose=purpose)
+                   .order_by("-recorded_at", "-id").first())
+            if row is not None:
+                latest[purpose] = row
         return Response({"consents": [
             {"purpose": p,
              "decision": (row.decision if row else "none"),
              "policy_version": (row.policy_version if row else None),
-             "withdrawn": bool(row and row.withdrawn_at)}
-            for p, row in sorted(latest.items())
+             "withdrawn": bool(row and row.withdrawn_at),
+             "current": (row.policy_version == CURRENT_POLICY_VERSIONS.get(p))
+             if row else False}
+            for p in sorted(ConsentRecord.PURPOSES)
+            for row in [latest.get(p)]
         ]})
 
 
@@ -191,6 +223,7 @@ class InviteView(APIView):
         kind = validate_enum(payload.get("relationship_kind", "primary"),
                              field="relationship_kind",
                              allowed=["primary", "backup"])
+        _require_service_consent(request.user)
         invite, raw_code = _get_invite_service().create_invite(
             inviter=request.user, relationship_kind=kind)
         return Response({
@@ -201,10 +234,15 @@ class InviteView(APIView):
         }, status=201)
 
     def get(self, request):
-        rows = list(ConnectionInvite.objects
-                    .filter(Q(inviter=request.user) | Q(candidate=request.user))
-                    .exclude(status=ConnectionInvite.INVITE_ACTIVE)
-                    .order_by("-created_at")[:50])
+        """A09: bounded keyset page (default 20, max 50) + next_cursor."""
+        limit = clamp_limit(request.query_params.get("limit"))
+        qs = (ConnectionInvite.objects
+              .filter(Q(inviter=request.user) | Q(candidate=request.user))
+              .exclude(status=ConnectionInvite.INVITE_ACTIVE)
+              .order_by("-created_at", "-id"))
+        rows, next_cursor = apply_keyset_page(
+            qs, cursor=request.query_params.get("cursor"), limit=limit,
+            descending=True)
         # ONE batched profile lookup for the whole page (no N+1).
         counterpart_ids = [
             (row.candidate_id if str(row.inviter_id) == str(request.user.pk)
@@ -212,7 +250,8 @@ class InviteView(APIView):
         profiles = display_profiles_for(
             cid for cid in counterpart_ids if cid is not None)
         return Response({"results": [
-            _invite_payload(row, request.user.pk, profiles) for row in rows]})
+            _invite_payload(row, request.user.pk, profiles) for row in rows],
+            "next_cursor": next_cursor})
 
 
 class InvitePreviewView(APIView):
@@ -250,6 +289,7 @@ class InviteClaimView(APIView):
         reject_unknown_fields(payload, allowed={"code"})
         code = validate_text(payload.get("code"), field="code",
                              min_len=4, max_len=64)
+        _require_service_consent(request.user)
         service = _get_invite_service()
         invite = service.claim_invite(candidate=request.user, raw_code=code,
                                       rate_guard=ClaimRateGuard())
@@ -269,6 +309,7 @@ class InviteConfirmView(APIView):
             if isinstance(expected, bool) or not isinstance(expected, int):
                 raise InputInvalid({"field": "expected_revision",
                                     "reason": "must_be_integer"})
+        _require_service_consent(request.user)
         invite_uuid = validate_uuid(invite_id, field="invite_id")
         service = _get_invite_service()
         invite, connection = service.inviter_confirm(
@@ -313,8 +354,13 @@ class ConnectionListView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        """A09: bounded keyset page (default 20, max 50) + next_cursor.
+        Authorization filter is applied BEFORE pagination."""
         service = _get_invite_service()
-        rows = service.list_active_for_user(user_id=str(request.user.pk))
+        rows, next_cursor = service.list_active_for_user(
+            user_id=str(request.user.pk),
+            limit=clamp_limit(request.query_params.get("limit")),
+            cursor=request.query_params.get("cursor"))
         counterpart_ids = [
             (v.party_b if v.party_a == str(request.user.pk) else v.party_a)
             for v in rows]
@@ -328,7 +374,7 @@ class ConnectionListView(APIView):
              "counterpart": profiles.get(
                  v.party_b if v.party_a == str(request.user.pk) else v.party_a)}
             for v in rows
-        ]})
+        ], "next_cursor": next_cursor})
 
 
 class ConnectionRevokeView(APIView):

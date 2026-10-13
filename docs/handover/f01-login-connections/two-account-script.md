@@ -81,6 +81,19 @@ Quy ước ghi kết quả: PASS / FAIL + mã lỗi hiển thị + screenshot.
 3.9 Kết nối lại: lặp Phần 2 → thành công với generation tăng 2 (đọc dòng
     "thế hệ kết nối (generation): 2").
 
+## Phần 3b — Gate đồng ý & phiên bản chính sách (bổ sung audit)
+
+3b.1 Chưa đồng ý: (A) đăng nhập lần đầu, TẠI TRANG ĐỒNG Ý bấm back để thoát →
+     vào "Kết nối" → "Tạo mã mời" phải bị chặn với thông báo yêu cầu chấp nhận
+     Điều khoản (không được tạo được mã khi chưa đồng ý).
+3b.2 Sau khi (A) chấp nhận Điều khoản (service), AI/Nghiên cứu để TÙY CHỌN
+     (bỏ trống) → tạo mã vẫn thành công (AI/research không khóa tính năng).
+3b.3 Badge chờ xác nhận: (B) đồng ý mã → badge "Chờ người tạo mã xác nhận" →
+     (A) xác nhận → (B) bấm Làm mới → badge phải BIẾN MẤT (trạng thái thật là
+     kết nối active); giữ lại bất kỳ dòng "chờ xác nhận" nào là LỖI.
+3b.4 Lời mời hết hạn: để quá hạn (hoặc chỉnh expires) → dòng lời mời hiện
+     "Đã hết hạn" và KHÔNG còn nút hủy/xác nhận.
+
 ## Phần 4 — Offline/session
 
 4.1 Tắt mạng → mở app → mọi màn không được fake dữ liệu; trạng thái lỗi rõ.
@@ -88,6 +101,20 @@ Quy ước ghi kết quả: PASS / FAIL + mã lỗi hiển thị + screenshot.
     đăng nhập kèm banner "Phiên đã hết hạn."
 4.3 Demo mode (?demo=1) KHÔNG được bật trong build thật; nếu bật phải có
     nhãn "Dữ liệu minh họa" và tách khỏi dữ liệu thật.
+4.4 Đổi phiên khi thao tác đang chạy (audit A01/A10): (A) bấm "Tạo mã mời" →
+    NGAY LỨC đó đăng xuất ở tab/phiên khác (hoặc để backend revoke) → khi
+    response về, trang phải báo "kết quả CHƯA XÁC ĐỊNH" + hướng dẫn Làm mới —
+    KHÔNG được hiện lỗi chung như "Không thể hoàn tất yêu cầu" và KHÔNG tự
+    tạo lại mã. Sau Làm mới: nếu mã đã tạo phải hiện đúng trạng thái backend.
+4.5 Đăng xuất khi mạng chập chờn: tắt mạng → Đăng xuất → app vẫn về màn đăng
+    nhập (đã đăng xuất trên thiết bị) kèm nhãn máy chủ CHƯA xác nhận thu hồi;
+    bật mạng lại → đăng nhập lại phải thành công bình thường; phiên mới
+    KHÔNG bị phiên logout cũ xóa.
+4.6 Mở lại app (silent login): vào app khi có phiên Zalo hợp lệ → trang chủ
+    phải tự cập nhật thành trạng thái đã đăng nhập (không đứng ở "Chưa đăng
+    nhập"); nếu đang ở trang đăng nhập thì không bị đè.
+4.7 Tên gọi: (A) gõ tên mới trong lúc trang đang tải tên cũ → chữ đang gõ
+    phải được GIỮ NGUYÊN (GET chậm không được ghi đè).
 
 ## Không được phép khi kiểm thử
 

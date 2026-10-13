@@ -10,7 +10,7 @@ from fixtures.actors import make_student, make_caregiver, make_system_admin
 
 from ..models import Connection
 from ..services.invites import InviteService
-from .helpers import auth_header, make_session
+from .helpers import accept_service_consent, auth_header, make_session
 
 APP_ID = "1234567890"
 
@@ -22,6 +22,9 @@ class InviteApiTests(TestCase):
         self.inviter = make_student()
         self.candidate = make_caregiver()
         self.service = InviteService()
+        # A05: create/claim/confirm are gated server-side on service consent.
+        accept_service_consent(self.inviter)
+        accept_service_consent(self.candidate)
         self.inviter_token, _ = make_session(self.inviter)
         self.candidate_token, _ = make_session(self.candidate)
 

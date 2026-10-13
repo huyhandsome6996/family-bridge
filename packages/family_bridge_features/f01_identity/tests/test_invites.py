@@ -255,8 +255,10 @@ class LifecycleTests(InviteServiceBase):
                                                       user_b=str(self.candidate.pk))
         self.assertIsNotNone(view)
         self.assertEqual(view.connection_id, str(connection.pk))
-        self.assertEqual(len(self.service.list_active_for_user(
-            user_id=str(self.inviter.pk))), 1)
+        rows, next_cursor = self.service.list_active_for_user(
+            user_id=str(self.inviter.pk))
+        self.assertEqual(len(rows), 1)
+        self.assertIsNone(next_cursor)
 
 
 class _FixedClock:

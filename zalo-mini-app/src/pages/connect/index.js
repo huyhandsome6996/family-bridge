@@ -30,6 +30,9 @@ const RELATIONSHIP_LABELS = {
   backup: "Người hỗ trợ dự phòng",
 };
 
+// Số dòng mỗi lần tải danh sách (A09: bounded page + “Xem thêm”).
+const LIST_PAGE_SIZE = 20;
+
 const INVITE_STATUS_LABELS = {
   pending: "Chờ người kia nhập mã",
   awaiting_confirmation: "Chờ xác nhận",
@@ -72,8 +75,17 @@ function messageFor(error) {
   if (error.kind === "timeout") return "Kết nối quá thời gian chờ. Vui lòng thử lại.";
   if (error.kind === "network") return "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.";
   if (error.kind === "configuration") return error.message;
+  // A10: stale session ≠ thất bại chắc chắn — với thao tác ghi, máy chủ có
+  // thể đã xử lý trước khi response bị bỏ theo phiên. Phải giữ bất định.
+  if (error.kind === "stale_session") {
+    return "Phiên đã thay đổi khi yêu cầu đang chạy — kết quả CHƯA XÁC ĐỊNH. " +
+      "Bấm Làm mới để kiểm tra trạng thái thật trước khi thử lại.";
+  }
   const reason = error.details && error.details.reason ? error.details.reason : null;
   if (error.status === 401) return "Phiên đã hết hạn. Vui lòng đăng nhập lại.";
+  if (error.status === 403 && reason === "consent_required") {
+    return "Cần chấp nhận Điều khoản sử dụng trước khi kết nối. Mở phần Đồng ý & quyền riêng tư.";
+  }
   switch (reason || error.code) {
     case "invalid_or_expired_code":
       return "Mã không đúng hoặc đã hết hạn. Kiểm tra lại mã được cấp.";
@@ -88,16 +100,29 @@ function messageFor(error) {
       return "Lời mời này không còn có thể thao tác.";
     case "revision_conflict":
       return "Dữ liệu lời mời đã thay đổi. Bấm Làm mới rồi thử lại.";
+    case "account_inactive":
+      return "Tài khoản của một trong hai bên hiện không thể kích hoạt kết nối.";
     case "rate_limited":
     case "too_many_claim_attempts":
       return "Bạn đã thử quá nhiều lần. Vui lòng thử lại sau ít phút.";
     case "invite_not_found":
-      return "Không tìm thấy lời mời này.";
+      return "Không tìm thấy lời mời này. Nếu vừa tạo mã, bấm Làm mới để hòa giải — mã cũ có thể đã bị thay thế.";
     case "connection_not_found":
       return "Không tìm thấy kết nối này.";
     default:
       return "Không thể hoàn tất yêu cầu. Vui lòng thử lại.";
   }
+}
+
+/** A10: thông điệp cho THAO TÁC GHI thất bại — giữ bất định khi mất response
+ * (timeout/stale): máy chủ có thể đã xử lý; KHÔNG tự retry, cho kiểm tra
+ * trạng thái bằng Làm mới trước khi thử lại. */
+function mutationOutcomeText(error, { what = "yêu cầu" } = {}) {
+  if (error && (error.kind === "timeout" || error.kind === "stale_session")) {
+    return `${what} quá thời gian chờ hoặc phiên đã đổi — kết quả CHƯA XÁC ĐỊNH. ` +
+      "Bấm Làm mới để kiểm tra trạng thái thật trước khi thử lại.";
+  }
+  return messageFor(error);
 }
 
 export const page = {
@@ -109,9 +134,23 @@ export const page = {
   render(ctx) {
     let cancelled = false;
     let runId = 0;
+    // A08: mọi dialog do trang này mở phải được đóng khi destroy — dialog
+    // cũ còn sống trong document.body vẫn bấm được và vẫn gọi mutation.
+    const openDialogs = new Set();
+    function trackDialog(dialog) {
+      openDialogs.add(dialog);
+      return dialog;
+    }
     markRenderCancelled = () => {
       cancelled = true;
       runId += 1;
+      // A08: đóng mọi dialog còn mở của trang (close được gọi lại lần nữa
+      // cũng vô hại — bọc try/catch).
+      const dialogs = Array.from(openDialogs);
+      openDialogs.clear();
+      for (const dialog of dialogs) {
+        try { dialog.close(); } catch { /* đã đóng rồi */ }
+      }
     };
 
     const root = h("div", { class: "fb-page", dataset: { page: "f01-connect" } });
@@ -192,7 +231,7 @@ export const page = {
     // ------------------------------------------------------------------
     // Tên gọi tự khai báo (để hai bên đối chiếu đúng người)
     // ------------------------------------------------------------------
-    const nameState = { value: "", loaded: false };
+    const nameState = { value: "", loaded: false, dirty: false };
 
     function renderNameCard() {
       nameArea.replaceChildren();
@@ -204,6 +243,8 @@ export const page = {
         maxlength: 80,
         placeholder: "Chưa đặt tên gọi",
         onInput: () => {
+          // A13: input của người dùng là dirty — GET chậm không được ghi đè.
+          nameState.dirty = true;
           nameState.value = nameField.input.value;
           saveRef.current.disabled = nameField.input.value.trim().length === 0;
         },
@@ -244,6 +285,9 @@ export const page = {
       try {
         const profile = await ctx.adapter.getMyProfile();
         if (cancelled) return;
+        // A13: người dùng đã gõ trong lúc GET chậm -> KHÔNG ghi đè dữ liệu
+        // mới nhập bằng response cũ; tên máy chủ chỉ áp dụng khi input sạch.
+        if (nameState.dirty) return;
         nameState.value = (profile && profile.display_name) || "";
         nameState.loaded = true;
         renderNameCard();
@@ -379,7 +423,11 @@ export const page = {
         await refresh({ silent: true });
       } catch (error) {
         if (cancelled) return;
-        notify(messageFor(error));
+        // A10: mã mời chỉ trả một lần — nếu kết quả chưa xác định thì KHÔNG
+        // được tự tạo lại (trùng lời mời), cho hòa giải bằng Làm mới trước.
+        notify(mutationOutcomeText(error, {
+          what: "Tạo mã mời",
+        }));
       }
     }
 
@@ -442,7 +490,7 @@ export const page = {
               if (cancelled) return;
               claimState.mode = "form";
               renderClaimSection();
-              notify(messageFor(error));
+              notify(mutationOutcomeText(error, { what: "Đồng ý kết nối" }));
             }
           }),
         });
@@ -540,7 +588,7 @@ export const page = {
     // ------------------------------------------------------------------
     function confirmDialog(invite) {
       const name = counterpartLabel(invite.counterpart);
-      const dialog = createDialog({
+      const dialog = trackDialog(createDialog({
         title: "Xác nhận kết nối?",
         message:
           `Người nhập mã của bạn: ${name}. ` + SELF_DECLARED_NOTE +
@@ -553,14 +601,18 @@ export const page = {
             variant: "cta",
             onClick: () => {
               dialog.close();
-              confirmNow(invite);
+              // A08: confirmNow đi qua guarded("confirm-request") — busy
+              // guard bao trùm request thật, chống double-submit.
+              guarded("confirm-request", null, () => confirmNow(invite))();
             },
           },
         ],
-      });
+      }));
     }
 
     async function confirmNow(invite) {
+      // A08: trang đã destroy -> KHÔNG gửi request từ xác UI đã chết.
+      if (cancelled || !hasLiveSession()) return;
       notify("Đang xác nhận…");
       try {
         const result = await ctx.adapter.confirmInvite(invite.invite_id, {
@@ -574,7 +626,7 @@ export const page = {
         await refresh({ silent: true });
       } catch (error) {
         if (cancelled) return;
-        notify(messageFor(error));
+        notify(mutationOutcomeText(error, { what: "Xác nhận kết nối" }));
         await refresh({ silent: true });
       }
     }
@@ -595,7 +647,7 @@ export const page = {
               await refresh({ silent: true });
             } catch (error) {
               if (cancelled) return;
-              notify(messageFor(error));
+              notify(mutationOutcomeText(error, { what: "Hủy lời mời" }));
             }
           }),
         });
@@ -625,7 +677,7 @@ export const page = {
               await refresh({ silent: true });
             } catch (error) {
               if (cancelled) return;
-              notify(messageFor(error));
+              notify(mutationOutcomeText(error, { what: "Hủy lời mời" }));
             }
           }),
         });
@@ -645,7 +697,7 @@ export const page = {
               await refresh({ silent: true });
             } catch (error) {
               if (cancelled) return;
-              notify(messageFor(error));
+              notify(mutationOutcomeText(error, { what: "Từ chối lời mời" }));
             }
           }),
         });
@@ -655,7 +707,7 @@ export const page = {
       return actions;
     }
 
-    function renderInvites(invites) {
+    function renderInvites(invites, { hasMore = false, onLoadMore = null } = {}) {
       invitesArea.replaceChildren();
       const rows = invites.filter((invite) => invite && invite.status !== "active");
       invitesArea.appendChild(h("h2", { class: "fb-page__heading" }, "Lời mời gần đây"));
@@ -669,17 +721,24 @@ export const page = {
         );
         return;
       }
-      for (const invite of rows.slice(0, 20)) {
-        const label = INVITE_STATUS_LABELS[invite.status] || invite.status;
-        const tone = invite.status === "pending" ? "info"
-          : invite.status === "awaiting_confirmation" ? "warning"
+      // A09: hiện TOÀN BỘ trang đã tải (không slice ẩn dòng) — dòng vượt
+      // trang được nạp bằng nút “Xem thêm”. Lời mời đã hết hạn không còn
+      // hiện hành động như còn hiệu lực (A06).
+      for (const invite of rows) {
+        const expiredOpen = (invite.status === "pending"
+          || invite.status === "awaiting_confirmation")
+          && !isUnexpired(invite.expires_at);
+        const effectiveStatus = expiredOpen ? "expired" : invite.status;
+        const label = INVITE_STATUS_LABELS[effectiveStatus] || effectiveStatus;
+        const tone = effectiveStatus === "pending" ? "info"
+          : effectiveStatus === "awaiting_confirmation" ? "warning"
             : "neutral";
         const side = invite.role === "inviter" ? "Bạn tạo" : "Bạn nhận";
         const kind = RELATIONSHIP_LABELS[invite.relationship_kind] || invite.relationship_kind;
         const children = [
           createStatusBadge({ tone, label: `${side} · ${label}` }),
         ];
-        if (invite.status === "awaiting_confirmation") {
+        if (effectiveStatus === "awaiting_confirmation") {
           // Nhận biết đúng người: ai đã nhập mã / ai tạo mã.
           children.push(h("p", { class: "fb-page__note" },
             invite.role === "inviter"
@@ -689,7 +748,10 @@ export const page = {
         children.push(h("p", { class: "fb-page__note" },
           (formatExpiry(invite.expires_at) ? `Hết hạn lúc ${formatExpiry(invite.expires_at)}.` : ""),
         ));
-        for (const action of inviteActions(invite)) children.push(action);
+        // A06: lời mời đã hết hạn KHÔNG còn nút hành động.
+        if (!expiredOpen) {
+          for (const action of inviteActions(invite)) children.push(action);
+        }
         invitesArea.appendChild(
           createCard({
             title: `${side} lời mời — ${kind}`,
@@ -698,12 +760,22 @@ export const page = {
           }),
         );
       }
+      if (hasMore && onLoadMore) {
+        const moreRef = { current: null };
+        const moreButton = createButton({
+          label: "Xem thêm lời mời",
+          variant: "ghost",
+          onClick: guarded("invites-more", moreRef, onLoadMore),
+        });
+        moreRef.current = moreButton;
+        invitesArea.appendChild(moreButton);
+      }
     }
 
     // ------------------------------------------------------------------
     // Kết nối đang hoạt động
     // ------------------------------------------------------------------
-    function renderConnections(connections) {
+    function renderConnections(connections, { hasMore = false, onLoadMore = null } = {}) {
       connectionsArea.replaceChildren();
       connectionsArea.appendChild(
         h("h2", { class: "fb-page__heading" }, "Kết nối đang hoạt động"),
@@ -719,7 +791,9 @@ export const page = {
         );
         return;
       }
-      for (const connection of connections.slice(0, 20)) {
+      // A09: toàn bộ trang đã tải đều hiển thị (không slice); trang tiếp theo
+      // qua nút “Xem thêm”.
+      for (const connection of connections) {
         const kind = RELATIONSHIP_LABELS[connection.relationship_kind]
           || connection.relationship_kind;
         const revokeRef = { current: null };
@@ -727,7 +801,7 @@ export const page = {
           label: "Hủy kết nối",
           variant: "danger",
           onClick: guarded(`revoke-${connection.connection_id}`, revokeRef, async () => {
-            const dialog = createDialog({
+            const dialog = trackDialog(createDialog({
               title: "Hủy kết nối này?",
               message:
                 `Bạn sắp hủy kết nối với: ${counterpartLabel(connection.counterpart)}. ` +
@@ -745,11 +819,14 @@ export const page = {
                   variant: "danger",
                   onClick: () => {
                     dialog.close();
-                    revokeNow(connection);
+                    // A08: request thật đi qua cùng một guarded op — busy
+                    // guard bao trùm cả thời gian request chạy.
+                    guarded(`revoke-${connection.connection_id}`, revokeRef,
+                      () => revokeNow(connection))();
                   },
                 },
               ],
-            });
+            }));
           }),
         });
         revokeRef.current = revokeButton;
@@ -767,6 +844,8 @@ export const page = {
     }
 
     async function revokeNow(connection) {
+      // A08: không gửi request từ trang đã chết.
+      if (cancelled || !hasLiveSession()) return;
       notify("Đang hủy kết nối…");
       try {
         const result = await ctx.adapter.revokeConnection(connection.connection_id);
@@ -779,11 +858,9 @@ export const page = {
           ctx.navigate("/login?reason=expired");
           return;
         }
-        // Mất response sau thao tác ghi: không tự thử lại (tránh hủy hai lần
-        // với kết quả không xác định) — báo trạng thái chưa xác định.
-        notify(error && error.kind === "timeout"
-          ? "Hủy kết nối quá thời gian chờ — kết quả chưa xác định. Bấm Làm mới để kiểm tra trạng thái thật."
-          : messageFor(error));
+        // A10: mất response sau thao tác ghi — KHÔNG tự thử lại (tránh hủy
+        // hai lần với kết quả không xác định) — báo trạng thái chưa xác định.
+        notify(mutationOutcomeText(error, { what: "Hủy kết nối" }));
       }
     }
 
@@ -796,7 +873,12 @@ export const page = {
       onClick: () => refresh({}),
     });
 
-    let lastData = { connections: [], invites: [] };
+    let lastData = {
+      connections: [],
+      invites: [],
+      connCursor: null,
+      invCursor: null,
+    };
 
     /**
      * Đồng bộ mã đang hiển thị với trạng thái backend theo invite_id:
@@ -816,10 +898,40 @@ export const page = {
       if (!stillUsable) createdInvite = null;
     }
 
+    /**
+     * A06: hòa giải trạng thái phía B với dữ liệu backend mới nhất — badge
+     * “Chờ người tạo mã xác nhận” KHÔNG được sống sót khi lời mời đã
+     * active/canceled/declined/expired hoặc biến mất khỏi danh sách.
+     */
+    function reconcileClaimState() {
+      if (claimState.mode === "form" || !claimState.preview) return;
+      const inviteId = claimState.preview.invite_id;
+      const row = inviteId
+        ? lastData.invites.find((invite) => invite && invite.invite_id === inviteId)
+        : null;
+      const stillOpen = Boolean(
+        row && row.status === "awaiting_confirmation" && isUnexpired(row.expires_at),
+      );
+      if (!stillOpen) {
+        // Kết nối đã active (lời mời rời danh sách), đã bị hủy/từ chối/hết
+        // hạn — trạng thái thật nằm ở các mục khác trên trang.
+        claimState.mode = "form";
+        claimState.typedCode = "";
+        claimState.preview = null;
+      }
+    }
+
     function paint() {
-      renderConnections(lastData.connections);
-      renderInvites(lastData.invites);
+      renderConnections(lastData.connections, {
+        hasMore: Boolean(lastData.connCursor),
+        onLoadMore: loadMoreConnections,
+      });
+      renderInvites(lastData.invites, {
+        hasMore: Boolean(lastData.invCursor),
+        onLoadMore: loadMoreInvites,
+      });
       reconcileCreatedInvite();
+      reconcileClaimState();
       const openInvite = lastData.invites.find(
         (invite) => invite.role === "inviter"
           && (invite.status === "pending" || invite.status === "awaiting_confirmation"),
@@ -828,6 +940,24 @@ export const page = {
       // Ô nhập mã luôn được dựng lại TỪ claimState — lỗi mạng trước đó không
       // thể để trống vĩnh viễn, và mã đã gõ được giữ lại.
       renderClaimSection();
+    }
+
+    async function loadMoreConnections() {
+      if (!lastData.connCursor || cancelled) return;
+      const page = await ctx.adapter.listConnections({ cursor: lastData.connCursor });
+      if (cancelled) return;
+      lastData.connections = lastData.connections.concat(page.results || []);
+      lastData.connCursor = page.nextCursor || null;
+      paint();
+    }
+
+    async function loadMoreInvites() {
+      if (!lastData.invCursor || cancelled) return;
+      const page = await ctx.adapter.listInvites({ cursor: lastData.invCursor });
+      if (cancelled) return;
+      lastData.invites = lastData.invites.concat(page.results || []);
+      lastData.invCursor = page.nextCursor || null;
+      paint();
     }
 
     async function refresh({ silent = false } = {}) {
@@ -839,12 +969,19 @@ export const page = {
         notify("");
       }
       try {
-        const [connections, invites] = await Promise.all([
-          ctx.adapter.listConnections(),
-          ctx.adapter.listInvites(),
+        // A09: mỗi lần Làm mới nạp lại TRANG ĐẦU (bounded) — cursor của các
+        // trang sau được nạp lại bằng nút “Xem thêm”.
+        const [connectionsPage, invitesPage] = await Promise.all([
+          ctx.adapter.listConnections({ limit: LIST_PAGE_SIZE }),
+          ctx.adapter.listInvites({ limit: LIST_PAGE_SIZE }),
         ]);
         if (cancelled || thisRun !== runId) return;
-        lastData = { connections, invites };
+        lastData = {
+          connections: connectionsPage.results || [],
+          invites: invitesPage.results || [],
+          connCursor: connectionsPage.nextCursor || null,
+          invCursor: invitesPage.nextCursor || null,
+        };
         paint();
       } catch (error) {
         if (cancelled || thisRun !== runId) return;

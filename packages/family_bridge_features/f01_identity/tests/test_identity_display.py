@@ -26,7 +26,7 @@ from fixtures.actors import make_caregiver, make_student
 
 from ..models import ConnectionInvite, hash_token
 from ..services.invites import InviteService
-from .helpers import auth_header, make_session
+from .helpers import accept_service_consent, auth_header, make_session
 
 APP_ID = "1234567890"
 SECRET = "unit-test-secret-not-real"
@@ -99,6 +99,9 @@ class InvitePreviewTests(TestCase):
         self.inviter.save(update_fields=["first_name"])
         self.service = InviteService()
         self.client = APIClient()
+        # A05: claim/confirm qua API cần service consent hiện hành.
+        accept_service_consent(self.inviter)
+        accept_service_consent(self.candidate)
         self.invite, self.raw_code = self.service.create_invite(
             inviter=self.inviter, relationship_kind="primary")
         self.candidate_token, _ = make_session(self.candidate)
@@ -177,6 +180,9 @@ class InviteRevisionAndCounterpartTests(TestCase):
         self.candidate.save(update_fields=["first_name"])
         self.service = InviteService()
         self.client = APIClient()
+        # A05: claim/confirm qua API cần service consent hiện hành.
+        accept_service_consent(self.inviter)
+        accept_service_consent(self.candidate)
         self.invite, self.raw_code = self.service.create_invite(
             inviter=self.inviter, relationship_kind="primary")
         self.inviter_token, _ = make_session(self.inviter)

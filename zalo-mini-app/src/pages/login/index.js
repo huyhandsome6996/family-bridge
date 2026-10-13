@@ -42,6 +42,29 @@ export const page = {
       ? ctx.params.get("reason")
       : null;
 
+    /** Sau khi có phiên: kiểm tra đồng ý -> consent hoặc bước kế tiếp.
+     * Dùng chung cho cả nút “Tiếp tục” khi đã có phiên (A05). */
+    async function proceedAfterLogin() {
+      let serviceAccepted = false;
+      try {
+        const consents = await ctx.adapter.listConsents();
+        const service = consents.find((c) => c && c.purpose === POLICY_PURPOSES.service.purpose);
+        serviceAccepted = Boolean(
+          service && service.decision === "accepted"
+            && !service.withdrawn
+            && service.policy_version === POLICY_PURPOSES.service.version,
+        );
+      } catch (error) {
+        // Không đọc được trạng thái đồng ý -> dẫn sang trang đồng ý để người
+        // dùng ghi nhận rõ ràng (không âm thầm coi như đã đồng ý).
+        serviceAccepted = false;
+      }
+      if (cancelled) return;
+      if (serviceAccepted && state.role) ctx.navigate("/home");
+      else if (serviceAccepted) ctx.navigate("/role-select");
+      else ctx.navigate("/consent");
+    }
+
     // ---- banner phiên hết hạn / đã đăng xuất ----
     if (reason === "expired") {
       body.appendChild(
@@ -50,6 +73,13 @@ export const page = {
     } else if (reason === "logged-out") {
       body.appendChild(
         createStatusBadge({ tone: "info", label: "Bạn đã đăng xuất." }),
+      );
+    } else if (reason === "logged-out-pending") {
+      body.appendChild(
+        createStatusBadge({ tone: "info", label:
+          "Bạn đã đăng xuất trên thiết bị. Máy chủ CHƯA xác nhận được thao tác thu hồi — " +
+          "phiên cũ sẽ tự hết hạn theo thời hạn; nếu nghi ngờ, đăng nhập lại và đăng xuất lần nữa.",
+        }),
       );
     }
 
@@ -63,7 +93,9 @@ export const page = {
             label: "Tiếp tục",
             variant: "primary",
             size: "lg",
-            onClick: () => ctx.navigate(state.role ? "/home" : "/consent"),
+            // A05: đi tiếp phải qua kiểm tra đồng ý service hiện hành —
+            // KHÔNG đi thẳng /home khi chưa chấp nhận điều khoản.
+            onClick: () => { proceedAfterLogin(); },
           }),
         }),
       );
@@ -90,28 +122,6 @@ export const page = {
     function setBusy(next) {
       busy = next;
       loginButton.disabled = busy;
-    }
-
-    /** Sau khi có phiên: kiểm tra đồng ý -> consent hoặc bước kế tiếp. */
-    async function proceedAfterLogin() {
-      let serviceAccepted = false;
-      try {
-        const consents = await ctx.adapter.listConsents();
-        const service = consents.find((c) => c && c.purpose === POLICY_PURPOSES.service.purpose);
-        serviceAccepted = Boolean(
-          service && service.decision === "accepted"
-            && !service.withdrawn
-            && service.policy_version === POLICY_PURPOSES.service.version,
-        );
-      } catch (error) {
-        // Không đọc được trạng thái đồng ý -> dẫn sang trang đồng ý để người
-        // dùng ghi nhận rõ ràng (không âm thầm coi như đã đồng ý).
-        serviceAccepted = false;
-      }
-      if (cancelled) return;
-      if (serviceAccepted && state.role) ctx.navigate("/home");
-      else if (serviceAccepted) ctx.navigate("/role-select");
-      else ctx.navigate("/consent");
     }
 
     function fail(error) {

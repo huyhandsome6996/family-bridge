@@ -94,7 +94,7 @@ Frontend (`zalo-mini-app/`):
   giữ nguyên `welcome`/`help` (trợ giúp luôn truy cập được khi chưa đăng nhập).
 - `src/main.js`: silent re-login MỘT lần khi mở lại app trong Zalo thật.
 - `zalo-mini-app/.env.example`: `APP_ID=3411096375330044972` (Mini App ID —
-  KHÁC Zalo App ID cha `3813524408107862261` phía backend), 
+  KHÁC Zalo App ID cha `3813524408107862261` phía backend),
   `VITE_API_BASE_URL=https://family-bridge-backend.onrender.com`.
 - Tests: `tests/f01-flows.test.mjs` (25 test mới) + `tests/pages.test.mjs`
   cập nhật contract 14 pages + 4 test home production mới.
@@ -171,17 +171,42 @@ promises điều khiển chính xác thứ tự async (6 test mới trong `f01-f
    mới; KHÔNG tự retry ghi; thông báo giữ bất định “máy chủ có thể đã xử lý
    trước khi phiên đổi” — UI kiểm tra lại trạng thái trước khi thử lại.
 
-## 4. Kiểm thử + kết quả
+## 3d. Đợt audit tổng thể (A01–A13 + D1/D2 — sau head c101a59)
+
+Audit 2026-10-13 chỉ 13 nhóm lỗi + 2 phụ thuộc. Bảng đóng sau khi sửa kèm
+test tái hiện (backend: 22/31 test mới FAIL trên cây c101a59 trước khi sửa;
+frontend: 4/4 test trang-thật FAIL trên baseline). Head cuối xem PR #26.
+
+| # | Phát hiện | Sửa (file/logic) | Test |
+|---|---|---|---|
+| A01 | Consent của actor cũ ghi sang actor mới; nuốt lỗi đọc; checkbox đổi được khi đang ghi | `pages/consent/index.js::submit()`: chốt generation + SNAPSHOT lựa chọn lúc bấm; kiểm tra stale sau MỖI await trước mọi mutation; KHÔNG nuốt stale/401 (lỗi đọc = dừng, không ghi); khóa checkbox khi đang ghi; kết quả chưa xác định báo "CHƯA XÁC ĐỊNH", không tự replay; 401 thật (phiên chết) về /login | 3 test deferred trang-thật (destroy+đổi actor / 401 thật / lỗi sau commit) |
+| A02 | Withdraw/decline bản MỚI hồi sinh acceptance cũ | `services/identity.py::has_active_consent`: hiệu lực theo bản MỚI NHẤT (không lọc withdrawn trước khi chọn), + phải đúng phiên bản hiện hành; `models.py::latest_active` trả bản mới nhất bất kể withdrawn (consent semantics, KHÔNG đụng schema Connection) | 6 test nhiều version/withdraw/timestamp bằng nhau |
+| A03 | Token newline → 500 + credential lọt log; provider subject bool/rỗng/129 ký tự | `services/identity.py`: validator header-safe cho credential TRƯỚC transport (không sanitizer âm thầm — bỏ luôn validate_text ở view cho access_token); `zalo_provider.py::verify`: reject bool/empty/whitespace/>128 ký tự trước khi dùng | API + default transport chặn socket (0 kết nối ra), canary log, subject schema, không tạo User/Identity/Session |
+| A04 | Profile doLogout catch xóa phiên mới | `pages/profile/index.js::doLogout()`: bỏ clearSession() vô điều kiện; generation guard cả success/error; không điều hướng từ trang đã destroy; phân biệt đã đăng xuất client vs server thu hồi CHƯA xác nhận (reason `logged-out-pending`) | test deferred destroy + đổi phiên |
+| A05 | Policy gate chỉ ở UI; API tạo invite 201 với 0 consent; policy_version lạ 201 | `services/policy.py` (MỚI): nguồn phiên bản hiện hành server-side; `record_consent` reject version không phát hành (400); `_require_service_consent` enforce tại create/claim/confirm (403 consent_required); login trả consents_required theo thiếu thật; login page "Tiếp tục" đi qua kiểm tra consent | test gate + version + consents_required |
+| A06 | Confirm không recheck account; UI giữ badge sai | `services/invites.py::inviter_confirm`: recheck cả hai account active trong transaction (403 account_inactive); claim với inviter bị tắt = dead code (anti-enum); `connect/index.js`: hòa giải claimState theo backend (badge không sống sót), lời mời hết hạn không còn nút hành động | test disabled candidate/inviter + test trang thật |
+| A07 | ClaimAttempt fail bị rollback theo transaction nghiệp vụ | `services/invites.py::claim_invite`: tách guard vào transaction riêng đã commit TRƯỚC tx nghiệp vụ — fail vẫn được ghi; preview/claim giữ chung budget; concurrency là soft-guard + DRF throttle lớp 2 | 3 test: fail persist (service + API), shared budget |
+| A08 | Dialog sống sau destroy vẫn gọi mutation | `connect/index.js` + `profile/index.js`: track + đóng mọi dialog khi destroy; confirmNow/revokeNow kiểm tra lifecycle + session TRƯỚC request; request thật đi qua guarded() (busy guard bao cả request, chống double-submit) | test dialog destroy + double-submit |
+| A09 | Consent GET scan toàn lịch sử; list không pagination; UI cắt 20 dòng âm thầm | `services/pagination.py` (MỚI): keyset cursor ổn định (created_at,id), limit clamp [1,50]; `ConsentView.get` O(P) theo purpose; `/connections` + `/invites` trả `{results, next_cursor}`; adapter + UI nút "Xem thêm" | test 75 dòng bounded queries, 25 dòng 2 trang cursor, dòng 21 quản lý được |
+| A10 | UI mất outcome chưa xác định (stale → thông báo lỗi chung) | `connect/index.js::messageFor` + `mutationOutcomeText`: phân biệt timeout/network/stale_session — báo "CHƯA XÁC ĐỊNH", hướng dẫn Làm mới trước khi thử lại; invite_not_found giải thích hòa giải thay vì khẳng định thất bại; account_inactive/consent_required có mapping | test createInvite stale trên trang thật |
+| A11 | Silent login không cập nhật view đang mở; home chọn mù rows[0] | `main.js`: sau silent login thành công → router.render() một lần (không polling, không đè /login+/consent); `home/index.js`: ưu tiên primary + nêu số kết nối khi >1 | test router render sau auth transition |
+| A12 | revoke_all_for_user import sai (ModuleNotFoundError) + N+1 | `services/identity.py`: sửa import `..models`, 1 UPDATE bounded (live sessions), idempotent, không đụng user khác | test bulk/idempotent/expired/không ảnh hưởng user khác |
+| A13 | GET profile chậm ghi đè input dirty | `connect/index.js::loadName`: flag dirty — GET chậm không ghi đè input đang gõ; PUT là snapshot người dùng xác nhận | test GET sau edit trên trang thật |
+| D1 | F15 import namespace sai (resolves=False) | **Dependency — KHÔNG sửa trong F01**: nhánh F15 (`feat/f15-privacy-revocation-deletion`, tip 0d2e26c) đã tự sửa import; phối hợp agent F15 chốt owner consent port; copy consent page sửa thành "sẽ có khi F15 kích hoạt" (không hứa thao tác chưa có) | trạng thái ghi ở đây; test combined khi F15 tích hợp |
+| D2 | W036 5a2a82e chưa tích hợp | **Dependency — tôn trọng ownership**: không đụng models/migrations/invites.py thuộc uniqueness; phần A06/A07 sửa ở service flow + view layer, không ghi đè phần chống trùng; chạy lại concurrency hai-lời-mời sau khi W036 duyệt | 4 test race MySQL hiện có vẫn xanh trong CI |
+
+## 4. Kiểm thử + kết quả (trạng thái cuối, một bảng duy nhất)
 
 | Bộ | Lệnh | Kết quả |
 |---|---|---|
-| Backend F01 (SQLite) | `cd tests/feature-lab && DJANGO_SETTINGS_MODULE=harness.settings DJANGO_ENV=test FB_FEATURES=f01_identity PYTHONPATH=. python manage.py test family_bridge_features.f01_identity` | **88 tests: 84 pass + 4 skip (MySQL-gated: 2 race confirm/claim + 2 race login đồng thời)** |
-| Backend toàn harness (SQLite) | `... FB_FEATURES="f01_identity,f15_privacy,...,admin_core" python manage.py test harness labgrants family_bridge_features.*` | **373 tests OK, 4 skip** |
-| Frontend full | `cd zalo-mini-app && npm test` | **155/155 pass** (trong đó: 45 test f01-flows gồm 6 test deferred-promise của review vòng 2) |
-| Mobile packages | `node --test packages/family_bridge_mobile/*/tests/*.test.mjs` | 16/16 file OK |
+| Backend F01 (SQLite, harness) | `cd tests/feature-lab && DJANGO_SETTINGS_MODULE=harness.settings DJANGO_ENV=test FB_FEATURES=f01_identity python manage.py test family_bridge_features.f01_identity` | **119 tests OK (4 skip MySQL-gated)** — 88 cũ + 31 test audit A01–A13 |
+| Backend full harness theo label set CI | `... FB_FEATURES="<16 labels như .github/workflows/tests.yml>" python manage.py test harness labgrants family_bridge_features.<16 apps>` | **404 tests OK, 4 skip** |
+| Backend foundation (SQLite) | `cd backend && DJANGO_ENV=test DB_ENGINE=sqlite python manage.py test` | **40 OK (2 skip)** |
+| Frontend full | `cd zalo-mini-app && npm test` | **164/164 pass** (54 test f01-flows, gồm 6 test generation vòng 2 + 9 test audit trang-thật) |
 | Build | `cd zalo-mini-app && npm run build` | OK + `Verified Zalo app-config and all referenced assets` |
-| Docs checker | `python scripts/check_agent_docs.py` | OK (files/links, skills, wiring, SEC register, FL/AF/CAP/WF/DEC/CFG mapping) |
-| `git diff --check` | trên toàn working tree | CLEAN |
+| Docs checker | `python scripts/check_agent_docs.py` | OK |
+| `git diff --check` | toàn working tree | CLEAN |
+| Repro-first (bằng chứng tái hiện) | chạy test audit trên worktree detach `c101a59` | Backend **22/31 FAIL** đúng theo phát hiện; frontend **4/4 FAIL** (A01/A06/A10/A13) — sau sửa toàn bộ PASS |
 
 **Phân loại môi trường kiểm chứng (bắt buộc đọc trước khi tin kết quả):**
 

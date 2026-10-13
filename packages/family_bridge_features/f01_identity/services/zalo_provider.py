@@ -103,10 +103,22 @@ class ZaloPlatformVerifier:
                 raise NotAuthenticated({"reason": "token_invalid_or_expired"})
             raise NotAuthenticated({"reason": "provider_rejected"})
         subject = data.get("id")
-        if subject is None or not isinstance(subject, (str, int)):
+        # A03: validate the provider subject against the schema BEFORE using
+        # it — provider_subject column is max_length=128, and bool is an int
+        # subclass in Python (isinstance(True, int) is True), so True/''
+        # whitespace-padded/oversized values must be rejected here, not
+        # sanitized silently. No User/ProviderIdentity/Session may be
+        # created from a malformed provider response.
+        if isinstance(subject, bool) or not isinstance(subject, (str, int)):
+            raise InputInvalid({"reason": "provider_response_malformed"})
+        subject_text = str(subject)
+        if (not subject_text
+                or subject_text != subject_text.strip()
+                or any(ch.isspace() for ch in subject_text)
+                or len(subject_text) > 128):
             raise InputInvalid({"reason": "provider_response_malformed"})
         return VerifiedIdentity(provider="zalo", app_id=self.app_id,
-                                provider_subject=str(subject))
+                                provider_subject=subject_text)
 
     # -- internals -------------------------------------------------------------
     def _fetch_token_info(self, access_token: str) -> Dict[str, Any]:

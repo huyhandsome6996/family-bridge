@@ -99,8 +99,9 @@ export const page = {
         if (demo) {
           return ctx.adapter.getConnectionStatus();
         }
-        return ctx.adapter.listConnections()
-          .then((rows) => ({ rows, source: "backend" }));
+        // A09: adapter trả { results, nextCursor } — home chỉ cần trang đầu.
+        return ctx.adapter.listConnections({ limit: 20 })
+          .then((page) => ({ rows: page.results || [], source: "backend" }));
       })
       .then((status) => {
         if (cancelled || currentRun !== runId) return null;
@@ -329,10 +330,17 @@ function renderLoadError(body, ctx, error) {
 function renderConnectedProduction(body, ctx, role, rows) {
   clear(body);
 
-  const primary = rows[0];
+  // A11: KHÔNG chọn mù rows[0] — ưu tiên kết nối “primary” nếu có nhiều;
+  // khi có nhiều kết nối cùng hoạt động, nêu rõ số lượng để không khiến
+  // người dùng nhầm người đồng hành.
+  const primary = rows.find((row) => row && row.relationship_kind === "primary")
+    || rows[0];
   const kindLabel = primary && primary.relationship_kind === "backup"
     ? "Người hỗ trợ dự phòng"
     : "Người đồng hành chính";
+  const countNote = rows.length > 1
+    ? ` Hiện có ${rows.length} kết nối đang hoạt động — xem tất cả trong “Quản lý kết nối”.`
+    : "";
 
   body.appendChild(h("h2", { class: "fb-page__heading" }, "Xin chào!"));
 
@@ -342,7 +350,8 @@ function renderConnectedProduction(body, ctx, role, rows) {
       description:
         `Bạn có một kết nối đang hoạt động (${kindLabel}` +
         (primary && primary.generation ? `, thế hệ ${primary.generation}` : "") +
-        "). Chúng tôi hiển thị kết nối mà không lộ thông tin cá nhân của hai bên.",
+        ")." + countNote +
+        " Chúng tôi hiển thị kết nối mà không lộ thông tin cá nhân của hai bên.",
       footer: createButton({
         label: "Quản lý kết nối",
         variant: "ghost",

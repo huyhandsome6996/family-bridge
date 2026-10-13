@@ -284,10 +284,20 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
       return data; // { invite_id, code (hiện MỘT lần), expires_at, status }
     },
 
-    async listInvites() {
+    async listInvites({ cursor = null, limit } = {}) {
       requireBaseUrl();
-      const data = await authed(() => request("/api/v1/connections/invites"));
-      return data && Array.isArray(data.results) ? data.results : [];
+      // A09: bounded keyset page — trả { results, nextCursor } để UI có nút
+      // “Xem thêm” thay vì âm thầm cắt dòng 21+.
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit) params.set("limit", String(limit));
+      const qs = params.toString();
+      const data = await authed(() =>
+        request(`/api/v1/connections/invites${qs ? `?${qs}` : ""}`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        nextCursor: (data && data.next_cursor) || null,
+      };
     },
 
     /**
@@ -349,10 +359,19 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
 
     // ------------------------- F01: kết nối ---------------------------------
 
-    async listConnections() {
+    async listConnections({ cursor = null, limit } = {}) {
       requireBaseUrl();
-      const data = await authed(() => request("/api/v1/connections"));
-      return data && Array.isArray(data.results) ? data.results : [];
+      // A09: bounded keyset page — như listInvites.
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit) params.set("limit", String(limit));
+      const qs = params.toString();
+      const data = await authed(() =>
+        request(`/api/v1/connections${qs ? `?${qs}` : ""}`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        nextCursor: (data && data.next_cursor) || null,
+      };
     },
 
     async revokeConnection(connectionId) {

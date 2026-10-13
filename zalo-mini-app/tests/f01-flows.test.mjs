@@ -36,6 +36,8 @@ const { initStore, resetState, setRole, getState } = await import("../src/app/st
 const loginPage = (await import("../src/pages/login/index.js")).page;
 const consentPage = (await import("../src/pages/consent/index.js")).page;
 const connectPage = (await import("../src/pages/connect/index.js")).page;
+const profilePage = (await import("../src/pages/profile/index.js")).page;
+const homePage = (await import("../src/pages/home/index.js")).page;
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -486,8 +488,9 @@ describe("zalo-adapter session generation", () => {
       const me = await a.loginWithZaloToken();
       assert.equal(getToken(), "backend-token-2");
       assert.equal(me.userId, "user-2");
-      const conns = await a.listConnections();
-      assert.deepEqual(conns, [{ connection_id: "conn-new" }]);
+      const connsPage = await a.listConnections();
+      assert.deepEqual(connsPage.results, [{ connection_id: "conn-new" }]);
+      assert.equal(connsPage.nextCursor, null);
       assert.equal(hasLiveSession(), true, "phiên mới phải sống sau logout cũ");
     } finally {
       restore();
@@ -759,11 +762,11 @@ describe("F01 trang kết nối", () => {
       rows: inviteRows,
       listConnections: async () => {
         if (failLists) throw new ApiError("boom", 503, "http");
-        return connectionRows.map((c) => ({ ...c }));
+        return { results: connectionRows.map((c) => ({ ...c })), nextCursor: null };
       },
       listInvites: async () => {
         if (failLists) throw new ApiError("boom", 503, "http");
-        return inviteRows.map((row) => ({ ...row }));
+        return { results: inviteRows.map((row) => ({ ...row })), nextCursor: null };
       },
       getMyProfile: async () => ({ user_id: "u", display_name: displayName,
         identity_basis: "self_declared" }),
@@ -1235,5 +1238,489 @@ describe("F01 trang kết nối", () => {
     assert.ok(textOf(el).includes("Tên gọi đã được cập nhật"));
     clearSession();
     unmount(host);
+  });
+});
+
+// ---------------------------------------------------------------- audit round 2
+// A01/A04/A06/A08/A10/A11/A13 — trang THẬT + adapter THẬT (fetch stub), deferred
+// promises điều khiển đúng thứ tự: pending read/write, destroy, đổi actor.
+describe("F01 audit round 2 — trang thật + adapter thật", () => {
+  function jsonResponse(status, body) {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      json: async () => body,
+    };
+  }
+
+  function installRouteFetch(routes) {
+    // routes: Map urlSuffix -> async (req) => Response (đúng thứ tự chèn —
+    // route dài/specific phải nằm TRƯỚC route chung).
+    const calls = [];
+    globalThis.fetch = async (url, options = {}) => {
+      const call = { url: String(url), method: options.method || "GET" };
+      calls.push(call);
+      for (const [suffix, handler] of routes.entries()) {
+        if (call.url.includes(suffix)) {
+          return handler({ url: call.url, options, call });
+        }
+      }
+      return jsonResponse(404, { error: { code: "no_route", details: {} } });
+    };
+    return { calls, restore: () => { delete globalThis.fetch; } };
+  }
+
+  function adapter() {
+    return createZaloAdapter({ baseUrl: "https://backend.example" });
+  }
+
+  function useZaloEnvironment() {
+    const savedWindow = globalThis.window;
+    const savedDescriptor = Object.getOwnPropertyDescriptor(globalThis, "navigator");
+    globalThis.window = { location: { hostname: "mini.zalo.me" } };
+    Object.defineProperty(globalThis, "navigator", {
+      value: { userAgent: "Zalo MiniApp Android/1.0" },
+      configurable: true,
+    });
+    return () => {
+      globalThis.window = savedWindow;
+      if (savedDescriptor) {
+        Object.defineProperty(globalThis, "navigator", savedDescriptor);
+      }
+    };
+  }
+
+  const COUNTERPART = { display_name: "Mẹ Nam", identity_basis: "self_declared" };
+
+  // ---------------------------------------------------------------- A01
+  it("A01: destroy + đổi actor trong lúc submit đang chờ -> KHÔNG POST consent nào", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let readCount = 0;
+    let releaseSecondRead;
+    const secondReadGate = new Promise((r) => { releaseSecondRead = r; });
+    let consentPosts = 0;
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/consents", async ({ options }) => {
+        if ((options.method || "GET") === "POST") {
+          consentPosts += 1;
+          return jsonResponse(201, { consent_id: "c1" });
+        }
+        readCount += 1;
+        if (readCount === 1) return jsonResponse(200, { consents: [] }); // load()
+        await secondReadGate; // GET thứ hai trong submit() bị giữ lại
+        return jsonResponse(200, { consents: [] });
+      }],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(consentPage, ctx);
+    try {
+      await wait(20); // load() hoàn tất, form hiện
+      const serviceBox = el.querySelector("#fb-consent-service");
+      assert.ok(serviceBox, "form đồng ý phải hiện sau khi tải");
+      serviceBox.click(); // bắn sự kiện thật như người dùng
+      findButton(el, "Xác nhận và tiếp tục").click();
+      await wait(10); // submit() đang chờ GET thứ hai
+      // A01: checkbox khóa trong lúc xử lý — lựa chọn không đổi được giữa chừng.
+      assert.equal(serviceBox.disabled, true,
+        "checkbox phải khóa trong lúc submit đang chờ");
+      // Destroy trang + cài phiên B (actor mới) rồi mới trả response cũ.
+      unmount(host);
+      setSession({ token: "tok-b", userId: "user-b", expiresAt: Date.now() + 60_000 });
+      releaseSecondRead();
+      await wait(20);
+      assert.equal(consentPosts, 0,
+        "luồng consent của actor cũ KHÔNG được ghi sang actor mới");
+      assert.equal(getToken(), "tok-b", "phiên mới phải còn nguyên");
+      restore();
+      restoreEnv();
+    } finally {
+      clearSession();
+    }
+  });
+
+  it("A01: GET lỗi 401 thật (phiên chết) -> dừng, KHÔNG ghi, báo trạng thái", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let readCount = 0;
+    let releaseRead;
+    const readGate = new Promise((resolve) => { releaseRead = resolve; });
+    let consentPosts = 0;
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/consents", async ({ options }) => {
+        if ((options.method || "GET") === "POST") {
+          consentPosts += 1;
+          return jsonResponse(201, { consent_id: "c1" });
+        }
+        readCount += 1;
+        if (readCount === 1) return jsonResponse(200, { consents: [] });
+        await readGate;
+        return jsonResponse(401, { error: { code: "not_authenticated", details: {} } });
+      }],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(consentPage, ctx);
+    try {
+      await wait(20);
+      const serviceBox = el.querySelector("#fb-consent-service");
+      serviceBox.click();
+      findButton(el, "Xác nhận và tiếp tục").click();
+      await wait(10);
+      releaseRead();
+      await wait(20);
+      assert.equal(consentPosts, 0,
+        "không đọc được trạng thái -> KHÔNG ghi (không nuốt 401)");
+      assert.equal(hasLiveSession(), false,
+        "401 thật (phiên chết) -> adapter đã xóa phiên");
+      restore();
+      restoreEnv();
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("A01: lỗi SAU commit -> báo kết quả CHƯA XÁC ĐỊNH, không tự replay", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let releaseSecond;
+    const secondGate = new Promise((resolve) => { releaseSecond = resolve; });
+    const posts = [];
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/consents", async ({ options }) => {
+        if ((options.method || "GET") === "POST") {
+          posts.push(String(options.body || ""));
+          if (posts.length >= 2) {
+            await secondGate; // giữ POST thứ hai rồi làm rớt kết nối
+            throw new TypeError("fetch network drop");
+          }
+          return jsonResponse(201, { consent_id: "c1" });
+        }
+        return jsonResponse(200, { consents: [] });
+      }],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(consentPage, ctx);
+    try {
+      await wait(20);
+      el.querySelector("#fb-consent-service").click();
+      el.querySelector("#fb-consent-ai_processing").click();
+      findButton(el, "Xác nhận và tiếp tục").click();
+      await wait(30);
+      releaseSecond();
+      await wait(30);
+      const status = el.querySelector('[role="status"]');
+      assert.ok(status && status.textContent.includes("CHƯA XÁC ĐỊNH"),
+        `mất response sau commit phải báo chưa xác định, thấy: ${status && status.textContent}`);
+      assert.equal(posts.length, 2,
+        "KHÔNG tự replay: chỉ đúng 2 POST (service + ai), không phát sinh thêm");
+      restore();
+      restoreEnv();
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  // ---------------------------------------------------------------- A04
+  it("A04: logout cũ lỗi SAU khi destroy + đổi phiên -> KHÔNG xóa phiên mới", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let releaseLogout;
+    const logoutGate = new Promise((resolve) => { releaseLogout = resolve; });
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/auth/logout", async () => {
+        await logoutGate;
+        throw new TypeError("fetch network drop"); // revoke lỗi mạng
+      }],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx, navigateCalls } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(profilePage, ctx);
+    try {
+      await wait(10);
+      findButton(el, "Đăng xuất").click();
+      await wait(10);
+      const dialogConfirm = Array.from(document.querySelectorAll(".fb-dialog-root button"))
+        .find((btn) => btn.textContent.includes("Đăng xuất"));
+      assert.ok(dialogConfirm, "dialog đăng xuất phải mở");
+      dialogConfirm.click();
+      await wait(10); // logout đang chờ HTTP
+      unmount(host);
+      setSession({ token: "tok-new", userId: "user-new", expiresAt: Date.now() + 60_000 });
+      releaseLogout();
+      await wait(20);
+      assert.equal(getToken(), "tok-new",
+        "catch của logout cũ KHÔNG được xóa phiên mới (bỏ clearSession vô điều kiện)");
+      assert.equal(hasLiveSession(), true);
+      assert.deepEqual(navigateCalls, [],
+        "trang cũ đã destroy không được điều hướng");
+      restore();
+      restoreEnv();
+    } finally {
+      document.querySelectorAll(".fb-dialog-root").forEach((n) => n.remove());
+      clearSession();
+    }
+  });
+
+  // ---------------------------------------------------------------- A06-UI
+  it("A06: B đã đồng ý nhưng kết nối đã active -> badge chờ xác nhận phải biến mất", async () => {
+    clearSession();
+    setSession({ token: "tok-b", userId: "user-b", expiresAt: Date.now() + 60_000 });
+    let claimDone = false;
+    let releaseLists;
+    const listsGate = new Promise((r) => { releaseLists = r; });
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/auth/me", async () => jsonResponse(200, {
+        user_id: "user-b", display_name: "Bé Mai", identity_basis: "self_declared",
+      })],
+      ["/api/v1/connections/invites/claim", async () => {
+        claimDone = true;
+        return jsonResponse(200, {
+          invite_id: "inv-x", role: "candidate", status: "awaiting_confirmation",
+          revision: 2, expires_at: new Date(Date.now() + 86400_000).toISOString(),
+          counterpart: COUNTERPART,
+        });
+      }],
+      ["/api/v1/connections/invites/preview", async () => jsonResponse(200, {
+        invite_id: "inv-x", relationship_kind: "primary", status: "pending",
+        expires_at: new Date(Date.now() + 86400_000).toISOString(),
+        counterpart: COUNTERPART,
+      })],
+      ["/api/v1/connections/invites", async () => {
+        if (claimDone) await listsGate; // giữ refresh sau claim
+        return jsonResponse(200, {
+          results: [], next_cursor: null, // lời mời đã active -> rời danh sách
+        });
+      }],
+      ["/api/v1/connections", async () => {
+        if (claimDone) await listsGate;
+        return jsonResponse(200, {
+          results: [{
+            connection_id: "conn-1", other_party_id: "user-a",
+            relationship_kind: "primary", generation: 1, status: "active",
+            counterpart: COUNTERPART,
+          }], next_cursor: null,
+        });
+      }],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: adapter() });
+    const { host, el } = mount(connectPage, ctx);
+    try {
+      await wait(30);
+      const codeInput = el.querySelector("#fb-invite-code");
+      codeInput.value = "AB2CD3EF4GH5";
+      codeInput.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+      await wait(10);
+      findButton(el, "Kiểm tra mã").click();
+      await wait(20);
+      findButton(el, "Đồng ý kết nối").click();
+      await wait(30); // claim trả xong, refresh còn bị gate -> badge đứng yên
+      assert.ok(textOf(el).includes("Chờ người tạo mã xác nhận"),
+        "trước hòa giải badge phải còn");
+      releaseLists(); // dữ liệu mới: kết nối đã active, invites rỗng
+      await wait(30);
+      assert.ok(!textOf(el).includes("Chờ người tạo mã xác nhận"),
+        "A06: badge chờ xác nhận KHÔNG được sống sót sau khi kết nối active");
+      assert.ok(textOf(el).includes("Kết nối đang hoạt động"),
+        "trạng thái thật (kết nối) phải hiện");
+      restore();
+      restoreEnv();
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  // ---------------------------------------------------------------- A08
+  it("A08: destroy đóng dialog; KHÔNG confirm thêm sau destroy", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let releaseConfirm;
+    const confirmGate = new Promise((resolve) => { releaseConfirm = resolve; });
+    let confirmCalls = 0;
+    const { restore } = installRouteFetch(new Map([
+      ["/invites/inv-9/confirm", async () => { // route specific TRƯỚC list
+        confirmCalls += 1;
+        await confirmGate;
+        return jsonResponse(200, {
+          invite: { invite_id: "inv-9", status: "active", revision: 3 },
+          connection: { connection_id: "conn-1", status: "active",
+            relationship_kind: "primary", generation: 1 },
+        });
+      }],
+      ["/api/v1/auth/me", async () => jsonResponse(200, {
+        user_id: "user-a", display_name: "Mẹ Nam", identity_basis: "self_declared",
+      })],
+      ["/api/v1/connections/invites", async () => jsonResponse(200, {
+        results: [{
+          invite_id: "inv-9", role: "inviter", status: "awaiting_confirmation",
+          revision: 2, expires_at: new Date(Date.now() + 86400_000).toISOString(),
+          relationship_kind: "primary",
+          counterpart: { display_name: "Chị Hồng", identity_basis: "self_declared" },
+        }], next_cursor: null,
+      })],
+      ["/api/v1/connections", async () => jsonResponse(200, {
+        results: [], next_cursor: null,
+      })],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(connectPage, ctx);
+    try {
+      await wait(30);
+      findButton(el, "Xác nhận kết nối").click();
+      await wait(10);
+      const dialogRoot = document.querySelector(".fb-dialog-root");
+      assert.ok(dialogRoot, "dialog xác nhận phải mở trong document.body");
+      const dialogConfirm = Array.from(dialogRoot.querySelectorAll("button"))
+        .find((btn) => btn.textContent.includes("Xác nhận kết nối"));
+      dialogConfirm.click();
+      await wait(10);
+      assert.equal(confirmCalls, 1, "confirm gọi đúng 1 lần");
+      unmount(host);
+      await wait(10);
+      assert.equal(document.querySelector(".fb-dialog-root"), null,
+        "destroy phải đóng dọn dialog khỏi document.body");
+      releaseConfirm();
+      await wait(20);
+      assert.equal(confirmCalls, 1,
+        "KHÔNG có confirm nào được phát thêm sau destroy");
+      restore();
+      restoreEnv();
+    } finally {
+      document.querySelectorAll(".fb-dialog-root").forEach((n) => n.remove());
+      clearSession();
+    }
+  });
+
+  // ---------------------------------------------------------------- A10
+  it("A10: createInvite stale_session -> thông báo CHƯA XÁC ĐỊNH (không phải lỗi chung)", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let releaseCreate;
+    const createGate = new Promise((resolve) => { releaseCreate = resolve; });
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/auth/me", async () => jsonResponse(200, {
+        user_id: "user-a", display_name: "Mẹ Nam", identity_basis: "self_declared",
+      })],
+      ["/api/v1/connections/invites", async ({ options }) => {
+        if ((options.method || "GET") === "POST") {
+          await createGate;
+          return jsonResponse(201, {
+            invite_id: "inv-new", code: "AB2CD3EF4GH5",
+            expires_at: new Date(Date.now() + 86400_000).toISOString(),
+            status: "pending",
+          });
+        }
+        return jsonResponse(200, { results: [], next_cursor: null });
+      }],
+      ["/api/v1/connections", async () => jsonResponse(200, {
+        results: [], next_cursor: null,
+      })],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(connectPage, ctx);
+    try {
+      await wait(30);
+      findButton(el, "Tạo mã mời").click();
+      await wait(10);
+      // Đổi phiên trong khi POST còn treo -> adapter bỏ response (stale).
+      setSession({ token: "tok-b", userId: "user-b", expiresAt: Date.now() + 60_000 });
+      releaseCreate();
+      await wait(30);
+      const status = el.querySelector('[role="status"]');
+      assert.ok(status && status.textContent.includes("CHƯA XÁC ĐỊNH"),
+        `A10: phải giữ bất định, thấy: ${status && status.textContent}`);
+      assert.ok(!status.textContent.includes("Không thể hoàn tất yêu cầu"),
+        "không được rơi vào thông báo lỗi chung");
+      restore();
+      restoreEnv();
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  // ---------------------------------------------------------------- A13
+  it("A13: GET profile chậm KHÔNG ghi đè tên người dùng đang gõ", async () => {
+    clearSession();
+    setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+    let releaseName;
+    const nameGate = new Promise((resolve) => { releaseName = resolve; });
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/auth/me", async () => {
+        await nameGate;
+        return jsonResponse(200, {
+          user_id: "user-a", display_name: "Old stored name",
+          identity_basis: "self_declared",
+        });
+      }],
+      ["/api/v1/connections", async () => jsonResponse(200, { results: [], next_cursor: null })],
+      ["/api/v1/connections/invites", async () => jsonResponse(200, { results: [], next_cursor: null })],
+    ]));
+    const restoreEnv = useZaloEnvironment();
+    const { ctx } = makeCtx({ demo: false, role: "caregiver", adapter: adapter() });
+    const { host, el } = mount(connectPage, ctx);
+    try {
+      await wait(10);
+      const nameInput = el.querySelector("#fb-display-name");
+      assert.ok(nameInput, "ô tên gọi phải hiện");
+      nameInput.value = "New typed name";
+      nameInput.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+      await wait(10);
+      releaseName();
+      await wait(20);
+      assert.equal(el.querySelector("#fb-display-name").value, "New typed name",
+        "A13: input dirty phải được bảo vệ khỏi GET chậm");
+      restore();
+      restoreEnv();
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  // ---------------------------------------------------------------- A11
+  it("A11: auth transition -> render lại route đang mở cập nhật home", async () => {
+    clearSession();
+    const { createRouter, navigate } = await import("../src/app/router.js");
+    const { restore } = installRouteFetch(new Map([
+      ["/api/v1/connections", async () => jsonResponse(200, {
+        results: [{
+          connection_id: "conn-1", other_party_id: "user-a",
+          relationship_kind: "primary", generation: 1, status: "active",
+          counterpart: COUNTERPART,
+        }], next_cursor: null,
+      })],
+    ]));
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: adapter() });
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const router = createRouter({ root, ctx });
+    domWindow.location.hash = "#/home";
+    try {
+      router.start();
+      await wait(40);
+      assert.ok(root.textContent.includes("Chưa đăng nhập"),
+        "boot khi chưa có phiên: home phải hiện Chưa đăng nhập");
+      // Silent login hoàn tất -> setSession + router.render() (như main.js).
+      setSession({ token: "tok-a", userId: "user-a", expiresAt: Date.now() + 60_000 });
+      await router.render();
+      await wait(30);
+      assert.ok(root.textContent.includes("Đang đồng hành"),
+        "A11: sau auth transition, home đang mở phải cập nhật theo phiên mới");
+      assert.ok(!root.textContent.includes("Chưa đăng nhập"));
+    } finally {
+      router.stop();
+      root.remove();
+      restore();
+      clearSession();
+    }
   });
 });

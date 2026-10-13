@@ -3,7 +3,7 @@
 // hành động. Logout revoking server-side + dọn state trong memory.
 import { h } from "../../app/dom.js";
 import {
-  clearSession, getSession, hasLiveSession,
+  getSession, getSessionGeneration, hasLiveSession,
 } from "../../core/session.js";
 import {
   createButton, createCard, createDialog, createStatusBadge, createTopBar,
@@ -24,7 +24,16 @@ export const page = {
 
   render(ctx) {
     let cancelled = false;
-    markRenderCancelled = () => { cancelled = true; };
+    const openDialogs = new Set();
+    markRenderCancelled = () => {
+      cancelled = true;
+      // A08: đóng dialog do trang này mở khi destroy.
+      const dialogs = Array.from(openDialogs);
+      openDialogs.clear();
+      for (const dialog of dialogs) {
+        try { dialog.close(); } catch { /* đã đóng rồi */ }
+      }
+    };
 
     const state = readState(ctx.store);
     const root = h("div", { class: "fb-page", dataset: { page: "profile" } });
@@ -90,6 +99,7 @@ export const page = {
               },
             ],
           });
+          openDialogs.add(dialog);
         },
       });
       body.appendChild(
@@ -117,15 +127,23 @@ export const page = {
 
     async function doLogout() {
       if (cancelled) return;
+      // A04: adapter.logout() đã vô hiệu hóa phiên NGAY khi gọi (c101a59);
+      // trang KHÔNG được clearSession() vô điều kiện nữa — nếu logout cũ
+      // lỗi mạng sau khi người dùng đã chủ động đăng nhập lại, clear cũ
+      // biến mất phiên MỚI. Guard theo generation cho CẢ hai nhánh.
+      const startGeneration = getSessionGeneration();
+      let revokeConfirmed = true;
       try {
         await ctx.adapter.logout();
       } catch (error) {
-        // Logout lỗi mạng: phiên trong memory vẫn bị xóa để không dùng lại;
-        // phiên phía server sẽ hết hạn theo TTL (24h).
-        clearSession();
+        revokeConfirmed = false; // client đã đăng xuất; server thu hồi CHƯA XÁC NHẬN
       }
-      if (cancelled) return;
-      ctx.navigate("/login?reason=logged-out");
+      // Trang chết hoặc PHIÉN MỚI khác actor đã cài -> trang cũ không được
+      // điều hướng hay đụng vào phiên mới.
+      if (cancelled || getSessionGeneration() !== startGeneration) return;
+      ctx.navigate(revokeConfirmed
+        ? "/login?reason=logged-out"
+        : "/login?reason=logged-out-pending");
     }
 
     // ---- kết nối hai phía (F01) ----

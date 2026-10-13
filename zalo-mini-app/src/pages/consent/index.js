@@ -3,7 +3,7 @@
 // chấp nhận trước đó cho đúng phiên bản hiện hành (khôi phục trạng thái thật).
 // Đăng nhập không bao giờ tự hiểu là đã đồng ý.
 import { h } from "../../app/dom.js";
-import { hasLiveSession } from "../../core/session.js";
+import { getSessionGeneration, hasLiveSession } from "../../core/session.js";
 import { CONSENT_ORDER, POLICY_PURPOSES } from "../../core/policy.js";
 import {
   createButton, createCard, createErrorState, createSkeleton, createTopBar,
@@ -157,48 +157,95 @@ export const page = {
 
     const submitStatus = h("p", { class: "fb-page__note", role: "status" });
 
+    function setCheckboxesDisabled(disabled) {
+      for (const checkbox of checkboxes.values()) {
+        checkbox.disabled = disabled;
+      }
+    }
+
     async function submit() {
       if (submitting) return;
       submitting = true;
       syncContinueState();
       continueButton.disabled = true;
+      // A01: chốt actor + SNAPSHOT lựa chọn NGAY LÚC BẤM. Mọi mutation sau
+      // đó dùng snapshot — checkbox thay đổi giữa chừng (nếu có) không tự
+      // động thành một quyết định mới; thay đổi cần một lần xác nhận mới.
+      const startGeneration = getSessionGeneration();
       const thisRun = runId;
+      const decisions = CONSENT_ORDER.map((key) => {
+        const config = POLICY_PURPOSES[key];
+        const checked = checkboxes.get(key) ? checkboxes.get(key).checked : false;
+        return {
+          purpose: config.purpose,
+          version: config.version,
+          decision: checked ? "accepted" : "declined",
+        };
+      });
+      setCheckboxesDisabled(true);
+      /** Kiểm tra sau MỖI await: trang chết / render mới / ĐỔI PHIÊN (actor
+       * khác) -> dừng ngay, KHÔNG ghi tiếp mục nào sang actor mới. */
+      const isStale = () =>
+        cancelled || thisRun !== runId || getSessionGeneration() !== startGeneration;
       try {
         const existing = new Map();
         try {
           for (const record of await ctx.adapter.listConsents()) {
             if (record) existing.set(record.purpose, record);
           }
+          if (isStale()) return;
         } catch (error) {
-          // Không đọc lại được trạng thái: vẫn ghi nhận lựa chọn hiện tại.
+          // A01: KHÔNG nuốt stale/401/cancellation rồi ghi tiếp. Lỗi đọc:
+          // nếu phiên đã đổi -> bỏ im (luồng cũ chết); nếu phiên còn ->
+          // dừng và báo, KHÔNG ghi khi chưa thấy được trạng thái hiện tại.
+          if (isStale()) return;
+          submitting = false;
+          setCheckboxesDisabled(false);
+          syncContinueState();
+          submitStatus.textContent = error && error.kind === "timeout"
+            ? "Không đọc được trạng thái đồng ý (quá thời gian chờ). Chưa ghi gì — vui lòng thử lại."
+            : "Không đọc được trạng thái đồng ý. Chưa ghi gì — vui lòng thử lại.";
+          return;
         }
-        for (const key of CONSENT_ORDER) {
-          const config = POLICY_PURPOSES[key];
-          const checked = checkboxes.get(key) ? checkboxes.get(key).checked : false;
-          const decision = checked ? "accepted" : "declined";
-          const previous = existing.get(key);
+        for (const item of decisions) {
+          const previous = existing.get(item.purpose);
           const sameAsRecorded = Boolean(
-            previous && previous.decision === decision
-              && previous.policy_version === config.version
-              && (decision === "declined" || !previous.withdrawn),
+            previous && previous.decision === item.decision
+              && previous.policy_version === item.version
+              && (item.decision === "declined" || !previous.withdrawn),
           );
           if (sameAsRecorded) continue; // tránh ghi trùng vào sổ cái
           await ctx.adapter.recordConsent({
-            purpose: config.purpose,
-            policyVersion: config.version,
-            decision,
+            purpose: item.purpose,
+            policyVersion: item.version,
+            decision: item.decision,
           });
-          if (cancelled || thisRun !== runId) return;
+          if (isStale()) return; // dừng TRƯỚC khi ghi mục tiếp theo
         }
-        if (cancelled || thisRun !== runId) return;
+        if (isStale()) return;
         ctx.navigate(state.role ? "/home" : "/role-select");
       } catch (error) {
-        if (cancelled || thisRun !== runId) return;
+        if (isStale()) {
+          // Stale do destroy/render mới/đổi phiên: im lặng (luồng cũ chết).
+          // NHƯNG nếu 401 THẬT đã xóa phiên hiện tại -> về trang đăng nhập
+          // (không dùng đường này để đá người dùng vì response lỗi thời —
+          // khi đó phiên mới đang sống và hasLiveSession() là true).
+          if (!cancelled && thisRun === runId && !hasLiveSession()) {
+            ctx.navigate("/login?reason=expired");
+          }
+          return;
+        }
         submitting = false;
+        setCheckboxesDisabled(false);
         syncContinueState();
-        submitStatus.textContent = error && error.kind === "timeout"
-          ? "Ghi nhận đồng ý quá thời gian chờ. Vui lòng thử lại."
-          : "Không ghi nhận được đồng ý. Vui lòng thử lại.";
+        // A01/A10: kết quả ghi chưa xác định (mất response: timeout/network/
+        // stale khi phiên còn) không được báo chắc chắn thất bại hay tự
+        // replay — mời kiểm tra lại; submit sau đó đối chiếu trước khi ghi.
+        submitStatus.textContent =
+          error && (error.kind === "timeout" || error.kind === "network"
+            || error.kind === "stale_session")
+            ? "Kết quả ghi CHƯA XÁC ĐỊNH (máy chủ có thể đã nhận). Bấm Xác nhận lại sau khi kiểm tra, lựa chọn của bạn sẽ được đối chiếu trước khi ghi."
+            : "Không ghi nhận được đồng ý. Vui lòng thử lại.";
       }
     }
 
@@ -206,8 +253,9 @@ export const page = {
     body.appendChild(submitStatus);
     body.appendChild(
       h("p", { class: "fb-page__note" },
-        "Bạn có thể thu hồi từng sự đồng ý trong phần Cá nhân. Thu hồi không xóa " +
-        "dữ liệu đã ghi trong sổ cái mà đánh dấu không còn hiệu lực.",
+        "Việc thu hồi từng sự đồng ý sẽ nằm trong phần Cá nhân khi tính năng " +
+        "quản lý quyền riêng tư (F15) được kích hoạt trên bản này. Thu hồi khi " +
+        "có sẽ không xóa dữ liệu đã ghi trong sổ cái mà đánh dấu không còn hiệu lực.",
       ),
     );
 
