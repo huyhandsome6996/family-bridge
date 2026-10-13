@@ -6,6 +6,8 @@
 // src/app/dom.js — file này PHẢI thiết lập globalThis.window/document/Node/…
 // TRƯỚC KHI import động ../src/components/index.js.
 
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { Window } from "happy-dom";
@@ -84,7 +86,7 @@ describe("design-system smoke (Task 3-a)", () => {
     assert.equal(plain.querySelector("button"), null);
   });
 
-  it("createBottomNav có 5 item từ NAV_ITEMS, aria-current cho mục active, icon có <title>", () => {
+  it("createBottomNav có 5 item từ NAV_ITEMS, aria-current cho mục active, icon SVG inline", () => {
     const nav = createBottomNav({ active: "/mailbox" });
     assert.equal(nav.tagName, "NAV");
     assert.equal(nav.getAttribute("aria-label"), "Điều hướng chính");
@@ -101,10 +103,11 @@ describe("design-system smoke (Task 3-a)", () => {
     assert.equal(items[2].getAttribute("aria-current"), "page");
     assert.equal(items[0].getAttribute("aria-current"), null);
 
-    // Icon SVG inline có <title> tiếng Việt
-    const firstTitle = items[0].querySelector("svg title");
-    assert.ok(firstTitle, "icon phải có <title>");
-    assert.ok(firstTitle.textContent.length > 0);
+    // Stitch upgrade: icon là SVG Material Symbols local (icon.js), aria-hidden
+    // vì mỗi item LUÔN kèm nhãn chữ hiển thị (a11y không phụ thuộc <title>).
+    const firstIcon = items[0].querySelector(".fb-bottom-nav__icon svg");
+    assert.ok(firstIcon, "icon phải là SVG inline");
+    assert.equal(firstIcon.getAttribute("aria-hidden"), "true");
   });
 
   it("createSheet: mở (tự gắn DOM) → focus nằm trong sheet → close() remove khỏi DOM + trả focus", () => {
@@ -262,16 +265,31 @@ describe("design-system smoke (Task 3-a)", () => {
     assert.equal(banner.getAttribute("role"), "status");
     assert.equal(banner.textContent, "Dữ liệu minh họa — chế độ xem trước");
 
-    // Logo
+    // Logo — Stitch upgrade: ảnh asset chính chủ (không còn SVG placeholder).
+    // Cập nhật theo PROMPT §4: kiểm tra img + alt + không bóp méo (width/height).
     const logo = createLogo();
     assert.ok(logo.classList.contains("fb-logo--md"));
-    assert.ok(logo.querySelector("svg"), "logo phải là SVG inline");
+    const logoImg = logo.querySelector("img");
+    assert.ok(logoImg, "logo phải là <img> asset chính chủ");
+    assert.equal(logoImg.getAttribute("alt"), "Family Bridge");
+    assert.ok(logoImg.getAttribute("src"), "img phải có src asset");
+    assert.ok(logoImg.getAttribute("width") && logoImg.getAttribute("height"),
+      "img phải khai báo width/height để tránh layout shift");
 
-    // Top bar: back bên trái, KHÔNG có nút góc phải
+    // Top bar: back bên trái, KHÔNG có slot phải khi không truyền actions
     const topBar = createTopBar({ title: "Cá nhân", showBack: true });
     assert.ok(topBar.querySelector(".fb-top-bar__back"));
     assert.ok(topBar.querySelector(".fb-top-bar__title"));
     assert.equal(topBar.querySelector(".fb-top-bar__right"), null);
+
+    // Top bar slot phải TÙY CHỌN: chỉ render khi caller truyền actions rõ ràng
+    const topBarActions = createTopBar({
+      title: "Soạn Thư Cảm Xúc",
+      showBack: true,
+      actions: [document.createElement("a")],
+    });
+    assert.ok(topBarActions.querySelector(".fb-top-bar__right--actions"),
+      "actions truyền vào phải render slot phải");
 
     // Error state: luôn có lối tiếp tục
     const err = createErrorState({ title: "Không kết nối được", description: "Vui lòng thử lại." });

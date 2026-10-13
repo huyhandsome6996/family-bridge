@@ -17,6 +17,8 @@
 // happy-dom globals PHẢI gắn TRƯỚC khi import động pages (giống pages.test.mjs).
 
 // ---------------------------------------------------------------- globals
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 const { Window } = await import("happy-dom");
 const domWindow = new Window({ url: "https://localhost/" });
 
