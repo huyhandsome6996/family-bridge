@@ -2,16 +2,20 @@
 // Luồng kết nối:
 //   - demo (adapter mock): getConnectionStatus trả fixture "đã kết nối" ->
 //     hiển thị home đã kết nối kèm nhãn "Dữ liệu minh họa" rõ ràng.
-//   - production (adapter zalo): getConnectionStatus ném lỗi 501 (boundary
-//     chưa triển khai) -> KHÔNG coi là lỗi hệ thống, hiển thị trạng thái
-//     "chưa kết nối" + giải thích mã mời. Không fake-success.
+//   - production (adapter zalo): cần phiên đăng nhập (F01). Có phiên -> gọi
+//     listConnections() thật: có kết nối -> home đã kết nối (không hiện tên
+//     người kia vì backend chỉ trả mã định danh nội bộ); chưa -> mời vào
+//     /connect tạo/nhập mã mời hai chiều. Không fake-success, không fallback
+//     tự động sang mock khi API lỗi.
 // Nút "Con cần được lắng nghe" chỉ mở Sheet xem trước — KHÔNG gửi tín hiệu.
 import { h, clear } from "../../app/dom.js";
+import { hasLiveSession } from "../../core/session.js";
 import {
   createButton,
   createCard,
   createSheet,
   createEmptyState,
+  createErrorState,
   createStatusBadge,
   createDemoBanner,
   createTopBar,
@@ -76,15 +80,32 @@ export const page = {
       return root;
     }
 
+    const demo = Boolean(state.demoMode);
+
+    // Production: chưa có phiên sống -> mời đăng nhập (không redirect cứng,
+    // giữ người dùng ở home sau khi đăng nhập xong họ bấm tiếp được).
+    if (!demo && !hasLiveSession()) {
+      renderNeedsLogin(body, ctx);
+      return root;
+    }
+
     body.appendChild(createSkeleton({ variant: "line", count: 1 }));
     body.appendChild(h("p", { role: "status" }, "Đang tải trang chủ…"));
 
     const currentRun = ++runId;
 
     Promise.resolve()
-      .then(() => ctx.adapter.getConnectionStatus())
+      .then(() => {
+        if (demo) {
+          return ctx.adapter.getConnectionStatus();
+        }
+        // A09: adapter trả { results, nextCursor } — home chỉ cần trang đầu.
+        return ctx.adapter.listConnections({ limit: 20 })
+          .then((page) => ({ rows: page.results || [], source: "backend" }));
+      })
       .then((status) => {
         if (cancelled || currentRun !== runId) return null;
+        if (status && status.source === "backend") return { status, profile: null };
         return Promise.resolve()
           .then(() => ctx.adapter.getProfile(role))
           .catch(() => null) // không có tên fixture -> chào chung, không chặn trang
@@ -92,11 +113,23 @@ export const page = {
       })
       .then((result) => {
         if (!result || cancelled || currentRun !== runId) return;
+        if (result.status && result.status.source === "backend") {
+          // Production thật: kết nối đọc từ backend.
+          const rows = result.status.rows || [];
+          if (rows.length) renderConnectedProduction(body, ctx, role, rows);
+          else renderNotConnected(body, ctx);
+          return;
+        }
         renderConnected(body, ctx, role, result.status, result.profile);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled || currentRun !== runId) return;
-        renderNotConnected(body, ctx);
+        if (error && error.status === 401) {
+          // Phiên hết hạn/thu hồi: adapter đã clear session — về đăng nhập.
+          ctx.navigate("/login?reason=expired");
+          return;
+        }
+        renderLoadError(body, ctx, error);
       });
 
     return root;
@@ -258,42 +291,103 @@ function renderCaregiverCards(body, ctx) {
 
 /* --------------------------- Chưa kết nối (production) --------------------------- */
 
+function renderNeedsLogin(body, ctx) {
+  clear(body);
+  body.appendChild(h("h2", { class: "fb-page__heading" }, "Xin chào!"));
+  body.appendChild(
+    createEmptyState({
+      title: "Chưa đăng nhập",
+      description:
+        "Đăng nhập bằng tài khoản Zalo để tạo phiên riêng của bạn. " +
+        "Chúng tôi chỉ nhận mã định danh Zalo, không xin quyền đọc thông tin cá nhân.",
+      action: {
+        label: "Đăng nhập",
+        onClick: () => ctx.navigate("/login"),
+      },
+    }),
+  );
+  body.appendChild(
+    h("p", { class: "fb-page__note" },
+      "Tìm trợ giúp luôn truy cập được mà không cần đăng nhập.",
+    ),
+  );
+}
+
+function renderLoadError(body, ctx, error) {
+  clear(body);
+  body.appendChild(
+    createErrorState({
+      title: "Không tải được trang chủ",
+      description: error && error.kind === "timeout"
+        ? "Kết nối quá thời gian chờ. Vui lòng thử lại."
+        : "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.",
+      retryLabel: "Thử lại",
+      onRetry: () => window.dispatchEvent(new HashChangeEvent("hashchange")),
+    }),
+  );
+}
+
+function renderConnectedProduction(body, ctx, role, rows) {
+  clear(body);
+
+  // A11: KHÔNG chọn mù rows[0] — ưu tiên kết nối “primary” nếu có nhiều;
+  // khi có nhiều kết nối cùng hoạt động, nêu rõ số lượng để không khiến
+  // người dùng nhầm người đồng hành.
+  const primary = rows.find((row) => row && row.relationship_kind === "primary")
+    || rows[0];
+  const kindLabel = primary && primary.relationship_kind === "backup"
+    ? "Người hỗ trợ dự phòng"
+    : "Người đồng hành chính";
+  const countNote = rows.length > 1
+    ? ` Hiện có ${rows.length} kết nối đang hoạt động — xem tất cả trong “Quản lý kết nối”.`
+    : "";
+
+  body.appendChild(h("h2", { class: "fb-page__heading" }, "Xin chào!"));
+
+  body.appendChild(
+    createCard({
+      title: "Đang đồng hành",
+      description:
+        `Bạn có một kết nối đang hoạt động (${kindLabel}` +
+        (primary && primary.generation ? `, thế hệ ${primary.generation}` : "") +
+        ")." + countNote +
+        " Chúng tôi hiển thị kết nối mà không lộ thông tin cá nhân của hai bên.",
+      footer: createButton({
+        label: "Quản lý kết nối",
+        variant: "ghost",
+        onClick: () => ctx.navigate("/connect"),
+      }),
+    }),
+  );
+
+  if (role === "student") {
+    renderStudentCards(body, ctx, null);
+  } else {
+    renderCaregiverCards(body, ctx);
+  }
+}
+
 function renderNotConnected(body, ctx) {
   clear(body);
 
-  // Lỗi 501 "chưa triển khai" không phải lỗi hệ thống — hiển thị trạng thái
-  // chờ kết nối an toàn, không DemoBanner (đây không phải chế độ demo).
   body.appendChild(h("h2", { class: "fb-page__heading" }, "Xin chào!"));
 
   body.appendChild(
     createEmptyState({
       title: "Chưa kết nối với người đồng hành",
       description:
-        "Hai bên sẽ kết nối với nhau bằng một mã mời riêng và xác nhận hai chiều. Tính năng kết nối sắp ra mắt — khi có, hướng dẫn sẽ xuất hiện ngay tại đây.",
+        "Hai bên sẽ kết nối với nhau bằng một mã mời riêng và xác nhận hai chiều. " +
+        "Bạn có thể tạo mã mời hoặc nhập mã nhận được ngay bây giờ.",
       action: {
-        label: "Tìm hiểu cách kết nối",
-        onClick: () => openConnectInfoSheet(body.closest(".fb-page") || body),
+        label: "Kết nối với người đồng hành",
+        onClick: () => ctx.navigate("/connect"),
       },
     }),
   );
 
   body.appendChild(
     h("p", { class: "fb-page__note" },
-      "Trong lúc chờ kết nối, bạn vẫn có thể xem trước giao diện bằng chế độ dữ liệu minh họa.",
+      "Kết nối không cho phép đọc nhật ký hay dữ liệu riêng của nhau — mọi mục chia sẻ vẫn do bạn quyết định.",
     ),
   );
-}
-
-function openConnectInfoSheet(root) {
-  openSheetIn(root, {
-    title: "Tìm hiểu cách kết nối",
-    content: h("div", {},
-      h("p", {}, "Khi tính năng ra mắt, mỗi gia đình sẽ nhận một mã mời riêng."),
-      h("p", {}, "Học sinh và người đồng hành cùng nhập mã mời để xác nhận kết nối hai chiều — cả hai bên đều phải đồng ý thì kết nối mới được tạo."),
-      h("p", {}, "Sau khi kết nối, hai bên sẽ thấy nhau trong hộp thư và lộ trình Đồng hành."),
-      h("p", { class: "fb-page__note" },
-        "Tính năng này sắp ra mắt. Ứng dụng sẽ không tạo mã mời hay gửi yêu cầu kết nối thay bạn.",
-      ),
-    ),
-  });
 }

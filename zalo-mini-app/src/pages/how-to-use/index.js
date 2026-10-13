@@ -4,14 +4,14 @@ import { createButton, createCard, createTopBar } from "../../components/index.j
 
 const STEPS = [
   {
-    title: "Bước 1. Chọn vai trò xem trước",
+    title: "Bước 1. Đăng nhập bằng Zalo",
     description:
-      "Chọn xem bạn muốn nhìn ứng dụng qua mắt học sinh hay người chăm sóc. Bạn có thể đổi vai trò bất cứ lúc nào.",
+      "Mở Family Bridge trong Zalo và đăng nhập. Chúng tôi chỉ nhận mã định danh Zalo của bạn để tạo phiên riêng — không xin số điện thoại hay quyền đọc thông tin cá nhân.",
   },
   {
-    title: "Bước 2. Kết nối hai bên bằng mã mời (sắp có)",
+    title: "Bước 2. Kết nối hai bên bằng mã mời",
     description:
-      "Học sinh và người đồng hành xác nhận kết nối với nhau bằng một mã mời riêng, cả hai bên đều phải đồng ý. Tính năng này sắp ra mắt.",
+      "Một bên tạo mã mời 12 ký tự, bên kia nhập mã và đồng ý, người tạo mã xác nhận cuối cùng. Cả hai bên đều phải đồng ý thì kết nối mới được tạo — và kết nối không cho phép đọc nhật ký hay dữ liệu riêng của nhau.",
   },
   {
     title: "Bước 3. Dùng thẻ cảm xúc và hộp thư để mở lời",
@@ -53,7 +53,7 @@ export const page = {
 
     body.appendChild(
       h("p", { class: "fb-page__note" },
-        "Bản xem trước dùng dữ liệu minh họa, chưa có đăng nhập.",
+        "Chế độ xem trước (?demo=1) dùng dữ liệu minh họa, không tạo phiên thật.",
       ),
     );
 
@@ -62,7 +62,7 @@ export const page = {
         label: "Tiếp tục",
         variant: "cta",
         size: "lg",
-        onClick: () => ctx.navigate("/role-select"),
+        onClick: () => ctx.navigate("/login"),
       }),
     );
 

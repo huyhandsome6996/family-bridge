@@ -29,6 +29,7 @@ from ..models import (
     INVITE_EXPIRED, INVITE_PENDING, RELATIONSHIP_BACKUP, RELATIONSHIP_PRIMARY,
     Connection, ConnectionInvite, hash_token,
 )
+from .pagination import apply_keyset_page
 
 INVITE_TTL_SECONDS = 7 * 24 * 3600   # P-03 provisional (DEC-17 open)
 CLAIM_RATE_LIMIT_PER_HOUR = 30       # anti brute-force (SEC-14)
@@ -68,12 +69,30 @@ class InviteService:
         return invite, raw_code
 
     # -- claim (candidate side) ----------------------------------------------
-    @transaction.atomic
     def claim_invite(self, *, candidate, raw_code: str,
                      rate_guard: Optional[ClaimRateGuard] = None):
-        """Candidate binds themselves and confirms. Rate-limited when guard given."""
+        """Candidate binds themselves and confirms. Rate-limited when guard given.
+
+        A07: the attempt record must SURVIVE a failed claim. The previous
+        shape ran check_and_record inside the same business transaction, so
+        a wrong code (NotFound) rolled the ClaimAttempt back and the DB
+        guard never counted failed attempts. The guard now commits in its
+        own transaction BEFORE the claim transaction starts; preview and
+        claim keep sharing the same budget through the same guard.
+        Concurrency note: check+insert is a soft sliding-window guard —
+        exact-quota races are tolerated (the DRF `invite_claim` throttle is
+        the second layer); what matters here is durable persistence.
+        """
+        now = self._now()
         if rate_guard is not None:
-            rate_guard.check_and_record(actor_id=str(candidate.pk), now=self._now())
+            with transaction.atomic():
+                rate_guard.check_and_record(actor_id=str(candidate.pk), now=now)
+        return self._claim_in_transaction(candidate=candidate,
+                                          raw_code=raw_code, now=now)
+
+    @transaction.atomic
+    def _claim_in_transaction(self, *, candidate, raw_code: str,
+                              now: dt.datetime):
         if not isinstance(raw_code, str):
             raise NotFound({"reason": "invalid_or_expired_code"})
         normalized = raw_code.strip().upper()
@@ -95,6 +114,11 @@ class InviteService:
             raise InputInvalid({"reason": "self_connect_denied"})
         if invite.candidate_id is not None and str(invite.candidate_id) != str(candidate.pk):
             # single-use: another candidate already claimed
+            raise NotFound({"reason": "invalid_or_expired_code"})
+        if not self._user_active(invite.inviter_id):
+            # A06: the inviter's account may have been disabled after the
+            # code was created. Same anti-enumeration reply as any dead code
+            # — never reveal account state to a stranger.
             raise NotFound({"reason": "invalid_or_expired_code"})
         if self._pair_has_active_connection(invite.inviter_id, candidate.pk):
             raise InputInvalid({"reason": "already_connected"})
@@ -136,6 +160,11 @@ class InviteService:
             raise RevisionConflict({"current_revision": invite.revision})
         if self._pair_has_active_connection(invite.inviter_id, invite.candidate_id):
             raise InputInvalid({"reason": "already_connected"})
+        # A06: recheck BOTH accounts are currently active inside the same
+        # locked transaction. The old code activated a connection for a
+        # candidate whose account had been disabled after claiming.
+        if not self._user_active(inviter.pk) or not self._user_active(invite.candidate_id):
+            raise NotAuthorized({"reason": "account_inactive"})
 
         invite.inviter_confirmed_at = now
         invite.status = INVITE_ACTIVE
@@ -203,6 +232,12 @@ class InviteService:
         return connection
 
     @staticmethod
+    def _user_active(user_id) -> bool:
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        return User.objects.filter(pk=str(user_id), is_active=True).exists()
+
+    @staticmethod
     def _pair_has_active_connection(user_a, user_b) -> bool:
         low_id, high_id = sorted([str(user_a), str(user_b)])
         return Connection.objects.filter(
@@ -229,11 +264,19 @@ class InviteService:
         connection = Connection.objects.filter(pk=connection_id).first()
         return connection.view() if connection else None
 
-    def list_active_for_user(self, *, user_id: str):
-        rows = Connection.objects.filter(
+    def list_active_for_user(self, *, user_id: str, limit: int = 20,
+                             cursor: Optional[str] = None):
+        """One BOUNDED page of the user's active connections (A09).
+
+        Authorization filter first, then a stable keyset page over
+        (created_at, id). Returns (views, next_cursor) — the view layer
+        passes next_cursor back so rows beyond the page stay reachable.
+        """
+        qs = Connection.objects.filter(
             Q(party_low_id=str(user_id)) | Q(party_high_id=str(user_id)),
             status=CONNECTION_ACTIVE).order_by("created_at", "id")
-        return [row.view() for row in rows]
+        rows, next_cursor = apply_keyset_page(qs, cursor=cursor, limit=limit)
+        return [row.view() for row in rows], next_cursor
 
 
 class ClaimRateGuard:

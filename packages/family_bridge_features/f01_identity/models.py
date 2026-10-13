@@ -136,8 +136,14 @@ class ConsentRecord(models.Model):
 
     @classmethod
     def latest_active(cls, user_id, purpose: str):
-        return (cls.objects.filter(user_id=user_id, purpose=purpose,
-                                   withdrawn_at__isnull=True)
+        """The LATEST record of the purpose regardless of withdrawal (A02).
+
+        Effectiveness must be decided on the newest ledger row: a withdrawn
+        or declined latest record must never resurrect an older acceptance.
+        Callers decide effectiveness (decision + withdrawn_at + policy
+        version); this method only answers "what is the newest record".
+        """
+        return (cls.objects.filter(user_id=user_id, purpose=purpose)
                 .order_by("-recorded_at", "-id").first())
 
 
