@@ -30,6 +30,8 @@ class AdminCapabilityAuthorizer:
     """B16-backed handler authorization (fail-closed by construction)."""
 
     def authorize(self, *, actor_id: str, action: str, request_id: str) -> bool:
+        if action not in {ACTION_VERIFY, ACTION_PROCESS}:
+            return False
         try:
             from family_bridge_features.admin_core.models import AdminCapabilityGrant
         except ImportError:
@@ -57,7 +59,10 @@ class AdminCapabilityAuthorizer:
             return False
         # Coarse scope only: admin_core SCOPE_TYPES (global/school) cannot yet
         # express per-case assignment — recorded as a B16 dependency (CAP-20).
-        return True
+        # A school/global grant cannot authorize an arbitrary privacy case.
+        # B16 must implement the named per-case assignment before processing.
+        return (grant.scope_type == "assigned_resource"
+                and str(grant.scope_ref) == str(request_id))
 
 
 def authorize_handler_action(*, actor_id: str = "", action: str,

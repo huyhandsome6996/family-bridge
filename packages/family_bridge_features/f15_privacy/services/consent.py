@@ -52,6 +52,7 @@ class ProductionConsentWriter:
     def _withdraw_f01(self, *, user_id: str, purpose: str) -> bool:
         from family_bridge_features.f01_identity.models import ConsentRecord
         from family_bridge_features.f01_identity.services.identity import record_consent
+        from family_bridge_features.f01_identity.services.policy import CURRENT_POLICY_VERSIONS
 
         # R01 fix: withdrawal is a PURPOSE-SCOPE tombstone, not a single-row
         # flip. Withdrawing only the latest row let an older accepted version
@@ -60,18 +61,16 @@ class ProductionConsentWriter:
         # history is preserved (rows keep their withdrawn_at) but no earlier
         # acceptance can revive. A newer EXPLICIT accept after this withdrawal
         # creates a new row and stays active (user consent wins, per WF-17).
-        changed = False
-        for row in (ConsentRecord.objects
-                    .filter(user_id=str(user_id), purpose=purpose,
-                            withdrawn_at__isnull=True)
-                    .select_for_update().order_by("-recorded_at", "-id")):
-            if row.withdraw():
-                changed = True
+        from django.contrib.auth import get_user_model
+        get_user_model().objects.select_for_update().get(pk=user_id)
+        changed = bool(ConsentRecord.objects.filter(
+            user_id=str(user_id), purpose=purpose, withdrawn_at__isnull=True
+        ).update(withdrawn_at=_now()))
         if not changed:
             # No active consent to withdraw: still record the explicit
             # decision (declined) so the ledger never implies acceptance.
             record_consent(user=self._load_user(user_id), purpose=purpose,
-                           policy_version="withdraw-no-version",
+                           policy_version=CURRENT_POLICY_VERSIONS[purpose],
                            decision="declined", now=_now())
         return changed
 
@@ -79,22 +78,19 @@ class ProductionConsentWriter:
     def _withdraw_research(self, *, user_id: str) -> bool:
         from family_bridge_features.f01_identity.models import ConsentRecord
         from family_bridge_features.f01_identity.services.identity import record_consent
+        from family_bridge_features.f01_identity.services.policy import CURRENT_POLICY_VERSIONS
         from family_bridge_features.f14_surveys.models import (
             CONSENT_WITHDRAWN, PURPOSE_PRE_POST, ResearchConsent,
         )
 
-        changed = False
-        # R01 fix: same purpose-scope withdrawal as _withdraw_f01 (research
-        # rows may span multiple policy versions).
-        for row in (ConsentRecord.objects
-                    .filter(user_id=str(user_id), purpose="research",
-                            withdrawn_at__isnull=True)
-                    .select_for_update().order_by("-recorded_at", "-id")):
-            if row.withdraw():
-                changed = True
+        from django.contrib.auth import get_user_model
+        get_user_model().objects.select_for_update().get(pk=user_id)
+        changed = bool(ConsentRecord.objects.filter(
+            user_id=str(user_id), purpose="research", withdrawn_at__isnull=True
+        ).update(withdrawn_at=_now()))
         if not changed:
             record_consent(user=self._load_user(user_id), purpose="research",
-                           policy_version="withdraw-no-version",
+                           policy_version=CURRENT_POLICY_VERSIONS["research"],
                            decision="declined", now=_now())
 
         consent, created = (ResearchConsent.objects
@@ -116,11 +112,8 @@ class ProductionConsentWriter:
 
 def consent_state_snapshot(*, user_id: str, purpose: str) -> Dict[str, Any]:
     """Read-only view used by tests/UI: latest active consent + withdrawn flag."""
-    from family_bridge_features.f01_identity.models import ConsentRecord
-
-    latest_active = ConsentRecord.latest_active(user_id, purpose)
+    from family_bridge_features.f01_identity.services.identity import has_active_consent
     return {
         "purpose": purpose,
-        "has_active_consent": latest_active is not None
-        and latest_active.decision == "accepted",
+        "has_active_consent": has_active_consent(user_id, purpose),
     }

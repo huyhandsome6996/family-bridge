@@ -346,7 +346,9 @@ class PrivacyApiTests(F15TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.data["withdrawn"])
         latest = ConsentRecord.latest_active(self.owner.pk, "research")
-        self.assertIsNone(latest,
-                          "active research consent must be gone after withdrawal")
+        self.assertIsNotNone(latest, "withdrawal history is preserved")
+        self.assertIsNotNone(latest.withdrawn_at)
+        from family_bridge_features.f01_identity.services.identity import has_active_consent
+        self.assertFalse(has_active_consent(self.owner.pk, "research"))
         self.assertTrue(DeletionLedgerEvent.objects.filter(
             event_type=DeletionLedgerEvent.EVENT_CONSENT_WITHDRAWN).exists())

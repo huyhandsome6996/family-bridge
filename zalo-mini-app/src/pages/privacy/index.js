@@ -18,32 +18,7 @@ import { getApiBaseUrl } from "../../core/config.js";
 import { createPrivacyPageCore } from "../../../../packages/family_bridge_mobile/f15_privacy/page-core.js";
 import { getSessionToken } from "./session-bridge.js";
 
-// mobile-core-style api { get, post } quanh client.mjs của app.
-function createAppApi() {
-  const request = createApiClient({
-    baseUrl: getApiBaseUrl(),
-    getToken: () => null, // token gắn từng request qua bridge bên dưới
-  });
-  let cachedToken = null;
-  return {
-    async get(path, opts = {}) {
-      cachedToken = await getSessionToken();
-      const authed = createApiClient({
-        baseUrl: getApiBaseUrl(),
-        getToken: () => cachedToken,
-      });
-      return authed(path, { method: "GET", ...(opts || {}) });
-    },
-    async post(path, opts = {}) {
-      cachedToken = await getSessionToken();
-      const authed = createApiClient({
-        baseUrl: getApiBaseUrl(),
-        getToken: () => cachedToken,
-      });
-      return authed(path, { method: "POST", ...(opts || {}) });
-    },
-  };
-}
+import { createAppApi } from "./api.mjs";
 
 let activeCore = null; // core của lần render hiện tại (destroy khi rời trang)
 
@@ -68,6 +43,8 @@ export const page = {
     root.appendChild(createTopBar({ title: "Quyền riêng tư" }));
     const body = h("div", { class: "fb-page__body" });
     root.appendChild(body);
+
+    body.appendChild(createButton({ label: "Chọn từng trang để chia sẻ", variant: "primary", onClick: () => ctx.navigate("/privacy-items") }));
 
     const statusBox = h("p", {
       class: "fb-status", role: "status", "aria-live": "polite",

@@ -93,17 +93,16 @@ def revoke_connection_with_privacy(*, actor, connection_id: str) -> Dict[str, An
     # 3) Ledger: one event per party so replay protects BOTH sides (only on
     #    the actual transition — repeated calls on a revoked connection are
     #    idempotent and write nothing).
-    base_payload = None
     if was_active:
-        base_payload = _build_connection_event_payload(
-            connection=connection, grants_revoked=grants_revoked,
-            other_party=other_party)
         for target in {str(actor.pk), other_party}:
+            payload = _build_connection_event_payload(
+                connection=connection, grants_revoked=grants_revoked,
+                other_party=str(connection.other_party(target)))
             DeletionLedgerEvent.objects.create(
                 target_user_id=target,
                 actor_ref=str(actor.pk),
                 event_type=DeletionLedgerEvent.EVENT_CONNECTION_REVOKED,
-                payload=base_payload)
+                payload=payload)
 
     return {
         "connection_id": str(connection.id),

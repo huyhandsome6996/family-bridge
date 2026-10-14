@@ -218,8 +218,9 @@ class MoodShareService:
             return []  # fail-closed: cannot verify connection state
         active = {}
         bindings = []
-        for connection in reader.list_active_for_user(
-                user_id=str(recipient_id)):
+        result = reader.list_active_for_user(user_id=str(recipient_id))
+        connections = result[0] if isinstance(result, tuple) else result
+        for connection in connections:
             other = connection.party_b if connection.party_a == str(recipient_id) \
                 else connection.party_a
             active[str(other)] = connection

@@ -178,3 +178,7 @@ Chưa sửa trong vòng này (ghi trung thực): B16 vẫn chưa cấp capabilit
 - B16: thêm capability `privacy.case` + assignment scope theo CAP-20.
 - F01: hợp nhất router/profile + gọi adapter revoke trong view.
 - F05/F04/F06/F12/F02/F09: đăng ký deletion hook của domain khi có policy.
+
+## Cập nhật 14/10/2026 — integration và bản thử người dùng
+
+Main UI đã merge PR30 ở f8fc6a4. Nhánh F15 đã merge main an toàn và sửa wiring/policy/session/replay, thêm entry chia sẻ từng trang. Xem [bằng chứng, giới hạn B16 và kịch bản nghiệm thu](pilot-2026-10-14.md). Bản DEV zdev-b6c4fab6; backend PC/SQLite/tunnel tạm. Chưa merge F15 hoặc nghiệm thu MySQL/Zalo hai tài khoản. 262 backend:258PASS/4SKIP;208 frontend PASS;24 package PASS;2 official settings tests PASS. Không claim hoàn tất xử lý xoá production khi handler/retention chưa được duyệt.

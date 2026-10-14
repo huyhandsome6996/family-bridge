@@ -134,9 +134,16 @@ class JournalPageService:
 
 
 class JournalShareService:
+    @transaction.atomic
     def share(self, *, owner_id: str, page_id: str,
-              recipient_id: str) -> JournalShare:
-        page = _require_own_page(owner_id=owner_id, page_id=page_id)
+              recipient_id: str, expected_revision=None) -> JournalShare:
+        page = JournalPage.objects.select_for_update().filter(
+            owner_id=str(owner_id), pk=page_id).first()
+        if page is None:
+            raise NotFound({"reason": "page_not_found"})
+        if expected_revision is not None and expected_revision != page.revision:
+            from family_bridge_core.errors import RevisionConflict
+            raise RevisionConflict({"current_revision": page.revision})
         if str(recipient_id) == str(owner_id):
             raise InputInvalid({"field": "recipient_id",
                                 "reason": "cannot_share_to_self"})
@@ -206,8 +213,9 @@ class JournalShareService:
             return []  # fail-closed: cannot verify connection state
         active = {}
         bindings = []
-        for connection in reader.list_active_for_user(
-                user_id=str(recipient_id)):
+        result = reader.list_active_for_user(user_id=str(recipient_id))
+        connections = result[0] if isinstance(result, tuple) else result
+        for connection in connections:
             other = connection.party_b if connection.party_a == str(recipient_id) \
                 else connection.party_a
             active[str(other)] = connection

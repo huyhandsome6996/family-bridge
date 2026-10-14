@@ -166,12 +166,12 @@ export const page = {
         title: "Cài đặt",
         children: h("div", { class: "fb-profile__actions" },
           createButton({
-            label: "Quản lý chia sẻ & đồng ý — Sắp có",
+            label: "Quản lý chia sẻ & đồng ý",
             variant: "ghost",
             onClick: () => ctx.navigate("/privacy"),
           }),
           h("p", { class: "fb-page__note" },
-            "Khi có, bạn sẽ chọn rõ từng thông tin muốn chia sẻ với người đồng hành trước khi bật tính năng này.",
+            "Bạn chọn rõ từng mục chia sẻ và có thể thu hồi trong trang quyền riêng tư.",
           ),
           createButton({
             label: "Kiểm tra kết nối máy chủ",

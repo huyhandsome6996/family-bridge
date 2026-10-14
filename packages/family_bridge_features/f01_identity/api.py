@@ -392,11 +392,12 @@ class ConnectionRevokeView(APIView):
 
     def post(self, request, connection_id: str):
         connection_uuid = validate_uuid(connection_id, field="connection_id")
-        try:
+        from django.apps import apps
+        if apps.is_installed("family_bridge_features.f15_privacy"):
             from family_bridge_features.f15_privacy.services.revocation import (
                 revoke_connection_with_privacy,
             )
-        except ImportError:
+        else:
             revoke_connection_with_privacy = None
         if revoke_connection_with_privacy is not None:
             summary = revoke_connection_with_privacy(

@@ -218,3 +218,7 @@ dồn "applied" như đã xong. Replay KHÔNG bao giờ viết event domain mớ
 
 Không trả stack trace, không lộ existence cho actor thiếu quyền, không chứa
 nội dung riêng trong details (SEC-22).
+
+## Integration 2026-10-14
+
+Overview thích nghi F01 reader `(views,next_cursor)`, trả thêm connections_next_cursor; query connections_cursor cho trang kết nối kế tiếp. F08 share chấp nhận expected_revision tuỳ chọn (UI mới bắt buộc gửi), stale409 trong transaction khóa page. Recipient lists thích nghi reader tuple. Consent withdrawal dùng current policy; user-row serialization với record_consent ngăn timestamp ties đảo quyết định. Restore mỗi successful category ghi applied tombstone trong transaction, deletion_failed replays successful categories với originalcutoff; malformed/naive persisted cutoff failclosed. last_seq/scanned_last_seq là scanned, next_after_seq/safe_resume_after_seq lùi về trước earliest unresolved failure cho retry; không publish backup khi incomplete. Handler scope assigned_resource+scope_ref=request_id và actionallowlist, B16 chưa grant/stepup đúng nên chưa enable xử lý production.

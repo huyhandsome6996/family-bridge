@@ -223,14 +223,17 @@ _JOURNAL_MODEL = ("family_bridge_features.f08_journal.models", "JournalShare")
 
 
 def _build():
-    mood_model = _load_share_model(".".join(_MOOD_MODEL))
-    journal_model = _load_share_model(".".join(_JOURNAL_MODEL))
-    return {
-        "mood_entry": ShareGrantProvider(item_type="mood_entry", model=mood_model,
-                                         item_field="entry_id"),
-        "journal_page": ShareGrantProvider(item_type="journal_page", model=journal_model,
-                                           item_field="page_id"),
-    }
+    from django.apps import apps
+    result = {}
+    for app, item_type, model_path, item_field in [
+        ("f07_mood", "mood_entry", _MOOD_MODEL, "entry_id"),
+        ("f08_journal", "journal_page", _JOURNAL_MODEL, "page_id"),
+    ]:
+        if apps.is_installed("family_bridge_features." + app):
+            result[item_type] = ShareGrantProvider(
+                item_type=item_type, model=_load_share_model(".".join(model_path)),
+                item_field=item_field)
+    return result
 
 
 _PROVIDERS: Dict[str, ShareGrantProvider] = {}

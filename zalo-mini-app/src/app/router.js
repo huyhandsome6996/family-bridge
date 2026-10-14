@@ -23,6 +23,7 @@ export const routes = {
   "/connection-check": () => import("../pages/connection-check/index.js"),
   "/help": () => import("../pages/help/index.js"),
   // ---- F15: privacy controls ----
+  "/privacy-items": () => import("../pages/privacy/items.js"),
   "/privacy": () => import("../pages/privacy/index.js"),
   // ---- F01: đăng nhập + đồng ý + kết nối hai phía ----
   "/login": () => import("../pages/login/index.js"),

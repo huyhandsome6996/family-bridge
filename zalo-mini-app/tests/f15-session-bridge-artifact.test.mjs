@@ -60,6 +60,8 @@ function makeTempApp({ withSession }) {
   fs.writeFileSync(indexPath, fs.readFileSync(indexPath, "utf8").replace(
     '"../../../../packages/family_bridge_mobile/f15_privacy/page-core.js"',
     '"./page-core.js"'));
+  fs.writeFileSync(path.join(tmp, "src", "main.js"), 'import { getSessionToken } from "./pages/privacy/session-bridge.js"; getSessionToken().then(token => { document.getElementById("app").textContent = token || "no_session"; });');
+  fs.rmSync(path.join(tmp, "src", "core", "session.js"), { force: true });
   if (withSession) {
     fs.mkdirSync(path.join(tmp, "src", "core"), { recursive: true });
     fs.writeFileSync(path.join(tmp, "src", "core", "session.js"),
@@ -69,8 +71,8 @@ function makeTempApp({ withSession }) {
 }
 
 function buildApp(tmp) {
-  const bin = path.join(APP_DIR, "node_modules", ".bin", "vite");
-  execFileSync(bin, ["build", "--outDir", "www-artifact-test",
+  const bin = path.join(APP_DIR, "node_modules", "vite", "bin", "vite.js");
+  execFileSync(process.execPath, [bin, "build", "--outDir", "www-artifact-test",
                      "--emptyOutDir"], { cwd: tmp, stdio: "pipe" });
   return path.join(tmp, "www-artifact-test");
 }

@@ -42,10 +42,10 @@ class ConsentWithdrawalRegressionTests(_RegressionBase):
         )
 
         record_consent(user=self.owner, purpose="ai_processing",
-                       policy_version="v1", decision="accepted",
+                       policy_version="ai-v1", decision="accepted",
                        now=timezone.now() - dt.timedelta(minutes=1))
         record_consent(user=self.owner, purpose="ai_processing",
-                       policy_version="v2", decision="accepted",
+                       policy_version="ai-v1", decision="accepted",
                        now=timezone.now())
         r = self.client_for(self.owner).post(
             "/api/v1/privacy/consents/ai_processing/withdraw", {},
@@ -62,9 +62,9 @@ class ConsentWithdrawalRegressionTests(_RegressionBase):
         )
 
         record_consent(user=self.owner, purpose="ai_processing",
-                       policy_version="v1", decision="accepted")
+                       policy_version="ai-v1", decision="accepted")
         record_consent(user=self.owner, purpose="ai_processing",
-                       policy_version="v2", decision="accepted")
+                       policy_version="ai-v1", decision="accepted")
         self.client_for(self.owner).post(
             "/api/v1/privacy/consents/ai_processing/withdraw", {},
             format="json")
@@ -72,7 +72,7 @@ class ConsentWithdrawalRegressionTests(_RegressionBase):
         # A NEW explicit accept after the withdrawal is the user's decision:
         # it stays active (WF-17) — the withdrawal must not act as a ban.
         record_consent(user=self.owner, purpose="ai_processing",
-                       policy_version="v3", decision="accepted")
+                       policy_version="ai-v1", decision="accepted")
         self.assertTrue(has_active_consent(self.owner.pk, "ai_processing"))
 
     def test_consent_and_ledger_are_atomic(self):
@@ -81,7 +81,7 @@ class ConsentWithdrawalRegressionTests(_RegressionBase):
         )
 
         record_consent(user=self.owner, purpose="ai_processing",
-                       policy_version="v1", decision="accepted")
+                       policy_version="ai-v1", decision="accepted")
         with patch("family_bridge_features.f15_privacy.api."
                    "DeletionLedgerEvent.objects.create",
                    side_effect=RuntimeError("synthetic ledger outage")):
@@ -369,7 +369,7 @@ class DeletionWorkflowRegressionTests(_RegressionBase):
         ProviderIdentity.objects.create(user=self.owner, provider="zalo",
                                         app_id="app", provider_subject="s1")
         ConsentRecord.objects.create(user=self.owner, purpose="service",
-                                     policy_version="v1",
+                                     policy_version="ai-v1",
                                      decision="accepted")
         from ..services.deletion_hooks import ConnectionsDeletionHook
 

@@ -244,6 +244,8 @@ export function createPrivacyPageCore({ api, getToken, confirm = null } = {}) {
       if (destroyed || seq !== loadSeq) return;
       if (await tokenChangedSince(tokenAtStart)) {
         // 401/lỗi của phiên cũ không được xóa state của phiên mới (R03).
+        enterNoSession();
+        void load({ silent: true });
         return;
       }
       const cls = classifyError(err);

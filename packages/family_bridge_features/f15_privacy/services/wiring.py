@@ -22,16 +22,12 @@ Registrations:
 
 from __future__ import annotations
 
-from importlib.util import find_spec
-
 _CONFIGURED = False
 
 
 def _present(package: str) -> bool:
-    try:
-        return find_spec(package) is not None
-    except (ImportError, ValueError):
-        return False
+    from django.apps import apps
+    return apps.is_installed(package)
 
 
 def configure_production_wiring(*, force: bool = False) -> None:

@@ -222,9 +222,12 @@ class PrivacyOverviewView(APIView):
         } for g in result["page"]]
 
         connections = []
+        connections_next_cursor = None
         reader = privacy_ports.get_connection_reader()
         if reader is not None and hasattr(reader, "list_active_for_user"):
-            views = reader.list_active_for_user(user_id=str(request.user.pk))
+            views, connections_next_cursor = reader.list_active_for_user(
+                user_id=str(request.user.pk), limit=_PAGE_LIMIT_MAX,
+                cursor=request.query_params.get("connections_cursor"))
             for view in list(views)[:_PAGE_LIMIT_MAX]:
                 other = view.party_b if view.party_a == str(request.user.pk) \
                     else view.party_a
@@ -237,6 +240,7 @@ class PrivacyOverviewView(APIView):
                 })
         return Response({"shared_by_me": shared_by_me,
                          "connections": connections,
+                         "connections_next_cursor": connections_next_cursor,
                          "next_cursor": result["next_cursor"],
                          "has_more": result["has_more"]})
 

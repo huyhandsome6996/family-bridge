@@ -264,7 +264,10 @@ class DeletionService:
                                 "status": request.status})
         detail = dict(request.failure_detail or {})
         scope = detail.get(_SCOPE_KEY)
-        if not isinstance(scope, dict) or "cutoff" not in scope:
+        if _SCOPE_KEY in detail and (not isinstance(scope, dict)
+                                     or "cutoff" not in scope):
+            raise InputInvalid({"reason": "persisted_deletion_cutoff_malformed"})
+        if _SCOPE_KEY not in detail:
             scope = {"cutoff": self._now().isoformat(),
                      "categories": list(request.scope_categories)}
         outcomes = {k: v for k, v in detail.items()
@@ -288,7 +291,7 @@ class DeletionService:
         request.save(update_fields=["failure_detail"])
 
     def _run_category(self, *, user_id: str, category: str,
-                      cutoff: dt.datetime) -> Dict[str, Any]:
+                      cutoff: dt.datetime, request_id: str = "") -> Dict[str, Any]:
         """Phase B (one short transaction per category): run the hook with
         the persisted cutoff; a crash here never affects other categories."""
         hook = registry.get_deletion_hook(category)
@@ -299,9 +302,25 @@ class DeletionService:
             with transaction.atomic():
                 result = hook_instance.apply_user_deletion(
                     user_id=str(user_id), requested_at=cutoff)
-            if not isinstance(result, dict) or "ok" not in result:
-                return {"ok": False, "error": "hook_result_invalid"}
-            return {"ok": bool(result.get("ok")),
+                if not isinstance(result, dict) or "ok" not in result:
+                    transaction.set_rollback(True)
+                    return {"ok": False, "error": "hook_result_invalid"}
+                if not result.get("ok"):
+                    # A failed hook must not commit an unrecorded partial erase.
+                    transaction.set_rollback(True)
+                    return {"ok": False,
+                            "detail": str(result.get("detail", ""))[:200]}
+                # Durable tombstone commits WITH the successful category,
+                # before the separate request checkpoint/final-status phase.
+                # A crash after this commit cannot resurrect the erased data.
+                _ledger(target_user_id=str(user_id), actor_ref="system:deletion",
+                        event_type=DeletionLedgerEvent.EVENT_DELETION_APPLIED,
+                        payload={"request_id": str(request_id),
+                                 "categories": [category],
+                                 "outcomes": {category: True},
+                                 "cutoff": cutoff.isoformat(),
+                                 "checkpoint": True})
+            return {"ok": True,
                     "detail": str(result.get("detail", ""))[:200]}
         except Exception:
             return {"ok": False, "error": "hook_error"}
@@ -355,13 +374,16 @@ class DeletionService:
         try:
             cutoff = dt.datetime.fromisoformat(cutoff_raw)
         except (TypeError, ValueError):
-            cutoff = self._now()
+            raise InputInvalid({"reason": "persisted_deletion_cutoff_malformed"})
+        if cutoff.tzinfo is None or cutoff.utcoffset() is None:
+            raise InputInvalid({"reason": "persisted_deletion_cutoff_malformed"})
         for category in request.scope_categories:
             previous = outcomes.get(category)
             if isinstance(previous, dict) and previous.get("ok"):
                 continue  # checkpoint: already done in an earlier attempt
             outcomes[category] = self._run_category(
-                user_id=str(request.user_id), category=category, cutoff=cutoff)
+                user_id=str(request.user_id), category=category, cutoff=cutoff,
+                request_id=str(request.pk))
             # Durable checkpoint after each category (R06): a crash right
             # after this line resumes WITHOUT re-running finished categories.
             self._persist_checkpoint(request, outcomes)
@@ -387,7 +409,11 @@ class DeletionService:
         append-only sequence is the single authoritative replay order. The
         previous (occurred_at, seq) sort combined with a ``seq >`` resume
         watermark could permanently SKIP events whose business timestamps
-        are out of order relative to their insertion order.
+        are out of order relative to their insertion order. On failures,
+        next_after_seq/safe_resume_after_seq point BEFORE the earliest failed
+        event, while scanned_last_seq/last_seq report how far we inspected.
+        Operators repair the failure while isolated and retry from the safe
+        cursor; the scanned watermark is never permission to skip failures.
         Replay itself never appends new domain events.
         """
         from .revocation import replay_connection_revoked_event
@@ -405,6 +431,7 @@ class DeletionService:
         applied = 0
         skipped = 0
         failures: List[Dict[str, Any]] = []
+        unresolved_outcomes: Dict[tuple, Dict[str, Any]] = {}
         last_seq = None
         for event in events:
             last_seq = event.seq
@@ -451,7 +478,8 @@ class DeletionService:
                     failures.append({"seq": event.seq,
                                      "reason": "consent_withdraw_error",
                                      "detail": type(exc).__name__})
-            elif event.event_type == DeletionLedgerEvent.EVENT_DELETION_APPLIED:
+            elif event.event_type in {DeletionLedgerEvent.EVENT_DELETION_APPLIED,
+                                      DeletionLedgerEvent.EVENT_DELETION_FAILED}:
                 payload = event.payload or {}
                 # R04 fix: replay re-applies the ORIGINAL deletion cutoff
                 # persisted on the event. The event's own occurred_at is
@@ -466,12 +494,28 @@ class DeletionService:
                     continue
                 try:
                     cutoff = dt.datetime.fromisoformat(str(cutoff_raw))
+                    if cutoff.tzinfo is None or cutoff.utcoffset() is None:
+                        raise ValueError("cutoff must be timezone-aware")
                 except (TypeError, ValueError):
                     failures.append({"seq": event.seq,
                                      "reason": "deletion_cutoff_malformed",
                                      "category": ""})
                     continue
-                for category in payload.get("categories", []):
+                categories = payload.get("categories", [])
+                if event.event_type == DeletionLedgerEvent.EVENT_DELETION_FAILED:
+                    outcomes = payload.get("outcomes", {})
+                    unresolved = [c for c in categories
+                                  if outcomes.get(c) is not True]
+                    for category in unresolved:
+                        request_ref = str(payload.get("request_id", ""))
+                        unresolved_outcomes[(request_ref, category)] = {
+                            "seq": event.seq,
+                            "reason": "deletion_category_unresolved",
+                            "category": category,
+                            "request_id": request_ref}
+                    categories = [c for c in categories
+                                  if outcomes.get(c) is True]
+                for category in categories:
                     hook = registry.get_deletion_hook(category)
                     if hook is None:
                         failures.append({"seq": event.seq,
@@ -489,6 +533,12 @@ class DeletionService:
                                              "category": category})
                             continue
                         applied += 1
+                        # A later successful checkpoint/completion for the
+                        # SAME request/category resolves an earlier partial
+                        # outcome, while unrelated failures remain visible.
+                        request_ref = str(payload.get("request_id", ""))
+                        if request_ref:
+                            unresolved_outcomes.pop((request_ref, category), None)
                     except Exception as exc:
                         failures.append({"seq": event.seq,
                                          "reason": "hook_replay_error",
@@ -498,10 +548,18 @@ class DeletionService:
                 # deletion_requested / deletion_failed / deletion_cancelled:
                 # historical markers — counted truthfully as skipped.
                 skipped += 1
+        failures.extend(unresolved_outcomes.values())
+        # Keep a scanned watermark distinct from the safe retry watermark.
+        # Advancing to last_seq when ANY event failed would permanently skip
+        # its tombstone. Revisit the earliest unresolved event after repair.
+        safe_resume = (min(f["seq"] for f in failures) - 1
+                       if failures else last_seq if truncated else None)
         return {"target_user_id": str(target_user_id),
                 "events_total": len(events), "applied": applied,
                 "skipped": skipped, "failures": failures,
                 "incomplete": bool(failures) or truncated,
                 "truncated": truncated,
                 "last_seq": last_seq,
-                "next_after_seq": last_seq if (truncated or failures) else None}
+                "scanned_last_seq": last_seq,
+                "next_after_seq": safe_resume,
+                "safe_resume_after_seq": safe_resume}

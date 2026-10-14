@@ -1,3 +1,5 @@
+import { register } from "node:module";
+register(new URL("./asset-hook.mjs", import.meta.url));
 // F15 privacy — DOM/integration tests cho trang chính thức /privacy
 // (router contract render(ctx) + destroy). Chạy: node --test tests/f15-privacy.test.mjs
 // trong zalo-mini-app (happy-dom đã có sẵn — KHÔNG thêm framework mới).
