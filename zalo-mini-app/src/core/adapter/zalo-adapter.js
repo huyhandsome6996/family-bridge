@@ -383,5 +383,124 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
         }));
       return data; // { connection_id, status, revoked_at, generation, note }
     },
+
+    // ------------------- F06: nháp + tạm dừng máy chủ ------------------------
+    // Hợp đồng khớp backend family_bridge_features.f06_drafts (đã mount trên
+    // backend thật) và wrapper tham chiếu packages/family_bridge_mobile/
+    // f06_drafts/api.js. Mọi thao tác đều qua authed() — 401 xử lý thống nhất,
+    // response của phiên cũ bị bỏ. KHÔNG tự retry thao tác ghi.
+
+    async listDrafts({ cursor = null, limit } = {}) {
+      requireBaseUrl();
+      const params = new URLSearchParams();
+      if (cursor) params.set("cursor", cursor);
+      if (limit) params.set("limit", String(limit));
+      const qs = params.toString();
+      const data = await authed(() =>
+        request(`/api/v1/drafts${qs ? `?${qs}` : ""}`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        nextCursor: (data && data.next_cursor) || null,
+        // Envelope list của backend kèm server_time + pause_seconds — cần
+        // cho UI tính thời gian dừng còn lại của row đang paused.
+        serverTime: (data && data.server_time) || null,
+        pauseSeconds: (data && data.pause_seconds) || null,
+      };
+    },
+
+    async createDraft({ kind, body, title = "", cardId, cardVersion, recipientId }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/drafts", {
+        method: "POST",
+        body: {
+          kind,
+          body,
+          title: title || "",
+          ...(cardId ? { card_id: cardId } : {}),
+          ...(cardVersion != null ? { card_version: cardVersion } : {}),
+          ...(recipientId ? { recipient_id: recipientId } : {}),
+        },
+      }));
+      return data; // draft.view + server_time
+    },
+
+    async getDraft(draftId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}`));
+      return data; // draft.view + server_time (countdown từ MÁY CHỦ)
+    },
+
+    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId }) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}`, {
+          method: "POST",
+          body: {
+            body,
+            title: title || "",
+            ...(cardId ? { card_id: cardId } : {}),
+            ...(cardVersion != null ? { card_version: cardVersion } : {}),
+            ...(recipientId ? { recipient_id: recipientId } : {}),
+          },
+        }));
+      return data;
+    },
+
+    async discardDraft(draftId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}`, {
+          method: "DELETE",
+          body: {},
+        }));
+      return data; // { draft_id, status }
+    },
+
+    async pauseDraft(draftId) {
+      requireBaseUrl();
+      // Deadline do MÁY CHỦ ghi; re-pause trả cùng deadline (không reset).
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}/pause`, {
+          method: "POST",
+          body: {},
+        }));
+      return data;
+    },
+
+    async cancelDraftPause(draftId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}/pause`, {
+          method: "DELETE",
+          body: {},
+        }));
+      return data;
+    },
+
+    async previewDraft(draftId) {
+      requireBaseUrl();
+      // Chỉ hợp lệ sau deadline (máy chủ quyết); gửi không kèm preview sẽ bị
+      // backend từ chối — UI phải đi qua bước này trước confirm-send.
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}/preview`, {
+          method: "POST",
+          body: {},
+        }));
+      return data; // preview gắn (revision, recipient, hash payload)
+    },
+
+    async confirmDraftSend(draftId, previewId) {
+      requireBaseUrl();
+      // HÀNH ĐỘNG CUỐI CÙNG do người dùng bấm — không tự gọi, không tự retry.
+      // Lỗi mạng => kết quả CHƯA XÁC ĐỊNH: UI kiểm tra lại trạng thái, không
+      // gửi lại với preview mới (nguy cơ nhân đôi gửi).
+      const data = await authed(() =>
+        request(`/api/v1/drafts/${encodeURIComponent(draftId)}/confirm-send`, {
+          method: "POST",
+          body: { preview_id: previewId },
+        }));
+      return data;
+    },
   };
 }

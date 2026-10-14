@@ -6,6 +6,8 @@
 //  3) src KHÔNG có "localStorage.setItem"; sessionStorage chỉ dùng trong
 //     src/app/store.js và CHỈ persist vai trò xem trước (không token/PII).
 
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync, existsSync, statSync } from "node:fs";

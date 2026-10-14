@@ -1,6 +1,10 @@
 // createTopBar — thanh tiêu đề (CONTRACTS.md mục 3).
-// CHỈ tiêu đề + nút back bên TRÁI. KHÔNG đặt nút nào góc phải — đó là vùng
-// menu Zalo (chính sách Zalo Mini App Design Guidelines, Task 2-a).
+// Mặc định CHỈ tiêu đề + nút back bên TRÁI, không có gì góc phải (vùng menu
+// Zalo) — hành vi cũ giữ nguyên, test design-system pin .fb-top-bar__right
+// không tồn tại khi không truyền actions.
+// Stitch upgrade: thêm slot `actions` TÙY CHỌN (mảng Node) — màn U34 dùng
+// để đặt pill "Trợ giúp" bên trái vùng capsule Zalo như prototype (header
+// prototype chừa pr-20 cho capsule). Không truyền actions => không render.
 // Tiêu đề dùng <h1> của page — page không render <h1> khác để giữ thứ tự heading.
 import { h } from "../app/dom.js";
 
@@ -8,7 +12,7 @@ import { h } from "../app/dom.js";
 const BACK_ICON =
   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="m14.5 5.5-6.5 6.5 6.5 6.5"/></svg>';
 
-export function createTopBar({ title, showBack = false, onBack } = {}) {
+export function createTopBar({ title, showBack = false, onBack, actions = null } = {}) {
   const children = [];
 
   if (showBack) {
@@ -34,5 +38,14 @@ export function createTopBar({ title, showBack = false, onBack } = {}) {
 
   children.push(h("h1", { class: "fb-top-bar__title" }, title));
 
-  return h("header", { class: "fb-top-bar" }, h("div", { class: "fb-top-bar__inner" }, children));
+  const innerChildren = [h("div", { class: "fb-top-bar__left" }, children)];
+
+  if (Array.isArray(actions) && actions.length > 0) {
+    // Slot phải TÙY CHỌN — chỉ render khi caller truyền rõ ràng.
+    innerChildren.push(
+      h("div", { class: "fb-top-bar__right fb-top-bar__right--actions" }, ...actions)
+    );
+  }
+
+  return h("header", { class: "fb-top-bar" }, h("div", { class: "fb-top-bar__inner" }, innerChildren));
 }

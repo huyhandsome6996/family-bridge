@@ -33,6 +33,7 @@ export function createMockAdapter({ scenario = null } = {}) {
   // State minh họa trong phạm vi adapter (reset khi rebuildAdapter) — không
   // bao giờ là dữ liệu thật, không rời khỏi bộ nhớ tab hiện tại.
   const invites = new Map();
+  const drafts = new Map(); // fixture F06: bản nháp minh họa trong bộ nhớ
   const connections = [
     {
       connection_id: "demo-connection-1",
@@ -287,6 +288,177 @@ export function createMockAdapter({ scenario = null } = {}) {
         note: "Kết nối mới phải qua lời mời hai bên; quyền đã thu hồi không hồi sinh.",
         source: "fixture",
       };
+    },
+
+    // ------------------- F06 demo: nháp + tạm dừng máy chủ -------------------
+    // Fixture minh họa hợp đồng drafts (kind ≤16 ký tự, body ≤4000, pause
+    // 300 giây "máy chủ" mô phỏng trong bộ nhớ adapter). KHÔNG gửi gì thật,
+    // không lưu storage, mất khi rebuildAdapter. Dùng cho demo/visual test.
+
+    async listDrafts() {
+      await wait(150);
+      const now = new Date();
+      return {
+        results: Array.from(drafts.values()).map((draft) => ({
+          ...draft,
+          pause: draft.pause
+            ? {
+              ...draft.pause,
+              // remaining_seconds tính tại thời điểm list (như backend view)
+              remaining_seconds: Math.max(0, Math.round((Date.parse(draft.pause.deadline) - now.getTime()) / 1000)),
+              can_preview: Date.parse(draft.pause.deadline) <= now.getTime(),
+            }
+            : null,
+        })),
+        nextCursor: null,
+        server_time: now.toISOString(),
+        pause_seconds: 300,
+        source: "fixture",
+      };
+    },
+
+    async createDraft({ kind, body, title = "", recipientId = null } = {}) {
+      await simulate({ kind: "drafts", fallback: "ok" });
+      // Backend KINDS chỉ nhận ("text","emotion_card") — mock phải từ chối
+      // giống hệt để không che lỗi hợp đồng ở demo (QA fix 1).
+      const allowedKinds = ["text", "emotion_card"];
+      if (!allowedKinds.includes(String(kind || ""))) {
+        throw new ApiError("Loại thư không được hỗ trợ (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "kind", reason: "kind_not_allowed" } });
+      }
+      const text = String(body || "");
+      if (!text.trim()) {
+        throw new ApiError("Lời nhắn không được bỏ trống (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "body", reason: "too_short" } });
+      }
+      if (text.length > 4000) {
+        throw new ApiError("Lời nhắn vượt 4000 ký tự (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "body", reason: "too_long" } });
+      }
+      const id = `demo-draft-${drafts.size + 1}`;
+      const nowIso = new Date().toISOString();
+      const draft = {
+        draft_id: id,
+        kind: String(kind || "letter").slice(0, 16),
+        title: String(title || "").slice(0, 200),
+        body: text,
+        recipient_id: recipientId,
+        revision: 1,
+        status: "editing",
+        pause: null,
+        source: "fixture",
+        updated_at: nowIso,
+      };
+      drafts.set(id, draft);
+      return { ...draft };
+    },
+
+    async getDraft(draftId) {
+      await wait(150);
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
+      }
+      return { ...draft, pause: draft.pause ? { ...draft.pause } : null, server_time: new Date().toISOString() };
+    },
+
+    async editDraft(draftId, { body, title = "", recipientId = null } = {}) {
+      await simulate({ kind: "drafts", fallback: "ok" });
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
+      }
+      const text = String(body || "");
+      if (!text.trim() || text.length > 4000) {
+        throw new ApiError("Lời nhắn phải 1..4000 ký tự (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "body" } });
+      }
+      draft.body = text;
+      draft.title = String(title || "").slice(0, 200);
+      draft.recipient_id = recipientId;
+      draft.revision += 1; // sửa nội dung làm preview cũ hết giá trị (contract)
+      // Backend: edit đặt lại status=editing, deadline CỐ TÌNH không xóa
+      // (sửa nội dung không reset khoảng dừng).
+      draft.status = "editing";
+      return { ...draft, pause: draft.pause ? { ...draft.pause } : null };
+    },
+
+    async discardDraft(draftId) {
+      await wait(150);
+      drafts.delete(draftId);
+      return { draft_id: draftId, status: "discarded", source: "fixture" };
+    },
+
+    async pauseDraft(draftId) {
+      await simulate({ kind: "drafts", fallback: "ok" });
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
+      }
+      if (draft.status === "paused" && draft.pause) {
+        // re-pause giữ nguyên deadline — không reset (contract backend).
+        return { ...draft, pause: { ...draft.pause }, server_time: new Date().toISOString() };
+      }
+      const deadline = Date.now() + 300 * 1000; // 300 giây cố định
+      draft.status = "paused";
+      draft.pause = {
+        started_at: new Date().toISOString(),
+        deadline: new Date(deadline).toISOString(),
+        remaining_seconds: 300,
+        can_preview: false,
+      };
+      return { ...draft, pause: { ...draft.pause }, server_time: new Date().toISOString(), source: "fixture" };
+    },
+
+    async cancelDraftPause(draftId) {
+      await wait(150);
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
+      }
+      draft.status = "editing";
+      draft.pause = null;
+      return { ...draft, server_time: new Date().toISOString(), source: "fixture" };
+    },
+
+    async previewDraft(draftId) {
+      await simulate({ kind: "drafts", fallback: "ok" });
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
+      }
+      const remaining = draft.pause
+        ? Math.max(0, Math.round((Date.parse(draft.pause.deadline) - Date.now()) / 1000))
+        : 0;
+      if (draft.status !== "paused" || remaining > 0) {
+        throw new ApiError(
+          "Chưa hết 5 phút tạm dừng nên chưa xem trước được (dữ liệu minh họa).",
+          409, "http",
+          { code: "cooldown_active", details: { remaining_seconds: remaining } },
+        );
+      }
+      const nowIso = new Date().toISOString();
+      return {
+        preview_id: `demo-preview-${draftId}-${draft.revision}`,
+        revision: draft.revision,
+        recipient_id: draft.recipient_id,
+        deadline: draft.pause.deadline,
+        server_time: nowIso,
+        source: "fixture",
+      };
+    },
+
+    async confirmDraftSend(draftId, previewId) {
+      await simulate({ kind: "drafts", fallback: "ok" });
+      const draft = drafts.get(draftId);
+      if (!draft) {
+        throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
+      }
+      const expected = `demo-preview-${draftId}-${draft.revision}`;
+      if (previewId !== expected) {
+        throw new ApiError("Bản xem trước đã cũ, cần xem lại trước khi gửi (dữ liệu minh họa).", 409, "http", { code: "preview_stale" });
+      }
+      if (!draft.recipient_id) {
+        throw new ApiError("Thiếu người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "recipient_id" } });
+      }
+      drafts.delete(draftId); // gửi xong nháp rời danh sách đang soạn
+      return { draft_id: draftId, status: "sent", preview_id: previewId, source: "fixture" };
     },
   };
 }

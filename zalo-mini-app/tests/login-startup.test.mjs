@@ -1,3 +1,5 @@
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { getLoginStartupPlan } from "../src/core/login-startup.js";

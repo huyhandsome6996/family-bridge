@@ -1,0 +1,192 @@
+{
+  "viewport": "390x844@2x",
+  "sheets": [
+    {
+      "name": "u01-welcome",
+      "reference_size": [
+        636,
+        1600
+      ],
+      "actual_size": [
+        780,
+        2052
+      ]
+    },
+    {
+      "name": "u08-home-student",
+      "reference_size": [
+        352,
+        1600
+      ],
+      "actual_size": [
+        780,
+        3958
+      ]
+    },
+    {
+      "name": "u10-home-caregiver",
+      "reference_size": [
+        259,
+        1600
+      ],
+      "actual_size": [
+        780,
+        5032
+      ]
+    },
+    {
+      "name": "u34-compose",
+      "reference_size": [
+        585,
+        1900
+      ],
+      "actual_size": [
+        780,
+        2926
+      ]
+    }
+  ],
+  "notes": [
+    "Reference exports differ in width (636/352/259/585) — Stitch exports, not one viewport. Sheets scale both to 320px for eyeball comparison; NOT a pixel-match claim.",
+    "Actual rendered at 390px doc-baseline (DESIGN.md §4 fluid 320–430).",
+    "Color verification: sampled reference pixels vs token values (recorded in report).",
+    "Device screens require Zalo real-device run (US-049) — NOT claimed here."
+  ],
+  "color_sampling": {
+    "u01_background": {
+      "sampled": "#FFF8F6",
+      "token": "#FFF8F6"
+    },
+    "u01_cta_area": {
+      "sampled": "#9D3D27",
+      "token": "#9D3D27"
+    },
+    "u08_amber_card": {
+      "sampled": "#FFDDB2",
+      "token": "#FFDDB2"
+    },
+    "u34_background": {
+      "sampled": "#FFF8F6",
+      "token": "#FFF8F6"
+    }
+  },
+  "verification_summary": {
+    "date": "2026-10-14",
+    "tests": {
+      "command": "npm test (zalo-mini-app/)",
+      "result": "194/194 PASS (35 suites)",
+      "baseline_before": "171/171 PASS"
+    },
+    "build": {
+      "command": "npm run build",
+      "result": "PASS + 'Verified Zalo app-config and all referenced assets' (29 chunks + fonts + images + logo trong manifest)"
+    },
+    "docs_check": {
+      "command": "python scripts/check_agent_docs.py",
+      "result": "OK"
+    },
+    "backend_baseline_cited": "F01 115 PASS / 4 SKIP MySQL-gated; core+accounts 38 PASS / 2 SKIP (ngày 2026-10-14, SHA 0008cec — backend KHÔNG đổi trong PR này, git diff trống cho backend/)",
+    "horizontal_overflow": "4/4 màn đúng 390px (780@2x), scrollWidth == innerWidth; guard test chặn hồi quy",
+    "visual_comparison": "reference export lệch viewport (636/352/259/585) — sheet so sánh scale về 320px để đối chiếu mắt; KHÔNG claim pixel-match; màu lấy sample đối chiếu token (12 cặp match, 2 sanctioned)"
+  },
+  "deviations_from_reference": [
+    {
+      "id": "D1",
+      "scope": "Logo",
+      "reference": "SVG placeholder 2 bong bóng trong prototype",
+      "actual": "Logo chính chủ mẫu 03 (ảnh tách deterministic từ concept board chủ dự án; màu rust/amber/nâu gốc)",
+      "reason": "User yêu cầu thay logo placeholder bằng logo thật (PROMPT §4) — ngoại lệ được user chấp thuận"
+    },
+    {
+      "id": "D2",
+      "scope": "U01 caption ảnh",
+      "reference": "“Hơn 1,200 gia đình học sinh đang cùng đồng hành”",
+      "actual": "“Không gian riêng tư cho gia đình bạn”",
+      "reason": "Số liệu chưa có bằng chứng (PROMPT §7: không dùng thống kê chưa kiểm chứng)"
+    },
+    {
+      "id": "D3",
+      "scope": "U01 help anchor",
+      "reference": "“Tìm trợ giúp khẩn cấp & tâm lý (Tổng đài 111)” + tel:111",
+      "actual": "“Tìm trợ giúp khẩn cấp & tâm lý” -> #/help (trang nguồn xác minh)",
+      "reason": "Số hotline chưa có nguồn được app duyệt; help page hiện ghi “đang được xác minh”"
+    },
+    {
+      "id": "D4",
+      "scope": "U01 micro-copy",
+      "reference": "“Bằng việc tiếp tục, bạn đồng ý với tiêu chuẩn an toàn…”",
+      "actual": "Copy cam kết riêng tư không thay thế cổng consent",
+      "reason": "Prototype copy có nguy cơ bị đọc là đồng ý thay cho consent gate — nghiệp vụ thắng (PROMPT §7)"
+    },
+    {
+      "id": "D5",
+      "scope": "U34 badge",
+      "reference": "“An toàn 100%”",
+      "actual": "“Riêng tư theo thiết kế”",
+      "reason": "Tuyên bố 100% chưa chứng minh (PROMPT §7)"
+    },
+    {
+      "id": "D6",
+      "scope": "U34 đồng hồ",
+      "reference": "Đếm giây chạy liên tục bằng setInterval client",
+      "actual": "Badge tính từ (deadline - server_time) máy chủ + nút “Làm mới”; progress CSS transition; KHÔNG polling",
+      "reason": "DSA-10 + test QA cấm setInterval trong src; khoảng dừng là máy chủ quyết (WF-13) — hiển thị client chỉ là ảnh"
+    },
+    {
+      "id": "D7",
+      "scope": "U34 trợ giúp",
+      "reference": "“Tổng đài tham vấn 111 & chuyên gia luôn sẵn sàng”",
+      "actual": "“Xem các kênh trợ giúp đã được xác minh trong trang Trợ giúp”",
+      "reason": "Như D3 — không bịa availability/hotline từ text mẫu"
+    },
+    {
+      "id": "D8",
+      "scope": "U34 AI",
+      "reference": "Nút AI gợi ý + khung gợi ý mẫu",
+      "actual": "Nút AI disabled + ghi chú cổng chưa bật",
+      "reason": "AI provider chưa được nối theo thiết kế (fail-safe manual); không giả lập gợi ý"
+    },
+    {
+      "id": "D9",
+      "scope": "U08/U10 tên chào",
+      "reference": "“Chào An…”, “Chào Mẹ của An,”",
+      "actual": "Dùng displayName thật của phiên/fixture (VD “Chào Học sinh Bảo Nam (minh họa)…”)",
+      "reason": "Cấm hardcode tên mẫu thành dữ liệu thật (PROMPT §7)"
+    },
+    {
+      "id": "D10",
+      "scope": "U08 presence",
+      "reference": "Chấm xanh + “Đang hoạt động trên nhịp cầu”",
+      "actual": "“Kết nối hai phía đang hoạt động” (từ status active)",
+      "reason": "API không có presence — không giả trạng thái online"
+    },
+    {
+      "id": "D11",
+      "scope": "U08/U10 module chưa nối",
+      "reference": "Thẻ cảm xúc (F03), hộp thư có tin (F05), nhận lời hoạt động",
+      "actual": "Tile/nút disabled “Sắp có” hoặc trạng thái rỗng trung thực + sheet giải thích",
+      "reason": "Chỉ dẫn tới route/module được support; không fake (PROMPT §7/§8)"
+    },
+    {
+      "id": "D12",
+      "scope": "U10 chip ngữ cảnh",
+      "reference": "“Bảo vệ ranh giới 100%”",
+      "actual": "Chip “Không gian an toàn của gia đình”",
+      "reason": "Như D5 — bỏ tuyên bố 100%"
+    },
+    {
+      "id": "D13",
+      "scope": "Contrast",
+      "reference": "Amber text #713D32; micro-copy #8A726C",
+      "actual": "#6B392E (4.56:1) và #856D67 (4.57:1)",
+      "reason": "2 cặp fail WCAG 4.5:1 — sửa tối thiểu cặp cần thiết + ghi deviation (PROMPT §9)"
+    },
+    {
+      "id": "D14",
+      "scope": "U60/U32/U55 nhãn",
+      "reference": "Hiện mã màn (U60/U32/U55) và số (1)",
+      "actual": "Chip “Xem trước”, “Chưa có mục mới”, badge “Sắp có”",
+      "reason": "Mã nội bộ không phải ngôn ngữ người dùng (ui-rules); số đếm tin phải từ dữ liệu thật"
+    }
+  ]
+}

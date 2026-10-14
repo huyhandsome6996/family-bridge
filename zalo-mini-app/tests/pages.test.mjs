@@ -4,6 +4,8 @@
 // happy-dom globals PHẢI được gắn TRƯỚC khi import động pages.
 
 // ---------------------------------------------------------------- globals
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 const { Window } = await import("happy-dom");
 const domWindow = new Window({ url: "https://localhost/?demo=1" });
 
@@ -178,13 +180,18 @@ describe("Page contract (shape)", () => {
 });
 
 describe("Render không throw + copy bắt buộc", () => {
-  it("U01 welcome: CTA 'Bắt đầu' + liên kết 'Tìm trợ giúp' luôn hiển thị", () => {
-    const { ctx } = makeCtx({});
+  it("U01 welcome (Stitch): CTA 'Tiếp tục với Zalo' + liên kết Trợ giúp luôn hiển thị", () => {
+    const { ctx, navigateCalls } = makeCtx({});
     const { host, el } = mount(pages.welcome, ctx);
     const text = textOf(el);
     assert.ok(text.includes("Family Bridge"));
-    assert.ok(text.includes("Nhịp cầu lắng nghe giữa học sinh và người đồng hành."));
-    assert.ok(findButton(el, "Bắt đầu"));
+    assert.ok(text.includes("Mở lời nhẹ nhàng, gần nhau hơn"), "headline Stitch phải có");
+    assert.ok(text.includes("Cam kết bảo mật & ranh giới"), "thẻ cam kết phải có");
+    // CTA chính dẫn đúng luồng thật: /login (đăng nhập Zalo ở đó, không tự dựng)
+    const cta = findButton(el, "Tiếp tục với Zalo");
+    assert.ok(cta, "CTA đăng nhập phải tồn tại");
+    cta.click();
+    assert.ok(navigateCalls.includes("/login"), "CTA phải dẫn sang /login");
     const helpLink = Array.from(el.querySelectorAll("a")).find((a) => a.getAttribute("href") === "#/help");
     assert.ok(helpLink, "liên kết #/help phải tồn tại");
     assert.ok(textOf(helpLink).includes("Tìm trợ giúp"));
@@ -244,40 +251,44 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(mounted2.host);
   });
 
-  it("Home student (demo): greeting fixture + DemoBanner + badge 'Dữ liệu minh họa'", async () => {
+  it("Home student (demo): greeting fixture + DemoBanner + badge 'Dữ liệu minh họa' (Stitch)", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(pages.home, ctx);
     await wait(900);
     const text = textOf(el);
-    assert.ok(text.includes("Xin chào, Học sinh Bảo Nam (minh họa)!"), `greeting fixture: ${text}`);
+    // Greeting Stitch dùng displayName fixture thật, không hardcode tên mẫu.
+    assert.ok(text.includes("Chào Học sinh Bảo Nam (minh họa), hôm nay bạn cảm thấy thế nào?"), `greeting fixture: ${text}`);
     assert.ok(text.includes("Dữ liệu minh họa"));
     assert.ok(text.includes("Đang đồng hành với: Người đồng hành (minh họa)"));
-    assert.ok(text.includes("Thẻ cảm xúc"));
+    assert.ok(text.includes("Cảm xúc lúc này"), "mood card Stitch phải có");
+    assert.ok(text.includes("Gửi thẻ cảm xúc"), "tile thẻ cảm xúc phải có");
     assert.ok(findButton(el, "Sắp có"), "nút Sắp có (disabled) phải tồn tại");
-    assert.ok(text.includes("Tiếng lòng chưa nói — Tuần 1"));
-    assert.ok(text.includes("Hộp thư"));
-    assert.ok(findButton(el, "Con cần được lắng nghe"));
+    assert.ok(text.includes("Tuần 1: Nhận diện cảm xúc & Tiếng lòng chưa nói"));
+    assert.ok(text.includes("Hộp thư gia đình"));
+    assert.ok(findButton(el, "Mở lời chia sẻ an toàn"), "CTA amber phải có");
     unmount(host);
   });
 
-  it("Home caregiver (demo): 'Tín hiệu cần được lắng nghe' rỗng + 'Bài học ngắn 60 giây' Sắp có", async () => {
+  it("Home caregiver (demo): tự chăm sóc + hộp thư rỗng trung thực + bài học ngắn (Stitch)", async () => {
     const { ctx } = makeCtx({ demo: true, role: "caregiver" });
     const { host, el } = mount(pages.home, ctx);
     await wait(900);
     const text = textOf(el);
-    assert.ok(text.includes("Xin chào, Phụ huynh Minh Tâm (minh họa)!"));
-    assert.ok(text.includes("Tín hiệu cần được lắng nghe"));
+    assert.ok(text.includes("Chào Phụ huynh Minh Tâm (minh họa),"));
+    assert.ok(text.includes("Tự chăm sóc bản thân"), "mood card người chăm sóc phải có");
+    assert.ok(text.includes("Tin nhắn & tín hiệu gửi riêng"), "section hộp thư phải có");
     assert.ok(text.includes("Chưa có tín hiệu mới."));
     assert.ok(text.includes("Bài học ngắn 60 giây"));
-    assert.ok(text.includes("Hộp thư"));
+    assert.ok(text.includes("Mở hộp thư"), "nút mở hộp thư phải có");
+    assert.ok(text.includes("Tôn trọng không gian riêng của con"), "thẻ cam kết phải có");
     unmount(host);
   });
 
-  it("Home student (demo): nút 'Con cần được lắng nghe' chỉ mở Sheet thông báo, không gửi", async () => {
+  it("Home student (demo): CTA amber chỉ mở Sheet thông báo, không gửi", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(pages.home, ctx);
     await wait(900);
-    const signalBtn = findButton(el, "Con cần được lắng nghe");
+    const signalBtn = findButton(el, "Mở lời chia sẻ an toàn");
     signalBtn.click();
     const sheet = el.querySelector(".fb-sheet");
     assert.ok(sheet, "phải mở sheet");
@@ -332,11 +343,11 @@ describe("Render không throw + copy bắt buộc", () => {
     const { host, el } = mount(pages.home, ctx);
     await wait(80);
     const text = textOf(el);
-    assert.ok(text.includes("Đang đồng hành"), `nhưng thấy: ${text}`);
+    assert.ok(text.includes("kết nối đang hoạt động"), `nhưng thấy: ${text}`);
     assert.ok(text.includes("Người đồng hành chính"));
     assert.ok(!text.includes("uuid-nguoi-kia"), "không được hiện UUID của người kia");
     assert.ok(text.includes("Quản lý kết nối"));
-    assert.ok(text.includes("Thẻ cảm xúc"), "home student vẫn giữ các card nền tảng");
+    assert.ok(text.includes("Gửi thẻ cảm xúc"), "home student vẫn giữ các lối tắt nền tảng");
     clearSession();
     unmount(host);
   });

@@ -3,6 +3,8 @@
 // Chạy: node --test tests/f01-flows.test.mjs
 
 // ---------------------------------------------------------------- globals
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 const { Window } = await import("happy-dom");
 const domWindow = new Window({ url: "https://localhost/" });
 
@@ -163,9 +165,22 @@ describe("F01 adapter surface", () => {
     ]) {
       assert.ok(ADAPTER_METHODS.includes(name), `thiếu method ${name}`);
     }
+    // Stitch upgrade (F06): các method nháp/tạm dừng là HỢP ĐỒNG THẬT với
+    // backend (POST /api/v1/drafts/...) — không phải "giả gửi tín hiệu".
+    // confirmDraftSend là hành động CUỐI CÙNG do người dùng bấm sau preview,
+    // máy chủ thực thi và ghi trạng thái — nằm ngoài ý nghĩa "auto-send"
+    // mà rule này cấm (không có cơ chế client tự gửi).
+    const F06_CONTRACT_METHODS = new Set([
+      "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
+      "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
+    ]);
     for (const name of ADAPTER_METHODS) {
+      if (F06_CONTRACT_METHODS.has(name)) continue;
       assert.doesNotMatch(name, /send|submit|push|publish|post/i,
         `tên method không được gợi ý auto-send: ${name}`);
+    }
+    for (const name of F06_CONTRACT_METHODS) {
+      assert.ok(ADAPTER_METHODS.includes(name), `thiếu method F06 ${name}`);
     }
   });
 

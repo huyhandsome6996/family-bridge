@@ -26,6 +26,8 @@ export const routes = {
   "/login": () => import("../pages/login/index.js"),
   "/consent": () => import("../pages/consent/index.js"),
   "/connect": () => import("../pages/connect/index.js"),
+  // ---- F06: soạn thư cảm xúc + tạm dừng 300s máy chủ (U34 Stitch) ----
+  "/compose": () => import("../pages/compose/index.js"),
 };
 
 export function parseHash() {

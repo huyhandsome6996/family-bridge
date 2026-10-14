@@ -1,0 +1,39 @@
+/* ============================================================
+   fonts.css — Be Vietnam Pro bundle cục bộ (không CDN runtime).
+   Nguồn: google/fonts ofl/bevietnampro (SIL OFL 1.1 — OFL.txt kèm cùng
+   thư mục). Đủ glyph tiếng Việt, weights 400/500/600/700 theo prototype
+   Stitch (docs/design/stitch-reference/ code.html).
+   font-display: swap — chữ hiện ngay bằng fallback, tránh màn trắng chữ.
+   ============================================================ */
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/BeVietnamPro-Regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/BeVietnamPro-Medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../assets/fonts/BeVietnamPro-SemiBold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Be Vietnam Pro";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/BeVietnamPro-Bold.ttf") format("truetype");
+}

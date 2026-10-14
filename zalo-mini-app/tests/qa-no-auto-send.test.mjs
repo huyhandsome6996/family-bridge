@@ -9,6 +9,8 @@
 //
 // Pattern happy-dom giống tests/pages.test.mjs: gắn globals TRƯỚC import động.
 
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 const { Window } = await import("happy-dom");
 const domWindow = new Window({ url: "https://localhost/?demo=1" });
 
@@ -148,13 +150,16 @@ describe("QA: connection-check destroy chặn cập nhật sau khi rời trang",
   });
 });
 
-describe("QA: nút 'Con cần được lắng nghe' chỉ xem trước, KHÔNG gửi", () => {
+describe("QA: nút tín hiệu chỉ xem trước, KHÔNG gửi", () => {
   it("mở sheet, chọn người nhận -> chỉ thông báo 'sẽ sớm có', không 'Đã gửi'", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(home, ctx);
     await wait(1200); // mock latency: getConnectionStatus + getProfile
 
-    const signalBtn = findButton(el, "Con cần được lắng nghe");
+    // Stitch upgrade: CTA amber có nhãn "Mở lời chia sẻ an toàn" (kicker
+    // "Con cần được lắng nghe" là tiêu đề thẻ). Quy tắc nghiệp vụ giữ nguyên:
+    // bấm CHỈ mở sheet xem trước — không gửi, không báo "đã gửi".
+    const signalBtn = findButton(el, "Mở lời chia sẻ an toàn");
     assert.ok(signalBtn, "CTA tín hiệu phải tồn tại");
     signalBtn.click();
 
@@ -173,7 +178,11 @@ describe("QA: nút 'Con cần được lắng nghe' chỉ xem trước, KHÔNG g
     const after = textOf(el);
     assert.ok(after.includes("sẽ sớm có ở bản đầy đủ"), "phải là thông báo sắp có");
     assert.doesNotMatch(after, /đã gửi/i, "không được báo đã gửi");
-    assert.ok(!findButton(el, "Gửi"), "không được có nút Gửi");
+    // Stitch: tile "Gửi thẻ cảm xúc" (disabled, trung thực) chứa chữ "Gửi" —
+    // rule nghiệp vụ là KHÔNG có nút gửi BẬT nào sau sheet tín hiệu.
+    const activeSendButtons = Array.from(el.querySelectorAll("button"))
+      .filter((btn) => !btn.disabled && textOf(btn).includes("Gửi"));
+    assert.equal(activeSendButtons.length, 0, "không được có nút Gửi đang bật");
     unmountAndReset(host);
   });
 });
