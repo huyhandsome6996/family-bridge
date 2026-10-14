@@ -1,7 +1,7 @@
 {
   "feature_id": "F15",
   "branch": "feat/f15-privacy-revocation-deletion",
-  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "baseline_sha": "025359502211ec4b2bd1631f300b33e9e7bce4b0",
   "us": ["US-012", "US-017", "US-023"],
   "backend": {
     "app_label": "f15_privacy",
@@ -11,15 +11,51 @@
       "GET /api/v1/privacy/overview",
       "POST /api/v1/privacy/grants/{item_type}/{item_id}/revoke",
       "POST /api/v1/privacy/deletion-requests",
+      "GET /api/v1/privacy/deletion-requests/list",
       "GET /api/v1/privacy/deletion-requests/{id}",
       "POST /api/v1/privacy/deletion-requests/{id}/cancel",
+      "POST /api/v1/privacy/deletion-requests/{id}/verify",
+      "POST /api/v1/privacy/deletion-requests/{id}/process",
       "POST /api/v1/privacy/consents/{purpose}/withdraw"
     ],
     "models": ["DeletionRequest", "DeletionLedgerEvent", "PrivacyCase"],
-    "ports_provided": ["AccessPolicyService (can_view_item/revoke_grant)", "DeletionService", "hook+provider registries"],
-    "ports_consumed": ["ConnectionReader (generation check)", "session resolver", "consent writer (B18)"]
+    "ports_provided": [
+      "AccessPolicyService (can_view_item/assert_can_view/revoke_grant)",
+      "DeletionService (verify/process/list/replay fail-closed)",
+      "hook+provider registries",
+      "connection-revocation adapter (F01 view integration patch pending)"
+    ],
+    "ports_consumed": [
+      "ConnectionReader (F01 InviteService — wired at startup)",
+      "SessionService (F01 — absolute import, fixed)",
+      "ConsentWriter (F01 store + F14 research mapping — wired at startup)",
+      "HandlerAuthorizer (B16 privacy.case — fail-closed until B16 ships)"
+    ],
+    "domain_adapters": {
+      "mood_entry": "F07 MoodShare (production grant provider)",
+      "journal_page": "F08 JournalShare (production grant provider)",
+      "deletion_hooks": ["mood", "journal", "surveys", "connections"],
+      "deletion_hooks_pending": ["account (DEC-12/23)", "messages", "ai",
+                                 "drafts", "program_progress", "appointments"]
+    }
   },
-  "mobile": {"module": "packages/family_bridge_mobile/f15_privacy", "pages": ["privacy"]},
-  "tests": {"backend": "23 PASS (SQLite)", "mobile": "3 PASS", "not_run": ["MySQL race", "restore drill thật"]},
+  "mobile": {
+    "module": "packages/family_bridge_mobile/f15_privacy",
+    "pages": ["privacy"],
+    "official_integration": {
+      "route": "/privacy (zalo-mini-app/src/pages/privacy/index.js)",
+      "entry": "profile → Quản lý chia sẻ & đồng ý",
+      "session_bridge": "zalo-mini-app/src/pages/privacy/session-bridge.js (F01 PR #26 interface)",
+      "shared_logic": "packages/family_bridge_mobile/f15_privacy/page-core.js",
+      "pending": ["router/profile reconcile với F01", "phiên đăng nhập F01"]
+    }
+  },
+  "tests": {
+    "backend": "60 PASS (SQLite; gồm wiring/boot-thật, grant adapters, revoke ledger, consent thật, deletion cutoff/retry, replay fail-closed)",
+    "mobile": "13 PASS (page-core logic + contract); zalo-mini-app 112 PASS (8 DOM F15 mới); build OK",
+    "regression": "f01 46+2skip, f05 27, f07 19, f08 17, f10 15, f14 17, admin_core 13 — PASS",
+    "not_run": ["MySQL race 2 connections", "thiết bị Zalo thật",
+                "restore drill thật (B17)", "production wiring F01 view + B16 capability"]
+  },
   "status": "implemented"
 }

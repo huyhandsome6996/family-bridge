@@ -101,3 +101,5 @@ ehthumbs.db
 *.njsproj
 *.sln
 *.sw?
+.f15-artifact-case/
+www-artifact-test/

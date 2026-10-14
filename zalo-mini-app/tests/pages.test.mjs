@@ -417,12 +417,21 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Cá nhân: đổi vai trò + mục Sắp có có lý do + phiên bản US-003", () => {
+  it("Hub Cá nhân: đổi vai trò + mục Quản lý chia sẻ dẫn tới /privacy (F15) + phiên bản US-003", () => {
     const { ctx, navigateCalls } = makeCtx({ demo: false, role: "caregiver" });
     const { host, el } = mount(pages.profile, ctx);
     const text = textOf(el);
     assert.ok(text.includes("Người chăm sóc"));
-    assert.ok(text.includes("Quản lý chia sẻ & đồng ý — Sắp có"));
+    // F15: mục quản lý chia sẻ & đồng ý đã dẫn tới trang quyền riêng tư
+    // chính thức (route /privacy); không còn nhãn "Sắp có" cho mục này.
+    assert.ok(text.includes("Quản lý chia sẻ & đồng ý"));
+    assert.ok(!text.includes("Quản lý chia sẻ & đồng ý — Sắp có"));
+    const privacyBtn = findButton(el, "Quản lý chia sẻ & đồng ý");
+    assert.ok(privacyBtn, "phải có nút dẫn tới trang quyền riêng tư");
+    assert.ok(!privacyBtn.disabled, "nút phải khả dụng (route đã nối)");
+    privacyBtn.click();
+    assert.ok(navigateCalls.includes("/privacy"),
+      "nhấn nút phải điều hướng tới /privacy");
     assert.ok(text.includes("Phiên bản xem trước US-003"));
 
     const switchBtn = findButton(el, "Đổi vai trò xem trước");
