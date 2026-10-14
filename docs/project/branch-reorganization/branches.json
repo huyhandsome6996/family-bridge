@@ -1,0 +1,259 @@
+{
+  "version": "2026-10-15",
+  "supersedes": "docs/project/full-build/branch-manifest.json (ngày 11/10/2026) ở phần tên nhánh/phân công",
+  "pinned_main_sha_at_creation": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+  "note_readiness": "can_implement_now = sửa own paths được ngay; can_integrate_now = có diff thật đang chờ review; can_pilot_now = đủ điều kiện thử nghiệm thật (backend thật/Zalo thật). Tạo nhánh KHÔNG đồng nghĩa tính năng hoàn thành.",
+  "features": [
+    {
+      "feature": "F01",
+      "name": "tinh-nang/f01-dang-nhap-va-ket-noi-us011-us013",
+      "label": "f01_identity",
+      "owner": "huy (lead)",
+      "head_sha": "fe2a9142e513179844c266b2dbeb524292e396b2",
+      "transferred_from": {"old_ref": "feat/f01-zalo-connections", "old_pr": 31, "new_pr": 32, "old_head_equals_new_head": true},
+      "us_primary": [
+        {"id": "US-011", "url": "https://trello.com/c/5cdxLWAa/7-e01us-011-h%E1%BB%8Dc-sinh-v%C3%A0-ng%C6%B0%E1%BB%9Di-ch%C4%83m-s%C3%B3c-%C4%91%C4%83ng-nh%E1%BA%ADp-b%E1%BA%B1ng-zalo-f01a"},
+        {"id": "US-013", "url": "https://trello.com/c/wAHZ74mo/8-e01us-013-h%E1%BB%8Dc-sinh-m%E1%BB%9Di-m%E1%BA%B9-k%E1%BA%BFt-n%E1%BB%91i-v%C3%A0-m%E1%BA%B9-x%C3%A1c-nh%E1%BA%ADn-f01b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f01_identity/**", "packages/family_bridge_mobile/f01_identity/**", "docs/features/f01/**", "zalo-mini-app/src/pages/login/**", "zalo-mini-app/src/pages/consent/**", "zalo-mini-app/src/pages/connect/**"],
+      "locked_paths_temporary": ["packages/family_bridge_features/f01_identity/models.py", "packages/family_bridge_features/f01_identity/migrations/**", "packages/family_bridge_features/f01_identity/services/invites.py", "packages/family_bridge_features/f01_identity/services/zalo_provider.py (PR #32)"],
+      "dependencies": ["Zalo provider + consent + session của F01; ConnectionReader là port cho F05/F07/F08/F10/F11/F12"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": true, "can_pilot_now": false, "blocked_by": ["sync commit Stitch của main (nhánh chậm main f8fc6a4)", "W036 tích hợp để chốt concurrency", "thiết bị Zalo thật (US-049)"], "evidence": "PR #32 head fe2a914 = head cũ #31; CI 7/7 trên SHA đó; 1 FAIL mở A02 consent resurrect (login-audit-2026-10-14.md)"}
+    },
+    {
+      "feature": "F02",
+      "name": "tinh-nang/f02-dong-hanh-bon-tuan-us036-us044",
+      "label": "f02_program",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-036", "url": "https://trello.com/c/rwjhkqP6/43-e05us-036-gia-%C4%91%C3%ACnh-ch%E1%BB%8Dn-g%E1%BB%A3i-%C3%BD-t%E1%BB%AB-ch%C6%B0%C6%A1ng-tr%C3%ACnh-4-tu%E1%BA%A7n-f02a"},
+        {"id": "US-044", "url": "https://trello.com/c/Yu8mhNlV/44-e05us-044-gia-%C4%91%C3%ACnh-xem-ti%E1%BA%BFn-%C4%91%E1%BB%99-v%C3%A0-h%C6%B0%E1%BB%9Bng-d%E1%BA%ABn-s%E1%BB%95-gi%E1%BA%A5y-f02b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f02_program/**", "packages/family_bridge_mobile/f02_program/**", "docs/features/f02/**", "zalo-mini-app/src/pages/program/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Published program của admin", "Hoạt động chung qua F09"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["admin publish content", "PR có diff thật"], "evidence": "code nền trong main (PR #23/#24); chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F03",
+      "name": "tinh-nang/f03-the-cam-xuc-us027",
+      "label": "f03_cards",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-027", "url": "https://trello.com/c/mt5RLDCc/13-e03us-027-h%E1%BB%8Dc-sinh-ch%E1%BB%8Dn-th%E1%BA%BB-v%C3%A0-xem-tr%C6%B0%E1%BB%9Bc-ng%C6%B0%E1%BB%9Di-nh%E1%BA%ADn-f03a"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f03_cards/**", "packages/family_bridge_mobile/f03_cards/**", "docs/features/f03/**", "zalo-mini-app/src/pages/emotion-cards/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Published thẻ của admin", "MessageTransport của F05 (không dựng transport thứ hai)"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["admin publish content", "MessageTransport F05"], "evidence": "code nền trong main; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F04",
+      "name": "tinh-nang/f04-ai-ho-tro-dien-dat-us029-us033",
+      "label": "f04_ai",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-029", "url": "https://trello.com/c/3uuRbARC/18-e03us-029-ai-g%E1%BB%A3i-%C3%BD-l%E1%BB%9Di-n%C3%B3i-v%C3%A0-ng%C6%B0%E1%BB%9Di-vi%E1%BA%BFt-t%E1%BB%B1-duy%E1%BB%87t-f04a"},
+        {"id": "US-033", "url": "https://trello.com/c/YVOW54e0/19-e03us-033-v%E1%BA%ABn-ti%E1%BA%BFp-t%E1%BB%A5c-%C4%91%C6%B0%E1%BB%A3c-khi-ai-l%E1%BB%97i-f04b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f04_ai/**", "packages/family_bridge_mobile/f04_ai/**", "docs/features/f04/**", "zalo-mini-app/src/pages/expression/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Nháp F06, gửi F05", "AI chỉ gọi từ backend, provider/đồng ý AI"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["US-033 phải tiếp tục được khi AI lỗi (kh auto-block)", "MessageTransport F05"], "evidence": "code nền trong main; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F05",
+      "name": "tinh-nang/f05-hop-thu-va-phan-hoi-us021-us028",
+      "label": "f05_inbox",
+      "owner": "ban-2",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-021", "url": "https://trello.com/c/10jZDxyM/14-e03us-021-hai-t%C3%A0i-kho%E1%BA%A3n-g%E1%BB%ADi-v%C3%A0-nh%E1%BA%ADn-trong-h%E1%BB%99p-th%C6%B0-f05a"},
+        {"id": "US-028", "url": "https://trello.com/c/XVdiOht8/15-e03us-028-ng%C6%B0%E1%BB%9Di-nh%E1%BA%ADn-tr%E1%BA%A3-l%E1%BB%9Di-b%E1%BA%B1ng-m%E1%BA%ABu-ho%E1%BA%B7c-l%E1%BB%9Di-ri%C3%AAng-f05b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f05_inbox/**", "packages/family_bridge_mobile/f05_inbox/**", "docs/features/f05/**", "zalo-mini-app/src/pages/mailbox/**"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Phiên + ConnectionReader F01", "Validator F15 cho reply context", "Reply templates của admin"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["mailbox chính chưa nối API (phát hiện probe trước)", "F05 có lỗi fail-open khi chỉ nối auth/polling — phải xử lý trong task"], "evidence": "probe backend settings thật: phiên F01 hợp lệ không vào được F05; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F06",
+      "name": "tinh-nang/f06-ban-nhap-va-tam-dung-us030-us034",
+      "label": "f06_drafts",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-030", "url": "https://trello.com/c/qHggx4EK/20-e03us-030-gi%E1%BB%AF-nh%C3%A1p-v%C3%A0-ngh%E1%BB%89-5-ph%C3%BAt-tr%C6%B0%E1%BB%9Bc-khi-g%E1%BB%ADi-f06a"},
+        {"id": "US-034", "url": "https://trello.com/c/Ro32huzj/21-e03us-034-th%E1%BA%A7y-ch%E1%BB%89nh-kho%E1%BA%A3ng-ch%E1%BB%9D-tr%E1%BB%A3-gi%C3%BAp-lu%C3%B4n-m%E1%BB%9F-f06b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f06_drafts/**", "packages/family_bridge_mobile/f06_drafts/**", "docs/features/f06/**", "zalo-mini-app/src/pages/compose/**"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Sender ports F05/F03", "Mốc chờ do máy chủ quyết — 300 giây, không auto-send (DEC-03; tiêu đề US-034 cũ đã lỗi thời)"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["compose page U34 đã có trên main nhưng chưa nghiệm thu; cần kiểm chứng 300s server-side"], "evidence": "commit feat(f06) compose page U34 trong main qua PR #30; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F07",
+      "name": "tinh-nang/f07-tam-trang-va-chia-se-us015-us026",
+      "label": "f07_mood",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-015", "url": "https://trello.com/c/5QO0gzIF/33-e04us-015-h%E1%BB%8Dc-sinh-ghi-t%C3%A2m-tr%E1%BA%A1ng-v%C3%A0-xem-l%E1%BB%8Bch-s%E1%BB%AD-ri%C3%AAng-f07a"},
+        {"id": "US-026", "url": "https://trello.com/c/4hco737d/37-e04us-026-h%E1%BB%8Dc-sinh-ch%E1%BB%8Dn-m%E1%BB%A5c-t%C3%A2m-tr%E1%BA%A1ng-mu%E1%BB%91n-chia-s%E1%BA%BB-f07b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f07_mood/**", "packages/family_bridge_mobile/f07_mood/**", "docs/features/f07/**", "zalo-mini-app/src/pages/mood/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": ["packages/family_bridge_features/f07_mood/auth.py", "packages/family_bridge_features/f07_mood/services/mood.py", "packages/family_bridge_features/f07_mood/services/registry.py (PR #33)"],
+      "dependencies": ["Phiên F01", "Grants/revoke F15", "chờ patch cầu nối #33"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["F15 (PR #33) đang sửa file lock của F07 — phần file không trùng vẫn làm độc lập"], "evidence": "lock từ PR #33 (54 files); chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F08",
+      "name": "tinh-nang/f08-nhat-ky-rieng-va-song-hanh-us016-us031",
+      "label": "f08_journal",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-016", "url": "https://trello.com/c/a7SQrEMh/34-e04us-016-h%E1%BB%8Dc-sinh-vi%E1%BA%BFt-nh%E1%BA%ADt-k%C3%BD-ri%C3%AAng-f08a"},
+        {"id": "US-031", "url": "https://trello.com/c/ziFh1vrA/36-e04us-031-h%E1%BB%8Dc-sinh-chia-s%E1%BA%BB-t%E1%BB%ABng-trang-v%C3%A0-nh%E1%BA%ADn-ph%E1%BA%A3n-h%E1%BB%93i-f08b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f08_journal/**", "packages/family_bridge_mobile/f08_journal/**", "docs/features/f08/**", "zalo-mini-app/src/pages/diary/**"],
+      "locked_paths_temporary": ["packages/family_bridge_features/f08_journal/api.py", "packages/family_bridge_features/f08_journal/auth.py", "packages/family_bridge_features/f08_journal/services/** (PR #33)"],
+      "dependencies": ["Phiên F01", "F15", "Published chủ đề của admin", "chờ patch cầu nối #33"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["F15 (PR #33) đang sửa file lock của F08 — phần file không trùng vẫn làm độc lập", "hướng dẫn sổ giấy không giành owner US-044"], "evidence": "lock từ PR #33; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F09",
+      "name": "tinh-nang/f09-hoat-dong-va-bai-hoc-ngan-us037",
+      "label": "f09_activities",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-037", "url": "https://trello.com/c/1vV3Bocg/42-e05us-037-gia-%C4%91%C3%ACnh-ch%E1%BB%8Dn-ho%E1%BA%A1t-%C4%91%E1%BB%99ng-k%E1%BA%BFt-n%E1%BB%91i-ph%C3%B9-h%E1%BB%A3p-f09a"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f09_activities/**", "packages/family_bridge_mobile/f09_activities/**", "docs/features/f09/**", "zalo-mini-app/src/pages/activities/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": ["packages/family_bridge_features/f09_activities/models.py", "packages/family_bridge_features/f09_activities/migrations/**", "packages/family_bridge_features/f09_activities/services/activities.py (W036/PR #34)"],
+      "dependencies": ["F01 + published nội dung của admin", "file W036 đang bị khóa tạm"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["W036 (PR #34) khóa models/migrations/services — phần khác vẫn làm"], "evidence": "lock từ PR #34; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F10",
+      "name": "tinh-nang/f10-can-duoc-lang-nghe-us032",
+      "label": "f10_signal",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-032", "url": "https://trello.com/c/D817B6Wc/23-e06us-032-h%E1%BB%8Dc-sinh-g%E1%BB%ADi-t%C3%ADn-h%E1%BB%87u-c%E1%BA%A7n-%C4%91%C6%B0%E1%BB%A3c-l%E1%BA%AFng-nghe-f10a"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f10_signal/**", "packages/family_bridge_mobile/f10_signal/**", "docs/features/f10/**", "zalo-mini-app/src/pages/listening/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": [],
+      "dependencies": ["F01 và MessageTransport F05", "help không pause (luôn mở ngay)"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["MessageTransport F05"], "evidence": "code nền trong main; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F11",
+      "name": "tinh-nang/f11-diem-tua-du-phong-us022-us035",
+      "label": "f11_supporters",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-022", "url": "https://trello.com/c/XtkHQwYd/38-e06us-022-h%E1%BB%8Dc-sinh-m%E1%BB%9Di-th%C3%AAm-ng%C6%B0%E1%BB%9Di-l%C3%A0m-%C4%91i%E1%BB%83m-t%E1%BB%B1a-f11a"},
+        {"id": "US-035", "url": "https://trello.com/c/kfcEmzfe/39-e06us-035-h%E1%BB%8Dc-sinh-t%E1%BB%B1-ch%E1%BB%8Dn-li%C3%AAn-h%E1%BB%87-%C4%91i%E1%BB%83m-t%E1%BB%B1a-kh%C3%A1c-f11b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f11_supporters/**", "packages/family_bridge_mobile/f11_supporters/**", "docs/features/f11/**", "zalo-mini-app/src/pages/supporters/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": ["packages/family_bridge_features/f11_supporters/models.py", "packages/family_bridge_features/f11_supporters/migrations/**", "packages/family_bridge_features/f11_supporters/services/supporters.py (W036/PR #34)"],
+      "dependencies": ["F01 + F05", "file W036 đang bị khóa tạm"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["W036 (PR #34) khóa models/migrations/services — phần khác vẫn làm"], "evidence": "lock từ PR #34; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F12",
+      "name": "tinh-nang/f12-ho-tro-nha-truong-va-lich-hen-us038-us046",
+      "label": "f12_appointments",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-038", "url": "https://trello.com/c/PrnNRU5i/41-e06us-038-h%E1%BB%8Dc-sinh-xem-th%E1%BA%A7y-c%C3%B4-h%E1%BB%97-tr%E1%BB%A3-v%C3%A0-m%E1%BB%9F-cu%E1%BB%99c-g%E1%BB%8Di-f12a"},
+        {"id": "US-046", "url": "https://trello.com/c/G7MVggRs/52-e06us-046-g%E1%BB%ADi-y%C3%AAu-c%E1%BA%A7u-v%C3%A0-nh%E1%BA%ADn-l%E1%BB%8Bch-h%E1%BA%B9n-khi-c%C3%B3-%C4%91%E1%BA%A7u-m%E1%BB%91i-th%E1%BA%ADt-f12b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f12_appointments/**", "packages/family_bridge_mobile/f12_appointments/**", "docs/features/f12/**", "zalo-mini-app/src/pages/school-support/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": [],
+      "dependencies": ["F01", "Danh bạ/staff được duyệt (admin)", "Lịch hẹn có điều kiện — phải có staff thật"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["danh bạ admin được duyệt", "US-046 chỉ khi có đầu mối thật"], "evidence": "code nền trong main; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F13",
+      "name": "tinh-nang/f13-tim-tro-giup-us039",
+      "label": "f13_help",
+      "owner": "ban-1",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-039", "url": "https://trello.com/c/QzsTphrv/25-e06us-039-h%E1%BB%8Dc-sinh-m%E1%BB%9F-trang-t%C3%ACm-tr%E1%BB%A3-gi%C3%BAp-f13a"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f13_help/**", "packages/family_bridge_mobile/f13_help/**", "docs/features/f13/**", "zalo-mini-app/src/pages/help/**"],
+      "locked_paths_temporary": [],
+      "dependencies": ["DirectoryReader admin/US-024", "Xác minh US-006", "public — không phụ thuộc phiên đăng nhập"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["help chính chưa nối API (probe) — task đầu của Bạn 1"], "evidence": "probe: help chính chưa nối API; nhánh F13 không tự nghiệm thu US-006/024"}
+    },
+    {
+      "feature": "F14",
+      "name": "tinh-nang/f14-khao-sat-va-bao-cao-us040-us045",
+      "label": "f14_surveys",
+      "owner": "unassigned",
+      "head_sha": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "created_from_main": "f8fc6a4cc8bbceb2b115bbadc06619734142cad7",
+      "us_primary": [
+        {"id": "US-040", "url": "https://trello.com/c/ckdgO9xr/46-e07us-040-ng%C6%B0%E1%BB%9Di-d%C3%B9ng-t%E1%BB%B1-nguy%E1%BB%87n-l%C3%A0m-kh%E1%BA%A3o-s%C3%A1t-tr%C6%B0%E1%BB%9Bc-v%C3%A0-sau-f14a"},
+        {"id": "US-045", "url": "https://trello.com/c/72v8VIuy/47-e07us-045-th%E1%BA%A7y-xem-b%C3%A1o-c%C3%A1o-t%E1%BB%95ng-h%E1%BB%A3p-%C4%91%C3%A3-b%E1%BB%8F-nh%E1%BA%ADn-di%E1%BB%87n-f14b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f14_surveys/**", "packages/family_bridge_mobile/f14_surveys/**", "docs/features/f14/**", "zalo-mini-app/src/pages/surveys/** (tạo khi bắt đầu UI)"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Phiên, consent", "Survey version và policy tổng hợp đã duyệt", "F14 không tự duyệt US-010"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["policy khảo sát/nghiên cứu do đơn vị có thẩm quyền duyệt"], "evidence": "code nền trong main; chưa có PR mới trên nhánh"}
+    },
+    {
+      "feature": "F15",
+      "name": "tinh-nang/f15-quyen-rieng-tu-va-xoa-du-lieu-us012-us017-us023",
+      "label": "f15_privacy",
+      "owner": "huy (lead)",
+      "head_sha": "aeae32124a00bd05fc39802f662370df60ebea93",
+      "transferred_from": {"old_ref": "feat/f15-privacy-revocation-deletion", "old_pr": 27, "new_pr": 33, "old_head_equals_new_head": true},
+      "us_primary": [
+        {"id": "US-012", "url": "https://trello.com/c/NYRJCzKj/6-e01us-012-ng%C6%B0%E1%BB%9Di-kh%C3%A1c-kh%C3%B4ng-%C4%91%E1%BB%8Dc-%C4%91%C6%B0%E1%BB%A3c-d%E1%BB%AF-li%E1%BB%87u-ri%C3%AAng-f15a"},
+        {"id": "US-017", "url": "https://trello.com/c/ZiUaqKe6/26-e01us-017-ng%C6%B0%E1%BB%9Di-d%C3%B9ng-y%C3%AAu-c%E1%BA%A7u-x%C3%B3a-d%E1%BB%AF-li%E1%BB%87u-f15c"},
+        {"id": "US-023", "url": "https://trello.com/c/Vjcuke9o/24-e01us-023-h%E1%BB%A7y-k%E1%BA%BFt-n%E1%BB%91i-v%C3%A0-thu-h%E1%BB%93i-quy%E1%BB%81n-chia-s%E1%BA%BB-f15b"}
+      ],
+      "own_paths": ["packages/family_bridge_features/f15_privacy/**", "packages/family_bridge_mobile/f15_privacy/**", "docs/features/f15/**", "zalo-mini-app/src/pages/privacy/**"],
+      "locked_paths_temporary": ["tests/feature-lab/harness/settings.py (cùng lock với W036/PR #34)", "packages/family_bridge_features/f01_identity/api.py", "packages/family_bridge_features/f01_identity/services/identity.py", "packages/family_bridge_features/f07_mood/auth.py", "packages/family_bridge_features/f07_mood/services/mood.py", "packages/family_bridge_features/f07_mood/services/registry.py", "packages/family_bridge_features/f08_journal/api.py", "packages/family_bridge_features/f08_journal/auth.py", "packages/family_bridge_features/f08_journal/services/**", "zalo-mini-app/src/app/router.js", "zalo-mini-app/src/pages/profile/index.js"],
+      "dependencies": ["F01", "Grant providers F07/F08", "Deletion hooks theo domain"],
+      "readiness": {"can_implement_now": true, "can_integrate_now": true, "can_pilot_now": false, "blocked_by": ["review PR #33", "deletion request ≠ hoàn tất xóa — gate B16 + retention policy"], "evidence": "PR #33 head aeae321 = head cũ #27; đã chứa main f8fc6a4; CI 8/8 trên SHA đó; 262 backend tests (258 PASS, 4 SKIP MySQL)"}
+    }
+  ],
+  "maintenance": [
+    {
+      "name": "bao-tri/chong-trung-mysql-tidb-us004",
+      "purpose": "W036 — patch liên module chống trùng MySQL/TiDB (GeneratedField VIRTUAL + UniqueConstraint) cho F01/F09/F11/admin_core",
+      "owner": "huy (lead) — một người điều phối review riêng",
+      "head_sha": "5a2a82e7d0a28b59f43f00fa831874ab9decb882",
+      "transferred_from": {"old_ref": "review/full-product-integration", "old_pr": 28, "new_pr": 34, "old_head_equals_new_head": true},
+      "us_relation": "liên hệ US-004 (schema/contracts); tác động US-013/022/037/014; KHÔNG phải F16, không hoàn thành US-004",
+      "locked_paths_temporary": ["packages/family_bridge_features/admin_core/models.py", "packages/family_bridge_features/admin_core/migrations/**", "packages/family_bridge_features/admin_core/services/admin.py", "packages/family_bridge_features/f01_identity/models.py", "packages/family_bridge_features/f01_identity/migrations/**", "packages/family_bridge_features/f01_identity/services/invites.py", "packages/family_bridge_features/f09_activities/models.py", "packages/family_bridge_features/f09_activities/migrations/**", "packages/family_bridge_features/f09_activities/services/activities.py", "packages/family_bridge_features/f11_supporters/models.py", "packages/family_bridge_features/f11_supporters/migrations/**", "packages/family_bridge_features/f11_supporters/services/supporters.py", "tests/feature-lab/harness/settings.py (cùng lock với PR #33)"],
+      "readiness": {"can_implement_now": false, "can_integrate_now": false, "can_pilot_now": false, "blocked_by": ["CONFLICT với main hiện tại (mergeable=dirty, base cũ 0253595) — cần rebase/quyết định tích hợp của điều phối", "không chia patch sang 4 nhánh feature, không cherry-pick cả nhánh bảo trì"], "evidence": "PR #34 head 5a2a82e = head cũ #28; CI 7/7 trên SHA đó nhưng với base cũ; suite 131 tests + 4 test_race_mysql chạy TiDB thật"}
+    }
+  ],
+  "shared_files_owner": "lead (Huy) — xem shared-integration.md",
+  "end_state_refs": "main + 15 tinh-nang/* + 1 bao-tri/* = 17 remote branches (đã xác minh 15/10/2026)"
+}

@@ -1,6 +1,6 @@
 # Cài đặt và chạy local — Mini App Family Bridge (US-003)
 
-Ngày cập nhật: 11/10/2026. Áp dụng cho nhánh `feat/us-003-miniapp-ui-foundation`.
+Ngày cập nhật: 15/10/2026 (quy hoạch nhánh: tên nhánh cũ `feat/us-003-miniapp-ui-foundation` đã xóa sau khi merge — nội dung dưới đây áp dụng cho `main` và các nhánh `tinh-nang/*` mới).
 
 ## 1. Yêu cầu môi trường
 

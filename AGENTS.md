@@ -1,5 +1,18 @@
 # Family Bridge project instructions
 
+## Branch reorganization (2026-10-15 — current work-assignment source)
+
+On 15 October 2026 the remote branches were reorganized: the 15 feature work
+units now live on `tinh-nang/fxx-...` branches plus one temporary maintenance
+branch `bao-tri/chong-trung-mysql-tidb-us004` (W036); all legacy `feat/*`,
+`chore/*`, `codex/*`, `fix/*`, `review/*` branches were deleted after
+preserving their work (evidence and recovery: `docs/project/branch-reorganization/legacy-branches.json`).
+Ownership, per-feature paths, temporary locks and readiness: `docs/project/branch-reorganization/branches.json`.
+Shared-file integration is coordinated by the lead: `docs/project/branch-reorganization/shared-integration.md`.
+These supersede the branch-related parts of `docs/project/full-build/plan.md`,
+`ownership.md` and `branch-manifest.json` (dated supersede notes inside those
+files); business/security rules there remain in force.
+
 ## Frontend stack update (2026-10-11 — supersedes React/zmp-ui for new frontend work)
 
 On 11 October 2026 the repository owner finalized the frontend stack for all

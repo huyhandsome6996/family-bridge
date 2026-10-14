@@ -1,5 +1,13 @@
 # Kế hoạch xây dựng đầy đủ (full-build) — B00..B18
 
+> **SUPERSEDE 15/10/2026 (dated):** quy hoạch nhánh mới là nguồn hiện hành về phân công —
+> xem `docs/project/branch-reorganization/`. Cụ thể: nguyên tắc 4 ("Draft PR feature target
+> B00…không PR feature thẳng main") **không còn áp dụng** — feature làm việc trên nhánh
+> `tinh-nang/fxx-…` và mở Draft PR thẳng main; B00/B18 đã merge (PR #23/#24) nên các nhánh
+> B00..B18 chỉ còn là lịch sử; `branch-manifest.json` (11/10) và bảng tên nhánh dưới đây là
+> lịch sử, giữ nguyên để tra cứu bằng chứng. Các quy tắc nghiệp vụ/bảo mật trong tài liệu
+> này VẪN HIỆU LỰC.
+
 Ngày lập: 11/10/2026. Chủ trì: lead coding agent (theo PROMPT TỔNG của Huy).
 Đây là kế hoạch tổ chức công việc và trạng thái — không phải bằng chứng tính
 năng đã chạy. Bằng chứng nằm ở report từng nhánh (`docs/features/<fxx>/report.md`)
@@ -11,9 +19,11 @@ và PR/SHA cụ thể.
    đóng băng của B00 (`branch-manifest.json:baseline_sha`). Module chỉ gọi
    ports trong `packages/family_bridge_core`; tests dùng adapter tổng hợp trong
    `tests/feature-lab/fixtures`.
-2. **Độc lập lập trình, ghép ở B18**: nhánh nào cũng tự chạy test được bằng
-   một lệnh documented. Phụ thuộc thật (Connection thật, MessageTransport thật,
-   AccessPolicy thật) được nối ở nhánh tích hợp `review/full-product-integration`.
+2. **Độc lập lập trình, ghép ở B18** *(lịch sử — B18 đã merge qua PR #23; tích hợp nay
+   theo `docs/project/branch-reorganization/shared-integration.md`)*: nhánh nào cũng tự
+   chạy test được bằng một lệnh documented. Phụ thuộc thật (Connection thật,
+   MessageTransport thật, AccessPolicy thật) đã được nối ở nhánh tích hợp
+   `review/full-product-integration` (đã chuyển thành `bao-tri/chong-trung-mysql-tidb-us004`).
 3. **Không giành ownership A/B**: `backend/**`, `render.yaml`,
    `docs/setup/backend/**`, `docs/handover/backend-foundation/**` (Agent A) và
    `zalo-mini-app/**`, `docs/setup/miniapp/**`,

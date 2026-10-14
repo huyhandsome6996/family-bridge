@@ -2,6 +2,10 @@
 
 ## 1. Branch, baseline, PR
 
+> **Cập nhật 15/10/2026 (quy hoạch nhánh):** nhánh làm việc `feat/f01-zalo-connections` đã đổi tên
+> thành `tinh-nang/f01-dang-nhap-va-ket-noi-us011-us013` (head giữ nguyên, không rebase); PR review
+> hiện hành là #32 (thay #31 đã đóng). Chi tiết: `docs/project/branch-reorganization/`.
+
 - Repo: https://github.com/huyhandsome6996/family-bridge
 - Nhánh làm việc: `feat/f01-zalo-connections` (KHÔNG tạo nhánh mới; không force push).
 - Baseline: nhánh cũ `c134c70` là ancestor của main → đã **fast-forward** lên

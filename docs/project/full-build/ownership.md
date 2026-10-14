@@ -1,5 +1,13 @@
 # Ownership tệp — full-build Family Bridge
 
+> **SUPERSEDE 15/10/2026 (dated):** bảng "A/B độc quyền toàn thư mục" và quy "Draft PR
+> theo `branch-manifest.json`" dưới đây **không còn áp dụng** cho phân công mới — nguồn
+> hiện hành là `docs/project/branch-reorganization/branches.json` (own paths theo tính
+> năng, shared files do lead điều phối theo `shared-integration.md`). Quy hoạch mới cho
+> phép owner feature sửa đúng page/module riêng (ví dụ mailbox, help) — không còn rule
+> "Agent B khóa mọi file zalo-mini-app". Nguyên tắc **một tệp một chủ**, không force-push,
+> không reset/clean worktree người khác, lock tạm của PR #32/#33/#34: VẪN HIỆU LỰC.
+
 Nguyên tắc: một tệp một chủ; nhánh khác cần sửa phải qua PR vào nhánh sở hữu
 hoặc chờ tích hợp B18. Không reset/clean worktree người khác, không force-push.
 

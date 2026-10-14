@@ -1,5 +1,6 @@
 {
  "schema_version": 1,
+ "superseded_by_2026_10_15": "docs/project/branch-reorganization/branches.json (15/10/2026) — tên nhánh/phân công mới; file này giữ nguyên làm bằng chứng lịch sử đợt B00..B18 (PR #23/#24)",
  "created_at": "2026-10-11",
  "baseline": {
   "branch": "chore/full-build-contract-baseline",
