@@ -7,7 +7,7 @@ name: backend-foundation
 
 on:
   push:
-    branches: [feat/us-003-backend-foundation]
+    branches: [main, "tinh-nang/**"]
     paths:
       - "backend/**"
       - "docs/setup/backend/**"
