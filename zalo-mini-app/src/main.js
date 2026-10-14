@@ -1,11 +1,13 @@
-// Entry chính của Family Bridge Mini App (US-003 frontend foundation).
+// Entry chính của Family Bridge Mini App (US-003 foundation + F01 login).
 // Lead sở hữu file này — thay đổi lớn cần phối hợp.
 
 import "./styles/index.css"; // tokens -> base -> components
 
 import { initStore, getState, setRole, resetState, setMockScenario } from "./app/store.js";
 import { createRouter, navigate } from "./app/router.js";
-import { isDemoModeRequested } from "./core/config.js";
+import { isDemoModeRequested, isZaloHost, isManualLoginTest } from "./core/config.js";
+import { getLoginStartupPlan } from "./core/login-startup.js";
+import { hasLiveSession } from "./core/session.js";
 import { resolveAdapterMode, createAdapter } from "./core/adapter/adapter.js";
 
 async function boot() {
@@ -38,7 +40,30 @@ async function boot() {
 
   const root = document.getElementById("app");
   const router = createRouter({ root, ctx });
+  const startup = getLoginStartupPlan({
+    manualLoginTest: isManualLoginTest(), demoMode, inZalo: isZaloHost(),
+    hasSession: hasLiveSession(),
+    path: window.location.hash.replace(/^#/, "").split("?")[0] || "/",
+  });
+  if (startup.initialRoute) navigate(startup.initialRoute);
   router.start();
+
+  // F01: mở lại Mini App trong Zalo thật -> thử đăng nhập lại IM LẶNG đúng
+  // MỘT lần (getAccessToken + POST /auth/session). Không lặp, không polling:
+  // thất bại thì người dùng vẫn đăng nhập thủ công từ trang /login.
+  // A11: khi đăng nhập im lặng THÀNH CÔNG, view đang mở phải cập nhật theo
+  // auth transition — render lại route hiện tại (home đang "Chưa đăng nhập"
+  // phải chuyển thành trạng thái đã đăng nhập) một lần duy nhất.
+  if (startup.silentLogin && adapter.trySilentLogin) {
+    adapter.trySilentLogin().then((ok) => {
+      if (!ok) return false;
+      const path = window.location.hash.replace(/^#/, "").split("?")[0] || "/";
+      // Trang đăng nhập tự điều hướng theo luồng của nó — không đè lên.
+      if (path === "/login" || path === "/consent") return true;
+      router.render();
+      return true;
+    }).catch(() => false);
+  }
 }
 
 boot().catch((error) => {

@@ -22,8 +22,14 @@ export const routes = {
   "/profile": () => import("../pages/profile/index.js"),
   "/connection-check": () => import("../pages/connection-check/index.js"),
   "/help": () => import("../pages/help/index.js"),
-  // ---- F15: quyền riêng tư, thu hồi, yêu cầu xóa ----
+  // ---- F15: privacy controls ----
   "/privacy": () => import("../pages/privacy/index.js"),
+  // ---- F01: đăng nhập + đồng ý + kết nối hai phía ----
+  "/login": () => import("../pages/login/index.js"),
+  "/consent": () => import("../pages/consent/index.js"),
+  "/connect": () => import("../pages/connect/index.js"),
+  // ---- F06: soạn thư cảm xúc + tạm dừng 300s máy chủ (U34 Stitch) ----
+  "/compose": () => import("../pages/compose/index.js"),
 };
 
 export function parseHash() {

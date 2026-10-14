@@ -1,31 +1,32 @@
-// createLogo — logo Family Bridge (CONTRACTS.md mục 3).
+// createLogo — logo chính chủ Family Bridge (mẫu 03).
 //
-// ⚠️ PLACEHOLDER — CHỜ ASSET LOGO MẪU 03 ĐƯỢC DUYỆT (docs/design/brand-identity.md).
-// KHÔNG coi đây là asset đã duyệt, KHÔNG dùng làm tài liệu thương mại chính thức.
-// Cấu trúc: 2 bong bóng lời thoại — bong bóng lớn màu #C65B43 (--fb-primary),
-// bong bóng nhỏ màu #E4AB56 (--fb-accent) giao nhau nhẹ; 3 chấm lời nhắn trang trí.
-// Size: "sm" (28px) | "md" (40px) | "lg" (64px).
+// Nguồn asset: docs/design/assets/family-bridge-logo-reference.png
+// (bảng concept do chủ dự án cung cấp). Derivative được tách DETERMINISTIC
+// bằng scripts/extract_logo_assets.py (projection theo pixel + threshold
+// nền), tọa độ + hash ghi trong docs/design/stitch-ui-upgrade/asset-manifest.json.
+// Ảnh giữ nguyên màu gốc rust/amber/nâu — ngoại lệ được user yêu cầu so với
+// logo prototype Stitch (PROMPT §4); không vẽ lại, không đổi hue.
+//
+// Size: "sm" (28px) | "md" (40px) | "lg" (64px). API giữ tương thích cũ
+// (createLogo({size})); cấu trúc bên trong đổi từ SVG placeholder sang
+// <img> thật (test design-system đã cập nhật theo đúng PROMPT §4).
 import { h } from "../app/dom.js";
+import logoMarkUrl from "../assets/logo/logo-mark-transparent.png";
 
 const SIZES = ["sm", "md", "lg"];
 
-// Markup SVG tĩnh (không có dữ liệu người dùng). Comment XML bên trong
-// nhắc rõ đây là placeholder; khi asset mẫu 03 được duyệt, thay nguyên khối này.
-const LOGO_SVG =
-  '<svg viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg" role="img" focusable="false">' +
-  "<title>Family Bridge</title>" +
-  "<!-- PLACEHOLDER chờ asset logo mẫu 03 được duyệt — brand-identity.md -->" +
-  '<rect x="4" y="11" width="31" height="23" rx="8" fill="#C65B43"/>' +
-  '<path d="M12 32.5V41l9.5-8.5Z" fill="#C65B43"/>' +
-  '<circle cx="35" cy="16" r="9.5" fill="#E4AB56"/>' +
-  '<circle cx="14" cy="22.5" r="1.8" fill="#FFF4E8"/>' +
-  '<circle cx="20.5" cy="22.5" r="1.8" fill="#FFF4E8"/>' +
-  '<circle cx="27" cy="22.5" r="1.8" fill="#FFF4E8"/>' +
-  "</svg>";
-
-export function createLogo({ size = "md" } = {}) {
+export function createLogo({ size = "md", variant = "mark" } = {}) {
   const safeSize = SIZES.includes(size) ? size : "md";
   const wrap = h("span", { class: `fb-logo fb-logo--${safeSize}` });
-  wrap.innerHTML = LOGO_SVG; // chuỗi tĩnh trong file này
+  wrap.appendChild(
+    h("img", {
+      src: logoMarkUrl, // Vite đóng gói vào build + manifest
+      alt: "Family Bridge",
+      width: "40",
+      height: "40",
+      loading: "eager",
+      decoding: "async",
+    })
+  );
   return wrap;
 }

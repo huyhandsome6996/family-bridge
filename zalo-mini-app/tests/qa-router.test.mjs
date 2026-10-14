@@ -7,6 +7,8 @@
 //
 // Pattern happy-dom giống tests/pages.test.mjs: gắn globals TRƯỚC import động.
 
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 const { Window } = await import("happy-dom");
 const domWindow = new Window({ url: "https://localhost/" });
 

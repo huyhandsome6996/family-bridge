@@ -504,7 +504,7 @@
   display: flex;
   align-items: center;
   gap: var(--fb-space-2);
-  min-height: 56px;
+  min-height: 64px;
   max-width: var(--fb-container-max);
   margin: 0 auto;
   padding: var(--fb-space-2) var(--fb-space-4);
@@ -542,9 +542,9 @@
 }
 
 .fb-top-bar__title {
-  font-size: var(--fb-font-size-h2);
-  font-weight: 700;
-  line-height: 1.3;
+  font-size: var(--fb-fs-headline-sm);
+  font-weight: 600;
+  line-height: var(--fb-lh-headline-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -652,4 +652,1513 @@
 .fb-logo--lg svg {
   width: 64px;
   height: 64px;
+}
+
+/* ============================================================
+   Stitch UI upgrade (2026-10) — hệ thống chia sẻ theo 4 màn tham chiếu
+   docs/design/stitch-reference/. Các class fb-* hiện có GIỮ NGUYÊN nghĩa
+   (design-system.test pin); phần dưới bổ sung class cho màn Stitch:
+   app header, thẻ/section, mood grid, tile, timer badge, progress bar…
+   Motion chỉ transform/opacity 150–200ms + prefers-reduced-motion.
+   ============================================================ */
+
+/* ---- Nhịp dọc giữa các section (Stitch: space-y-xl 24px; compose 16px) ---- */
+.fb-page__body {
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-page__body > * + * {
+  margin-top: var(--fb-space-6);
+}
+
+.fb-page--compose .fb-page__body > * + * {
+  margin-top: var(--fb-space-4);
+}
+
+/* ---- Icon (Material Symbols local) ---- */
+.fb-icon {
+  display: inline-block;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+/* ---- Logo thật (ảnh asset, không còn SVG placeholder) ---- */
+.fb-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fb-logo img {
+  display: block;
+  object-fit: contain; /* không bóp méo, giữ tỷ lệ gốc */
+}
+
+.fb-logo--sm img {
+  width: 28px;
+  height: 28px;
+}
+
+.fb-logo--md img {
+  width: 40px;
+  height: 40px;
+}
+
+.fb-logo--lg img {
+  width: 64px;
+  height: 64px;
+}
+
+/* ---- App header (U08/U10/U34) — chừa bên phải cho menu Zalo (pr-20) ---- */
+.fb-app-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--fb-z-top-bar);
+  padding-top: env(safe-area-inset-top, 0px);
+  background: rgba(255, 248, 246, 0.85);
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+  box-shadow: var(--fb-shadow-header);
+}
+
+.fb-app-header__inner {
+  height: 64px;
+  padding: 0 var(--fb-space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: var(--fb-container-max);
+  margin: 0 auto;
+}
+
+.fb-app-header__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  min-width: 0;
+}
+
+.fb-app-header__logo-box {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-primary-container);
+  color: var(--fb-on-primary-container);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(157, 61, 39, 0.25);
+}
+
+.fb-app-header__titles {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-app-header__app-name {
+  font-size: var(--fb-fs-headline-sm);
+  line-height: 1.2;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fb-primary);
+}
+
+.fb-app-header__subtitle {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-text-secondary);
+  margin-top: -2px;
+}
+
+.fb-app-header__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  /* Zalo capsule chiếm ~80px góc phải trên thiết bị thật */
+  padding-right: 80px;
+}
+
+.fb-app-header__help {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  min-height: 36px;
+  padding: 0 var(--fb-space-3);
+  border-radius: 9999px;
+  background: var(--fb-surface-low);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  text-decoration: none;
+  transition: background var(--fb-transition-base);
+}
+
+.fb-app-header__help:hover,
+.fb-app-header__help:focus-visible {
+  background: var(--fb-surface-container);
+}
+
+.fb-app-header__avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--fb-primary);
+  color: var(--fb-on-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---- Trang có app-header: chừa đúng chiều cao header ---- */
+.fb-page--under-header {
+  padding-top: 64px;
+  padding-top: calc(64px + env(safe-area-inset-top, 0px));
+}
+
+/* ---- Section hệ Stitch ---- */
+.fb-sec {
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-sec__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+}
+
+.fb-sec__greeting {
+  font-size: var(--fb-fs-headline-lg);
+  line-height: var(--fb-lh-headline-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-sec__sub {
+  font-size: var(--fb-fs-body-sm);
+  line-height: var(--fb-lh-body-sm);
+  color: var(--fb-text-secondary);
+}
+
+/* ---- Chip/pill hệ Stitch ---- */
+.fb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  padding: 4px var(--fb-space-3);
+  border-radius: 9999px;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  background: var(--fb-surface-container);
+  color: var(--fb-text-secondary);
+}
+
+.fb-chip--high {
+  background: var(--fb-surface-high);
+  box-shadow: var(--fb-shadow-sm);
+  font-weight: 500;
+}
+
+.fb-chip--low {
+  background: var(--fb-surface-low);
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-chip__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--fb-tertiary);
+}
+
+/* ---- Card trắng hệ Stitch (mới, không đụng .fb-card cũ) ---- */
+.fb-scard {
+  background: var(--fb-surface);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-4);
+  box-shadow: var(--fb-shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-scard__title {
+  font-size: var(--fb-fs-headline-sm);
+  line-height: var(--fb-lh-headline-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-scard__body {
+  font-size: var(--fb-fs-body-sm);
+  line-height: var(--fb-lh-body-sm);
+  color: var(--fb-text-secondary);
+}
+
+/* ---- CTA amber "Khi lòng đầy tâm sự" (U08) ---- */
+.fb-warm-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-tertiary-fixed);
+  box-shadow: var(--fb-shadow-sm);
+  padding: var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-warm-card__halo {
+  position: absolute;
+  right: -24px;
+  bottom: -24px;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: rgba(155, 107, 27, 0.1);
+  pointer-events: none;
+}
+
+.fb-warm-card__kicker {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fb-on-tertiary-fixed-variant);
+}
+
+.fb-warm-card__title {
+  font-size: var(--fb-fs-headline-sm);
+  line-height: var(--fb-lh-headline-sm);
+  font-weight: 600;
+  color: var(--fb-on-tertiary-fixed);
+}
+
+.fb-warm-card__body {
+  font-size: var(--fb-fs-body-sm);
+  line-height: var(--fb-lh-body-sm);
+  color: var(--fb-on-tertiary-fixed);
+}
+
+.fb-btn-amber {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-accent);
+  color: var(--fb-on-amber); /* 4.56:1 trên #E4AB56 (deviation ghi nhận) */
+  font-family: inherit;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  cursor: pointer;
+  box-shadow: var(--fb-shadow-sm);
+  transition: opacity var(--fb-transition-quick), transform var(--fb-transition-quick);
+}
+
+.fb-btn-amber:hover {
+  background: #D89E49;
+}
+
+.fb-btn-amber:active {
+  transform: scale(0.99);
+}
+
+.fb-btn-amber:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- Mood grid (U08 3 cột / U10 4 cột) ---- */
+.fb-mood-grid {
+  display: grid;
+  gap: var(--fb-space-2);
+}
+
+.fb-mood-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.fb-mood-grid--4 {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.fb-mood {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 44px;
+  padding: var(--fb-space-3);
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  color: var(--fb-text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--fb-transition-base), transform var(--fb-transition-quick);
+}
+
+.fb-mood:hover {
+  background: var(--fb-surface-container);
+}
+
+.fb-mood:active {
+  transform: scale(0.95);
+}
+
+.fb-mood__emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.fb-mood__label {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 500;
+}
+
+.fb-mood[aria-pressed="true"] {
+  background: var(--fb-primary-fixed);
+  color: var(--fb-primary);
+}
+
+.fb-mood--warm[aria-pressed="true"] {
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-on-secondary-fixed-variant);
+}
+
+.fb-mood:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.fb-mood-feedback {
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-container);
+  padding: var(--fb-space-3);
+  text-align: center;
+  font-size: var(--fb-fs-body-sm);
+  line-height: var(--fb-lh-body-sm);
+  color: var(--fb-primary);
+}
+
+/* ---- Ảnh minh họa + overlay gradient (U01/U08/U10) ---- */
+.fb-photo {
+  position: relative;
+  border-radius: var(--fb-radius-group);
+  overflow: hidden;
+  background: var(--fb-surface-container);
+}
+
+.fb-photo img {
+  display: block;
+  width: 100%;
+  height: 144px;
+  object-fit: cover;
+}
+
+.fb-photo__overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  padding: var(--fb-space-3);
+  background: linear-gradient(to top, rgba(80, 35, 25, 0.8), rgba(80, 35, 25, 0.3) 50%, transparent);
+}
+
+.fb-photo__caption {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-inverse-on-surface);
+  background: rgba(80, 35, 25, 0.6);
+  padding: 2px var(--fb-space-2);
+  border-radius: 9999px;
+}
+
+.fb-photo__caption--plain {
+  background: transparent;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 500;
+}
+
+/* U10 activity caption giữ headline-sm (đúng reference U10) */
+.fb-photo__caption--headline {
+  background: transparent;
+  font-size: var(--fb-fs-headline-sm);
+  line-height: 1.3;
+  font-weight: 600;
+}
+
+/* ---- Quick action tiles (U08 "Lối tắt nhanh") ---- */
+.fb-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--fb-space-2);
+}
+
+.fb-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  box-shadow: var(--fb-shadow-sm);
+  color: var(--fb-text);
+  text-decoration: none;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background var(--fb-transition-base);
+}
+
+.fb-tile:hover {
+  background: var(--fb-surface-low);
+}
+
+.fb-tile:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.fb-tile__icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--fb-space-1);
+}
+
+.fb-tile__icon--primary {
+  background: var(--fb-surface-container);
+  color: var(--fb-primary);
+}
+
+.fb-tile__icon--warm {
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-on-secondary-fixed);
+}
+
+.fb-tile__icon--amber {
+  background: var(--fb-tertiary-fixed);
+  color: var(--fb-on-tertiary-fixed);
+}
+
+.fb-tile__label {
+  font-size: var(--fb-fs-label-sm);
+  line-height: 1.3;
+  font-weight: 500;
+}
+
+.fb-tile__hint {
+  font-size: 11px;
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+/* ---- Thanh trợ giúp khẩn cấp (U08) ---- */
+.fb-help-bar {
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-container);
+  padding: var(--fb-space-3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-help-bar__action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 36px;
+  padding: 0 var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 500;
+  text-decoration: none;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---- Rust primary card (U10 "Chủ động kết nối") ---- */
+.fb-rust-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-primary);
+  color: var(--fb-on-primary);
+  padding: var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+  box-shadow: 0 4px 12px rgba(157, 61, 39, 0.25);
+}
+
+.fb-rust-card__halo {
+  position: absolute;
+  right: -32px;
+  bottom: -40px;
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  background: rgba(189, 84, 61, 0.4);
+  filter: blur(24px);
+  pointer-events: none;
+}
+
+.fb-rust-card__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  align-self: flex-start;
+  padding: 2px var(--fb-space-2);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--fb-primary-fixed);
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+}
+
+.fb-rust-card__title {
+  font-size: var(--fb-fs-headline-md);
+  line-height: var(--fb-lh-headline-md);
+  font-weight: 600;
+  color: var(--fb-on-primary);
+}
+
+.fb-rust-card__body {
+  font-size: var(--fb-fs-body-sm);
+  line-height: var(--fb-lh-body-sm);
+  color: var(--fb-primary-fixed-dim);
+}
+
+.fb-btn-inverse {
+  width: 100%;
+  min-height: 48px;
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface);
+  color: var(--fb-primary);
+  font-family: inherit;
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  cursor: pointer;
+  box-shadow: var(--fb-shadow-sm);
+  transition: background var(--fb-transition-base);
+}
+
+.fb-btn-inverse:hover {
+  background: var(--fb-surface-low);
+}
+
+/* ---- Số thứ tự bài học (U10, 3 điều) ---- */
+.fb-numbered {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-2);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+}
+
+.fb-numbered__n {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--fb-primary-container);
+  color: var(--fb-on-primary-container);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fb-numbered__text {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.35;
+  color: var(--fb-text);
+}
+
+/* ---- Timer pause (U34) ---- */
+.fb-timer-badge {
+  padding: 4px var(--fb-space-3);
+  border-radius: 9999px;
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-on-secondary-fixed);
+  font-size: var(--fb-fs-headline-sm);
+  line-height: var(--fb-lh-headline-sm);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-variant-numeric: tabular-nums;
+}
+
+.fb-progress {
+  width: 100%;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--fb-surface-high);
+  overflow: hidden;
+}
+
+.fb-progress__fill {
+  height: 100%;
+  width: 0;
+  border-radius: 9999px;
+  background: var(--fb-primary);
+}
+
+/* ---- Footer ghi chú giữa trang (U10) ---- */
+.fb-page-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding-top: var(--fb-space-2);
+  padding-bottom: var(--fb-space-6);
+}
+
+.fb-page-footer__line {
+  width: 48px;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--fb-surface-highest);
+}
+
+/* ---- CTA lớn 56px (U34 "Xem trước nội dung") ---- */
+.fb-btn-hero {
+  width: 100%;
+  min-height: 56px;
+  border: 0;
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-primary);
+  color: var(--fb-on-primary);
+  font-family: inherit;
+  font-size: var(--fb-fs-headline-sm);
+  line-height: var(--fb-lh-headline-sm);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(157, 61, 39, 0.3);
+  transition: transform var(--fb-transition-quick), opacity var(--fb-transition-quick);
+}
+
+.fb-btn-hero:active {
+  transform: scale(0.98);
+}
+
+.fb-btn-hero:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ---- Brand label chữ (U01) ---- */
+.fb-brand-label {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  color: var(--fb-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 600;
+}
+
+/* ---- Hero glow quanh logo (U01) ---- */
+.fb-logo-glow {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.fb-logo-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 221, 178, 0.4);
+  filter: blur(6px);
+}
+
+.fb-logo-glow > .fb-logo {
+  position: relative;
+  z-index: 1;
+}
+
+/* ---- Top-bar slot phải tùy chọn (Stitch U34) ---- */
+.fb-top-bar__left {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.fb-top-bar__right--actions {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  /* Chừa chỗ capsule Zalo ở góc phải màn hình thật */
+  padding-right: 80px;
+}
+
+.fb-top-bar__help-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  min-height: 36px;
+  padding: 0 var(--fb-space-3);
+  border-radius: 9999px;
+  background: var(--fb-surface-low);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.fb-top-bar__help-pill:hover,
+.fb-top-bar__help-pill:focus-visible {
+  background: var(--fb-surface-container);
+}
+
+/* ---- U01 Welcome (Stitch) ---- */
+.fb-welcome__pill-row {
+  display: flex;
+  justify-content: center;
+  margin: var(--fb-space-2) 0;
+}
+
+.fb-welcome__pill-row .fb-chip--high {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.fb-welcome__pill-row .fb-icon {
+  color: var(--fb-primary);
+}
+
+.fb-welcome__hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  background: var(--fb-surface);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-4);
+  box-shadow: var(--fb-shadow-sm);
+  margin-top: var(--fb-space-1);
+}
+
+.fb-welcome__hero .fb-logo-glow {
+  margin-bottom: var(--fb-space-3);
+}
+
+.fb-welcome__title {
+  font-size: var(--fb-fs-headline-lg);
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--fb-text);
+  margin: var(--fb-space-1) 0 var(--fb-space-2);
+}
+
+.fb-welcome__desc {
+  font-size: var(--fb-fs-body);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  max-width: 20rem;
+}
+
+.fb-welcome__photo {
+  margin-top: var(--fb-space-3);
+}
+
+.fb-welcome__heart {
+  color: var(--fb-tertiary-fixed);
+}
+
+.fb-welcome__commit {
+  margin-top: var(--fb-space-3);
+  background: var(--fb-surface-low);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-3);
+  box-shadow: var(--fb-shadow-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+}
+
+.fb-welcome__shield {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-welcome__commit-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-welcome__commit-head {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+
+.fb-welcome__commit-title {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-chip--safety {
+  background: var(--fb-surface-highest);
+  color: var(--fb-on-secondary-fixed-variant);
+  padding: 2px 6px;
+}
+
+.fb-welcome__commit-text {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.35;
+  color: var(--fb-text-secondary);
+}
+
+.fb-welcome__commit-chips {
+  margin-top: var(--fb-space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-1);
+}
+
+.fb-welcome__commit-chips .fb-icon {
+  color: var(--fb-outline);
+}
+
+.fb-welcome__commit-chips .fb-welcome__chip-timer {
+  color: var(--fb-tertiary);
+}
+
+.fb-welcome__actions {
+  margin-top: var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-welcome__links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fb-space-2);
+  padding-top: var(--fb-space-1);
+}
+
+.fb-welcome__how {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  padding: 4px 0;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  color: var(--fb-text-secondary);
+  cursor: pointer;
+  min-height: 44px;
+}
+
+.fb-welcome__help {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-1);
+  padding: 10px var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-high);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 600;
+  text-decoration: none;
+  min-height: 44px;
+  transition: background var(--fb-transition-base);
+}
+
+.fb-welcome__help:hover,
+.fb-welcome__help:focus-visible {
+  background: rgba(255, 218, 211, 0.5);
+}
+
+.fb-welcome__micro {
+  margin-top: var(--fb-space-3);
+  text-align: center;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-outline-text);
+  padding-bottom: var(--fb-space-6);
+}
+
+/* ---- U08/U10 Home (Stitch) ---- */
+.fb-stitch-primary-icon { color: var(--fb-primary); }
+.fb-stitch-tertiary-icon { color: var(--fb-tertiary); }
+
+.fb-warm-card__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--fb-surface);
+  color: var(--fb-tertiary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--fb-shadow-sm);
+  flex-shrink: 0;
+}
+
+.fb-warm-card__title--block {
+  display: block;
+}
+
+.fb-connect__icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-on-secondary-fixed);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-connect__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-connect__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fb-connect__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16A34A;
+  display: inline-block;
+}
+
+.fb-connect__boundary {
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  padding: var(--fb-space-3);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+}
+
+.fb-connect__boundary .fb-icon { color: var(--fb-primary); }
+
+.fb-connect__boundary-title {
+  display: block;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  color: var(--fb-text);
+}
+
+.fb-connect__boundary-text {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.4;
+  color: var(--fb-text-secondary);
+  margin-top: 2px;
+}
+
+.fb-journey__kicker {
+  display: block;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fb-primary);
+  font-weight: 500;
+  margin-bottom: 2px;
+}
+
+.fb-journey__count {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--fb-primary-fixed);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-journey__lesson-label {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-journey__lesson {
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  color: var(--fb-text);
+}
+
+.fb-journey__cta {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px var(--fb-space-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.fb-care__kicker {
+  display: block;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fb-primary);
+  font-weight: 600;
+}
+
+.fb-care__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-on-secondary-fixed-variant);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-care__reminder {
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  padding: var(--fb-space-3);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.5;
+  color: var(--fb-text-secondary);
+}
+
+.fb-care__reminder-strong {
+  color: var(--fb-primary);
+  font-weight: 500;
+}
+
+.fb-chip--warm {
+  background: var(--fb-secondary-fixed);
+  color: var(--fb-on-secondary-fixed);
+  font-weight: 600;
+}
+
+.fb-trust__icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--fb-surface-highest);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-trust__title {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-trust__chip {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+}
+
+.fb-help-bar__heart {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fb-surface);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--fb-shadow-sm);
+  flex-shrink: 0;
+}
+
+.fb-help-bar__title {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+/* ---- U34 Compose (Stitch) ---- */
+.fb-compose__privacy-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+  padding: 0 var(--fb-space-1);
+}
+
+.fb-compose__privacy-row .fb-chip--high {
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.fb-compose__privacy-row .fb-icon { color: var(--fb-text-secondary); }
+
+.fb-compose__safety {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 600;
+}
+
+.fb-compose__recipient { padding: var(--fb-space-3); }
+
+.fb-compose__avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--fb-surface-high);
+  color: var(--fb-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.fb-compose__avatar-initials {
+  font-size: var(--fb-fs-headline-sm);
+  font-weight: 600;
+  color: var(--fb-on-secondary-fixed-variant);
+}
+
+.fb-compose__recipient-name {
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 500;
+  color: var(--fb-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-compose__intent {
+  background: var(--fb-surface-low);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-compose__intent-chip {
+  background: var(--fb-surface);
+  border-radius: var(--fb-radius-control);
+  padding: var(--fb-space-3);
+  box-shadow: var(--fb-shadow-sm);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+}
+
+.fb-compose__intent-title {
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-compose__tune { color: var(--fb-outline-variant); }
+
+.fb-compose__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  color: var(--fb-text);
+  font-weight: 500;
+}
+
+.fb-compose__required { color: var(--fb-primary); }
+
+.fb-compose__textarea {
+  width: 100%;
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  color: var(--fb-text);
+  font-family: inherit;
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  padding: var(--fb-space-3);
+  resize: none;
+  outline: none;
+  transition: background var(--fb-transition-base);
+}
+
+.fb-compose__textarea::placeholder { color: var(--fb-outline-text); }
+
+.fb-compose__textarea:focus {
+  background: var(--fb-surface-container);
+}
+
+.fb-compose__ai {
+  background: var(--fb-surface-low);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+}
+
+.fb-compose__ai-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__change-btn {
+  min-height: 36px;
+  padding: 0 var(--fb-space-3);
+  border-radius: 9999px;
+  background: var(--fb-surface-container);
+  color: var(--fb-primary);
+  border: 0;
+  font-family: inherit;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.fb-compose__change-btn:hover {
+  background: var(--fb-surface-high);
+}
+
+.fb-compose__ai-btn {
+  border-radius: 9999px;
+  padding: 8px var(--fb-space-3);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+  white-space: nowrap;
+}
+
+.fb-compose__help-circle {
+  width: 40px;
+  height: 40px;
+}
+
+.fb-compose__hourglass {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fb-surface-high);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-compose__pause-info {
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  padding: var(--fb-space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fb-compose__pause-copy {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__pause-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--fb-space-2);
+  padding-top: var(--fb-space-1);
+}
+
+.fb-btn--neutral {
+  background: var(--fb-surface-container);
+  color: var(--fb-text);
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+}
+
+.fb-btn--neutral:hover {
+  background: var(--fb-surface-high);
+}
+
+.fb-compose__pause-btn {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px var(--fb-space-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-1);
+  white-space: nowrap;
+}
+
+.fb-compose__refresh-row {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__refresh {
+  background: transparent;
+  border: 0;
+  color: var(--fb-primary);
+  font-family: inherit;
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  min-height: 32px;
+  border-radius: var(--fb-radius-control);
+}
+
+.fb-compose__refresh:hover { background: var(--fb-surface-container); }
+
+.fb-compose__footer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-1) 0 var(--fb-space-3);
+}
+
+.fb-compose__footer-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__check { color: var(--fb-outline); }
+
+.fb-compose__preview-body {
+  background: var(--fb-surface-low);
+  border-radius: var(--fb-radius-control);
+  padding: var(--fb-space-3);
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  color: var(--fb-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* ---- U01 CTA glyph Zalo (reference: svg fill-current 20px) ---- */
+.fb-welcome__cta-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.fb-welcome__cta {
+  min-height: 48px;
+  padding: 8px var(--fb-space-3);
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 500;
+  white-space: nowrap;
 }

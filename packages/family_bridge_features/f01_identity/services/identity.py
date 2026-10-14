@@ -16,9 +16,12 @@ Contract (WF-01, SEC-01/02, US-011):
 
 from __future__ import annotations
 
+import re
 import secrets
 import datetime as dt
 from typing import Optional
+
+from django.db import IntegrityError
 
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -29,9 +32,19 @@ from family_bridge_core.errors import (
 from family_bridge_core.protocols import IdentityVerifier
 from family_bridge_core.timeutils import UTC
 
+from .policy import is_current_version
+
 SESSION_TTL_SECONDS = 24 * 3600  # P-04 provisional (DEC-14 open)
 
 PROVIDER = "zalo"
+
+# A03: the access token travels in an HTTP request header to the provider.
+# Characters that are illegal in a header value (CR/LF, control chars,
+# non-ASCII) must be rejected BEFORE any transport call: http.client would
+# otherwise raise mid-request, turn the endpoint into a 500 and leak the
+# canary token into the django.request exception log. This is a validator,
+# NOT a silent sanitizer — a token that fails this check is rejected as-is.
+_ACCESS_TOKEN_SAFE_RE = re.compile(r"^[A-Za-z0-9._~+/=-]+$")
 
 
 class SessionService:
@@ -45,11 +58,20 @@ class SessionService:
     def _now(self) -> dt.datetime:
         return self.clock.now() if self.clock else dt.datetime.now(tz=UTC)
 
-    @transaction.atomic
     def login_with_zalo_token(self, *, access_token: str):
-        """Verify -> map subject -> issue session. Returns (user, raw_token)."""
+        """Verify -> map subject -> issue session. Returns (user, raw_token).
+
+        No DB transaction is held open across the provider HTTP call
+        (WF-11): verification runs first, provisioning runs in its own
+        short transaction, session issuance in another.
+        """
         if not isinstance(access_token, str) or not (8 <= len(access_token) <= 2048):
             raise InputInvalid({"field": "access_token", "reason": "malformed"})
+        # A03: header-safe credential only (see comment on the regex).
+        # No value is echoed back — the error carries the field name only.
+        if not _ACCESS_TOKEN_SAFE_RE.fullmatch(access_token):
+            raise InputInvalid({"field": "access_token", "reason": "malformed"})
+        # Provider call OUTSIDE any DB transaction (WF-11).
         try:
             identity = self.verifier.verify(access_token=access_token)
         except TemporarilyUnavailable:
@@ -60,38 +82,69 @@ class SessionService:
             # Wrong parent app: refuse, never map the subject.
             raise InputInvalid({"reason": "wrong_app_id"})
 
-        User = get_user_model()
-        from ..models import ProviderIdentity, Session, hash_token
+        user = self._resolve_user(identity)
+
+        if not user.is_active:
+            raise NotAuthenticated({"reason": "user_disabled"})
+
+        raw_token, session = self._issue_session(user)
+        return user, raw_token, session
+
+    def _resolve_user(self, identity):
+        """Map a verified subject to the internal user (provision if new).
+
+        Concurrent first logins of the same identity: the UNIQUE(provider,
+        app_id, provider_subject) constraint decides the winner; the loser
+        re-fetches and continues on the winning account — no duplicate user,
+        no unhandled 500.
+        """
+        from ..models import ProviderIdentity
 
         existing = (ProviderIdentity.objects
                     .select_related("user")
                     .filter(provider=PROVIDER, app_id=self.app_id,
                             provider_subject=identity.provider_subject)
                     .first())
-        if existing is None:
-            user = User.objects.create_user(
-                username=f"zalo_{self.app_id}_{identity.provider_subject}"[:150],
-                password=secrets.token_urlsafe(32),  # unusable random; login is provider-only
-                first_name="",
-            )
-            ProviderIdentity.objects.create(
-                user=user, provider=PROVIDER, app_id=self.app_id,
-                provider_subject=identity.provider_subject,
-            )
-        else:
-            user = existing.user
+        if existing is not None:
+            return existing.user
+        try:
+            with transaction.atomic():
+                User = get_user_model()
+                user = User.objects.create_user(
+                    username=f"zalo_{self.app_id}_{identity.provider_subject}"[:150],
+                    password=secrets.token_urlsafe(32),  # unusable random; login is provider-only
+                    first_name="",
+                )
+                ProviderIdentity.objects.create(
+                    user=user, provider=PROVIDER, app_id=self.app_id,
+                    provider_subject=identity.provider_subject,
+                )
+                return user
+        except IntegrityError:
+            # Lost the provisioning race: another transaction inserted the
+            # same identity row first. Roll nothing forward — re-read the
+            # winner and continue with it.
+            existing = (ProviderIdentity.objects
+                        .select_related("user")
+                        .filter(provider=PROVIDER, app_id=self.app_id,
+                                provider_subject=identity.provider_subject)
+                        .first())
+            if existing is None:
+                raise
+            return existing.user
 
-        if not user.is_active:
-            raise NotAuthenticated({"reason": "user_disabled"})
+    def _issue_session(self, user):
+        from ..models import Session, hash_token
 
         raw_token = secrets.token_urlsafe(32)
         now = self._now()
-        session = Session.objects.create(
-            user=user,
-            token_hash=hash_token(raw_token),
-            expires_at=now + dt.timedelta(seconds=self.ttl_seconds),
-        )
-        return user, raw_token, session
+        with transaction.atomic():
+            session = Session.objects.create(
+                user=user,
+                token_hash=hash_token(raw_token),
+                expires_at=now + dt.timedelta(seconds=self.ttl_seconds),
+            )
+        return raw_token, session
 
     @staticmethod
     def resolve_session(raw_token: str):
@@ -117,16 +170,31 @@ class SessionService:
 
     @staticmethod
     def revoke_all_for_user(user_id) -> int:
-        from .models import Session
-        count = 0
-        for session in Session.objects.filter(user_id=user_id, revoked_at__isnull=True):
-            count += 1 if session.revoke() else 0
-        return count
+        """Revoke every LIVE session of ONE user (A12).
+
+        Single bounded UPDATE — no N+1 row loop, idempotent, and other
+        users' sessions are untouched by construction (filter by user_id).
+        Already-revoked AND already-expired sessions are skipped (nothing
+        left to revoke). The old implementation also had a broken relative
+        import (`from .models import Session` -> ModuleNotFoundError on the
+        real port path).
+        """
+        from ..models import Session
+        now = dt.datetime.now(tz=UTC)
+        return int(Session.objects
+                   .filter(user_id=user_id, revoked_at__isnull=True,
+                           expires_at__gt=now)
+                   .update(revoked_at=now))
 
 
 def record_consent(*, user, purpose: str, policy_version: str,
                    decision: str, now: Optional[dt.datetime] = None):
-    """Explicit consent per purpose/version (WF-17). Never implied."""
+    """Explicit consent per purpose/version (WF-17). Never implied.
+
+    A05: only the CURRENTLY PUBLISHED version (services/policy.py) is
+    recordable — an unpublished/retired version string must not silently
+    become a ledger entry that later reads as consent.
+    """
     from ..models import ConsentRecord
 
     if purpose not in ConsentRecord.PURPOSES:
@@ -135,6 +203,9 @@ def record_consent(*, user, purpose: str, policy_version: str,
         raise InputInvalid({"field": "decision", "reason": "invalid_enum"})
     if not isinstance(policy_version, str) or not (1 <= len(policy_version) <= 32):
         raise InputInvalid({"field": "policy_version", "reason": "malformed"})
+    if not is_current_version(purpose, policy_version):
+        raise InputInvalid({"field": "policy_version",
+                            "reason": "policy_version_not_current"})
     return ConsentRecord.objects.create(
         user=user, purpose=purpose, policy_version=policy_version,
         decision=decision, recorded_at=now or dt.datetime.now(tz=UTC),
@@ -142,6 +213,22 @@ def record_consent(*, user, purpose: str, policy_version: str,
 
 
 def has_active_consent(user_id, purpose: str) -> bool:
+    """Effective consent for the CURRENT policy version (A02).
+
+    Effectiveness is decided by the LATEST record of the purpose (stable
+    order: recorded_at desc, then id desc): a withdrawn/declined latest
+    record must NOT resurrect an older acceptance. A latest acceptance for
+    an old policy version is also not active — new version requires a new
+    explicit decision. A fresh acceptance after withdrawal is a NEW active
+    action (it is the latest record).
+    """
     from ..models import ConsentRecord
-    latest = ConsentRecord.latest_active(user_id, purpose)
-    return bool(latest and latest.decision == "accepted")
+
+    latest = (ConsentRecord.objects
+              .filter(user_id=user_id, purpose=purpose)
+              .order_by("-recorded_at", "-id").first())
+    if latest is None or latest.withdrawn_at is not None:
+        return False
+    if latest.decision != "accepted":
+        return False
+    return is_current_version(purpose, latest.policy_version)

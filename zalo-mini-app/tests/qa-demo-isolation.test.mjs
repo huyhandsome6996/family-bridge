@@ -9,9 +9,10 @@
 
 // Shim import.meta.env cho config.js (nhờ qa-hook.mjs): giá trị đúng như
 // build không cấu hình — PROD:false, không VITE_API_BASE_URL.
+import { register } from "node:module";
+await register(new URL("./asset-hook.mjs", import.meta.url));
 globalThis.__FB_QA_ENV__ = { PROD: false, VITE_API_BASE_URL: "" };
 
-const { register } = await import("node:module");
 register("./qa-hook.mjs", import.meta.url, { data: { active: true } });
 
 const { Window } = await import("happy-dom");
@@ -95,8 +96,20 @@ describe("QA: adapter mock (demo) trả fixture, không giả session thật", (
 
   it("adapter mock KHÔNG có phương thức gửi tín hiệu/tin nhắn (send/submit/push)", () => {
     const adapter = createMockAdapter({ scenario: null });
+  // F06 drafts: hợp đồng backend thật (xác nhận gửi CUỐI do người dùng bấm
+  // sau bước preview; máy chủ thực thi + ghi trạng thái). Không phải cơ chế
+  // auto-send mà rule này cấm — rule vẫn cấm mọi method lạ ngoài danh sách.
+  const F06_CONTRACT_METHODS = new Set([
+    "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
+    "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
+  ]);
+
     for (const key of Object.keys(adapter)) {
+      if (F06_CONTRACT_METHODS.has(key)) continue;
       assert.doesNotMatch(key, /send|submit|push|publish|post/i, `method lạ: ${key}`);
+    }
+    for (const key of F06_CONTRACT_METHODS) {
+      assert.ok(typeof adapter[key] === "function", `thiếu method F06: ${key}`);
     }
   });
 });
@@ -138,8 +151,20 @@ describe("QA: adapter zalo (production) KHÔNG fake dữ liệu", () => {
 
   it("adapter zalo KHÔNG có phương thức gửi tín hiệu/tin nhắn", () => {
     const adapter = createZaloAdapter({ baseUrl: "https://example.org" });
+  // F06 drafts: hợp đồng backend thật (xác nhận gửi CUỐI do người dùng bấm
+  // sau bước preview; máy chủ thực thi + ghi trạng thái). Không phải cơ chế
+  // auto-send mà rule này cấm — rule vẫn cấm mọi method lạ ngoài danh sách.
+  const F06_CONTRACT_METHODS = new Set([
+    "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
+    "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
+  ]);
+
     for (const key of Object.keys(adapter)) {
+      if (F06_CONTRACT_METHODS.has(key)) continue;
       assert.doesNotMatch(key, /send|submit|push|publish|post/i, `method lạ: ${key}`);
+    }
+    for (const key of F06_CONTRACT_METHODS) {
+      assert.ok(typeof adapter[key] === "function", `thiếu method F06: ${key}`);
     }
   });
 });

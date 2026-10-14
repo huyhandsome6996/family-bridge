@@ -9,11 +9,15 @@ Positive + negative paths per the verification plan (SEC-01/02/05):
 """
 
 import datetime as dt
+import hashlib
+import hmac
 import json
 from unittest import mock
 
 from django.contrib.auth import get_user_model
+from django.db import connection, IntegrityError
 from django.test import TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from rest_framework.test import APIClient
 
 from family_bridge_core.errors import NotAuthenticated
@@ -24,7 +28,9 @@ from ..models import ConsentRecord, ProviderIdentity, Session, hash_token
 from ..services.identity import (
     SessionService, has_active_consent, record_consent,
 )
-from ..services.zalo_provider import ZaloPlatformVerifier
+from ..services.zalo_provider import (
+    ZaloPlatformVerifier, appsecret_proof,
+)
 from .helpers import auth_header, make_session
 
 APP_ID = "1234567890"
@@ -32,12 +38,72 @@ SECRET = "unit-test-secret-not-real"
 
 
 def verifier_with_script(script: dict) -> ZaloPlatformVerifier:
-    def http_get(url: str) -> bytes:
+    def http_get(url: str, headers=None) -> bytes:
         # scripted HTTP double (SEC-01 test double, no network)
-        token = url.split("access_token=")[1].split("&")[0]
+        token = (headers or {}).get("access_token", "")
         body = script[token]
         return json.dumps(body).encode("utf-8")
     return ZaloPlatformVerifier(app_id=APP_ID, app_secret=SECRET, http_get=http_get)
+
+
+class ZaloVerifierRequestShapeTests(TestCase):
+    """The request to Zalo must follow the current platform contract:
+    headers access_token + appsecret_proof, token NEVER in the URL."""
+
+    def _capture(self):
+        captured = {}
+
+        def http_get(url: str, headers=None):
+            captured["url"] = url
+            captured["headers"] = dict(headers or {})
+            return json.dumps({"id": "910112233445566"}).encode("utf-8")
+
+        verifier = ZaloPlatformVerifier(
+            app_id=APP_ID, app_secret=SECRET, http_get=http_get)
+        return verifier, captured
+
+    def test_token_and_proof_sent_in_headers_not_url(self):
+        verifier, captured = self._capture()
+        verifier.verify(access_token="good-token")
+        self.assertEqual(captured["url"], "https://graph.zalo.me/v2.0/me?fields=id")
+        self.assertNotIn("access_token=", captured["url"])
+        self.assertEqual(captured["headers"]["access_token"], "good-token")
+
+    def test_appsecret_proof_is_hmac_sha256_hex(self):
+        verifier, captured = self._capture()
+        verifier.verify(access_token="good-token")
+        expected = hmac.new(
+            SECRET.encode("utf-8"), b"good-token", hashlib.sha256
+        ).hexdigest()
+        self.assertEqual(captured["headers"]["appsecret_proof"], expected)
+        self.assertEqual(
+            captured["headers"]["appsecret_proof"],
+            appsecret_proof("good-token", SECRET))
+
+    def test_proof_uses_configured_secret_not_input(self):
+        # A different secret must produce a different proof (algorithm pin);
+        # direct helper check keeps this independent of HTTP wiring.
+        self.assertNotEqual(
+            appsecret_proof("t", SECRET), appsecret_proof("t", "another-secret"))
+
+    def test_missing_credentials_fail_closed(self):
+        verifier = ZaloPlatformVerifier(app_id="", app_secret="")
+        from family_bridge_core.errors import TemporarilyUnavailable
+        with self.assertRaises(TemporarilyUnavailable):
+            verifier.verify(access_token="whatever-token")
+
+    def test_live_verified_session_error_452_maps_to_token_invalid(self):
+        # Live smoke 2026-10-13: graph.zalo.me returns {"error": 452} for an
+        # invalid/revoked session key even with correct headers+proof shape.
+        def http_get(url, headers=None):
+            return json.dumps(
+                {"error": 452,
+                 "message": "Session key invalid."}).encode("utf-8")
+        verifier = ZaloPlatformVerifier(
+            app_id=APP_ID, app_secret=SECRET, http_get=http_get)
+        with self.assertRaises(NotAuthenticated) as ctx:
+            verifier.verify(access_token="revoked-or-garbage")
+        self.assertIn("token_invalid_or_expired", str(ctx.exception.details))
 
 
 @override_settings(ZALO_APP_ID=APP_ID, ZALO_APP_SECRET=SECRET)
@@ -119,6 +185,56 @@ class ZaloLoginTests(TestCase):
         self.assertIsNone(SessionService.resolve_session(raw_token))
         self.assertTrue(service.revoke_by_token(raw_token) is False or True)
         # second revoke returns False (already revoked) — idempotent
+
+    def test_provider_call_runs_before_any_db_query(self):
+        # WF-11: no DB transaction/query may be open while the provider HTTP
+        # call runs. Spy on verify and count captured queries at call time.
+        with CaptureQueriesContext(connection) as ctx:
+            snapshot = {}
+            real_verify = self.verifier.verify
+
+            def spy(*, access_token):
+                snapshot["count"] = len(ctx.captured_queries)
+                return real_verify(access_token=access_token)
+
+            with mock.patch.object(self.verifier, "verify", side_effect=spy):
+                self._service().login_with_zalo_token(access_token="good-token")
+        self.assertEqual(snapshot["count"], 0)
+
+    def test_concurrent_first_login_recovers_to_winning_account(self):
+        # Race: our read misses, another transaction inserts the identity,
+        # our INSERT hits uniq_provider_subject. Login must re-read the
+        # winner — same account, no duplicate, no 500.
+        User = get_user_model()
+        winner = User.objects.create_user(
+            username=f"zalo_{APP_ID}_910112233445566", password="x")
+        ProviderIdentity.objects.create(
+            user=winner, provider="zalo", app_id=APP_ID,
+            provider_subject="910112233445566")
+
+        state = {"missed": False}
+        real_filter = ProviderIdentity.objects.filter
+        real_create = ProviderIdentity.objects.create
+
+        def miss_once(*args, **kwargs):
+            if not state["missed"]:
+                state["missed"] = True
+                return ProviderIdentity.objects.none()
+            return real_filter(*args, **kwargs)
+
+        def lose_race(**kwargs):
+            raise IntegrityError("uniq_provider_subject simulated race loss")
+
+        with mock.patch.object(ProviderIdentity.objects, "filter",
+                               side_effect=miss_once), \
+                mock.patch.object(ProviderIdentity.objects, "create",
+                                  side_effect=lose_race):
+            user, raw_token, session = self._service().login_with_zalo_token(
+                access_token="good-token")
+        self.assertEqual(user.pk, winner.pk)
+        self.assertEqual(ProviderIdentity.objects.count(), 1)
+        self.assertTrue(
+            Session.objects.filter(token_hash=hash_token(raw_token)).exists())
 
 
 @override_settings(ZALO_APP_ID=APP_ID, ZALO_APP_SECRET=SECRET)

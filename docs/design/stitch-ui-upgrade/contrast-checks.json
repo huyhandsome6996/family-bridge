@@ -1,0 +1,154 @@
+{
+  "method": "WCAG 2.x relative luminance, sRGB, solid hex",
+  "thresholds": {
+    "normal_text": 4.5,
+    "large_text": 3.0,
+    "ui_components": 3.0
+  },
+  "pairs": [
+    {
+      "fg": "#360F07",
+      "bg": "#FFF8F6",
+      "role": "on-surface trên nền trang",
+      "minimum": 4.5,
+      "ratio": 16.29,
+      "pass": true
+    },
+    {
+      "fg": "#56423E",
+      "bg": "#FFF8F6",
+      "role": "on-surface-variant trên nền trang",
+      "minimum": 4.5,
+      "ratio": 8.91,
+      "pass": true
+    },
+    {
+      "fg": "#56423E",
+      "bg": "#FFFFFF",
+      "role": "on-surface-variant trên card trắng",
+      "minimum": 4.5,
+      "ratio": 9.36,
+      "pass": true
+    },
+    {
+      "fg": "#FFFFFF",
+      "bg": "#9D3D27",
+      "role": "on-primary trên CTA primary",
+      "minimum": 4.5,
+      "ratio": 6.71,
+      "pass": true
+    },
+    {
+      "fg": "#FFFBFF",
+      "bg": "#BD543D",
+      "role": "on-primary-container trên header logo box",
+      "minimum": 4.5,
+      "ratio": 4.56,
+      "pass": true
+    },
+    {
+      "fg": "#713D32",
+      "bg": "#E4AB56",
+      "role": "nhãn trên nút amber (Stitch gốc)",
+      "minimum": 4.5,
+      "ratio": 4.25,
+      "pass": false
+    },
+    {
+      "fg": "#5F3227",
+      "bg": "#E4AB56",
+      "role": "nhãn trên nút amber (biến thể tối hơn — đề xuất)",
+      "minimum": 4.5,
+      "ratio": 5.2,
+      "pass": true
+    },
+    {
+      "fg": "#291800",
+      "bg": "#FFDDB2",
+      "role": "on-tertiary-fixed trên card amber nhạt",
+      "minimum": 4.5,
+      "ratio": 13.26,
+      "pass": true
+    },
+    {
+      "fg": "#802918",
+      "bg": "#FFDAD3",
+      "role": "on-secondary-fixed-variant trên badge hồng",
+      "minimum": 4.5,
+      "ratio": 7.22,
+      "pass": true
+    },
+    {
+      "fg": "#7E5300",
+      "bg": "#FFF8F6",
+      "role": "tertiary text trên nền trang",
+      "minimum": 4.5,
+      "ratio": 6.4,
+      "pass": true
+    },
+    {
+      "fg": "#9D3D27",
+      "bg": "#FFF8F6",
+      "role": "primary text/link trên nền trang",
+      "minimum": 4.5,
+      "ratio": 6.39,
+      "pass": true
+    },
+    {
+      "fg": "#9D3D27",
+      "bg": "#FFFFFF",
+      "role": "primary text trên card trắng",
+      "minimum": 4.5,
+      "ratio": 6.71,
+      "pass": true
+    },
+    {
+      "fg": "#8A726C",
+      "bg": "#FFF8F6",
+      "role": "outline/micro-copy trên nền trang",
+      "minimum": 4.5,
+      "ratio": 4.25,
+      "pass": false
+    },
+    {
+      "fg": "#FFEDE9",
+      "bg": "#502319",
+      "role": "inverse-on-surface trên gradient ảnh",
+      "minimum": 4.5,
+      "ratio": 11.62,
+      "pass": true
+    },
+    {
+      "fg": "#FFFFFF",
+      "bg": "#502319",
+      "role": "caption trắng trên gradient ảnh (60-80%)",
+      "minimum": 4.5,
+      "ratio": 13.16,
+      "pass": true
+    },
+    {
+      "fg": "#360F07",
+      "bg": "#FFE9E5",
+      "role": "on-surface trên surface-container",
+      "minimum": 4.5,
+      "ratio": 14.69,
+      "pass": true
+    },
+    {
+      "fg": "#56423E",
+      "bg": "#FFF0EE",
+      "role": "on-surface-variant trên surface-container-low",
+      "minimum": 4.5,
+      "ratio": 8.44,
+      "pass": true
+    },
+    {
+      "fg": "#9D3D27",
+      "bg": "#FFDAD2",
+      "role": "primary trên primary-fixed (badge 1/4)",
+      "minimum": 4.5,
+      "ratio": 5.18,
+      "pass": true
+    }
+  ]
+}
