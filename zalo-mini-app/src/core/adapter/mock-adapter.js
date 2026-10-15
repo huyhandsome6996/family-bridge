@@ -508,6 +508,10 @@ export function createMockAdapter({ scenario = null } = {}) {
       if (!currentPassword || !newPassword) {
         throw new ApiError("Thiếu mật khẩu hiện tại hoặc mật khẩu mới (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
       }
+      // Sentinel "wrong-password" mô phỏng 403 reauth_failed của backend.
+      if (currentPassword === "wrong-password") {
+        throw new ApiError("Mật khẩu hiện tại chưa đúng (dữ liệu minh họa).", 403, "http", { code: "not_authorized", details: { reason: "reauth_failed" } });
+      }
       if (newPassword === currentPassword) {
         throw new ApiError("Mật khẩu mới trùng mật khẩu hiện tại (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "same_password" } });
       }
@@ -524,6 +528,13 @@ export function createMockAdapter({ scenario = null } = {}) {
       }
       if (!/^[A-Za-z0-9]{4,32}$/.test(String(newCode))) {
         throw new ApiError("Mã mới sai định dạng (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "invalid_code_format" } });
+      }
+      // Sentinel mô phỏng lỗi trùng/thay mã của backend.
+      if (String(newCode) === "SAMECODE") {
+        throw new ApiError("Mã mới trùng mã hiện tại (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "same_code" } });
+      }
+      if (String(newCode) === "DUPCODE1") {
+        throw new ApiError("Mã đã được tài khoản khác dùng (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "duplicate_code" } });
       }
       return { login_code: String(newCode), changed: true, source: "fixture" };
     },

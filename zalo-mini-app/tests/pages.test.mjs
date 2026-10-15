@@ -463,12 +463,15 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Cá nhân: đổi vai trò + mục Sắp có có lý do + phiên bản US-003", () => {
+  it("Hub Cá nhân: đổi vai trò + dẫn tới Cài đặt/Riêng tư thật + phiên bản US-003", () => {
     const { ctx, navigateCalls } = makeCtx({ demo: false, role: "caregiver" });
     const { host, el } = mount(pages.profile, ctx);
     const text = textOf(el);
     assert.ok(text.includes("Người chăm sóc"));
-    assert.ok(text.includes("Quản lý chia sẻ & đồng ý — Sắp có"));
+    // M5b: Riêng tư & đồng ý đã là trang thật → hàng "Sắp có" bị thay bằng
+    // dẫn đường thật tới #/settings và #/privacy (không còn disabled mù).
+    assert.ok(text.includes("Riêng tư & đồng ý"));
+    assert.ok(!text.includes("Sắp có"));
     assert.ok(text.includes("Phiên bản xem trước US-003"));
 
     const switchBtn = findButton(el, "Đổi vai trò xem trước");
@@ -477,6 +480,8 @@ describe("Render không throw + copy bắt buộc", () => {
     return wait(20).then(() => {
       assert.equal(getState().role, null);
       assert.ok(navigateCalls.includes("/role-select"));
+      const settingsBtn = findButton(el, "Mở Cài đặt (đổi mật khẩu / mã đăng nhập / tên hiển thị)");
+      assert.ok(settingsBtn, "phải có nút dẫn tới Cài đặt");
       unmount(host);
     });
   });

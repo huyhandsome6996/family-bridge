@@ -55,6 +55,8 @@ const signal = (await import("../src/pages/signal/index.js")).page;
 const compose = (await import("../src/pages/compose/index.js")).page;
 const mailbox = (await import("../src/pages/mailbox/index.js")).page;
 const messagePage = (await import("../src/pages/message/index.js")).page;
+const settings = (await import("../src/pages/settings/index.js")).page;
+const privacyPage = (await import("../src/pages/privacy/index.js")).page;
 
 const ROOT = resolve(import.meta.dirname, "..");
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -1494,3 +1496,323 @@ describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", 
     unmount(host);
   });
 });
+
+/* ============================ M5b: SETTINGS (w-settings) ============================ */
+
+function settingsAdapter({ behavior = {}, profile = null, capabilities = {} } = {}) {
+  return {
+    mode: "zalo",
+    getMyProfile: async () => {
+      if (behavior.profileError) throw behavior.profileError;
+      return profile || { user_id: "u-1", display_name: "Lan (HS)", identity_basis: "self_declared" };
+    },
+    getCapabilities: async () => capabilities,
+    updateMyProfile: async (args) => {
+      behavior.updateCalls = behavior.updateCalls || [];
+      behavior.updateCalls.push(args);
+      if (behavior.updateError) throw behavior.updateError;
+      return { user_id: "u-1", display_name: args.displayName, identity_basis: "self_declared" };
+    },
+    changeClassPassword: async (args) => {
+      behavior.pwCalls = behavior.pwCalls || [];
+      behavior.pwCalls.push(args);
+      if (behavior.pwError) throw behavior.pwError;
+      return behavior.pwResult || { changed: true, sessions_revoked_other: 0 };
+    },
+    changeClassCode: async (args) => {
+      behavior.codeCalls = behavior.codeCalls || [];
+      behavior.codeCalls.push(args);
+      if (behavior.codeError) throw behavior.codeError;
+      return behavior.codeResult || { login_code: args.newCode, changed: true };
+    },
+    logout: async () => {
+      behavior.logoutCalls = behavior.logoutCalls || [];
+      behavior.logoutCalls.push(true);
+      return true;
+    },
+  };
+}
+
+function clickDialogAction(label) {
+  const dialogRoot = document.body.querySelector(".fb-dialog-root");
+  assert.ok(dialogRoot, "confirm dialog phải mở");
+  const action = Array.from(dialogRoot.querySelectorAll("button"))
+    .find((btn) => textOf(btn) === label);
+  assert.ok(action, `dialog phải có nút ${label}`);
+  action.click();
+  return dialogRoot;
+}
+
+describe("Web M5b — settings: đổi mật khẩu / mã đăng nhập / tên hiển thị (trung thực)", () => {
+  it("page contract: chrome 'app' + requiresAuth", () => {
+    assert.equal(settings.id, "settings");
+    assert.equal(settings.chrome, "app");
+    assert.equal(settings.requiresAuth, true);
+    assert.equal(settings.requiresRole, true);
+  });
+
+  it("đổi mật khẩu gửi đúng {currentPassword,newPassword} + success đếm phiên từ máy chủ", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student",
+      adapter: settingsAdapter({ behavior, capabilities: { settings: { change_password: true } } }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    assert.ok(pwCard, "thẻ Đổi mật khẩu phải có");
+    const inputs = pwCard.querySelectorAll("input[type='password']");
+    assert.equal(inputs.length, 3, "3 ô: hiện tại / mới / nhập lại");
+    inputs[0].value = "mk-cu-123";
+    inputs[1].value = "mk-moi-456";
+    inputs[2].value = "mk-moi-456";
+    // Thẻ tên hiển thị cũng có 1 input text — password inputs ở trên đã tách riêng.
+    findButton(pwCard, "Đổi mật khẩu").click();
+    await wait(40);
+    assert.deepEqual(behavior.pwCalls, [{ currentPassword: "mk-cu-123", newPassword: "mk-moi-456" }],
+      "trang phải truyền đúng tham số adapter (adapter map sang snake_case)");
+    assert.ok(textOf(pwCard).includes("Đã đổi mật khẩu."),
+      `copy success: ${textOf(pwCard)}`);
+    unmount(host);
+  });
+
+  it("success hiển thị SỐ PHIÊN MÁY CHỦ báo (sessions_revoked_other=2)", async () => {
+    withSession();
+    const behavior = { pwResult: { changed: true, sessions_revoked_other: 2 } };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    const inputs = pwCard.querySelectorAll("input[type='password']");
+    inputs[0].value = "mk-cu"; inputs[1].value = "mk-moi-dai"; inputs[2].value = "mk-moi-dai";
+    findButton(pwCard, "Đổi mật khẩu").click();
+    await wait(40);
+    assert.ok(textOf(pwCard).includes("2 phiên khác đã được đăng xuất"),
+      `phải dùng số máy chủ trả: ${textOf(pwCard)}`);
+    unmount(host);
+  });
+
+  it("403 reauth_failed → 'Mật khẩu hiện tại chưa đúng.' (không fake success)", async () => {
+    withSession();
+    const behavior = {
+      pwError: new ApiError("nope", 403, "http",
+        { code: "not_authorized", details: { reason: "reauth_failed" } }),
+    };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    const inputs = pwCard.querySelectorAll("input[type='password']");
+    inputs[0].value = "sai"; inputs[1].value = "mk-moi-dai-9"; inputs[2].value = "mk-moi-dai-9";
+    findButton(pwCard, "Đổi mật khẩu").click();
+    await wait(40);
+    assert.ok(textOf(pwCard).includes("Mật khẩu hiện tại chưa đúng."));
+    assert.ok(!textOf(pwCard).includes("Đã đổi mật khẩu."), "không được báo thành công");
+    unmount(host);
+  });
+
+  it("weak_password → render danh sách details.messages của máy chủ", async () => {
+    withSession();
+    const behavior = {
+      pwError: new ApiError("weak", 400, "http", {
+        code: "input_invalid",
+        details: { reason: "weak_password", messages: ["Mật khẩu cần ít nhất 8 ký tự.", "Cần ít nhất một chữ số."] },
+      }),
+    };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    const inputs = pwCard.querySelectorAll("input[type='password']");
+    inputs[0].value = "mk-cu"; inputs[1].value = "ngan"; inputs[2].value = "ngan";
+    findButton(pwCard, "Đổi mật khẩu").click();
+    await wait(40);
+    const list = pwCard.querySelector("ul");
+    assert.ok(list, "danh sách messages phải render");
+    assert.ok(textOf(list).includes("Mật khẩu cần ít nhất 8 ký tự."));
+    assert.ok(textOf(list).includes("Cần ít nhất một chữ số."));
+    unmount(host);
+  });
+
+  it("new != confirm → lỗi client-side, KHÔNG gọi máy chủ", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    const inputs = pwCard.querySelectorAll("input[type='password']");
+    inputs[0].value = "mk-cu"; inputs[1].value = "mk-moi-dai-9"; inputs[2].value = "khac-lam";
+    findButton(pwCard, "Đổi mật khẩu").click();
+    await wait(20);
+    assert.ok(textOf(pwCard).includes("Mật khẩu nhập lại chưa khớp."));
+    assert.ok(behavior.pwCalls === undefined, "không được gọi adapter khi validate fail");
+    unmount(host);
+  });
+
+  it("backend 404 → thẻ DISABLED 'chưa được bật trên máy chủ', KHÔNG fake success", async () => {
+    withSession();
+    const behavior = { pwError: new ApiError("nf", 404, "http", { code: "not_found" }) };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    const inputs = pwCard.querySelectorAll("input[type='password']");
+    inputs[0].value = "mk-cu"; inputs[1].value = "mk-moi-dai-9"; inputs[2].value = "mk-moi-dai-9";
+    findButton(pwCard, "Đổi mật khẩu").click();
+    await wait(40);
+    assert.ok(textOf(pwCard).includes("Đổi mật khẩu chưa được bật trên máy chủ."));
+    assert.ok(!textOf(pwCard).includes("Đã đổi mật khẩu."), "không fake success");
+    const formInputs = pwCard.querySelectorAll("input[type='password']");
+    assert.equal(formInputs.length, 0, "form phải biến mất khỏi thẻ disabled");
+    unmount(host);
+  });
+
+  it("capabilities.settings.change_password=false → thẻ disabled từ đầu", async () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false, role: "student",
+      adapter: settingsAdapter({ capabilities: { settings: { change_password: false } } }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const pwCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đổi mật khẩu"));
+    assert.ok(textOf(pwCard).includes("Đổi mật khẩu chưa được bật trên máy chủ."));
+    assert.equal(pwCard.querySelectorAll("input[type='password']").length, 0);
+    unmount(host);
+  });
+
+  it("đổi mã đăng nhập thành công → 'Đã đổi mã đăng nhập thành {code}.' từ login_code máy chủ", async () => {
+    withSession();
+    const behavior = { codeResult: { login_code: "HS2026", changed: true } };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const codeCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Mã đăng nhập"));
+    assert.ok(codeCard, "thẻ Mã đăng nhập phải có");
+    // Session KHÔNG chứa mã → phải hiện đã che + ghi chú trung thực.
+    assert.ok(textOf(codeCard).includes("••••••"));
+    assert.ok(textOf(codeCard).includes("liên hệ giáo viên nếu mất mã"));
+    const textInput = codeCard.querySelector("input[type='text']");
+    const pwInput = codeCard.querySelector("input[type='password']");
+    textInput.value = "HS2026";
+    pwInput.value = "mk-cu";
+    findButton(codeCard, "Đổi mã đăng nhập").click();
+    await wait(40);
+    assert.deepEqual(behavior.codeCalls, [{ currentPassword: "mk-cu", newCode: "HS2026" }]);
+    assert.ok(textOf(codeCard).includes("Đã đổi mã đăng nhập thành HS2026."),
+      `copy: ${textOf(codeCard)}`);
+    unmount(host);
+  });
+
+  it("mã sai định dạng → lỗi client-side không gọi máy chủ; duplicate_code → copy máy chủ", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    let codeCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Mã đăng nhập"));
+    const textInput = codeCard.querySelector("input[type='text']");
+    const pwInput = codeCard.querySelector("input[type='password']");
+    textInput.value = "co dau !";
+    pwInput.value = "mk-cu";
+    findButton(codeCard, "Đổi mã đăng nhập").click();
+    await wait(20);
+    assert.ok(textOf(codeCard).includes("chưa đúng định dạng"));
+    assert.ok(behavior.codeCalls === undefined, "validate client chặn trước khi gọi");
+
+    behavior.codeError = new ApiError("dup", 400, "http",
+      { code: "input_invalid", details: { reason: "duplicate_code" } });
+    textInput.value = "HS2026";
+    findButton(codeCard, "Đổi mã đăng nhập").click();
+    await wait(30);
+    codeCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Mã đăng nhập"));
+    assert.ok(textOf(codeCard).includes("đã được tài khoản lớp khác dùng"),
+      `copy duplicate_code: ${textOf(codeCard)}`);
+    unmount(host);
+  });
+
+  it("đổi tên hiển thị KHÔNG cần mật khẩu → updateMyProfile + copy thành công", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const nameCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Tên hiển thị"));
+    assert.ok(nameCard, "thẻ Tên hiển thị phải có");
+    const nameInput = nameCard.querySelector("input[type='text']");
+    assert.equal(nameInput.value, "Lan (HS)", "tên hiện tại từ /auth/me");
+    nameInput.value = "Lan (HS) đã đổi";
+    findButton(nameCard, "Lưu tên hiển thị").click();
+    await wait(40);
+    assert.deepEqual(behavior.updateCalls, [{ displayName: "Lan (HS) đã đổi" }]);
+    assert.ok(textOf(nameCard).includes("Đã cập nhật tên hiển thị."));
+    assert.ok(!textOf(nameCard).includes("Mật khẩu"), "không yêu cầu mật khẩu cho PUT /auth/me");
+    unmount(host);
+  });
+
+  it("đổi tên lỗi 401 → redirect login?reason=expired (không có thông báo giả)", async () => {
+    withSession();
+    const behavior = { updateError: new ApiError("expired", 401, "http") };
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const nameCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Tên hiển thị"));
+    nameCard.querySelector("input[type='text']").value = "Ten moi";
+    findButton(nameCard, "Lưu tên hiển thị").click();
+    await wait(30);
+    assert.ok(navigateCalls.includes("/login?reason=expired"));
+    unmount(host);
+  });
+
+  it("riêng tư + đăng xuất: hàng dẫn #/privacy; logout qua dialog xóa phiên", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const privacyLink = Array.from(el.querySelectorAll("a"))
+      .find((a) => (a.getAttribute("href") || "").includes("/privacy"));
+    assert.ok(privacyLink, "phải có hàng dẫn tới #/privacy");
+    findButton(el, "Đăng xuất").click();
+    clickDialogAction("Đăng xuất");
+    await wait(30);
+    assert.deepEqual(behavior.logoutCalls, [true]);
+    assert.ok(navigateCalls.includes("/login?reason=logged-out"));
+    unmount(host);
+  });
+});
+
