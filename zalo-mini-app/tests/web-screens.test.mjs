@@ -1816,3 +1816,261 @@ describe("Web M5b — settings: đổi mật khẩu / mã đăng nhập / tên h
   });
 });
 
+/* ============================= M5b: PRIVACY (F15) ============================= */
+
+function privacyAdapter({ behavior = {}, overview = null, consents = null } = {}) {
+  let overviewState = overview === null
+    ? { shared_by_me: [], connections: [] }
+    : JSON.parse(JSON.stringify(overview));
+  let consentsState = consents === null
+    ? [
+      { purpose: "service", decision: "accepted", policy_version: "service-v1", withdrawn: false, current: true },
+      { purpose: "ai_processing", decision: "none", policy_version: null, withdrawn: false, current: true },
+      { purpose: "research", decision: "declined", policy_version: "research-v1", withdrawn: false, current: true },
+    ]
+    : JSON.parse(JSON.stringify(consents));
+  let deletion = null;
+
+  return {
+    mode: "zalo",
+    privacyOverview: async () => {
+      behavior.overviewCalls = behavior.overviewCalls || [];
+      behavior.overviewCalls.push(true);
+      if (behavior.overviewError) throw behavior.overviewError;
+      return JSON.parse(JSON.stringify(overviewState));
+    },
+    revokeGrant: async (args) => {
+      behavior.revokeCalls = behavior.revokeCalls || [];
+      behavior.revokeCalls.push(args);
+      if (behavior.revokeError) throw behavior.revokeError;
+      const row = overviewState.shared_by_me.find(
+        (g) => g.item_type === args.itemType && g.item_id === args.itemId);
+      if (row) row.revoked = true;
+      return { item_type: args.itemType, item_id: args.itemId, revoked: true };
+    },
+    requestDeletion: async (args) => {
+      behavior.requestCalls = behavior.requestCalls || [];
+      behavior.requestCalls.push(args);
+      if (behavior.requestError) throw behavior.requestError;
+      deletion = { request_id: "dr-1", status: "requested", scope_categories: args.categories.slice(), requested_at: "2026-10-25T00:00:00Z" };
+      return { request_id: "dr-1", status: "requested", receipt: "ONE-TIME-RECEIPT-9", duplicate: false };
+    },
+    getDeletionRequest: async (id) => {
+      behavior.detailCalls = behavior.detailCalls || [];
+      behavior.detailCalls.push(id);
+      if (!deletion || deletion.request_id !== id) throw new ApiError("nf", 404, "http", { code: "not_found" });
+      return { ...deletion };
+    },
+    cancelDeletionRequest: async (id, { expectedRevision = null } = {}) => {
+      behavior.cancelCalls = behavior.cancelCalls || [];
+      behavior.cancelCalls.push({ id, expectedRevision });
+      if (behavior.cancelError) throw behavior.cancelError;
+      if (deletion) deletion.status = "cancelled";
+      return { request_id: id, status: "cancelled" };
+    },
+    withdrawConsent: async (args) => {
+      behavior.withdrawCalls = behavior.withdrawCalls || [];
+      behavior.withdrawCalls.push(args);
+      if (behavior.withdrawError) throw behavior.withdrawError;
+      const record = consentsState.find((c) => c.purpose === args.purpose);
+      if (record) record.withdrawn = true;
+      return { purpose: args.purpose, withdrawn: true };
+    },
+    listConsents: async () => {
+      behavior.consentsCalls = behavior.consentsCalls || [];
+      behavior.consentsCalls.push(true);
+      return JSON.parse(JSON.stringify(consentsState));
+    },
+  };
+}
+
+const OVERVIEW_ONE_GRANT = {
+  shared_by_me: [
+    { item_type: "mood_entry", item_id: "mood-9", recipient_id: "peer-1", approved_revision: 1, revoked: false },
+  ],
+  connections: [],
+};
+
+describe("Web M5b — privacy (F15): thu hồi / yêu cầu xóa / rút đồng ý — không over-claim", () => {
+  it("page contract: chrome 'app' + requiresAuth", () => {
+    assert.equal(privacyPage.id, "privacy");
+    assert.equal(privacyPage.chrome, "app");
+    assert.equal(privacyPage.requiresAuth, true);
+    assert.equal(privacyPage.requiresRole, true);
+  });
+
+  it("grants: 'Thu hồi' qua dialog confirm → revokeGrant đúng tham số → refetch overview", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student",
+      adapter: privacyAdapter({ behavior, overview: OVERVIEW_ONE_GRANT }),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    const sharedCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đang chia sẻ"));
+    assert.ok(textOf(sharedCard).includes("Ghi nhận tâm trạng"));
+    assert.ok(textOf(sharedCard).includes("đang chia sẻ"));
+    findButton(sharedCard, "Thu hồi").click();
+    clickDialogAction("Thu hồi");
+    await wait(60);
+    assert.deepEqual(behavior.revokeCalls,
+      [{ itemType: "mood_entry", itemId: "mood-9", recipientId: "peer-1" }]);
+    assert.ok(behavior.overviewCalls.length >= 2, "phải refetch sau thu hồi");
+    const cardAfter = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đang chia sẻ"));
+    assert.ok(textOf(cardAfter).includes("đã thu hồi"), "trạng thái mới sau refetch");
+    assert.ok(textOf(cardAfter).includes("bản sao đã lưu ngoài ứng dụng"),
+      "copy trung thực về giới hạn thu hồi");
+    unmount(host);
+  });
+
+  it("grants rỗng → empty state trung thực, không bịa mục", async () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: privacyAdapter({}),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    const sharedCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đang chia sẻ"));
+    assert.ok(textOf(sharedCard).includes("Bạn chưa chia sẻ mục nào"));
+    assert.equal(sharedCard.querySelectorAll("button").length, 0);
+    unmount(host);
+  });
+
+  it("yêu cầu xóa: cần ≥1 phạm vi; tạo qua confirm → requestDeletion(categories) + biên nhận một lần", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: privacyAdapter({ behavior }),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    const delCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Yêu cầu xóa dữ liệu"));
+    findButton(delCard, "Gửi yêu cầu xóa dữ liệu").click();
+    await wait(20);
+    assert.ok(textOf(delCard).includes("Chọn ít nhất một phạm vi."), "bắt buộc ≥1 phạm vi");
+    assert.ok(behavior.requestCalls === undefined);
+
+    const moodBox = delCard.querySelector("input[value='mood']");
+    const journalBox = delCard.querySelector("input[value='journal']");
+    assert.ok(moodBox && journalBox, "checkbox theo allowlist backend");
+    moodBox.checked = true;
+    journalBox.checked = true;
+    findButton(delCard, "Gửi yêu cầu xóa dữ liệu").click();
+    clickDialogAction("Gửi yêu cầu");
+    await wait(60);
+    assert.deepEqual(behavior.requestCalls, [{ categories: ["mood", "journal"] }]);
+    assert.ok(textOf(delCard).includes("Mã biên nhận (lưu lại — chỉ hiện một lần)"));
+    assert.ok(textOf(delCard).includes("ONE-TIME-RECEIPT-9"));
+    assert.ok(textOf(delCard).includes("Đã tiếp nhận — chờ xác minh"),
+      "trạng thái từ máy chủ, nhãn trung thực");
+    unmount(host);
+  });
+
+  it("hủy yêu cầu qua confirm → cancelDeletionRequest(id,{expectedRevision}) → trạng thái Đã hủy", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: privacyAdapter({ behavior }),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    const delCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Yêu cầu xóa dữ liệu"));
+    delCard.querySelector("input[value='messages']").checked = true;
+    findButton(delCard, "Gửi yêu cầu xóa dữ liệu").click();
+    clickDialogAction("Gửi yêu cầu");
+    await wait(60);
+    findButton(delCard, "Hủy yêu cầu xóa").click();
+    clickDialogAction("Hủy yêu cầu");
+    await wait(60);
+    assert.equal(behavior.cancelCalls.length, 1);
+    assert.equal(behavior.cancelCalls[0].id, "dr-1");
+    assert.ok("expectedRevision" in behavior.cancelCalls[0], "contract expectedRevision");
+    assert.ok(textOf(delCard).includes("Đã hủy"));
+    assert.ok(textOf(delCard).includes("không bị xóa bởi yêu cầu này"));
+    unmount(host);
+  });
+
+  it("409 revision_conflict khi hủy → tải lại trạng thái, KHÔNG tự retry hủy", async () => {
+    withSession();
+    const behavior = {
+      cancelError: new ApiError("conflict", 409, "http",
+        { code: "revision_conflict", details: { current_revision: 3 } }),
+    };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: privacyAdapter({ behavior }),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    const delCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Yêu cầu xóa dữ liệu"));
+    delCard.querySelector("input[value='mood']").checked = true;
+    findButton(delCard, "Gửi yêu cầu xóa dữ liệu").click();
+    clickDialogAction("Gửi yêu cầu");
+    await wait(60);
+    findButton(delCard, "Hủy yêu cầu xóa").click();
+    clickDialogAction("Hủy yêu cầu");
+    await wait(60);
+    assert.equal(behavior.cancelCalls.length, 1, "không tự retry");
+    assert.ok(behavior.detailCalls.length >= 2, "phải refetch getDeletionRequest sau 409");
+    assert.ok(textOf(delCard).includes("vừa thay đổi trên máy chủ"));
+    unmount(host);
+  });
+
+  it("consents: service đang đồng ý → Rút đồng ý (confirm) → withdrawConsent + refetch; research declined không có nút", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: privacyAdapter({ behavior }),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    const consentCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đồng ý theo mục đích"));
+    assert.ok(textOf(consentCard).includes("Đang đồng ý (phiên bản service-v1)"));
+    assert.ok(textOf(consentCard).includes("Bạn đã từ chối"), "research declined");
+    const withdrawBtn = findButton(consentCard, "Rút đồng ý");
+    assert.ok(withdrawBtn, "chỉ purpose đang đồng ý mới có nút rút");
+    withdrawBtn.click();
+    const dialogRoot = document.body.querySelector(".fb-dialog-root");
+    assert.ok(textOf(dialogRoot).includes("không thể tiếp tục dùng Family Bridge"),
+      "hậu quả copy trung thực");
+    clickDialogAction("Rút đồng ý");
+    await wait(60);
+    assert.deepEqual(behavior.withdrawCalls, [{ purpose: "service" }]);
+    assert.ok(behavior.consentsCalls.length >= 2, "refetch consents sau rút");
+    const cardAfter = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Đồng ý theo mục đích"));
+    assert.ok(textOf(cardAfter).includes("Đã rút đồng ý"));
+    unmount(host);
+  });
+
+  it("overview lỗi → error state + Thử lại; KHÔNG hiển thị trạng thái bịa", async () => {
+    withSession();
+    const behavior = { overviewError: new ApiError("net", 0, "network") };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: privacyAdapter({ behavior }),
+    });
+    const { host, el } = mount(privacyPage, ctx);
+    await wait(50);
+    assert.ok(textOf(el).includes("Không tải được trạng thái riêng tư"));
+    assert.ok(findButton(el, "Thử lại"));
+    assert.ok(!textOf(el).includes("Hoàn tất"), "không tự suy trạng thái");
+    unmount(host);
+  });
+
+  it("banned strings vắng mặt trên cả hai trang (không over-claim)", () => {
+    for (const file of ["src/pages/settings/index.js", "src/pages/privacy/index.js"]) {
+      const source = readFileSync(join(ROOT, file), "utf8");
+      for (const banned of ["Đã gửi", "Đã lưu", "Đã chia sẻ", "đã xóa hết",
+        "Bảo mật 100%", "Mã hóa nội bộ", "Giám hộ", "cdn.tailwindcss.com"]) {
+        assert.ok(!source.includes(banned), `${file} không được chứa "${banned}"`);
+      }
+    }
+  });
+});

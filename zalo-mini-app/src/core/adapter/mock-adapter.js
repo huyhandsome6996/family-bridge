@@ -51,6 +51,19 @@ export function createMockAdapter({ scenario = null } = {}) {
   ];
   const consents = new Map();
   let myDisplayName = null; // tên tự khai báo demo (fixture, trong bộ nhớ)
+  // F15 demo: một grant minh họa (thật thì từ grant registry của máy chủ);
+  // revoke chỉ ĐÁNH DẤU revoked:true — danh sách vẫn liệt kê (giống backend).
+  const privacyGrants = [
+    {
+      item_type: "mood_entry",
+      item_id: "demo-mood-grant-1",
+      recipient_id: "demo-peer-fixture",
+      approved_revision: 1,
+      revoked: false,
+    },
+  ];
+  // Yêu cầu xóa demo (trạng thái trong bộ nhớ adapter, giống dữ liệu thật).
+  let deletionRequest = null;
 
   async function simulate({ kind, fallback }) {
     const mode = pick(fallback);
@@ -800,12 +813,16 @@ export function createMockAdapter({ scenario = null } = {}) {
 
     async privacyOverview() {
       await wait(150);
-      return { shared_by_me: [], connections: [], source: "fixture" };
+      return { shared_by_me: privacyGrants.map((grant) => ({ ...grant })), connections: connections.map((c) => ({ ...c })), source: "fixture" };
     },
 
-    async revokeGrant({ itemType, itemId } = {}) {
+    async revokeGrant({ itemType, itemId, recipientId } = {}) {
       await wait(120);
-      return { item_type: itemType, item_id: itemId, revoked: true, source: "fixture" };
+      const grant = privacyGrants.find(
+        (row) => row.item_type === itemType && row.item_id === itemId,
+      );
+      if (grant) grant.revoked = true;
+      return { item_type: itemType, item_id: itemId, recipient_id: recipientId || null, revoked: true, source: "fixture" };
     },
 
     async requestDeletion({ categories } = {}) {
@@ -813,24 +830,37 @@ export function createMockAdapter({ scenario = null } = {}) {
       if (!Array.isArray(categories) || !categories.length) {
         throw new ApiError("Chọn ít nhất một phạm vi (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "must_be_non_empty_list" } });
       }
-      return { request_id: "demo-deletion-1", status: "requested", receipt: "demo-receipt-not-real", duplicate: false, source: "fixture" };
+      if (deletionRequest && deletionRequest.status !== "cancelled") {
+        return { request_id: deletionRequest.request_id, status: deletionRequest.status, duplicate: true, source: "fixture" };
+      }
+      deletionRequest = {
+        request_id: "demo-deletion-1",
+        status: "requested",
+        scope_categories: categories.slice(),
+        requested_at: new Date().toISOString(),
+        completed_at: null,
+        failure_detail: null,
+      };
+      return { request_id: deletionRequest.request_id, status: deletionRequest.status, receipt: "demo-receipt-not-real", duplicate: false, source: "fixture" };
     },
 
     async getDeletionRequest(requestId) {
       await wait(100);
-      return {
-        request_id: requestId,
-        status: "requested",
-        scope_categories: ["mood"],
-        requested_at: new Date().toISOString(),
-        completed_at: null,
-        failure_detail: null,
-        source: "fixture",
-      };
+      if (!deletionRequest || deletionRequest.request_id !== requestId) {
+        throw new ApiError("Không thấy yêu cầu xóa (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "deletion_request_not_found" } });
+      }
+      return { ...deletionRequest, source: "fixture" };
     },
 
-    async cancelDeletionRequest(requestId) {
+    async cancelDeletionRequest(requestId, { expectedRevision = null } = {}) {
       await wait(120);
+      if (expectedRevision === 999) {
+        // Sentinel mô phỏng 409 revision_conflict (trạng thái đã đổi trên máy chủ).
+        throw new ApiError("Xung đột trạng thái (dữ liệu minh họa).", 409, "http", { code: "revision_conflict", details: { current_revision: 2 } });
+      }
+      if (deletionRequest && deletionRequest.request_id === requestId) {
+        deletionRequest.status = "cancelled";
+      }
       return { request_id: requestId, status: "cancelled", source: "fixture" };
     },
 
