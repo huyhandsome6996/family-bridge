@@ -64,7 +64,7 @@ FEATURE_APP_LABELS = {
     "f01_identity", "f02_program", "f03_cards", "f04_ai", "f05_inbox",
     "f06_drafts", "f07_mood", "f08_journal", "f09_activities", "f10_signal",
     "f11_supporters", "f12_appointments", "f13_help", "f14_surveys",
-    "f15_privacy", "admin_core",
+    "f15_privacy", "admin_core", "f16_classroom",
 }
 import importlib.util as _ilu  # noqa: E402  (placement fixed: after sys.path)
 
@@ -92,9 +92,18 @@ INSTALLED_APPS += [f"family_bridge_features.{label}" for label in FEATURE_APPS]
 # module_unavailable instead of pretending to authenticate.
 ZALO_APP_ID = os.getenv("ZALO_APP_ID", "")
 ZALO_APP_SECRET = os.getenv("ZALO_APP_SECRET", "")
+# F16: co che dormancy cua dang nhap Zalo (khong sua f01 api.py — PR #33 lock).
+# Default TRUE (giu hanh vi hien tai); khi FALSE, POST /api/v1/auth/session bi
+# middleware tra 503 module_unavailable/zalo_login_disabled truoc khi cham f01.
+FB_ZALO_LOGIN_ENABLED = os.getenv("FB_ZALO_LOGIN_ENABLED", "true").lower() in {
+    "1", "true", "yes", "on",
+}
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
+    # F16 Zalo dormancy gate: doc o thoi diem request nen override_settings
+    # FB_ZALO_LOGIN_ENABLED co tac dung ngay, khong can remount middleware.
+    "family_bridge_core.middleware.FBZaloDormancyMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -178,6 +187,8 @@ REST_FRAMEWORK = {
         "anon": "60/min", "user": "120/min",
         "invite_claim": "30/hour", "send_message": "60/hour",
         "ai_refine": "30/hour", "survey_report": "20/hour",
+        # F16: dang nhap lop thuong xuyen tu cung IP truong (NAT) — 200/h.
+        "class_login": "200/hour",
     },
 }
 SIMPLE_JWT = {"ACCESS_TOKEN_LIFETIME": timedelta(minutes=15)}

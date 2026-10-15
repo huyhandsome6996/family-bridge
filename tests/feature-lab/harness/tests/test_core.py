@@ -20,7 +20,7 @@ from family_bridge_core.validation import (
 class RegistryTests(SimpleTestCase):
     def test_registry_is_valid_allowlist(self):
         self.assertEqual(registry.validate_registry(), [])
-        self.assertEqual(len(registry.FEATURES), 17)  # F01..F15 + B16 + B17
+        self.assertEqual(len(registry.FEATURES), 18)  # F01..F16 + B16 + B17
         self.assertEqual(sorted(registry.feature_ids())[0], "B16")
 
     def test_registry_ports_and_labels_unique(self):

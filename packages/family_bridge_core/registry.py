@@ -197,6 +197,19 @@ FEATURES: List[Dict[str, Any]] = [
         "status": "planned",
     },
     {
+        "id": "F16", "title": "Dang nhap lop HS/PH va de xuat ket noi",
+        "branch": "main", "us_ids": [],
+        "backend": {"package": "family_bridge_features.f16_classroom",
+                    "app_label": "f16_classroom", "routes": ""},
+        "mobile": {"module": "packages/family_bridge_mobile/f16_classroom"},
+        "docs": "docs/features/f16",
+        "depends_on": ["F01", "F15"],
+        "content_kinds": [],
+        "deletion_hook": "family_bridge_features.f16_classroom.services"
+                         ".deletion.ClassroomAccountDeletionHook",
+        "status": "implemented",
+    },
+    {
         "id": "B16", "title": "Quan tri sau ho tro toan bo F01..F15",
         "branch": "feat/admin-deep-management",
         "us_ids": ["US-014", "US-020", "US-024", "US-025", "US-041"],

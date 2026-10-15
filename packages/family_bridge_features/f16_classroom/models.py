@@ -8,7 +8,10 @@ Invariants (hop dong Task 1 — dang nhap lop hoc khong qua Zalo):
   (proposed/awaiting_confirmation) la DUY NHAT voi marker GeneratedField theo
   mau W036 (PR bao-tri/chong-trung-mysql-tidb-us004): UNIQUE khong dieu kien
   tren (student_account, caregiver_account, open_marker) — an toan MySQL/TiDB
-  (conditional unique constraint bi MySQL drop khi migrate).
+  (conditional unique constraint bi MySQL drop khi migrate). Marker la 1 khi
+  cap CON MO va NULL khi da dong (idiom active_marker cua F01 Connection):
+  UNIQUE coi cac dong NULL la khac nhau nen proposal cu da declined/canceled
+  khong chan proposal moi cua cung cap — chi cap mo la bi chan.
 - LoginAttempt chi luu khoa bam (acct:/codeh:/ip:), ket qua va thoi diem —
   khong bao gio luu ma dang nhap hay mat khau (SEC-22).
 """
@@ -96,14 +99,17 @@ class CompanionProposal(models.Model):
     # W036 idiom (PR #34 branch): marker GeneratedField + UNIQUE khong dieu kien
     # — MySQL/TiDB drop conditional unique constraint khi migrate, nen cap mo
     # duoc dam bao bang open_marker=1 thay vi condition=Q(status__in=...).
+    # Cap dong tra NULL (khong phai 0): UNIQUE bo qua dong NULL — nhieu
+    # proposal da ket thuc cua cung cap khong xung dot voi nhau (idiom
+    # active_marker cua F01 Connection).
     open_marker = models.GeneratedField(
         expression=models.Case(
             models.When(status__in=[PROPOSAL_PROPOSED, PROPOSAL_AWAITING],
                         then=models.Value(1)),
-            default=models.Value(0),
-            output_field=models.IntegerField(),
+            default=models.Value(None),
+            output_field=models.IntegerField(null=True),
         ),
-        output_field=models.IntegerField(),
+        output_field=models.IntegerField(null=True),
         db_persist=False,
     )
     invite = models.ForeignKey("f01_identity.ConnectionInvite",
