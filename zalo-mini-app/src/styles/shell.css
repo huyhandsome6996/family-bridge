@@ -292,3 +292,203 @@
   outline-offset: 2px;
   border-radius: var(--fb-radius-control);
 }
+
+/* ============================================================
+   Login web (w02 Stitch) — card chia đôi brand + form
+   ============================================================ */
+.fb-cred {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--fb-radius-group);
+  overflow: hidden;
+  background: var(--fb-surface);
+  box-shadow: var(--fb-shadow-sm);
+  max-width: 680px;
+  margin: 0 auto;
+}
+
+.fb-cred__brand {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--fb-space-6);
+  padding: var(--fb-space-6);
+  background: var(--fb-surface-low);
+}
+
+.fb-cred__glow {
+  position: absolute;
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.fb-cred__glow--1 {
+  top: -64px;
+  left: -64px;
+  width: 224px;
+  height: 224px;
+  background: var(--fb-tertiary-fixed);
+  opacity: 0.6;
+  filter: blur(40px);
+}
+
+.fb-cred__glow--2 {
+  bottom: 16px;
+  right: -40px;
+  width: 256px;
+  height: 256px;
+  background: var(--fb-surface-highest);
+  opacity: 0.7;
+  filter: blur(48px);
+}
+
+.fb-cred__brand-top,
+.fb-cred__brand-middle,
+.fb-cred__brand-foot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-cred__brand-foot {
+  flex-direction: row;
+  justify-content: space-between;
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fb-cred__brand-version { color: var(--fb-outline-text); }
+
+.fb-cred__privacy-badge {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--fb-surface-container);
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-cred__brand-title {
+  margin: 0;
+  font-size: var(--fb-fs-headline-md);
+  line-height: var(--fb-lh-headline-md);
+  letter-spacing: -0.005em;
+  font-weight: 600;
+}
+
+.fb-cred__brand-text {
+  margin: 0;
+  color: var(--fb-text-secondary);
+  line-height: 1.6;
+}
+
+.fb-cred__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-4);
+  padding: var(--fb-space-6);
+  background: var(--fb-surface);
+}
+
+.fb-cred__head { display: flex; flex-direction: column; gap: 4px; }
+
+.fb-cred__heading {
+  margin: 0;
+  font-size: var(--fb-fs-headline-md);
+  font-weight: 600;
+}
+
+.fb-cred__sub {
+  margin: 0;
+  color: var(--fb-text-secondary);
+  line-height: 1.6;
+}
+
+.fb-cred__form { display: flex; flex-direction: column; gap: var(--fb-space-3); }
+
+.fb-cred__required { color: var(--fb-error); }
+
+.fb-cred__input { min-height: 48px; }
+
+.fb-cred__password-row { position: relative; display: flex; }
+
+.fb-cred__input--password { padding-right: 56px; }
+
+.fb-cred__eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  min-height: 44px;
+  min-width: 44px;
+  border: none;
+  background: transparent;
+  color: var(--fb-outline-text);
+  font-family: var(--fb-font-body);
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fb-cred__help-row { display: flex; justify-content: flex-end; }
+
+.fb-cred__help-link {
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 500;
+}
+
+.fb-cred__error {
+  margin: 0;
+  color: var(--fb-error);
+  background: var(--fb-error-bg);
+  border-radius: var(--fb-radius-control);
+  padding: 8px 12px;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+.fb-cred__error[hidden] { display: none; }
+
+.fb-cred__notice {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+}
+
+.fb-cred__notice-title { font-weight: 600; font-size: var(--fb-fs-body-sm); }
+
+.fb-cred__notice-text {
+  margin: 0;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+.fb-cred__legal {
+  margin: 0;
+  text-align: center;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.6;
+}
+
+.fb-cred__legal a { color: var(--fb-primary); font-weight: 500; }
+
+@media (min-width: 768px) {
+  .fb-cred { flex-direction: row; }
+  .fb-cred__brand { width: 42%; }
+  .fb-cred__panel { width: 58%; }
+}

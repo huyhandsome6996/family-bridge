@@ -585,17 +585,24 @@ describe("zalo-adapter session generation", () => {
 // ---------------------------------------------------------------- login page
 describe("F01 trang đăng nhập", () => {
 
-  it("production ngoài Zalo: hướng dẫn mở trong Zalo, nút đăng nhập bị chặn", () => {
+  it("production ngoài Zalo (web Render Task 2): form mã tài khoản trung thực thay hướng dẫn mở Zalo", () => {
+    // Cập nhật pin CÓ CƠ SỞ (Task 2 web Render): host web KHÔNG có SDK Zalo,
+    // đường đăng nhập thật là form mã tài khoản/mật khẩu → /auth/class-session.
+    // Card "Hãy mở trong Zalo" + nút chặn chỉ còn ý nghĩa trong Mini App.
     clearSession();
     const { ctx } = makeCtx({ demo: false });
     const { host, el } = mount(loginPage, ctx);
     const text = textOf(el);
-    assert.ok(text.includes("Hãy mở trong Zalo"), `nhưng thấy: ${text}`);
-    const loginBtn = findButton(el, "Đăng nhập bằng Zalo");
-    assert.ok(loginBtn, "thiếu nút đăng nhập");
-    assert.equal(loginBtn.disabled, true, "ngoài Zalo phải chặn nút");
-    assert.ok(loginBtn.title && loginBtn.title.length > 0, "nút disabled phải có lý do");
+    assert.ok(text.includes("Đăng nhập Family Bridge"), `nhưng thấy: ${text}`);
+    assert.ok(text.includes("Mã tài khoản"), "form phải có trường mã tài khoản");
+    assert.ok(el.querySelector("input[type=password]"), "phải có ô mật khẩu");
+    assert.ok(!text.includes("Hãy mở trong Zalo"), "host web không hướng dẫn mở Zalo");
+    // Không được có nút đăng nhập Zalo BẬT ngoài Zalo (SDK không tồn tại).
+    const zaloBtn = findButton(el, "Đăng nhập bằng Zalo");
+    if (zaloBtn) assert.equal(zaloBtn.disabled, true, "nút Zalo ngoài host Zalo phải bị chặn");
     assert.ok(text.includes("Tìm trợ giúp"), "trợ giúp luôn truy cập được");
+    // Không implied-consent: phải ghi rõ đăng nhập ≠ đồng ý nghiên cứu.
+    assert.ok(text.includes("Đăng nhập không đồng nghĩa với đồng ý nghiên cứu"));
     unmount(host);
   });
 
