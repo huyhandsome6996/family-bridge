@@ -257,7 +257,6 @@
           "zalo-mini-app/src/app/router.js": "thêm pattern route + chrome app + requiresAuth (M1) — router gốc thuộc F15/#33 và F01; tích hợp qua lead",
           "zalo-mini-app/src/pages/login/index.js": "đăng nhập mã lớp w02 (credential-form.js là own path) — ownership F01 (PR #32)",
           "zalo-mini-app/src/pages/mailbox/index.js": "w14 title-only theo hợp đồng F05 — ownership F05 (ban-2)",
-          "zalo-mini-app/src/pages/help/index.js": "điểm vào trợ giúp khẩn cấp — ownership F13 (ban-1)",
           "zalo-mini-app/src/pages/profile/index.js": "thay hàng 'Sắp có' bằng dẫn #/settings + #/privacy thật — ownership F15 (PR #33)",
           "zalo-mini-app/src/pages/compose/index.js": "restyle w11/w12 giữ nguyên hành vi F06 — ownership F06",
           "zalo-mini-app/tests/pages.test.mjs": "pin profile cập nhật theo lead"

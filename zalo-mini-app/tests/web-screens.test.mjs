@@ -1519,6 +1519,12 @@ function settingsAdapter({ behavior = {}, profile = null, capabilities = {} } = 
       if (behavior.pwError) throw behavior.pwError;
       return behavior.pwResult || { changed: true, sessions_revoked_other: 0 };
     },
+    changeClassDisplayName: async (args) => {
+      behavior.dnCalls = behavior.dnCalls || [];
+      behavior.dnCalls.push(args);
+      if (behavior.dnError) throw behavior.dnError;
+      return { display_name: args.displayName, identity_basis: "self_declared" };
+    },
     changeClassCode: async (args) => {
       behavior.codeCalls = behavior.codeCalls || [];
       behavior.codeCalls.push(args);
@@ -1890,6 +1896,57 @@ const OVERVIEW_ONE_GRANT = {
   ],
   connections: [],
 };
+
+describe("Web M5b — settings: tài khoản LỚP đổi tên phải re-auth (hợp đồng Task 19)", () => {
+  it("loginMethod 'class' → đổi tên gọi changeClassDisplayName kèm current_password", async () => {
+    clearSession();
+    setSession({ token: "t-class", userId: "u-class", expiresAt: Date.now() + 3600_000, loginMethod: "class" });
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student",
+      adapter: settingsAdapter({ behavior, profile: { user_id: "u-class", display_name: "Lan (HS)" } }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const nameInput = host.querySelector('input[aria-label="Tên hiển thị mới"]');
+    nameInput.value = "Lan Nguyễn";
+    const saveBtn = Array.from(host.querySelectorAll("button"))
+      .find((b) => textOf(b) === "Lưu tên hiển thị");
+    saveBtn.click();
+    await new Promise((r) => setTimeout(r, 0));
+    // Chưa nhập mật khẩu → chặn client-side, KHÔNG gọi API
+    assert.equal((behavior.dnCalls || []).length, 0);
+    assert.match(host.textContent, /nhập mật khẩu hiện tại/);
+    const pwInput = host.querySelector('input[aria-label="Mật khẩu hiện tại để xác thực lại khi đổi tên"]');
+    assert.ok(pwInput, "tài khoản lớp phải có ô mật khẩu xác thực lại");
+    pwInput.value = "CurrentPass1!";
+    saveBtn.click();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal((behavior.dnCalls || []).length, 1);
+    assert.deepEqual(behavior.dnCalls[0], { currentPassword: "CurrentPass1!", displayName: "Lan Nguyễn" });
+    assert.match(host.textContent, /Đã cập nhật tên hiển thị/);
+    clearSession();
+  });
+
+  it("loginMethod 'class' + 403 → thông báo mật khẩu chưa đúng, không fake success", async () => {
+    clearSession();
+    setSession({ token: "t-class", userId: "u-class", expiresAt: Date.now() + 3600_000, loginMethod: "class" });
+    const behavior = { dnError: Object.assign(new Error("reauth"), { status: 403 }) };
+    const { ctx } = makeCtx({
+      demo: false, role: "student",
+      adapter: settingsAdapter({ behavior, profile: { user_id: "u-class", display_name: "Lan (HS)" } }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    host.querySelector('input[aria-label="Tên hiển thị mới"]').value = "Lan Nguyễn";
+    host.querySelector('input[aria-label="Mật khẩu hiện tại để xác thực lại khi đổi tên"]').value = "sai";
+    Array.from(host.querySelectorAll("button"))
+      .find((b) => textOf(b) === "Lưu tên hiển thị").click();
+    await new Promise((r) => setTimeout(r, 0));
+    assert.match(host.textContent, /Mật khẩu hiện tại chưa đúng/);
+    clearSession();
+  });
+});
 
 describe("Web M5b — privacy (F15): thu hồi / yêu cầu xóa / rút đồng ý — không over-claim", () => {
   it("page contract: chrome 'app' + requiresAuth", () => {
