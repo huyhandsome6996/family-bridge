@@ -43,6 +43,7 @@ Không khóa tuần sau nếu chưa làm tuần trước. Không bắt buộc th
 - Dữ liệu tâm trạng và nhật ký là cá nhân. Kết nối chỉ cho phép tương tác, không cấp quyền đọc mọi dữ liệu.
 - Nội dung AI chỉ được chuyển tới nhà cung cấp AI khi người viết chủ động dùng tính năng, với thông báo xử lý dữ liệu phù hợp; không có nghĩa “riêng tư” là không có bên xử lý kỹ thuật.
 - Dữ liệu mẫu và số liệu minh họa không được ghi thành kết quả nghiên cứu đã thu thập. Các tỷ lệ, p-value và hiệu ứng trong DOCX cần dữ liệu thật và kiểm chứng trước khi sử dụng làm kết luận.
+- Bổ sung 16/10/2026 (nhiệm vụ đăng nhập HS/PH): đăng nhập bằng mã lớp HS001–HS050/PH001–PH050 do lớp cấp, mật khẩu khởi tạo chung phát ngoài kênh riêng, không ép đổi mật khẩu lần đầu; đổi mật khẩu/mã đăng nhập/tên hiển thị trong Cài đặt yêu cầu nhập lại mật khẩu hiện tại; cặp đề xuất HS001↔PH001 … là đề xuất, hai bên tự xác nhận mới thành kết nối; Zalo giữ nguyên mã nhưng có thể tắt bằng FB_ZALO_LOGIN_ENABLED, không tự liên kết tài khoản lớp với Zalo. Không thay đổi DEC-01..23.
 
 ## Điều kiện thử nghiệm
 

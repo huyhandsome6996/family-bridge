@@ -13,6 +13,24 @@ Các endpoint được ghi “hiện có” thuộc khung code trong PR #1/nhán
 
 Response kiểm tra không chứa tên DB, password hoặc lỗi kết nối. Các endpoint trên không chứng minh schema migration hoặc tính năng nghiệp vụ đã chạy.
 
+## Endpoint F16 — đăng nhập lớp HS/PH và đề xuất kết nối (bổ sung 16/10/2026)
+
+Triển khai trên main (`packages/family_bridge_features/f16_classroom`), tái sử dụng Session/Invite của F01; chi tiết schema trong `openapi.yaml` (đoạn path `x-owner-feature: F16`).
+
+| Method | Path | Quyền | Response chính |
+| --- | --- | --- | --- |
+| POST | `/api/v1/auth/class-session` | Public | 200 `{token, token_type:"Bearer", expires_at, user:{id, display_name, role, class_ref}, consents_required}`; 401 generic giống hệt cho mã sai/không tồn tại/tài khoản vô hiệu; 429 khi guard DB 10 fail/15ph hoặc throttle `class_login` 200/hour |
+| GET | `/api/v1/auth/class-capabilities` | Public | 200 `{login_methods:{local_class, zalo}, settings:{change_password, change_code, change_display_name}, policy:{no_forced_password_change}}`; `zalo=false` khi `FB_ZALO_LOGIN_ENABLED` tắt hoặc thiếu creds (fail closed) |
+| POST | `/api/v1/auth/class-password` | Bearer | 200 `{changed:true, sessions_revoked_other:N}` — thu hồi phiên khác, giữ phiên hiện tại |
+| POST | `/api/v1/auth/class-code` | Bearer | 200 `{login_code:"HSxxx", changed:true}` — chuẩn hóa UPPERCASE, yêu cầu re-auth |
+| POST | `/api/v1/auth/class-display-name` | Bearer | 200 `{display_name, identity_basis:"self_declared"}` |
+| GET | `/api/v1/classroom/proposals` | Bearer | 200 `{results:[{proposal_id,status,my_role,my_confirmed,counterpart_confirmed,counterpart,created_at,updated_at,revision}], next_cursor}` — chỉ proposal của chính mình |
+| POST | `/api/v1/classroom/proposals/{id}/confirm` | Bearer | 200 `{proposal_id,status,my_confirmed:true,connection:null\|{connection_id,status,relationship_kind,generation}}`; bước 2 chạy pre-check + InviteService trong một transaction |
+| POST | `/api/v1/classroom/proposals/{id}/decline` | Bearer | 200 payload proposal; `{reason:"refused"\|"wrong_pair"}` bắt buộc |
+| POST | `/api/v1/classroom/proposals/{id}/cancel` | Bearer | 200 payload proposal; một trong hai bên, khi còn mở |
+
+Lỗi riêng của F16 (trong envelope chuẩn): `proposal_blocked_by_open_invite` (400 — người xác nhận 2 còn lời mời classic primary đang mở, KHÔNG bị hủy hộ), `already_connected` (400 — cặp đã có Connection active), `proposal_not_found` (404 — không thuộc proposal, không leak), `proposal_not_confirmable`/`proposal_not_open` (400), `reauth_failed` (403), `weak_password`/`same_password`/`same_code`/`duplicate_code` (400), `too_many_attempts` (429 — guard DB). Khi `FB_ZALO_LOGIN_ENABLED=false`, `POST /api/v1/auth/session` (Zalo của F01) bị middleware trả 503 `module_unavailable/zalo_login_disabled` — không sửa f01.
+
 ## Quy tắc chung
 
 1. HTTPS; JSON; route version `/api/v1/`; UUID định danh tài khoản và đối tượng nội bộ. Zalo IDs giữ kiểu chuỗi, không chuyển sang Number ở JavaScript.
