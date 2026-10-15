@@ -251,49 +251,64 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(mounted2.host);
   });
 
-  it("Home student (demo): greeting fixture + DemoBanner + badge 'Dữ liệu minh họa' (Stitch)", async () => {
+  it("Home student (demo): greeting fixture + DemoBanner + dữ liệu thật qua mock (w08)", async () => {
+    // PIN UPDATE (task 3-b2, M3): home w08 nối API thật qua adapter. Mock
+    // programMy() rỗng → thẻ chương trình trung thực "Chưa tham gia";
+    // tile thẻ cảm xúc bật thật (F03) → #/cards; tín hiệu → trang #/signal.
+    // Quy tắc không-tự-gửi không đổi (xem qa-no-auto-send).
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(pages.home, ctx);
-    await wait(900);
+    await wait(1000);
     const text = textOf(el);
     // Greeting Stitch dùng displayName fixture thật, không hardcode tên mẫu.
     assert.ok(text.includes("Chào Học sinh Bảo Nam (minh họa), hôm nay bạn cảm thấy thế nào?"), `greeting fixture: ${text}`);
     assert.ok(text.includes("Dữ liệu minh họa"));
     assert.ok(text.includes("Đang đồng hành với: Người đồng hành (minh họa)"));
     assert.ok(text.includes("Cảm xúc lúc này"), "mood card Stitch phải có");
-    assert.ok(text.includes("Gửi thẻ cảm xúc"), "tile thẻ cảm xúc phải có");
-    assert.ok(findButton(el, "Sắp có"), "nút Sắp có (disabled) phải tồn tại");
-    assert.ok(text.includes("Tuần 1: Nhận diện cảm xúc & Tiếng lòng chưa nói"));
-    assert.ok(text.includes("Hộp thư gia đình"));
-    assert.ok(findButton(el, "Mở lời chia sẻ an toàn"), "CTA amber phải có");
+    assert.ok(el.querySelector("a[href='#/cards']"), "tile thẻ cảm xúc phải dẫn #/cards");
+    assert.ok(text.includes("Thư viện thẻ cảm xúc"), "tile thẻ cảm xúc phải có");
+    assert.ok(text.includes("Con cần được lắng nghe"), "tile tín hiệu phải có");
+    assert.ok(text.includes("Chưa tham gia chương trình 4 tuần"), "chương trình trung thực khi chưa ghi danh");
+    assert.ok(text.includes("Hộp thư trao đổi gần đây"), "mailbox preview phải có");
+    assert.ok(text.includes("Mới"), "thư chưa đọc phải có chip Mới");
     unmount(host);
   });
 
-  it("Home caregiver (demo): tự chăm sóc + hộp thư rỗng trung thực + bài học ngắn (Stitch)", async () => {
+  it("Home caregiver (demo): tự chăm sóc + thẻ lời nhắn + bài học trung thực (w09)", async () => {
+    // PIN UPDATE (task 3-b2, M3): caregiver home w09 — thẻ lời nhắn mới nhất
+    // qua listMessages + getMessage (mock), callout an toàn bắt buộc; bài
+    // học 60 giây đọc catalog F09 thật (mock rỗng → nói rỗng, không bịa).
     const { ctx } = makeCtx({ demo: true, role: "caregiver" });
     const { host, el } = mount(pages.home, ctx);
-    await wait(900);
+    await wait(1000);
     const text = textOf(el);
     assert.ok(text.includes("Chào Phụ huynh Minh Tâm (minh họa),"));
     assert.ok(text.includes("Tự chăm sóc bản thân"), "mood card người chăm sóc phải có");
-    assert.ok(text.includes("Tin nhắn & tín hiệu gửi riêng"), "section hộp thư phải có");
-    assert.ok(text.includes("Chưa có tín hiệu mới."));
-    assert.ok(text.includes("Bài học ngắn 60 giây"));
+    assert.ok(text.includes("Lời nhắn gửi đến anh/chị"), "thẻ lời nhắn phải có");
+    assert.ok(text.includes("Đây là nội dung con chủ động gửi cho anh/chị"), "callout an toàn bắt buộc");
+    assert.ok(text.includes("Bài học 60 giây"));
+    assert.ok(text.includes("Chưa có bài học ngắn nào được phát hành"), "không bịa bài học khi catalog rỗng");
     assert.ok(text.includes("Mở hộp thư"), "nút mở hộp thư phải có");
     assert.ok(text.includes("Tôn trọng không gian riêng của con"), "thẻ cam kết phải có");
     unmount(host);
   });
 
-  it("Home student (demo): CTA amber chỉ mở Sheet thông báo, không gửi", async () => {
+  it("Home student (demo): CTA 'Con cần được lắng nghe' chỉ điều hướng #/signal, không gửi", async () => {
+    // PIN UPDATE (task 3-b2, M3): tín hiệu đã có trang riêng #/signal với
+    // preview máy chủ + xác nhận cuối; home chỉ dẫn đường — không mở sheet
+    // và không gửi gì từ home (bất biến không-tự-gửi giữ nguyên).
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(pages.home, ctx);
-    await wait(900);
-    const signalBtn = findButton(el, "Mở lời chia sẻ an toàn");
-    signalBtn.click();
-    const sheet = el.querySelector(".fb-sheet");
-    assert.ok(sheet, "phải mở sheet");
-    assert.ok(textOf(sheet).includes("Tính năng gửi tín hiệu sẽ sớm có ở bản đầy đủ."));
-    assert.ok(!textOf(sheet).includes("đã gửi"), "không được báo đã gửi");
+    await wait(1000);
+    const signalLink = el.querySelector("a[href='#/signal']");
+    assert.ok(signalLink, "phải có lối sang #/signal");
+    assert.ok(textOf(signalLink).includes("Con cần được lắng nghe"));
+    signalLink.click();
+    assert.ok(!el.querySelector(".fb-sheet"), "home không được mở sheet gửi tín hiệu");
+    assert.doesNotMatch(textOf(el), /đã gửi/i, "không được báo đã gửi");
+    const activeSendButtons = Array.from(el.querySelectorAll("button"))
+      .filter((btn) => !btn.disabled && textOf(btn).includes("Gửi"));
+    assert.equal(activeSendButtons.length, 0, "không được có nút Gửi đang bật trên home");
     unmount(host);
   });
 
@@ -347,7 +362,7 @@ describe("Render không throw + copy bắt buộc", () => {
     assert.ok(text.includes("Người đồng hành chính"));
     assert.ok(!text.includes("uuid-nguoi-kia"), "không được hiện UUID của người kia");
     assert.ok(text.includes("Quản lý kết nối"));
-    assert.ok(text.includes("Gửi thẻ cảm xúc"), "home student vẫn giữ các lối tắt nền tảng");
+    assert.ok(text.includes("Thư viện thẻ cảm xúc"), "home student giữ các lối tắt mở lời (w08)");
     clearSession();
     unmount(host);
   });
