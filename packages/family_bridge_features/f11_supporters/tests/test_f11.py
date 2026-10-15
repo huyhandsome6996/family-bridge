@@ -205,3 +205,92 @@ class ContactTests(F11ApiBase):
     def test_unauthenticated_401(self):
         response = self.client.get("/api/v1/supporters/roles")
         self.assertEqual(response.status_code, 401)
+
+    def test_student_can_revoke_role(self):
+        role_id = self._active_role()
+        revoke = self.client.post(
+            f"/api/v1/supporters/roles/{role_id}/revoke", {},
+            format="json", **auth_header(self.student_token))
+        self.assertEqual(revoke.status_code, 200)
+        self.assertEqual(revoke.data["status"], "revoked")
+
+    def test_stranger_cannot_revoke_role(self):
+        role_id = self._active_role()
+        stranger = make_student()
+        stranger_token, _ = make_session(stranger)
+        revoke = self.client.post(
+            f"/api/v1/supporters/roles/{role_id}/revoke", {},
+            format="json", **auth_header(stranger_token))
+        self.assertEqual(revoke.status_code, 404)
+
+    def test_supporter_commitments_view(self):
+        role_id = self._invite().data["role_id"]
+        res = self.client.get("/api/v1/supporters/commitments", format="json",
+                              **auth_header(self.caregiver_token))
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(len(res.data["results"]), 1)
+        self.assertEqual(res.data["results"][0]["role_id"], role_id)
+        # Stranger sees empty commitments
+        stranger = make_student()
+        stranger_token, _ = make_session(stranger)
+        stranger_res = self.client.get("/api/v1/supporters/commitments",
+                                       format="json",
+                                       **auth_header(stranger_token))
+        self.assertEqual(stranger_res.data["results"], [])
+
+    def test_alternate_supporter_selection_no_auto_forward(self):
+        # Student has two supporters: caregiver (active) and second supporter (pending)
+        second_supporter = make_caregiver()
+        second_token, _ = make_session(second_supporter)
+        make_test_connection(self.student, second_supporter)
+
+        # Invite second supporter, left pending
+        second_invite = self._invite(supporter=second_supporter, kind="family")
+        self.assertEqual(second_invite.status_code, 201)
+        second_role_id = second_invite.data["role_id"]
+
+        # First supporter is active
+        first_role_id = self._active_role()
+
+        # Student contacts first supporter explicitly
+        response = self.client.post(
+            f"/api/v1/supporters/roles/{first_role_id}/contact",
+            {"body": "Nhắn riêng cho điểm tựa thứ nhất."},
+            format="json", HTTP_X_IDEMPOTENCY_KEY="sup-alt-0001",
+            **auth_header(self.student_token))
+        self.assertEqual(response.status_code, 201)
+
+        # Message is delivered ONLY to first supporter
+        self.assertEqual(len(self.transport.sent), 1)
+        self.assertEqual(self.transport.sent[0].recipient_id, str(self.caregiver.pk))
+        self.assertEqual(self.transport.sent[0].approved_body, "Nhắn riêng cho điểm tựa thứ nhất.")
+
+        # Pending second supporter cannot be contacted
+        contact_second = self.client.post(
+            f"/api/v1/supporters/roles/{second_role_id}/contact",
+            {"body": "Nhắn cho điểm tựa chưa accept."},
+            format="json", HTTP_X_IDEMPOTENCY_KEY="sup-alt-0002",
+            **auth_header(self.student_token))
+        self.assertEqual(contact_second.status_code, 400)
+        self.assertEqual(contact_second.data["error"]["details"]["reason"], "supporter_not_available")
+
+    def test_supporter_cannot_initiate_contact(self):
+        # TC-F11-AUTH-01: Supporter cannot send contact message through student endpoint
+        role_id = self._active_role()
+        response = self.client.post(
+            f"/api/v1/supporters/roles/{role_id}/contact",
+            {"body": "Điểm tựa không được khởi tạo tin nhắn ngược."},
+            format="json", HTTP_X_IDEMPOTENCY_KEY="sup-reverse-0001",
+            **auth_header(self.caregiver_token))
+        self.assertEqual(response.status_code, 404)
+
+    def test_supporter_role_grants_no_admin_permissions(self):
+        # TC-F11-NEG-05: Accepting supporter role grants zero admin permissions
+        self.assertFalse(self.caregiver.is_staff)
+        self.assertFalse(self.caregiver.is_superuser)
+        role_id = self._active_role()
+        self.caregiver.refresh_from_db()
+        self.assertFalse(self.caregiver.is_staff)
+        self.assertFalse(self.caregiver.is_superuser)
+
+
