@@ -1,7 +1,9 @@
 // Cài đặt (Web Render Task 2, M5b) — tên hiển thị / đổi mật khẩu / đổi mã
 // đăng nhập / riêng tư / đăng xuất. Hợp đồng backend Task 19 (worklog):
-//   PUT  /api/v1/auth/me {display_name} → {user_id, display_name, identity_basis}
-//        (đổi tên KHÔNG cần mật khẩu — khác class-display-name của F16)
+//   POST /api/v1/auth/class-display-name {current_password, display_name}
+//        (tài khoản lớp: đổi tên PHẢI xác thực lại bằng mật khẩu hiện tại)
+//   PUT  /api/v1/auth/me {display_name}
+//        (tài khoản Zalo: không có mật khẩu dùng được → đường này giữ nguyên)
 //   POST /api/v1/auth/class-password {current_password,new_password}
 //        → {changed:true, sessions_revoked_other:N}
 //   POST /api/v1/auth/class-code {current_password,new_code}
@@ -170,8 +172,11 @@ function renderSettings(body, ctx, { demo, currentName, capabilities, openDialog
   if (demo) body.appendChild(createDemoBanner());
   const settingsCaps = (capabilities && capabilities.settings) || {};
 
-  // ---- (1) Tên hiển thị: PUT /auth/me — KHÔNG cần mật khẩu (hợp đồng) ----
-  body.appendChild(renderDisplayNameCard(ctx, currentName));
+  // ---- (1) Tên hiển thị: lớp → re-auth mật khẩu; Zalo → PUT /auth/me ----
+  const sessionNow = getSession();
+  body.appendChild(renderDisplayNameCard(ctx, currentName, {
+    isClassLogin: sessionNow && sessionNow.loginMethod === "class",
+  }));
 
   // ---- (2) Đổi mật khẩu: capabilities hoặc 404 thật → disabled trung thực ----
   body.appendChild(renderPasswordCard(ctx, {
@@ -204,7 +209,7 @@ function renderSettings(body, ctx, { demo, currentName, capabilities, openDialog
 
 /* ---------------------------- (1) Tên hiển thị ---------------------------- */
 
-function renderDisplayNameCard(ctx, currentName) {
+function renderDisplayNameCard(ctx, currentName, { isClassLogin }) {
   const status = h("p", { class: "fb-page__note", role: "status", "aria-live": "polite" });
   const nameField = h("input", {
     class: "fb-input",
@@ -214,6 +219,17 @@ function renderDisplayNameCard(ctx, currentName) {
     placeholder: "Tên bạn muốn người đồng hành thấy",
     "aria-label": "Tên hiển thị mới",
   });
+  // Tài khoản lớp (HS/PH): đổi tên là thay đổi nhạy cảm → xác thực lại bằng
+  // mật khẩu hiện tại (hợp đồng Task 19: POST /auth/class-display-name).
+  // Tài khoản Zalo: không có mật khẩu dùng được → giữ PUT /auth/me.
+  const passwordField = isClassLogin
+    ? h("input", {
+      class: "fb-input", type: "password",
+      autocomplete: "current-password",
+      placeholder: "Mật khẩu hiện tại (xác thực lại)",
+      "aria-label": "Mật khẩu hiện tại để xác thực lại khi đổi tên",
+    })
+    : null;
   const saveBtn = createButton({
     label: "Lưu tên hiển thị",
     variant: "primary",
@@ -228,10 +244,20 @@ function renderDisplayNameCard(ctx, currentName) {
         "Tên hiển thị không được bỏ trống."));
       return;
     }
+    if (isClassLogin && !(passwordField && String(passwordField.value || ""))) {
+      status.appendChild(h("span", { class: "fb-field__error", role: "alert" },
+        "Vui lòng nhập mật khẩu hiện tại để xác thực lại."));
+      return;
+    }
     saveBtn.disabled = true;
     status.textContent = "Đang lưu…";
     Promise.resolve()
-      .then(() => ctx.adapter.updateMyProfile({ displayName: next }))
+      .then(() => (isClassLogin
+        ? ctx.adapter.changeClassDisplayName({
+          currentPassword: String(passwordField.value || ""),
+          displayName: next,
+        })
+        : ctx.adapter.updateMyProfile({ displayName: next })))
       .then((updated) => {
         // Cập nhật tên trong phiên (in-memory) để topbar/sidebar hiển thị khớp.
         const session = getSession();
@@ -245,18 +271,29 @@ function renderDisplayNameCard(ctx, currentName) {
           ctx.navigate("/login?reason=expired");
           return;
         }
+        if (error && error.status === 403) {
+          status.appendChild(h("span", { class: "fb-field__error", role: "alert" },
+            "Mật khẩu hiện tại chưa đúng. Tên hiển thị chưa được đổi."));
+          return;
+        }
         status.appendChild(h("span", { class: "fb-field__error", role: "alert" },
           settingsErrorCopy(error)));
       })
       .then(() => { saveBtn.disabled = false; });
   }
 
+  const fields = passwordField
+    ? h("div", { class: "fb-field" }, nameField, passwordField, saveBtn, status)
+    : h("div", { class: "fb-field" }, nameField, saveBtn, status);
+
   return createCard({
     title: "Tên hiển thị",
-    description:
-      "Tên bạn tự khai báo để người đồng hành nhận ra bạn (không phải danh tính Zalo xác minh). "
-      + "Đổi tên không cần mật khẩu.",
-    children: h("div", { class: "fb-field" }, nameField, saveBtn, status),
+    description: isClassLogin
+      ? "Tên bạn tự khai báo để người đồng hành nhận ra bạn (không phải danh tính Zalo xác minh). "
+        + "Đổi tên cần xác thực lại bằng mật khẩu hiện tại."
+      : "Tên bạn tự khai báo để người đồng hành nhận ra bạn (không phải danh tính Zalo xác minh). "
+        + "Đổi tên không cần mật khẩu.",
+    children: fields,
   });
 }
 

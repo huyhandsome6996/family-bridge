@@ -329,7 +329,7 @@ function renderCredentialLogin({ ctx, proceedAfterLogin, cancelled }) {
 
   // ---- Capabilities probe (best-effort, không bao giờ chặn đăng nhập) ----
   Promise.resolve()
-    .then(() => ctx.adapter.getCapabilities({ timeoutMs: 60000 }))
+    .then(() => ctx.adapter.getCapabilities())
     .then((caps) => {
       if (cancelled()) return;
       const methods = caps && caps.login_methods ? caps.login_methods : null;

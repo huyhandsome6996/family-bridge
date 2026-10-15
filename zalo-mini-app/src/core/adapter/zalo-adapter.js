@@ -91,16 +91,16 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
   return {
     mode: "zalo",
 
-    async getBackendHealth() {
+    async getBackendHealth(timeoutMs = COLD_START_TIMEOUT_MS) {
       requireBaseUrl();
-      const data = await request("/api/v1/health/");
+      const data = await request("/api/v1/health/", { timeoutMs });
       return data && data.status === "ok" ? "ok" : "unknown";
     },
 
-    async getBackendReady() {
+    async getBackendReady(timeoutMs = COLD_START_TIMEOUT_MS) {
       requireBaseUrl();
       try {
-        const data = await request("/api/v1/ready/");
+        const data = await request("/api/v1/ready/", { timeoutMs });
         return data && data.status === "ok" ? "ok" : "unknown";
       } catch (error) {
         // 503 {"status":"unavailable"} là trạng thái HỢP LỆ của ready,
@@ -192,6 +192,7 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
         displayName: data.user && data.user.display_name,
         expiresAt: data.expires_at,
         consentsRequired: data.consents_required,
+        loginMethod: "zalo",
       });
       return {
         userId: getSession().userId,
@@ -239,9 +240,9 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
 
     /** GET /api/v1/auth/me — tên tự khai báo của chính mình (không phải
      * danh tính Zalo xác minh; UI phải gắn nhãn rõ). */
-    async getMyProfile() {
+    async getMyProfile(timeoutMs = COLD_START_TIMEOUT_MS) {
       requireBaseUrl();
-      const data = await authed(() => request("/api/v1/auth/me"));
+      const data = await authed(() => request("/api/v1/auth/me", { timeoutMs }));
       return data || null;
     },
 
@@ -257,9 +258,9 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
 
     // ------------------------- F01: đồng ý ----------------------------------
 
-    async listConsents() {
+    async listConsents(timeoutMs = COLD_START_TIMEOUT_MS) {
       requireBaseUrl();
-      const data = await authed(() => request("/api/v1/consents"));
+      const data = await authed(() => request("/api/v1/consents", { timeoutMs }));
       return data && Array.isArray(data.consents) ? data.consents : [];
     },
 
@@ -538,6 +539,7 @@ export function createZaloAdapter({ baseUrl, getSdkAccessToken = defaultGetSdkAc
         displayName: data.user && data.user.display_name,
         expiresAt: data.expires_at,
         consentsRequired: data.consents_required,
+        loginMethod: "class",
       });
       return {
         userId: getSession().userId,

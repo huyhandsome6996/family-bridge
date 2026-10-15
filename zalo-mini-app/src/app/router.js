@@ -70,7 +70,12 @@ export function matchPattern(patternPath, actualPath) {
     const actualPart = actualParts[i];
     if (patternPart.startsWith(":")) {
       if (!actualPart) return null;
-      params[patternPart.slice(1)] = decodeURIComponent(actualPart);
+      try {
+        params[patternPart.slice(1)] = decodeURIComponent(actualPart);
+      } catch {
+        // Hash hỏng (percent-encoding sai) — dùng giá trị thô, không treo trang.
+        params[patternPart.slice(1)] = actualPart;
+      }
     } else if (patternPart !== actualPart) {
       return null;
     }

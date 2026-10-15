@@ -51,7 +51,10 @@ export function clearSessionIfUnchanged(capturedGeneration) {
 }
 
 /** Lưu phiên mới (đè bản cũ). Trả về snapshot đã lưu. */
-export function setSession({ token, userId, expiresAt, consentsRequired = null, displayName = null }) {
+export function setSession({
+  token, userId, expiresAt, consentsRequired = null, displayName = null,
+  loginMethod = null,
+}) {
   if (typeof token !== "string" || !token) {
     throw new TypeError("Phiên không hợp lệ: thiếu token.");
   }
@@ -64,6 +67,10 @@ export function setSession({ token, userId, expiresAt, consentsRequired = null, 
       : null,
     displayName: typeof displayName === "string" && displayName
       ? displayName : null,
+    // "class" | "zalo" | null — nguồn đăng nhập, dùng để chọn đường đổi tên
+    // hiển thị ở Cài đặt (lớp: re-auth mật khẩu; Zalo: PUT /auth/me).
+    loginMethod: loginMethod === "class" || loginMethod === "zalo"
+      ? loginMethod : null,
   };
   generation += 1;
   return getSession();
@@ -80,6 +87,7 @@ export function getSession() {
       ? current.consentsRequired.slice()
       : null,
     displayName: current.displayName || null,
+    loginMethod: current.loginMethod || null,
   };
 }
 
