@@ -174,13 +174,27 @@ describe("F01 adapter surface", () => {
       "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
       "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
     ]);
+    // Web Render (Task 2): các method GỬI là hợp đồng thật với backend —
+    // tên động từ trùng với endpoint POST thật (F05/F03/F10/F04). Đây là
+    // HÀNH ĐỘNG do người dùng bấm xác nhận cuối (crypto.randomUUID key),
+    // KHÔNG phải cơ chế client tự gửi mà rule này cấm. Giữ tên trung thực
+    // khớp endpoint (sendMessage -> POST /messages, sendCard -> /cards/send,
+    // signalSend -> /signals/send, aiRefine -> /ai/refine).
+    const WEB_CONTRACT_SEND_METHODS = new Set([
+      "sendMessage", "sendCard", "signalSend", "aiRefine",
+    ]);
     for (const name of ADAPTER_METHODS) {
       if (F06_CONTRACT_METHODS.has(name)) continue;
+      if (WEB_CONTRACT_SEND_METHODS.has(name)) continue;
       assert.doesNotMatch(name, /send|submit|push|publish|post/i,
         `tên method không được gợi ý auto-send: ${name}`);
     }
     for (const name of F06_CONTRACT_METHODS) {
       assert.ok(ADAPTER_METHODS.includes(name), `thiếu method F06 ${name}`);
+    }
+    // Method gửi web phải được khai báo danh exclusion tường minh (không lọt qua regex khác).
+    for (const name of WEB_CONTRACT_SEND_METHODS) {
+      assert.ok(ADAPTER_METHODS.includes(name), `thiếu method web gửi ${name}`);
     }
   });
 

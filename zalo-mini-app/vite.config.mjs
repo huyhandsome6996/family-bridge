@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 import { defineConfig } from "vite";
 
+// __APP_VERSION__ — nhúng phiên bản package.json vào bundle (hiện ở sidebar
+// shell + trang help). Chỉ đọc khi build; không phải biến môi trường secret.
+function appVersion() {
+  const pkg = JSON.parse(readFileSync("package.json", "utf8"));
+  return { __APP_VERSION__: JSON.stringify(String(pkg.version || "0.0.0")) };
+}
+
 // Family Bridge dùng JS thuần (ES Modules), không React/zmp-ui.
 // Zalo cho phép deploy "existing build" kèm app-config.json: plugin dưới
 // sinh lại đúng manifest entry/CSS mà zmp-vite-plugin từng tạo, không pin
@@ -39,6 +46,7 @@ export default defineConfig({
   root: ".",
   base: "./",
   plugins: [zaloManifest()],
+  define: appVersion(),
   build: {
     outDir: "www",
     assetsInlineLimit: 0,

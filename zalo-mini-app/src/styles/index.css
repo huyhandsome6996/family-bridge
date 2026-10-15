@@ -9,3 +9,5 @@
 @import "./tokens.css";
 @import "./base.css";
 @import "./components.css";
+/* Web Render (Task 2): khung web desktop (sidebar + topbar). */
+@import "./shell.css";

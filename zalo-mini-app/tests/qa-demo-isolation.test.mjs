@@ -103,13 +103,20 @@ describe("QA: adapter mock (demo) trả fixture, không giả session thật", (
     "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
     "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
   ]);
+  // Web Render (Task 2): method gửi hợp đồng thật của các màn web mới —
+  // hành do người dùng bấm xác nhận cuối với key crypto.randomUUID, KHÔNG
+  // phải auto-send. Tên giữ khớp endpoint: sendMessage/sendCard/signalSend/aiRefine.
+  const WEB_CONTRACT_SEND_METHODS = new Set([
+    "sendMessage", "sendCard", "signalSend", "aiRefine",
+  ]);
 
     for (const key of Object.keys(adapter)) {
       if (F06_CONTRACT_METHODS.has(key)) continue;
+      if (WEB_CONTRACT_SEND_METHODS.has(key)) continue;
       assert.doesNotMatch(key, /send|submit|push|publish|post/i, `method lạ: ${key}`);
     }
-    for (const key of F06_CONTRACT_METHODS) {
-      assert.ok(typeof adapter[key] === "function", `thiếu method F06: ${key}`);
+    for (const key of [...F06_CONTRACT_METHODS, ...WEB_CONTRACT_SEND_METHODS]) {
+      assert.ok(typeof adapter[key] === "function", `thiếu method hợp đồng: ${key}`);
     }
   });
 });
@@ -158,13 +165,20 @@ describe("QA: adapter zalo (production) KHÔNG fake dữ liệu", () => {
     "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
     "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
   ]);
+  // Web Render (Task 2): method gửi hợp đồng thật của các màn web mới —
+  // hành do người dùng bấm xác nhận cuối với key crypto.randomUUID, KHÔNG
+  // phải auto-send. Tên giữ khớp endpoint: sendMessage/sendCard/signalSend/aiRefine.
+  const WEB_CONTRACT_SEND_METHODS = new Set([
+    "sendMessage", "sendCard", "signalSend", "aiRefine",
+  ]);
 
     for (const key of Object.keys(adapter)) {
       if (F06_CONTRACT_METHODS.has(key)) continue;
+      if (WEB_CONTRACT_SEND_METHODS.has(key)) continue;
       assert.doesNotMatch(key, /send|submit|push|publish|post/i, `method lạ: ${key}`);
     }
-    for (const key of F06_CONTRACT_METHODS) {
-      assert.ok(typeof adapter[key] === "function", `thiếu method F06: ${key}`);
+    for (const key of [...F06_CONTRACT_METHODS, ...WEB_CONTRACT_SEND_METHODS]) {
+      assert.ok(typeof adapter[key] === "function", `thiếu method hợp đồng: ${key}`);
     }
   });
 });

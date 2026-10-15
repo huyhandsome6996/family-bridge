@@ -34,6 +34,11 @@ export function createMockAdapter({ scenario = null } = {}) {
   // bao giờ là dữ liệu thật, không rời khỏi bộ nhớ tab hiện tại.
   const invites = new Map();
   const drafts = new Map(); // fixture F06: bản nháp minh họa trong bộ nhớ
+  const messages = new Map(); // fixture Web: thư đã "gửi" trong demo
+  const sentCards = 1;
+  const sentSignals = 1;
+  const sentSuggestions = 1;
+  const moodEntries = 1;
   const connections = [
     {
       connection_id: "demo-connection-1",
@@ -459,6 +464,404 @@ export function createMockAdapter({ scenario = null } = {}) {
       }
       drafts.delete(draftId); // gửi xong nháp rời danh sách đang soạn
       return { draft_id: draftId, status: "sent", preview_id: previewId, source: "fixture" };
+    },
+
+    // ------------------ Web (Task 2): demo counterparts ---------------------
+    // Dữ liệu minh họa trung lập, KHÔNG dùng tên/ảnh người thật. Các method
+    // GỬI echo thành công sau resolve (vẫn yêu cầu key như production để demo
+    // không che lỗi hợp đồng).
+
+    async loginWithCredentials({ code, password } = {}) {
+      await wait(200);
+      if (!code || !password) {
+        throw new ApiError("Vui lòng nhập đủ mã tài khoản và mật khẩu (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
+      }
+      setSession({
+        token: "demo-token-not-real",
+        userId: "demo-user-fixture",
+        expiresAt: Date.now() + 24 * 3600 * 1000,
+        consentsRequired: ["service", "ai_processing", "research"],
+      });
+      return {
+        userId: "demo-user-fixture",
+        displayName: myDisplayName || "Thành viên minh họa",
+        expiresAt: getSession().expiresAt,
+        consentsRequired: ["service", "ai_processing", "research"],
+        role: "student",
+        classRef: "DEMO",
+        source: "fixture",
+      };
+    },
+
+    async getCapabilities() {
+      await wait(100);
+      return {
+        login_methods: { local_class: true, zalo: true },
+        settings: { change_password: true, change_code: true, change_display_name: true },
+        policy: { no_forced_password_change: true },
+        source: "fixture",
+      };
+    },
+
+    async changeClassPassword({ currentPassword, newPassword } = {}) {
+      await wait(150);
+      if (!currentPassword || !newPassword) {
+        throw new ApiError("Thiếu mật khẩu hiện tại hoặc mật khẩu mới (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
+      }
+      if (newPassword === currentPassword) {
+        throw new ApiError("Mật khẩu mới trùng mật khẩu hiện tại (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "same_password" } });
+      }
+      if (newPassword.length < 8) {
+        throw new ApiError("Mật khẩu mới quá yếu (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "weak_password", messages: ["Mật khẩu cần ít nhất 8 ký tự."] } });
+      }
+      return { changed: true, sessions_revoked_other: 0, source: "fixture" };
+    },
+
+    async changeClassCode({ currentPassword, newCode } = {}) {
+      await wait(150);
+      if (!currentPassword || !newCode) {
+        throw new ApiError("Thiếu mật khẩu hiện tại hoặc mã mới (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
+      }
+      if (!/^[A-Za-z0-9]{4,32}$/.test(String(newCode))) {
+        throw new ApiError("Mã mới sai định dạng (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "invalid_code_format" } });
+      }
+      return { login_code: String(newCode), changed: true, source: "fixture" };
+    },
+
+    async changeClassDisplayName({ currentPassword, displayName } = {}) {
+      await wait(150);
+      if (!currentPassword) {
+        throw new ApiError("Cần mật khẩu hiện tại để đổi tên (dữ liệu minh họa).", 403, "http", { code: "not_authorized", details: { reason: "reauth_failed" } });
+      }
+      const text = String(displayName || "").trim().slice(0, 80);
+      if (!text) {
+        throw new ApiError("Tên gọi không được bỏ trống (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
+      }
+      myDisplayName = text;
+      return { display_name: text, identity_basis: "self_declared", source: "fixture" };
+    },
+
+    async listClassProposals() {
+      await wait(200);
+      return {
+        results: [
+          {
+            proposal_id: "demo-proposal-1",
+            status: "proposed",
+            my_role: "student",
+            my_confirmed: false,
+            counterpart_confirmed: false,
+            counterpart: { display_name: "Người đồng hành (minh họa)", identity_basis: "self_declared" },
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        nextCursor: null,
+        source: "fixture",
+      };
+    },
+
+    async confirmClassProposal(proposalId) {
+      await simulate({ kind: "proposal", fallback: "ok" });
+      return {
+        proposal_id: proposalId,
+        status: "connected",
+        my_confirmed: true,
+        counterpart_confirmed: true,
+        connection: {
+          connection_id: "demo-connection-1",
+          status: "active",
+          relationship_kind: "primary",
+          generation: 1,
+        },
+        source: "fixture",
+      };
+    },
+
+    async declineClassProposal(proposalId, { reason = "wrong_pair" } = {}) {
+      await wait(150);
+      return { proposal_id: proposalId, status: "declined", reason, source: "fixture" };
+    },
+
+    async cancelClassProposal(proposalId) {
+      await wait(150);
+      return { proposal_id: proposalId, status: "canceled", source: "fixture" };
+    },
+
+    async listMessages() {
+      await wait(150);
+      const nowIso = new Date().toISOString();
+      return {
+        results: [
+          {
+            message_id: "demo-message-1",
+            kind: "text",
+            direction: "received",
+            counterparty_id: "demo-peer-fixture",
+            title: "Lời nhắn từ người đồng hành (minh họa)",
+            created_at: nowIso,
+            read: false,
+            reply_to: null,
+          },
+        ],
+        nextCursor: null,
+        source: "fixture",
+      };
+    },
+
+    async getMessage(messageId) {
+      await wait(120);
+      return {
+        message_id: messageId,
+        kind: "text",
+        direction: "received",
+        counterparty_id: "demo-peer-fixture",
+        title: "Lời nhắn từ người đồng hành (minh họa)",
+        created_at: new Date().toISOString(),
+        read: false,
+        reply_to: null,
+        body: "Đây là nội dung minh họa trong bộ nhớ demo — không phải tin nhắn thật.",
+        connection_generation: 1,
+        source: "fixture",
+      };
+    },
+
+    async markMessageRead(messageId) {
+      await wait(100);
+      return { read: true, source: "fixture" };
+    },
+
+    async sendMessage({ kind, recipientId, body, title = "", replyTo = null, key } = {}) {
+      await simulate({ kind: "messages", fallback: "ok" });
+      if (!key) {
+        throw new ApiError("Thiếu khóa lượt gửi (dữ liệu minh họa).", 0, "configuration");
+      }
+      if (!body || !recipientId) {
+        throw new ApiError("Thiếu nội dung hoặc người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
+      }
+      const id = `demo-message-${messages.size + 1}`;
+      messages.set(id, { id, kind, recipientId, title, replyTo, key });
+      return { message_id: id, created_at: new Date().toISOString(), state: "sent", source: "fixture" };
+    },
+
+    async quickReplies({ audience } = {}) {
+      await wait(100);
+      // Giống backend khi thư viện chưa cấu hình: rỗng + ghi chú (trung thực).
+      return { results: [], note: "library_not_configured", source: "fixture" };
+    },
+
+    async lookupOperation(key) {
+      await wait(100);
+      return { status: "sent", key, source: "fixture" };
+    },
+
+    async listCards({ group = null } = {}) {
+      await wait(150);
+      const all = [
+        { card_id: "demo-card-1", version: 1, group_code: "ap_luc", title: "Khi thấy áp lực điểm số", body: "Con cảm thấy hơi ngợp vì một số dự định tuần này. Khi nào rảnh, con muốn được ngồi uống nước với bố mẹ một chút...", audience: "student", status: "published" },
+        { card_id: "demo-card-2", version: 1, group_code: "ranh_gioi", title: "Cần khoảng lặng riêng", body: "Hôm nay năng lượng của con hơi thấp, con xin phép được ở trong phòng một lúc để nghỉ ngơi trước khi nói chuyện cả nhà nhé.", audience: "student", status: "published" },
+        { card_id: "demo-card-3", version: 1, group_code: "mong_thau_hieu", title: "Mong được lắng nghe", body: "Có một chuyện con muốn tâm sự với bố mẹ, nhưng con mong bố mẹ chỉ lắng nghe trọn vẹn trước mà chưa cần đưa ra lời khuyên vội...", audience: "student", status: "published" },
+      ];
+      const results = group ? all.filter((c) => c.group_code === group) : all;
+      return { results, truncated: false, maxWindow: 50, source: "fixture" };
+    },
+
+    async previewCard({ cardId, version, recipientId } = {}) {
+      await wait(120);
+      if (!cardId || !recipientId) {
+        throw new ApiError("Thiếu thẻ hoặc người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid" });
+      }
+      return {
+        preview_id: `demo-card-preview-${cardId}-v${version}`,
+        card_id: cardId,
+        version,
+        recipient_id: recipientId,
+        server_time: new Date().toISOString(),
+        source: "fixture",
+      };
+    },
+
+    async sendCard({ cardId, version, recipientId, authorNote = "", key } = {}) {
+      await simulate({ kind: "cards", fallback: "ok" });
+      if (!key) {
+        throw new ApiError("Thiếu khóa lượt gửi (dữ liệu minh họa).", 0, "configuration");
+      }
+      return {
+        message_id: `demo-card-message-${sentCards}`,
+        state: "sent",
+        card: { card_id: cardId, version, group_code: "", title: "", body: "" },
+        source: "fixture",
+      };
+    },
+
+    async cardSnapshot(messageId) {
+      await wait(100);
+      return { message_id: messageId, card: { card_id: "demo-card-1", version: 1, group_code: "ap_luc", title: "Khi thấy áp lực điểm số", body: "..." }, source: "fixture" };
+    },
+
+    async cardReplySuggestions() {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async signalMeta() {
+      await wait(100);
+      return {
+        needs: [
+          { need: "muon_tro_chuyen", label: "Con muốn trò chuyện với bố mẹ" },
+          { need: "muon_duoc_o_ben", label: "Con muốn có bố mẹ ở bên" },
+          { need: "muon_hen_gio", label: "Con muốn hẹn thời gian trao đổi" },
+        ],
+        source: "fixture",
+      };
+    },
+
+    async signalPreview({ need, recipientId } = {}) {
+      await wait(120);
+      const labels = {
+        muon_tro_chuyen: "Con muốn trò chuyện với bố mẹ",
+        muon_duoc_o_ben: "Con muốn có bố mẹ ở bên",
+        muon_hen_gio: "Con muốn hẹn thời gian trao đổi",
+      };
+      if (!labels[need]) {
+        throw new ApiError("Nhu cầu không hợp lệ (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "need", reason: "invalid_need" } });
+      }
+      return { need, label: labels[need], body: `Con cần được lắng nghe — ${labels[need].toLowerCase()}.`, recipient_id: recipientId, source: "fixture" };
+    },
+
+    async signalSend({ need, recipientId, key } = {}) {
+      await simulate({ kind: "signals", fallback: "ok" });
+      if (!key) {
+        throw new ApiError("Thiếu khóa lượt gửi (dữ liệu minh họa).", 0, "configuration");
+      }
+      return { message_id: `demo-signal-${sentSignals}`, state: "sent", need, recipient_id: recipientId, source: "fixture" };
+    },
+
+    async signalDetail(messageId) {
+      await wait(100);
+      return { message_id: messageId, need: "muon_tro_chuyen", label: "Con muốn trò chuyện với bố mẹ", body: "Con cần được lắng nghe — con muốn trò chuyện với bố mẹ.", source: "fixture" };
+    },
+
+    async signalAck(messageId) {
+      await wait(100);
+      return { acknowledged: true, message_id: messageId, source: "fixture" };
+    },
+
+    async aiStatus() {
+      await wait(80);
+      return { ai_enabled: true, source: "fixture" };
+    },
+
+    async aiRefine({ text, purpose = "refine_expression", key } = {}) {
+      await wait(300);
+      if (!key) {
+        throw new ApiError("Thiếu khóa lượt gửi (dữ liệu minh họa).", 0, "configuration");
+      }
+      return {
+        suggestion_id: `demo-suggestion-${sentSuggestions}`,
+        original_text: String(text || ""),
+        refined_text: String(text || ""),
+        purpose,
+        status: "pending",
+        source: "fixture",
+      };
+    },
+
+    async aiAccept(suggestionId) {
+      await wait(100);
+      return { suggestion_id: suggestionId, status: "accepted", source: "fixture" };
+    },
+
+    async aiDiscard(suggestionId) {
+      await wait(100);
+      return { suggestion_id: suggestionId, status: "discarded", source: "fixture" };
+    },
+
+    async helpDirectory() {
+      await wait(120);
+      return {
+        contacts: [],
+        source: "fallback",
+        fallback: true,
+        source_note: "Dữ liệu minh họa — danh bạ đầy đủ hiển thị sau khi máy chủ cấu hình.",
+      };
+    },
+
+    async privacyOverview() {
+      await wait(150);
+      return { shared_by_me: [], connections: [], source: "fixture" };
+    },
+
+    async revokeGrant({ itemType, itemId } = {}) {
+      await wait(120);
+      return { item_type: itemType, item_id: itemId, revoked: true, source: "fixture" };
+    },
+
+    async requestDeletion({ categories } = {}) {
+      await wait(150);
+      if (!Array.isArray(categories) || !categories.length) {
+        throw new ApiError("Chọn ít nhất một phạm vi (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { reason: "must_be_non_empty_list" } });
+      }
+      return { request_id: "demo-deletion-1", status: "requested", receipt: "demo-receipt-not-real", duplicate: false, source: "fixture" };
+    },
+
+    async getDeletionRequest(requestId) {
+      await wait(100);
+      return {
+        request_id: requestId,
+        status: "requested",
+        scope_categories: ["mood"],
+        requested_at: new Date().toISOString(),
+        completed_at: null,
+        failure_detail: null,
+        source: "fixture",
+      };
+    },
+
+    async cancelDeletionRequest(requestId) {
+      await wait(120);
+      return { request_id: requestId, status: "cancelled", source: "fixture" };
+    },
+
+    async withdrawConsent({ purpose } = {}) {
+      await wait(120);
+      consents.set(purpose, { version: null, decision: "withdrawn" });
+      return { purpose, withdrawn: true, source: "fixture" };
+    },
+
+    async createMoodEntry({ emotion, note = "" } = {}) {
+      await simulate({ kind: "mood", fallback: "ok" });
+      if (!emotion) {
+        throw new ApiError("Thiếu cảm xúc (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "emotion" } });
+      }
+      return {
+        entry_id: `demo-mood-${moodEntries}`,
+        emotion,
+        note: note || "",
+        entry_date: new Date().toISOString().slice(0, 10),
+        revision: 1,
+        source: "fixture",
+      };
+    },
+
+    async listMoodEntries() {
+      await wait(100);
+      return { results: [], nextCursor: null, source: "fixture" };
+    },
+
+    async programMy() {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async programWeeks(programKey) {
+      await wait(100);
+      return { results: [], program_key: programKey, source: "fixture" };
+    },
+
+    async activitiesCatalog({ kind = null } = {}) {
+      await wait(100);
+      return { results: [], kind, source: "fixture" };
     },
   };
 }

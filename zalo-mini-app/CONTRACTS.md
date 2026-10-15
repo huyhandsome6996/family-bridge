@@ -61,6 +61,23 @@ export const page = {
 };
 // ctx.store là API object (getState/setRole), KHÔNG phải snapshot.
 ```
+
+### Addendum (Web Render — Task 2, 10/2026)
+
+Mở rộng page contract cho bản web, ADDITIVE (không phá màn cũ):
+
+- `page.requiresAuth: true` → router yêu cầu phiên sống (hasLiveSession) TRƯỚC
+  `requiresRole`; chưa có → redirect `#/login?reason=expired`. Demo (?demo=1)
+  được coi như phiên xem trước minh họa và được cho qua.
+- `page.chrome: "app"` → router bọc content trong `createAppShell` (sidebar 6
+  mục + topbar web). Mặc định `"bare"` — hành vi cũ giữ nguyên. Trang
+  chrome:"app" KHÔNG tự render app-header riêng (tránh double chrome); trang
+  "bare" giữ header hiện có.
+- Pattern routes: route dạng `"/messages/:id"` — sau khi exact match thất bại,
+  router tách segment và khớp `:param`, gộp giá trị vào `ctx.params`
+  (URLSearchParams, giá trị được `decodeURIComponent`).
+- Sidebar item "Hộp thư" có badge số chưa đọc; router cập nhật từ
+  `listMessages` ĐÃ TẢI thật (received && !read), lỗi → ẩn badge (không bịa).
 Import component từ `../../components/index.js`, dùng `h` từ `../../app/dom.js`,
 không import trực tiếp file trong src/core (chỉ qua ctx.adapter / ctx.store).
 
