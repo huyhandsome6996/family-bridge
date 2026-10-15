@@ -1202,3 +1202,202 @@
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* ============ Web M5a — Hộp thư w14 (master list + detail) ============ */
+
+.fb-mx-toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-mx-search {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+}
+
+.fb-mx-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--fb-space-3);
+  align-items: start;
+}
+
+.fb-mx-grid__detail { display: none; }
+
+.fb-mx-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-mx-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  border: 1px solid var(--fb-hairline);
+  background: var(--fb-surface);
+  text-decoration: none;
+  transition: border-color var(--fb-transition-quick), box-shadow var(--fb-transition-quick);
+}
+
+.fb-mx-row:hover {
+  border-color: var(--fb-primary-fixed-dim);
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-mx-row:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: 2px;
+}
+
+.fb-mx-row--active {
+  border-color: var(--fb-primary-fixed-dim);
+  background: var(--fb-surface-low);
+}
+
+.fb-mx-row__who {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.fb-mx-row__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  background: var(--fb-surface-high);
+  color: var(--fb-primary);
+  flex-shrink: 0;
+}
+
+.fb-mx-row__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fb-mx-row__name {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 600;
+  color: var(--fb-text-secondary);
+}
+
+.fb-mx-row__title {
+  color: var(--fb-text);
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  overflow-wrap: anywhere;
+}
+
+.fb-mx-row__side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--fb-space-1);
+  flex-shrink: 0;
+}
+
+.fb-mx-empty-note {
+  margin: 0;
+  padding: var(--fb-space-3);
+  border: 1px dashed var(--fb-outline-variant);
+  border-radius: var(--fb-radius-control);
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+.fb-mx-detail__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  position: sticky;
+  top: var(--fb-space-3);
+}
+
+@media (min-width: 1024px) {
+  .fb-mx-grid {
+    grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr);
+  }
+
+  .fb-mx-grid__detail { display: block; }
+}
+
+/* ============ Web M5a — Chi tiết thư w15 (bong bóng + phản hồi) ============ */
+
+.fb-msg-thread {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-msg-bubble {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+  max-width: min(560px, 100%);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-group);
+  border: 1px solid var(--fb-hairline);
+  background: var(--fb-surface-low);
+}
+
+.fb-msg-bubble--received { margin-right: auto; }
+
+.fb-msg-bubble--sent {
+  margin-left: auto;
+  border-color: var(--fb-primary-fixed-dim);
+  background: var(--fb-surface-high);
+}
+
+.fb-msg-bubble__who {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 600;
+  color: var(--fb-text-secondary);
+}
+
+.fb-msg-bubble__body {
+  margin: 0;
+  color: var(--fb-text);
+  font-size: var(--fb-fs-body);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.fb-msg-compose {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-msg-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+}
+
+.fb-msg-ai {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-msg-lookup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}

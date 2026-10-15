@@ -413,14 +413,45 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Hộp thư: EmptyState + nút kiểm tra kết nối", () => {
+  it("Hub Hộp thư (w14, PIN UPDATE task 3-b4): danh sách dữ liệu thật từ F05", async () => {
+    // PIN UPDATE (task 3-b4, M5a): mailbox w14 nối listMessages/listConnections
+    // thật qua adapter (mock trả 1 thư minh họa received-unread) → trang hiện
+    // danh sách + chip "Mới", không còn EmptyState tĩnh. Copy trống cũ được
+    // GIỮ NGUYÊN ở trạng thái rỗng thật — pin riêng ở test dưới với adapter
+    // trả rỗng. Trang giờ là chrome "app" + requiresAuth → test đặt phiên.
+    setSession({ token: "t-pages", userId: "u-pages", expiresAt: Date.now() + 3600_000 });
     const { ctx } = makeCtx({ demo: false, role: "student" });
     const { host, el } = mount(pages.mailbox, ctx);
+    await wait(400); // mock listMessages chờ ~150ms
+    const text = textOf(el);
+    assert.ok(text.includes("Hộp thư trao đổi thấu cảm"), `thấy: ${text.slice(0, 200)}`);
+    assert.ok(text.includes("Không áp lực trả lời ngay"));
+    assert.ok(text.includes("Lời nhắn từ người đồng hành (minh họa)"), "tiêu đề thật từ máy chủ");
+    assert.ok(text.includes("Mới"), "thư received-unread phải có chip Mới");
+    assert.ok(el.querySelector("a[data-message-id]"), "hàng phải là liên kết sang chi tiết");
+    unmount(host);
+    clearSession();
+  });
+
+  it("Hub Hộp thư rỗng (PIN UPDATE task 3-b4): giữ pin copy cũ + kiểm tra kết nối", async () => {
+    // PIN UPDATE (task 3-b4, M5a): trạng thái rỗng THẬT (máy chủ trả rỗng)
+    // giữ nguyên copy pin cũ của hub — "Chưa có tin nhắn nào" + mô tả + nút
+    // "Kiểm tra kết nối máy chủ".
+    setSession({ token: "t-pages", userId: "u-pages", expiresAt: Date.now() + 3600_000 });
+    const emptyAdapter = {
+      mode: "zalo",
+      listMessages: async () => ({ results: [], nextCursor: null }),
+      listConnections: async () => ({ results: [], nextCursor: null }),
+    };
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: emptyAdapter });
+    const { host, el } = mount(pages.mailbox, ctx);
+    await wait(50);
     const text = textOf(el);
     assert.ok(text.includes("Chưa có tin nhắn nào"));
     assert.ok(text.includes("Khi hai bên đã kết nối, lời nhắn và phản hồi nhanh sẽ xuất hiện ở đây."));
     assert.ok(findButton(el, "Kiểm tra kết nối máy chủ"));
     unmount(host);
+    clearSession();
   });
 
   it("Hub Nhật ký: chưa mở + nhấn mạnh chia sẻ từng trang do người dùng chọn", () => {

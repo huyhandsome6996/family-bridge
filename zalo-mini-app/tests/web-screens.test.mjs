@@ -13,6 +13,12 @@
 //  M4 — compose restyle (w11/w12): ring đếm pause có mặt khi paused;
 //       layout 2 cột (.fb-compose-grid); AI refine thật (aiRefine -> aiAccept
 //       chỉ điền textarea); KHÔNG setInterval (giữ nguyên bất biến QA).
+//  M5a — mailbox (w14): danh sách title-only từ F05 (KHÔNG body/snippet),
+//       nhóm lọc kind+reply_to, tìm kiếm trong cửa sổ đã tải, phân trang
+//       cursor thật, "Mới"/"Gửi lúc"/"Nhận lúc" — không xác nhận xem 2 chiều.
+//  M5a — message (w15): markRead CHỈ received-unread; quickReplies rỗng
+//       (library_not_configured) → ẩn chip; gửi reply = kind "text" +
+//       reply_to + key; lỗi -> KẾT QUẢ CHƯA XÁC ĐỊNH + lookupOperation.
 //
 // Pattern happy-dom giống tests/pages.test.mjs: gắn globals TRƯỚC import động.
 import { register } from "node:module";
@@ -47,6 +53,8 @@ const home = (await import("../src/pages/home/index.js")).page;
 const cards = (await import("../src/pages/cards/index.js")).page;
 const signal = (await import("../src/pages/signal/index.js")).page;
 const compose = (await import("../src/pages/compose/index.js")).page;
+const mailbox = (await import("../src/pages/mailbox/index.js")).page;
+const messagePage = (await import("../src/pages/message/index.js")).page;
 
 const ROOT = resolve(import.meta.dirname, "..");
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -65,7 +73,7 @@ function findButton(root, needle) {
   );
 }
 
-function makeCtx({ demo = false, role = "student", adapter = null } = {}) {
+function makeCtx({ demo = false, role = "student", adapter = null, params = "" } = {}) {
   initStore({ demoMode: demo });
   resetState();
   if (role) setRole(role);
@@ -78,7 +86,7 @@ function makeCtx({ demo = false, role = "student", adapter = null } = {}) {
       navigate: (path) => navigateCalls.push(path),
       setRole: (nextRole) => setRole(nextRole),
       rebuildAdapter: () => {},
-      params: new URLSearchParams(""),
+      params: new URLSearchParams(params),
     },
     adapter: currentAdapter,
     navigateCalls,
@@ -981,5 +989,508 @@ describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm pho
   it("không thêm setInterval vào compose (DSA-10) — bất biến QA giữ nguyên", () => {
     assert.ok(!COMPOSE_SOURCE().includes("setInterval"), "compose không được dùng setInterval");
     assert.ok(!/autoSend|auto-submit/i.test(COMPOSE_SOURCE()), "không auto-send");
+  });
+});
+
+/* ======================== M5a: MAILBOX (w14) + MESSAGE (w15) ======================== */
+
+const MAIL_MESSAGES = [
+  {
+    message_id: "m-1", kind: "text", direction: "received",
+    counterparty_id: "u-care-1", title: "Lời nhắn từ bố",
+    created_at: "2026-10-24T03:30:00Z", read: false, reply_to: null,
+  },
+  {
+    message_id: "m-2", kind: "emotion_card", direction: "sent",
+    counterparty_id: "u-care-1", title: "Thẻ cảm xúc: Khi thấy áp lực điểm số",
+    created_at: "2026-10-23T09:00:00Z", read: true, reply_to: null,
+  },
+  {
+    message_id: "m-3", kind: "listening_signal", direction: "received",
+    counterparty_id: "u-care-1", title: "Tín hiệu: Cần có người ở bên cạnh",
+    created_at: "2026-10-24T02:00:00Z", read: true, reply_to: null,
+  },
+  {
+    message_id: "m-4", kind: "quick_reply", direction: "sent",
+    counterparty_id: "u-care-1", title: "Lời hồi âm",
+    created_at: "2026-10-24T04:00:00Z", read: true, reply_to: "m-1",
+  },
+  {
+    message_id: "m-5", kind: "text", direction: "received",
+    counterparty_id: "u-unknown", title: "Lời nhắn chưa có tên trong kết nối",
+    created_at: "2026-10-22T08:00:00Z", read: true, reply_to: null,
+  },
+];
+
+const MAIL_CONNECTION = {
+  connection_id: "c-1",
+  status: "active",
+  relationship_kind: "primary",
+  generation: 1,
+  other_party_id: "u-care-1",
+  counterpart: { display_name: "Người chăm sóc Minh", identity_basis: "self_declared" },
+};
+
+/** Adapter F05 giả cho mailbox/message — ghi lại mọi call để pin hợp đồng. */
+function mailAdapter({ rows = MAIL_MESSAGES, connections = [MAIL_CONNECTION], behavior = {} } = {}) {
+  return {
+    mode: "zalo",
+    listMessages: async (args = {}) => {
+      behavior.listMessagesCalls = behavior.listMessagesCalls || [];
+      behavior.listMessagesCalls.push(args);
+      if (behavior.listError) throw behavior.listError;
+      if (behavior.listPages && behavior.listPages.length) {
+        const pageData = behavior.listPages.shift();
+        return { results: pageData.results, nextCursor: pageData.nextCursor };
+      }
+      return { results: rows, nextCursor: behavior.nextCursor || null };
+    },
+    listConnections: async () => ({ results: connections, nextCursor: null }),
+    getMessage: async (id) => {
+      behavior.getMessageCalls = behavior.getMessageCalls || [];
+      behavior.getMessageCalls.push(id);
+      if (behavior.getMessageError) throw behavior.getMessageError;
+      const row = rows.find((r) => r.message_id === id) || MAIL_MESSAGES[0];
+      return { ...row, message_id: id, body: "Nội dung thư thật từ máy chủ — chỉ hiện khi mở thư." };
+    },
+    markMessageRead: async (id) => {
+      behavior.markReadCalls = behavior.markReadCalls || [];
+      behavior.markReadCalls.push(id);
+      if (behavior.markReadError) throw behavior.markReadError;
+      return { read: true };
+    },
+    sendMessage: async (args = {}) => {
+      behavior.sendCalls = behavior.sendCalls || [];
+      behavior.sendCalls.push(args);
+      if (behavior.sendError) throw behavior.sendError;
+      return { message_id: "m-reply-1", created_at: "2026-10-24T05:00:00Z", state: "sent" };
+    },
+    quickReplies: async (args = {}) => {
+      behavior.quickRepliesArgs = args;
+      if (behavior.quickRepliesError) throw behavior.quickRepliesError;
+      return behavior.quickRepliesResult || { results: [], note: "library_not_configured" };
+    },
+    lookupOperation: async (key) => {
+      behavior.lookupCalls = behavior.lookupCalls || [];
+      behavior.lookupCalls.push(key);
+      return behavior.lookupResult || { status: "sent", key };
+    },
+    aiStatus: async () => behavior.aiStatusResult || { enabled: false },
+    aiRefine: async (args = {}) => {
+      behavior.aiRefineCalls = behavior.aiRefineCalls || [];
+      behavior.aiRefineCalls.push(args);
+      if (behavior.aiRefineError) throw behavior.aiRefineError;
+      return behavior.aiRefineResult
+        || { suggestion_id: "s-1", refined_text: "Bản diễn đạt êm hơn do máy chủ đề xuất." };
+    },
+    aiAccept: async (id) => {
+      behavior.aiAcceptCalls = behavior.aiAcceptCalls || [];
+      behavior.aiAcceptCalls.push(id);
+      return { accepted: true };
+    },
+    aiDiscard: async (id) => {
+      behavior.aiDiscardCalls = behavior.aiDiscardCalls || [];
+      behavior.aiDiscardCalls.push(id);
+      return { discarded: true };
+    },
+  };
+}
+
+const MAIL_BANNED = ["Đã xem", "đã đọc", "Đã gửi", "Người nhận đã mở"];
+
+function assertNoBanned(text, label) {
+  for (const phrase of MAIL_BANNED) {
+    assert.ok(!text.includes(phrase), `${label} không được chứa "${phrase}"`);
+  }
+}
+
+function pillByLabel(root, needle) {
+  return Array.from(root.querySelectorAll(".fb-cards-pill")).find(
+    (pill) => textOf(pill).includes(needle),
+  );
+}
+
+describe("Web M5a — mailbox (w14): danh sách title-only dữ liệu thật, không bịa", () => {
+  it("page contract: chrome 'app' + requiresAuth + requiresRole + bottom-nav", () => {
+    assert.equal(mailbox.id, "mailbox");
+    assert.equal(mailbox.title, "Hộp thư");
+    assert.equal(mailbox.chrome, "app");
+    assert.equal(mailbox.requiresAuth, true);
+    assert.equal(mailbox.requiresRole, true);
+    assert.equal(mailbox.showBottomNav, true);
+  });
+
+  it("heading + sub; tên người đối diện từ listConnections; fallback trung thực khi không resolve", async () => {
+    withSession();
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter() });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    const text = textOf(el);
+    assert.ok(text.includes("Hộp thư trao đổi thấu cảm"), `thấy: ${text.slice(0, 200)}`);
+    assert.ok(text.includes("Không áp lực trả lời ngay • Chỉ người nhận được cấp quyền mới thấy nội dung"));
+    assert.ok(text.includes("Người chăm sóc Minh"), "tên thật từ listConnections phải hiện");
+    assert.ok(text.includes("Thành viên Family Bridge"), "fallback tên trung thực cho counterparty lạ");
+    assertNoBanned(text, "mailbox");
+    unmount(host);
+  });
+
+  it("'Mới' chỉ cho received-unread; 'Gửi lúc' cho sent; 'Nhận lúc' cho received đã tải", async () => {
+    withSession();
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter() });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    const row1 = el.querySelector('[data-message-id="m-1"]');
+    assert.ok(row1, "hàng m-1 phải render");
+    assert.ok(textOf(row1).includes("Mới"), "received-unread phải có chip Mới");
+    const row2 = el.querySelector('[data-message-id="m-2"]');
+    assert.ok(/Gửi lúc/.test(textOf(row2)), "thư gửi phải có 'Gửi lúc'");
+    const row3 = el.querySelector('[data-message-id="m-3"]');
+    assert.ok(/Nhận lúc/.test(textOf(row3)), "received đã đọc phải có 'Nhận lúc'");
+    unmount(host);
+  });
+
+  it("nhóm lọc map đúng (kind + reply_to) trên cửa sổ đã tải; không gọi lại listMessages", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter({ behavior }) });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    assert.equal(behavior.listMessagesCalls.length, 1, "chỉ tải 1 lần ban đầu");
+
+    pillByLabel(el, "Tín hiệu kết nối").click();
+    assert.ok(el.querySelector('[data-message-id="m-3"]'), "nhóm tín hiệu phải có m-3");
+    assert.equal(el.querySelector('[data-message-id="m-1"]'), null, "nhóm tín hiệu không có m-1");
+
+    pillByLabel(el, "Lời hồi âm").click();
+    assert.ok(el.querySelector('[data-message-id="m-4"]'), "reply_to != null phải vào nhóm hồi âm");
+    assert.equal(el.querySelector('[data-message-id="m-3"]'), null);
+
+    pillByLabel(el, "Lời nhắn & Thẻ cảm xúc").click();
+    assert.ok(el.querySelector('[data-message-id="m-1"]'), "nhóm lời nhắn phải có m-1");
+    assert.ok(el.querySelector('[data-message-id="m-2"]'), "nhóm lời nhắn phải có m-2 (emotion_card)");
+    assert.equal(el.querySelector('[data-message-id="m-4"]'), null);
+
+    pillByLabel(el, "Tất cả").click();
+    assert.ok(el.querySelector('[data-message-id="m-5"]'), "'Tất cả' bỏ lọc");
+    assert.equal(behavior.listMessagesCalls.length, 1, "bộ lọc chạy client-side, không tải lại");
+    unmount(host);
+  });
+
+  it("tìm kiếm lọc trong cửa sổ đã tải + caption trung thực", async () => {
+    withSession();
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter() });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    const input = el.querySelector("input[type='search']");
+    assert.ok(input, "phải có ô tìm kiếm");
+    assert.ok(textOf(el).includes("trong số thư đã tải"), "caption phải nói rõ phạm vi đã tải");
+    input.value = "bố";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    assert.ok(el.querySelector('[data-message-id="m-1"]'), "khớp 'Lời nhắn từ bố'");
+    assert.equal(el.querySelector('[data-message-id="m-2"]'), null, "không khớp phải ẩn đi");
+    input.value = "zzzz-khong-co";
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    assert.ok(
+      textOf(el).includes("Không có thư nào khớp bộ lọc trong số thư đã tải"),
+      "rỗng do lọc phải trung thực về phạm vi",
+    );
+    unmount(host);
+  });
+
+  it("phân trang: 'Tải thêm' truyền cursor thật; hết cursor -> ẩn nút", async () => {
+    withSession();
+    const behavior = {
+      listPages: [
+        { results: MAIL_MESSAGES.slice(0, 2), nextCursor: "c2" },
+        { results: [MAIL_MESSAGES[2]], nextCursor: null },
+      ],
+    };
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter({ behavior }) });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    assert.ok(el.querySelector('[data-message-id="m-1"]'));
+    assert.equal(el.querySelector('[data-message-id="m-3"]'), null, "chưa tải trang 2");
+    const loadMore = findButton(el, "Tải thêm");
+    assert.ok(loadMore && !loadMore.hidden, "có cursor -> hiện nút Tải thêm");
+    loadMore.click();
+    await wait(30);
+    assert.ok(el.querySelector('[data-message-id="m-3"]'), "trang 2 phải được nối vào danh sách");
+    assert.equal(behavior.listMessagesCalls[1].cursor, "c2", "cursor f05 phải truyền đúng");
+    const loadMoreAfter = findButton(el, "Tải thêm");
+    assert.ok(!loadMoreAfter || loadMoreAfter.hidden, "hết cursor -> ẩn nút");
+    unmount(host);
+  });
+
+  it("desktop ≥1024px: click hàng -> #/mailbox?sel=<id>; pane chi tiết meta + liên kết mở thư", async () => {
+    withSession();
+    const originalMatchMedia = domWindow.matchMedia;
+    domWindow.matchMedia = (query) => ({
+      matches: query.includes("min-width: 1024"),
+      media: query,
+    });
+    try {
+      const { ctx, navigateCalls } = makeCtx({ demo: false, role: "student", adapter: mailAdapter() });
+      const { host, el } = mount(mailbox, ctx);
+      await wait(60);
+      el.querySelector('[data-message-id="m-1"]').click();
+      assert.ok(
+        navigateCalls.includes("/mailbox?sel=m-1"),
+        `desktop phải chọn qua sel param; calls: ${navigateCalls.join(", ")}`,
+      );
+
+      // Re-render với sel=m-1 (như router sau hashchange)
+      const ctx2 = makeCtx({
+        demo: false, role: "student", adapter: mailAdapter(), params: "sel=m-1",
+      }).ctx;
+      const host2 = document.createElement("div");
+      document.body.appendChild(host2);
+      const el2 = mailbox.render(ctx2);
+      host2.appendChild(el2);
+      await wait(60);
+      const detail = el2.querySelector(".fb-mx-detail");
+      assert.ok(detail, "desktop phải có pane chi tiết");
+      assert.ok(textOf(detail).includes("Lời nhắn từ bố"), "pane hiện tiêu đề thư đã chọn");
+      const openLink = detail.querySelector("a[href='#/messages/m-1']");
+      assert.ok(openLink, "pane phải có liên kết mở thư thật");
+      assert.ok(textOf(openLink).includes("Mở thư để đọc nội dung"));
+      assert.ok(
+        textOf(el2).includes("Danh sách chỉ chứa tiêu đề"),
+        "ghi rõ danh sách không chứa nội dung thư",
+      );
+      assert.ok(el2.querySelector('[data-message-id="m-1"].fb-mx-row--active'), "hàng đang chọn highlight");
+      host2.remove();
+      unmount(host);
+    } finally {
+      domWindow.matchMedia = originalMatchMedia;
+    }
+  });
+
+  it("mobile: hàng là liên kết sang #/messages/{id} (không pane chi tiết)", async () => {
+    withSession();
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter() });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    const row = el.querySelector('a[data-message-id="m-1"]');
+    assert.ok(row, "hàng phải là <a>");
+    assert.equal(row.getAttribute("href"), "#/messages/m-1", "mobile: điều hướng sang trang chi tiết");
+    unmount(host);
+  });
+
+  it("rỗng thật từ máy chủ: giữ pin copy cũ + nút kiểm tra kết nối", async () => {
+    withSession();
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter({ rows: [] }) });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    const text = textOf(el);
+    assert.ok(text.includes("Chưa có tin nhắn nào"), "pin copy cũ phải giữ nguyên");
+    assert.ok(text.includes("Khi hai bên đã kết nối, lời nhắn và phản hồi nhanh sẽ xuất hiện ở đây."));
+    assert.ok(findButton(el, "Kiểm tra kết nối máy chủ"));
+    unmount(host);
+  });
+
+  it("lỗi tải: trung thực cold-start + Thử lại; không hiện số bịa", async () => {
+    withSession();
+    const behavior = { listError: new ApiError("Máy chủ chưa phản hồi.", 0, "timeout") };
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: mailAdapter({ behavior }) });
+    const { host, el } = mount(mailbox, ctx);
+    await wait(60);
+    const text = textOf(el);
+    assert.ok(text.includes("Không tải được hộp thư"), `thấy: ${text.slice(0, 200)}`);
+    assert.ok(text.includes("lần khởi động đầu có thể mất tới một phút"), "cold-start phải được nói thật");
+    assert.ok(findButton(el, "Thử lại"));
+    assert.equal(el.querySelector('[data-message-id]'), null, "không render hàng khi lỗi");
+    unmount(host);
+  });
+});
+
+describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", () => {
+  it("thread render body thật; bong bóng theo direction; markRead CHỈ received-unread", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const text = textOf(el);
+    assert.ok(text.includes("Lời nhắn từ bố"), "tiêu đề từ getMessage phải hiện");
+    assert.ok(text.includes("Nội dung thư thật từ máy chủ — chỉ hiện khi mở thư."), "body thật phải hiện");
+    assert.ok(el.querySelector(".fb-msg-bubble--received"), "thư nhận -> bong bóng received");
+    assert.ok(text.includes("← Quay lại Hộp thư"), "phải có lối về hộp thư");
+    assertNoBanned(text, "message received");
+    await wait(30);
+    assert.deepEqual(behavior.markReadCalls, ["m-1"], "markRead đúng 1 lần cho received-unread");
+    unmount(host);
+  });
+
+  it("thư gửi đi (sent + đã đọc): KHÔNG gọi markMessageRead; bong bóng --sent", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-2",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(90);
+    assert.ok(el.querySelector(".fb-msg-bubble--sent"), "thư gửi -> bong bóng sent");
+    assert.deepEqual(behavior.markReadCalls || [], [], "sent: tuyệt đối không markRead");
+    unmount(host);
+  });
+
+  it("quickReplies library_not_configured -> ẩn chip trung thực; audience theo vai trò", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "caregiver", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const chips = el.querySelector(".fb-msg-chips");
+    assert.ok(chips, "khung chip phải tồn tại (để ẩn đúng cách)");
+    assert.equal(chips.children.length, 0, "library_not_configured -> KHÔNG chip");
+    assert.ok(
+      textOf(el).includes("chưa được cấu hình"),
+      "ghi chú trung thực khi thư viện chưa cấu hình",
+    );
+    assert.equal(behavior.quickRepliesArgs.audience, "caregiver", "audience truyền theo vai trò");
+    unmount(host);
+  });
+
+  it("quickReplies có kết quả -> chip điền VÀO TEXTAREA (người dùng vẫn tự bấm gửi)", async () => {
+    withSession();
+    const behavior = {
+      quickRepliesResult: { results: [{ text: "Cảm ơn anh/chị đã nhắn cho con." }], note: null },
+    };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const chip = el.querySelector(".fb-msg-chips .fb-cards-pill");
+    assert.ok(chip, "chip gợi ý phải hiện khi máy chủ trả kết quả");
+    chip.click();
+    const textarea = el.querySelector("textarea");
+    assert.equal(
+      textarea.value,
+      "Cảm ơn anh/chị đã nhắn cho con.",
+      "chip chỉ điền textarea",
+    );
+    unmount(host);
+  });
+
+  it("gửi phản hồi: body có kind text + recipientId + reply_to + key; xong -> về #/mailbox", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const textarea = el.querySelector("textarea");
+    textarea.value = "Con cảm ơn bố, tối nay con sẽ gọi cho bố.";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    const sendBtn = findButton(el, "Gửi phản hồi");
+    assert.ok(sendBtn && !sendBtn.disabled, "có nội dung -> nút gửi bật");
+    sendBtn.click();
+    await wait(30);
+    assert.equal(behavior.sendCalls.length, 1, "đúng 1 lượt gửi");
+    const call = behavior.sendCalls[0];
+    assert.equal(call.kind, "text", "f05 không có kind 'reply' -> gửi bằng text");
+    assert.equal(call.recipientId, "u-care-1", "recipient là counterparty của thư");
+    assert.equal(call.replyTo, "m-1", "reply_to trỏ về thư đang mở");
+    assert.ok(call.key, "phải có idempotency key tạo tại nút bấm");
+    assert.equal(call.body, "Con cảm ơn bố, tối nay con sẽ gọi cho bố.");
+    assert.ok(navigateCalls.includes("/mailbox"), "201 -> về #/mailbox");
+    unmount(host);
+  });
+
+  it("gửi lỗi -> KẾT QUẢ CHƯA XÁC ĐỊNH + 'Kiểm tra trạng thái gửi' -> lookupOperation(key)", async () => {
+    withSession();
+    const behavior = { sendError: new ApiError("Mạng không ổn định.", 0, "timeout") };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const textarea = el.querySelector("textarea");
+    textarea.value = "Con đã nhận được lời nhắn của bố.";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    findButton(el, "Gửi phản hồi").click();
+    await wait(30);
+    const text = textOf(el);
+    assert.ok(text.includes("KẾT QUẢ CHƯA XÁC ĐỊNH"), "báo trung thực khi không rõ kết quả");
+    assert.ok(!text.includes("Đã gửi"), "không được tuyên bố thành công");
+    const lookupBtn = findButton(el, "Kiểm tra trạng thái gửi");
+    assert.ok(lookupBtn, "phải có lối tra cứu");
+    lookupBtn.click();
+    await wait(30);
+    assert.equal(behavior.lookupCalls.length, 1, "lookup đúng 1 lần");
+    assert.equal(behavior.lookupCalls[0], behavior.sendCalls[0].key, "lookup đúng key lượt gửi");
+    unmount(host);
+  });
+
+  it("AI chỉ khi aiStatus bật; 'Dùng gợi ý' -> aiAccept + chỉ điền textarea; 'Bỏ' giữ nguyên", async () => {
+    withSession();
+    const behavior = {
+      aiStatusResult: { enabled: true },
+      quickRepliesResult: { results: [], note: "library_not_configured" },
+    };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const aiPill = findButton(el, "AI gợi ý cách diễn đạt êm ái hơn");
+    assert.ok(aiPill, "aiStatus bật -> nút AI phải có");
+    const textarea = el.querySelector("textarea");
+    textarea.value = "Lời chưa êm của con.";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    aiPill.click();
+    await wait(30);
+    const suggestionCard = el.querySelector(".fb-compose__ai-suggestion");
+    assert.ok(suggestionCard && !suggestionCard.hidden, "gợi ý phải hiện trong thẻ");
+    assert.ok(
+      textOf(suggestionCard).includes("Bản diễn đạt êm hơn do máy chủ đề xuất."),
+      "nội dung gợi ý từ máy chủ",
+    );
+    const before = textarea.value;
+    findButton(suggestionCard, "Dùng gợi ý").click();
+    await wait(30);
+    assert.deepEqual(behavior.aiAcceptCalls, ["s-1"], "aiAccept được gọi với suggestion_id");
+    assert.equal(textarea.value, "Bản diễn đạt êm hơn do máy chủ đề xuất.", "chỉ điền textarea");
+    assert.ok(behavior.sendCalls === undefined, "AI không tự gửi");
+    findButton(el, "AI gợi ý cách diễn đạt êm ái hơn").click();
+    await wait(30);
+    findButton(el.querySelector(".fb-compose__ai-suggestion"), "Bỏ").click();
+    await wait(30);
+    assert.deepEqual(behavior.aiDiscardCalls, ["s-1"]);
+    assert.equal(textarea.value, "Bản diễn đạt êm hơn do máy chủ đề xuất.", "Bỏ -> textarea giữ nguyên");
+    assert.ok(before !== "", "sanity");
+    unmount(host);
+  });
+
+  it("AI tắt (mặc định) -> KHÔNG nút AI trung thực", async () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter(), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    assert.ok(!findButton(el, "AI gợi ý cách diễn đạt êm ái hơn"), "không cổng -> không nút");
+    unmount(host);
+  });
+
+  it("getMessage lỗi -> trạng thái lỗi + Thử lại, không bịa nội dung", async () => {
+    withSession();
+    const behavior = { getMessageError: new ApiError("Máy chủ chưa phản hồi.", 0, "timeout") };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const text = textOf(el);
+    assert.ok(text.includes("Không tải được thư"), `thấy: ${text.slice(0, 200)}`);
+    assert.ok(findButton(el, "Thử lại"));
+    assert.equal(el.querySelector(".fb-msg-bubble"), null, "không render bong bóng khi lỗi");
+    unmount(host);
   });
 });
