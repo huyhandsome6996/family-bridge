@@ -206,6 +206,7 @@ class ProposalCancelView(APIView):
     """POST /api/v1/classroom/proposals/{id}/cancel — 1 trong 2 ben huy."""
     authentication_classes = [FBSDSessionAuthentication]
     permission_classes = [IsAuthenticated]
+    throttle_scope = "invite_claim"
 
     def post(self, request, pk):
         result = _get_proposal_service().cancel(request.user, str(pk))

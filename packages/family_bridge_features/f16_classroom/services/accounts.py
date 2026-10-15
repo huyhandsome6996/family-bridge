@@ -193,15 +193,17 @@ def change_password(user, *, current_password, new_password,
     if new_password == current_password:
         raise InputInvalid({"reason": "same_password"})
 
-    user.set_password(new_password)
-    user.save(update_fields=["password"])
-
-    # Thu hoi cac session khac con song — giu phien hien tai (khong doi GUI).
+    # Rotation phai nguyen ven: doi password + thu hoi session khac trong CUNG
+    # mot transaction de crash giua chung khong de lai session cu con song.
+    from django.db import transaction as db_transaction
     from family_bridge_features.f01_identity.models import Session, hash_token
-    now = dt.datetime.now(tz=UTC)
-    revoked = Session.objects.filter(
-        user_id=user.pk, revoked_at__isnull=True, expires_at__gt=now,
-    ).exclude(token_hash=hash_token(current_raw_token)).update(revoked_at=now)
+    with db_transaction.atomic():
+        user.set_password(new_password)
+        user.save(update_fields=["password"])
+        now = dt.datetime.now(tz=UTC)
+        revoked = Session.objects.filter(
+            user_id=user.pk, revoked_at__isnull=True, expires_at__gt=now,
+        ).exclude(token_hash=hash_token(current_raw_token)).update(revoked_at=now)
     return int(revoked)
 
 
