@@ -10,6 +10,9 @@
 //  M4 — signal (w16): KHÔNG time-picker; banned copy ["Bảo mật 100%",
 //       "Mã hóa nội bộ", "HS-SYNC-2025"]; luồng preview -> xác nhận -> key;
 //       caregiver ack; 3 nhu cầu từ meta.
+//  M4 — compose restyle (w11/w12): ring đếm pause có mặt khi paused;
+//       layout 2 cột (.fb-compose-grid); AI refine thật (aiRefine -> aiAccept
+//       chỉ điền textarea); KHÔNG setInterval (giữ nguyên bất biến QA).
 //
 // Pattern happy-dom giống tests/pages.test.mjs: gắn globals TRƯỚC import động.
 import { register } from "node:module";
@@ -819,5 +822,164 @@ describe("Web M4 — signal (w16): 3 nhu cầu từ meta, preview -> phát, care
     await wait(80);
     assert.ok(textOf(el).includes("Chưa có tín hiệu nào"), `thấy: ${textOf(el).slice(0, 200)}`);
     unmount(host);
+  });
+});
+
+/* ============================ M4: COMPOSE RESTYLE ============================ */
+
+const COMPOSE_SOURCE = () => readFileSync(join(ROOT, "src/pages/compose/index.js"), "utf8");
+
+describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm phong, AI thật", () => {
+  it("markup có lớp 2 cột .fb-compose-grid + shell.css có rule desktop >=1024px", () => {
+    const css = readFileSync(join(ROOT, "src/styles/shell.css"), "utf8");
+    assert.ok(css.includes(".fb-compose-grid"), "shell.css phải định nghĩa .fb-compose-grid");
+    const gridRule = css.slice(css.indexOf(".fb-compose-grid"));
+    assert.ok(
+      /@media \(min-width: 1024px\)[\s\S]*\.fb-compose-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 340px/.test(css),
+      "2 cột chỉ áp dụng @media (min-width: 1024px)",
+    );
+  });
+
+  it("demo: lưu nháp -> pause -> vòng đếm SVG + textarea niêm phong + preview vẫn chặn", async () => {
+    const { ctx } = makeCtx({ demo: true, role: "student" });
+    const { host, el } = mount(compose, ctx);
+    await wait(1500);
+
+    assert.ok(el.querySelector(".fb-compose-grid"), "markup phải chứa .fb-compose-grid");
+    assert.ok(el.querySelector(".fb-compose__ring svg"), "vòng đếm SVG phải có mặt từ đầu (trạng thái chưa pause)");
+
+    const textarea = el.querySelector("#fb-compose-body");
+    textarea.value = "Mẹ ơi, hôm nay con có chuyện ở trường hơi căng thẳng.";
+    textarea.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+
+    findButton(el, "Lưu nháp riêng").click();
+    await wait(900);
+    findButton(el, "Bắt đầu 5 phút nghỉ").click();
+    await wait(900);
+
+    const ringProgress = el.querySelector(".fb-compose__ring-progress");
+    assert.ok(ringProgress, "khi paused phải có vòng progress");
+    const offset = Number(ringProgress.style.strokeDashoffset);
+    assert.ok(Number.isFinite(offset) && offset >= 0 && offset < 2 * Math.PI * 28,
+      `stroke-dashoffset phải chạy theo remaining máy chủ (nhận: ${ringProgress.style.strokeDashoffset})`);
+    assert.ok(ringProgress.style.stroke.includes("--fb-accent"), "stroke phải là --fb-accent khi còn giờ");
+
+    assert.ok(
+      el.querySelector("#fb-compose-body").classList.contains("fb-compose__textarea--sealed"),
+      "body nháp phải bị niêm phong (làm mờ) khi paused",
+    );
+    const sealedNote = el.querySelector(".fb-compose__sealed-note");
+    assert.ok(sealedNote && sealedNote.hidden === false, "ghi chú niêm phong phải hiện khi paused");
+    assert.ok(
+      textOf(el).includes("chỉ bạn và người nhận (sau khi gửi) xem được"),
+      "copy niêm phong phải trung thực (không 'mã hóa')",
+    );
+
+    const previewBtn = el.querySelector(".fb-btn-hero");
+    assert.equal(previewBtn.disabled, true, "preview vẫn chặn khi còn khoảng dừng");
+    assert.ok(textOf(el).match(/Còn \d{2}:\d{2} theo máy chủ/), "chuỗi pinned thời gian máy chủ");
+    unmount(host);
+    resetState();
+  });
+
+  it("AI thật: aiRefine với key -> thẻ gợi ý; 'Dùng gợi ý' -> aiAccept + chỉ điền textarea", async () => {
+    const { ctx, adapter } = makeCtx({ demo: true, role: "student" });
+    const aiCalls = [];
+    const accepted = [];
+    const discarded = [];
+    adapter.aiRefine = async ({ text, key }) => {
+      aiCalls.push({ text, key });
+      return { suggestion_id: "sg-1", refined_text: `Bản êm hơn: ${text}`, status: "pending" };
+    };
+    adapter.aiAccept = async (id) => { accepted.push(id); return { suggestion_id: id, status: "accepted" }; };
+    adapter.aiDiscard = async (id) => { discarded.push(id); return { suggestion_id: id, status: "discarded" }; };
+    const { host, el } = mount(compose, ctx);
+    await wait(1500);
+
+    const textarea = el.querySelector("#fb-compose-body");
+    textarea.value = "Con tức quá hôm nay.";
+    textarea.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+
+    const aiPill = el.querySelector(".fb-compose__ai-btn");
+    assert.ok(aiPill, "phải có nút AI");
+    assert.equal(aiPill.disabled, false, "mock báo ai_enabled -> nút phải bật");
+    aiPill.click();
+    await wait(400);
+
+    assert.equal(aiCalls.length, 1, "aiRefine phải được gọi 1 lần");
+    assert.ok(aiCalls[0].key, "aiRefine PHẢI có key idempotency (X-Idempotency-Key)");
+    assert.equal(aiCalls[0].text, "Con tức quá hôm nay.");
+
+    const suggestionCard = el.querySelector(".fb-compose__ai-suggestion");
+    assert.ok(suggestionCard && suggestionCard.hidden === false, "thẻ gợi ý phải hiện");
+    assert.ok(textOf(suggestionCard).includes("Bản êm hơn: Con tức quá hôm nay."));
+
+    const useBtn = Array.from(suggestionCard.querySelectorAll("button")).find(
+      (btn) => textOf(btn) === "Dùng gợi ý",
+    );
+    useBtn.click();
+    await wait(200);
+    assert.deepEqual(accepted, ["sg-1"], "aiAccept phải được gọi");
+    assert.equal(textarea.value, "Bản êm hơn: Con tức quá hôm nay.", "gợi ý chỉ được điền vào TEXTAREA");
+    assert.ok(
+      textOf(el).includes(`${textarea.value.length} ký tự`),
+      "counter phải cập nhật theo nội dung mới",
+    );
+    assert.equal(suggestionCard.hidden, true, "thẻ gợi ý phải ẩn sau khi dùng");
+    assert.ok(
+      textOf(el).includes("chưa lưu nháp và chưa gửi"),
+      "copy phải nói rõ chưa lưu nháp và chưa gửi",
+    );
+    unmount(host);
+    resetState();
+  });
+
+  it("AI: 'Bỏ' -> aiDiscard, textarea giữ nguyên; aiStatus tắt -> nút disabled trung thực", async () => {
+    const { ctx, adapter } = makeCtx({ demo: true, role: "student" });
+    const discarded = [];
+    adapter.aiRefine = async ({ text, key }) => ({ suggestion_id: "sg-2", refined_text: `Gợi ý ${text}`, status: "pending" });
+    adapter.aiDiscard = async (id) => { discarded.push(id); return { suggestion_id: id, status: "discarded" }; };
+    const { host, el } = mount(compose, ctx);
+    await wait(1500);
+
+    const textarea = el.querySelector("#fb-compose-body");
+    textarea.value = "Bản gốc giữ nguyên.";
+    textarea.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+    el.querySelector(".fb-compose__ai-btn").click();
+    await wait(400);
+    const suggestionCard = el.querySelector(".fb-compose__ai-suggestion");
+    const dropBtn = Array.from(suggestionCard.querySelectorAll("button")).find(
+      (btn) => textOf(btn) === "Bỏ",
+    );
+    dropBtn.click();
+    await wait(200);
+    assert.deepEqual(discarded, ["sg-2"], "aiDiscard phải được gọi");
+    assert.equal(textarea.value, "Bản gốc giữ nguyên.", "bỏ gợi ý KHÔNG được đụng textarea");
+    assert.equal(suggestionCard.hidden, true);
+    unmount(host);
+
+    // aiStatus tắt: nút disabled + giải thích trung thực.
+    const behavior = { aiStatusResult: { ai_enabled: false } };
+    const adapter2 = fakeWebAdapter({ behavior });
+    const ctx2 = makeCtx({ demo: false, role: "student", adapter: adapter2 }).ctx;
+    const host2 = document.createElement("div");
+    document.body.appendChild(host2);
+    const el2 = compose.render(ctx2);
+    host2.appendChild(el2);
+    await wait(60);
+    const aiPill2 = el2.querySelector(".fb-compose__ai-btn");
+    assert.ok(aiPill2.disabled, "ai_enabled=false -> nút phải disabled");
+    assert.ok(
+      textOf(el2).includes("chưa được bật"),
+      "phải giải thích trung thực khi AI tắt",
+    );
+    host2.remove();
+    unmount(host);
+    resetState();
+  });
+
+  it("không thêm setInterval vào compose (DSA-10) — bất biến QA giữ nguyên", () => {
+    assert.ok(!COMPOSE_SOURCE().includes("setInterval"), "compose không được dùng setInterval");
+    assert.ok(!/autoSend|auto-submit/i.test(COMPOSE_SOURCE()), "không auto-send");
   });
 });

@@ -18,8 +18,17 @@
 //   làm mới (không polling); thanh tiến trình chạy bằng CSS transition.
 // - "Tổng đài tham vấn 111 & chuyên gia luôn sẵn sàng" -> dẫn về trang Trợ
 //   giúp (nguồn liên hệ được xác minh ở đó), không tự nhét hotline.
-// - Gợi ý AI: cổng provider chưa được nối (thiết kế) -> nút disabled trung
-//   thực, không giả lập gợi ý.
+//
+// M4 restyle (w11/w12 Stitch — CHỈ PRESENTATION, hành vi giữ nguyên):
+// - Desktop >=1024px: bố cục 2 cột (.fb-compose-grid) — soạn thảo trái;
+//   panel phải = thẻ đang chọn (link #/cards) + AI + dải an toàn.
+// - w12: SVG vòng đếm pause (stroke --fb-accent, đổi --fb-success khi hết)
+//   TÍNH TỪ remainingFromServer()/deadline máy chủ — KHÔNG timer lặp
+//   (DSA-10); body nháp bị làm mờ (niêm phong) trong lúc paused.
+// - AI (F04) là cổng THẬT: aiStatus() bật/tắt; aiRefine({text,key}) -> thẻ
+//   gợi ý; "Dùng gợi ý" -> aiAccept + chỉ điền VÀO TEXTAREA (không auto-save,
+//   không tự gửi — mọi thao tác ghi chờ người dùng xác nhận); "Bỏ" ->
+//   aiDiscard. Không có key -> không gọi.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import {
@@ -36,6 +45,19 @@ import {
 const BODY_MAX = 4000; // ràng buộc backend (f06 _content_fields)
 const PAUSE_SECONDS = 300; // hiển thị khoảng dừng chuẩn (máy chủ quyết thật)
 const DRAFT_KIND = "text"; // backend KINDS chỉ nhận ("text","emotion_card")
+
+// Vòng đếm pause SVG (w12): stroke chạy theo tỷ lệ remaining/PAUSE_SECONDS.
+const RING_RADIUS = 28;
+const RING_CIRC = 2 * Math.PI * RING_RADIUS;
+
+/** Khóa idempotency cho lượt gọi ghi — client tạo tại nút bấm. */
+function newIdemKey() {
+  const c = typeof crypto !== "undefined" ? crypto : null;
+  if (c && typeof c.randomUUID === "function") return c.randomUUID();
+  return `fb-${Date.now().toString(36)}-`
+    + `${Math.random().toString(36).slice(2, 12)}-`
+    + `${Math.random().toString(36).slice(2, 12)}`;
+}
 
 /** ctx.store có thể là snapshot hoặc module store — đọc state an toàn. */
 function readState(store) {
@@ -137,8 +159,11 @@ export const page = {
     Promise.all([
       Promise.resolve().then(() => ctx.adapter.listConnections({ limit: 20 })).catch(() => null),
       Promise.resolve().then(() => ctx.adapter.listDrafts({ limit: 20 })).catch(() => null),
+      // F04 AI: trạng thái cổng gợi ý THẬT — lỗi/không bật không chặn trang;
+      // nút AI chỉ mở khi máy chủ báo bật (ai_enabled).
+      Promise.resolve().then(() => ctx.adapter.aiStatus()).catch(() => null),
     ])
-      .then(([connectionsPage, draftsPage]) => {
+      .then(([connectionsPage, draftsPage, aiStatus]) => {
         if (cancelled || currentRun !== runId) return;
         const connections = (connectionsPage && connectionsPage.results) || [];
         const drafts = (draftsPage && draftsPage.results) || [];
@@ -152,6 +177,9 @@ export const page = {
           // còn lại của bản nháp đang paused khi tải lại trang (QA fix 3).
           listServerTimeIso: draftsPage && draftsPage.serverTime ? draftsPage.serverTime : null,
           demo,
+          aiEnabled: Boolean(
+            aiStatus && (aiStatus.ai_enabled === true || aiStatus.enabled === true),
+          ),
         });
       })
       .catch(() => {
@@ -184,7 +212,7 @@ function renderLoadError(body) {
 
 /* ------------------------------ Màn soạn chính ------------------------------ */
 
-function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
+function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEnabled = false }) {
   clear(body);
 
   const guarded = busyGuard();
@@ -202,6 +230,11 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
     recipientName: null,
     recipientAvatar: null,
     privacyChipText: null,
+    ringProgress: null, // w12: vòng đếm pause SVG (stroke theo remaining)
+    sealedNote: null, // w12: ghi chú niêm phong khi paused
+    aiPill: null,
+    aiMsg: null,
+    aiSuggestion: null,
   };
 
   const state = {
@@ -217,7 +250,17 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
     fetchedAtMs: draft || listServerTimeIso ? Date.now() : null,
     recipientId: draft ? draft.recipient_id : null,
     connections,
+    aiEnabled,
+    aiSuggestion: null,
   };
+
+  // ---- Bố cục desktop 2 cột (w11): <1024px vẫn 1 cột (CSS) ----
+  const grid = h("div", { class: "fb-compose-grid" });
+  const mainCol = h("div", { class: "fb-compose-grid__main" });
+  const sideCol = h("div", { class: "fb-compose-grid__side" });
+  grid.appendChild(mainCol);
+  grid.appendChild(sideCol);
+  body.appendChild(grid);
 
   // ---- Dòng trạng thái riêng tư ----
   const privacyRow = h("div", { class: "fb-compose__privacy-row" });
@@ -235,7 +278,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
       h("span", {}, "Riêng tư theo thiết kế"),
     ),
   );
-  body.appendChild(privacyRow);
+  mainCol.appendChild(privacyRow);
 
   // ---- Thẻ người nhận ----
   const recipientCard = h("div", { class: "fb-scard fb-compose__recipient" });
@@ -259,32 +302,31 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
   );
   recipientRow.appendChild(changePill);
   recipientCard.appendChild(recipientRow);
-  body.appendChild(recipientCard);
+  mainCol.appendChild(recipientCard);
 
-  // ---- Thẻ định hướng cảm xúc (thư viện thẻ F03 chưa nối — trung thực) ----
+  // ---- Thẻ đang chọn (w11 panel phải): link tới thư viện thẻ F03 (M4) ----
   const intent = h("div", { class: "fb-compose__intent" });
   const intentHead = h("div", { class: "fb-sec__row" });
   intentHead.appendChild(
     h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);color:var(--fb-primary);font-weight:500;" },
-      createIcon({ name: "psychology_alt", size: 20 }),
-      h("span", {}, "Mong muốn khi chia sẻ"),
+      createIcon({ name: "style", size: 20 }),
+      h("span", {}, "Thẻ đang chọn"),
     ),
   );
-  intentHead.appendChild(h("span", { class: "fb-sec__sub" }, "Thư viện thẻ sắp có"));
+  intentHead.appendChild(
+    h("a", { class: "fb-compose__cards-link", href: "#/cards" }, "Chọn từ thư viện thẻ"),
+  );
   intent.appendChild(intentHead);
   const intentChip = h("div", { class: "fb-compose__intent-chip" });
-  intentChip.appendChild(createIcon({ name: "hearing", size: 22, fill: true, className: "fb-stitch-primary-icon" }));
+  intentChip.appendChild(createIcon({ name: "edit_note", size: 22, fill: true, className: "fb-stitch-primary-icon" }));
   intentChip.appendChild(
     h("div", { style: "flex:1;min-width:0;" },
-      h("p", { class: "fb-compose__intent-title" }, "Con muốn được lắng nghe trước khi nhận lời khuyên"),
-      h("p", { class: "fb-sec__sub" }, "Người nhận sẽ thấy ghi chú này ở đầu thư để chuẩn bị tâm thế dịu dàng nhất."),
+      h("p", { class: "fb-compose__intent-title" }, "Chưa chọn thẻ — bạn đang tự viết lời nhắn"),
+      h("p", { class: "fb-sec__sub" }, "Thẻ cảm xúc từ Thư viện được gửi qua luồng riêng của thư viện; ô soạn này là lời nhắn tự viết của bạn."),
     ),
   );
-  intentChip.appendChild(
-    createIcon({ name: "tune", size: 20, className: "fb-compose__tune" }),
-  );
   intent.appendChild(intentChip);
-  body.appendChild(intent);
+  sideCol.appendChild(intent);
 
   // ---- Vùng soạn thảo ----
   const editor = h("div", { class: "fb-scard" });
@@ -315,34 +357,15 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
   syncCounter(); // đếm đúng cả khi tải lại bản nháp đã có nội dung
   editor.appendChild(ui.textarea);
 
-  // Khối AI — cổng chưa nối (thiết kế): nút disabled + giải thích trung thực.
-  const aiBox = h("div", { class: "fb-compose__ai" });
-  const aiRow = h("div", { class: "fb-sec__row" });
-  const aiPill = h("button", {
-    class: "fb-btn fb-btn--primary fb-compose__ai-btn",
-    type: "button",
-    disabled: true,
-    title: "Tính năng gợi ý AI chưa được bật ở bản này.",
-  },
-    createIcon({ name: "auto_awesome", size: 18 }),
-    h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
+  // w12: ghi chú niêm phong — hiện khi trạng thái paused (refreshPauseUi).
+  ui.sealedNote = h("p", { class: "fb-compose__sealed-note", hidden: true },
+    createIcon({ name: "lock", size: 16 }),
+    h("span", {},
+      " Nội dung đang được làm mờ trong lúc tạm dừng để tránh kích hoạt lại cảm xúc. "
+      + "Bản nháp được lưu trên máy chủ, chỉ bạn và người nhận (sau khi gửi) xem được."),
   );
-  aiRow.appendChild(aiPill);
-  aiRow.appendChild(
-    h("span", { class: "fb-sec__sub", style: "display:inline-flex;align-items:center;gap:4px;" },
-      createIcon({ name: "shield", size: 14 }),
-      "Riêng tư",
-    ),
-  );
-  aiBox.appendChild(aiRow);
-  aiBox.appendChild(
-    h("p", { class: "fb-compose__ai-note" },
-      createIcon({ name: "info", size: 16, className: "fb-stitch-tertiary-icon" }),
-      h("span", {}, " Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình."),
-    ),
-  );
-  editor.appendChild(aiBox);
-  body.appendChild(editor);
+  editor.appendChild(ui.sealedNote);
+  mainCol.appendChild(editor);
 
   // ---- Khoảng dừng bình tâm (máy chủ quyết) ----
   const pauseCard = h("div", { class: "fb-scard" });
@@ -358,6 +381,39 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
     ),
   );
   pauseHead.appendChild(pauseWho);
+  // w12: vòng đếm pause SVG — stroke --fb-accent, đổi --fb-success khi hết giờ;
+  // chỉ là HIỂN THỊ của remaining máy chủ (refreshPauseUi), không timer.
+  const ringWrap = h("span", { class: "fb-compose__ring", "aria-hidden": "true" });
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const ringSvg = document.createElementNS(SVG_NS, "svg");
+  ringSvg.setAttribute("viewBox", "0 0 64 64");
+  ringSvg.setAttribute("width", "44");
+  ringSvg.setAttribute("height", "44");
+  ringSvg.setAttribute("focusable", "false");
+  const ringTrack = document.createElementNS(SVG_NS, "circle");
+  ringTrack.setAttribute("cx", "32");
+  ringTrack.setAttribute("cy", "32");
+  ringTrack.setAttribute("r", String(RING_RADIUS));
+  ringTrack.setAttribute("fill", "none");
+  ringTrack.setAttribute("stroke", "var(--fb-surface-high)");
+  ringTrack.setAttribute("stroke-width", "6");
+  ringSvg.appendChild(ringTrack);
+  const ringProgress = document.createElementNS(SVG_NS, "circle");
+  ringProgress.setAttribute("cx", "32");
+  ringProgress.setAttribute("cy", "32");
+  ringProgress.setAttribute("r", String(RING_RADIUS));
+  ringProgress.setAttribute("fill", "none");
+  ringProgress.setAttribute("stroke", "var(--fb-accent)");
+  ringProgress.setAttribute("stroke-width", "6");
+  ringProgress.setAttribute("stroke-linecap", "round");
+  ringProgress.setAttribute("stroke-dasharray", String(RING_CIRC));
+  ringProgress.setAttribute("stroke-dashoffset", String(RING_CIRC));
+  ringProgress.setAttribute("transform", "rotate(-90 32 32)");
+  ringProgress.setAttribute("class", "fb-compose__ring-progress");
+  ringSvg.appendChild(ringProgress);
+  ringWrap.appendChild(ringSvg);
+  ui.ringProgress = ringProgress;
+  pauseHead.appendChild(ringWrap);
   ui.timerBadge = h("span", { class: "fb-timer-badge", role: "timer", "aria-label": "Thời gian tạm dừng còn lại theo máy chủ" });
   pauseHead.appendChild(ui.timerBadge);
   pauseCard.appendChild(pauseHead);
@@ -388,7 +444,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
 
   ui.statusNote = h("p", { class: "fb-page__note", role: "status" }, "");
   pauseCard.appendChild(ui.statusNote);
-  body.appendChild(pauseCard);
+  mainCol.appendChild(pauseCard);
 
   // ---- CTA xem trước + trợ giúp ----
   const footer = h("div", { class: "fb-compose__footer" });
@@ -404,7 +460,44 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
       h("span", {}, "Bước đệm xem trước giúp bạn an tâm, không lo gửi nhầm"),
     ),
   );
-  body.appendChild(footer);
+  mainCol.appendChild(footer);
+
+  // ---- Khối AI (F04) — panel phải: cổng THẬT qua aiStatus/aiRefine/... ----
+  const aiCard = h("div", { class: "fb-scard fb-compose__ai-card" });
+  const aiBox = h("div", { class: "fb-compose__ai" });
+  const aiRow = h("div", { class: "fb-sec__row" });
+  ui.aiPill = h("button", {
+    class: "fb-btn fb-btn--primary fb-compose__ai-btn",
+    type: "button",
+    disabled: !state.aiEnabled,
+    title: state.aiEnabled
+      ? "Xin gợi ý diễn đạt êm ái hơn cho lời nhắn hiện tại."
+      : "Tính năng gợi ý AI chưa được bật ở bản này.",
+  },
+    createIcon({ name: "auto_awesome", size: 18 }),
+    h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
+  );
+  ui.aiPill.addEventListener("click", () => guarded("ai", () => onAiRefine(ctx, state, ui)));
+  aiRow.appendChild(ui.aiPill);
+  aiRow.appendChild(
+    h("span", { class: "fb-sec__sub", style: "display:inline-flex;align-items:center;gap:4px;" },
+      createIcon({ name: "shield", size: 14 }),
+      "Riêng tư",
+    ),
+  );
+  aiBox.appendChild(aiRow);
+  ui.aiMsg = h("p", { class: "fb-compose__ai-note", role: "status" },
+    createIcon({ name: "info", size: 16, className: "fb-stitch-tertiary-icon" }),
+    h("span", {},
+      state.aiEnabled
+        ? " Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình."
+        : " Cổng gợi ý AI chưa được bật trên máy chủ — nút sẽ mở khi máy chủ bật."),
+  );
+  aiBox.appendChild(ui.aiMsg);
+  ui.aiSuggestion = h("div", { class: "fb-compose__ai-suggestion", hidden: true });
+  aiBox.appendChild(ui.aiSuggestion);
+  aiCard.appendChild(aiBox);
+  sideCol.appendChild(aiCard);
 
   const helpCard = h("div", { class: "fb-scard fb-compose__help-card" });
   helpCard.appendChild(
@@ -424,11 +517,102 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso }) {
       ),
     ),
   );
-  body.appendChild(helpCard);
+  sideCol.appendChild(helpCard);
 
   // ---- Khởi tạo trạng thái hiển thị ----
   refreshRecipientUi(state, ui);
   refreshPauseUi(state, ui);
+}
+
+/* ------------------------ Hành vi: gợi ý AI (F04) ------------------------ */
+
+/** Xin gợi ý từ máy chủ (aiRefine, key idempotency do client tạo). */
+function onAiRefine(ctx, state, ui) {
+  const text = currentBodyText(ui).trim();
+  if (!text) {
+    setAiMsg(ui, "Hãy viết vài dòng trước khi dùng gợi ý AI.");
+    return;
+  }
+  ui.aiPill.disabled = true;
+  setAiMsg(ui, "Đang xin gợi ý từ máy chủ…");
+  const key = newIdemKey();
+  Promise.resolve()
+    .then(() => ctx.adapter.aiRefine({ text, key }))
+    .then((suggestion) => {
+      ui.aiPill.disabled = false;
+      if (!suggestion || !suggestion.suggestion_id) {
+        throw new Error("invalid_suggestion");
+      }
+      state.aiSuggestion = suggestion;
+      renderAiSuggestion(ctx, state, ui);
+      setAiMsg(ui, "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình.");
+    })
+    .catch((error) => {
+      ui.aiPill.disabled = false;
+      setAiMsg(ui, describeError(error, "Chưa lấy được gợi ý AI — bản soạn của bạn giữ nguyên."));
+    });
+}
+
+/** Dùng gợi ý: aiAccept rồi điền VÀO TEXTAREA — không lưu nháp, không gửi. */
+function onAiAccept(ctx, state, ui, suggestion) {
+  Promise.resolve()
+    .then(() => ctx.adapter.aiAccept(suggestion.suggestion_id))
+    .then(() => {
+      ui.textarea.value = String(suggestion.refined_text || ui.textarea.value);
+      ui.textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      state.aiSuggestion = null;
+      renderAiSuggestion(ctx, state, ui);
+      setAiMsg(ui, "Bạn đã dùng gợi ý — nội dung chỉ nằm trong ô soạn, chưa lưu nháp và chưa gửi.");
+    })
+    .catch((error) => {
+      setAiMsg(ui, describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
+    });
+}
+
+/** Bỏ gợi ý: aiDiscard rồi xóa thẻ gợi ý (không đụng textarea). */
+function onAiDiscard(ctx, state, ui, suggestion) {
+  Promise.resolve()
+    .then(() => ctx.adapter.aiDiscard(suggestion.suggestion_id))
+    .then(() => {
+      state.aiSuggestion = null;
+      renderAiSuggestion(ctx, state, ui);
+      setAiMsg(ui, "Bạn đã bỏ gợi ý — lời nhắn hiện tại giữ nguyên.");
+    })
+    .catch((error) => {
+      setAiMsg(ui, describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
+    });
+}
+
+function renderAiSuggestion(ctx, state, ui) {
+  const suggestion = state.aiSuggestion;
+  clear(ui.aiSuggestion);
+  if (!suggestion) {
+    ui.aiSuggestion.hidden = true;
+    return;
+  }
+  ui.aiSuggestion.hidden = false;
+  ui.aiSuggestion.appendChild(
+    h("p", { class: "fb-compose__ai-suggest-label" }, "Gợi ý của máy chủ:"),
+  );
+  ui.aiSuggestion.appendChild(
+    h("p", { class: "fb-compose__ai-suggest-text" }, String(suggestion.refined_text || "")),
+  );
+  const row = h("div", { class: "fb-compose__pause-buttons" });
+  row.appendChild(createButton({
+    label: "Dùng gợi ý",
+    variant: "primary",
+    onClick: () => onAiAccept(ctx, state, ui, suggestion),
+  }));
+  row.appendChild(createButton({
+    label: "Bỏ",
+    variant: "ghost",
+    onClick: () => onAiDiscard(ctx, state, ui, suggestion),
+  }));
+  ui.aiSuggestion.appendChild(row);
+}
+
+function setAiMsg(ui, text) {
+  if (ui.aiMsg) ui.aiMsg.textContent = text;
 }
 
 /* --------------------------- Hành vi: người nhận --------------------------- */
@@ -686,6 +870,11 @@ function openConfirmSheet(ctx, state, ui, preview) {
 /* --------------------------- Hiển thị trạng thái dừng --------------------------- */
 
 function refreshPauseUi(state, ui) {
+  // w12 niêm phong: paused -> làm mờ body nháp + hiện ghi chú (presentation).
+  const isPaused = state.status === "paused";
+  if (ui.textarea) ui.textarea.classList.toggle("fb-compose__textarea--sealed", isPaused);
+  if (ui.sealedNote) ui.sealedNote.hidden = !isPaused;
+
   if (ui.privacyChipText) {
     ui.privacyChipText.textContent = state.status === "paused"
       ? "Bản nháp riêng tư • Đang tạm dừng"
@@ -742,6 +931,13 @@ function refreshPauseUi(state, ui) {
     ui.previewBtn.title = serverAllowsPreview
       ? ""
       : "Máy chủ chưa mở xem trước — còn khoảng dừng.";
+    // w12 vòng đếm: stroke chạy theo remaining máy chủ (không timer);
+    // đổi sang xanh success khi máy chủ báo hết giờ (remaining === 0).
+    if (ui.ringProgress) {
+      const ratio = Math.max(0, Math.min(1, remaining / PAUSE_SECONDS));
+      ui.ringProgress.style.strokeDashoffset = String(RING_CIRC * (1 - ratio));
+      ui.ringProgress.style.stroke = remaining > 0 ? "var(--fb-accent)" : "var(--fb-success)";
+    }
     return;
   }
 
@@ -754,6 +950,10 @@ function refreshPauseUi(state, ui) {
   ui.pauseBtnIcon.remove();
   ui.pauseBtnIcon = createIcon({ name: "play_arrow", size: 20 });
   ui.pauseBtnLabel.textContent = "Bắt đầu 5 phút nghỉ";
+  if (ui.ringProgress) {
+    ui.ringProgress.style.strokeDashoffset = String(RING_CIRC);
+    ui.ringProgress.style.stroke = "var(--fb-accent)";
+  }
 }
 
 function describeError(error, fallback) {
