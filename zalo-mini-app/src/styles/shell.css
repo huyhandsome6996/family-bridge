@@ -493,6 +493,107 @@
   .fb-cred__panel { width: 58%; }
 }
 
+/* Web login has its own fluid canvas; the Mini App's 480px page stays intact.
+   A two-column card only appears when both panels have comfortable space. */
+.fb-page--web-login {
+  max-width: none;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 24px clamp(16px, 4vw, 64px) 40px;
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-login-header {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.fb-login-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  color: var(--fb-text);
+  font-size: 21px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.fb-login-header__nav { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 24px; }
+.fb-login-header__nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.fb-page--web-login .fb-page__body {
+  width: 100%;
+  max-width: 1120px;
+  margin: 28px auto 0;
+  flex: 1;
+  justify-content: center;
+}
+
+.fb-page--web-login .fb-cred {
+  width: 100%;
+  max-width: 640px;
+  flex-direction: column;
+  border: 1px solid var(--fb-outline-variant);
+  border-radius: 24px;
+}
+
+.fb-page--web-login .fb-cred__brand,
+.fb-page--web-login .fb-cred__panel { width: 100%; min-width: 0; padding: 24px; }
+.fb-page--web-login .fb-cred__brand { gap: 20px; }
+.fb-page--web-login .fb-cred__brand-top .fb-logo { display: none; }
+.fb-page--web-login .fb-cred__brand-foot { display: none; }
+.fb-page--web-login .fb-cred__brand-title { font-size: 26px; line-height: 1.3; }
+.fb-page--web-login .fb-cred__heading { font-size: 26px; line-height: 1.3; }
+.fb-page--web-login .fb-cred__privacy-badge { max-width: 100%; border-radius: 12px; }
+.fb-page--web-login .fb-cred__input { min-height: 52px; }
+.fb-page--web-login .fb-cred__legal { text-align: left; }
+.fb-page--web-login .fb-cred__help-link { overflow-wrap: anywhere; }
+
+@media (min-width: 1024px) {
+  .fb-page--web-login .fb-cred { max-width: 1120px; flex-direction: row; }
+  .fb-page--web-login .fb-cred__brand {
+    width: 46%;
+    padding: clamp(32px, 3.5vw, 48px);
+    justify-content: space-between;
+  }
+  .fb-page--web-login .fb-cred__panel { width: 54%; padding: 32px 40px; }
+  .fb-page--web-login .fb-cred__brand-foot { display: flex; }
+  .fb-page--web-login .fb-cred__brand-title {
+    font-size: clamp(36px, 3.4vw, 48px);
+    line-height: 1.2;
+    max-width: 13ch;
+  }
+  .fb-page--web-login .fb-cred__brand-text { max-width: 34ch; font-size: 17px; }
+  .fb-page--web-login .fb-cred__heading { font-size: 28px; }
+}
+
+@media (max-width: 479px) {
+  .fb-page--web-login { padding-top: 12px; }
+  .fb-login-header { gap: 4px 12px; }
+  .fb-login-header__brand { font-size: 19px; gap: 8px; }
+  .fb-login-header__nav { gap: 4px 16px; }
+  .fb-page--web-login .fb-page__body { margin-top: 16px; }
+  .fb-page--web-login .fb-cred { border-radius: 16px; }
+  .fb-page--web-login .fb-cred__brand,
+  .fb-page--web-login .fb-cred__panel { padding: 20px; }
+  .fb-page--web-login .fb-cred__brand-title,
+  .fb-page--web-login .fb-cred__heading { font-size: 23px; }
+}
+
 /* ============================================================
    Web Render M3/M4 (w05/w08/w09/w10/w11/w12/w16) — bổ sung ADDITIVE:
    trang web mới bên trong app-shell + layout desktop. Không đổi class
