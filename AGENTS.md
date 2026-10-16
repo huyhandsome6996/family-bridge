@@ -65,7 +65,7 @@ This policy does not authorize merging application code, dependencies, migration
 - Apply SEC-01..SEC-30 according to scope. Record actual control status/evidence; do not call documents or scaffold a security certification. Never use, echo or commit credentials exposed in chat/logs. Local synthetic tests are authorized by the task; production/third-party scans and destructive load tests need separate explicit scope.
 
 - The current product scope is `docs/project-scope.md` (15 features, voluntary activities, 5-minute pause). User instructions override older DOCX or copied project text.
-- Implement Django/DRF backend and the existing React Zalo Mini App. Do not start standalone web or React Native clients in this phase.
+- Implement Django/DRF backend, the Zalo Mini App (`zalo-mini-app/`) and, since the 2026-10-16 web separation, the standalone web app (`web/`) sharing `packages/family_bridge_shared/` with it (see `docs/handover/web-miniapp-separation/architecture.md`). Do not start React Native or other additional clients in this phase.
 - Keep domain modules and migrations owned by each US. Route registration/settings/shared contract changes belong in a small coordinated PR.
 - Link a Trello US in code PRs where applicable; documentation-only tasks follow the direct-main policy above. Read its acceptance criteria and predecessors. Use the latest main after predecessors merge; mocks do not prove integration.
 - Never trust client-provided Zalo identity or admin flags. Verify provider credentials server-side before issuing application tokens. Default-deny APIs also require object-level authorization.

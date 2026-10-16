@@ -21,12 +21,12 @@ Chưa làm (trung thực): kiểm thử Zalo trên thiết bị thật (US-049),
 - [Luồng đồng hành 4 tuần](docs/product/four-week-flow.md)
 - [ERD và ràng buộc quyền dữ liệu](docs/data/erd.md)
 - [Khả năng và giới hạn admin](docs/product/admin-capabilities.md)
-- [Kiến trúc Django/DRF + MySQL + React Zalo Mini App](docs/architecture.md)
+- [Kiến trúc Django/DRF + MySQL + Mini App & web độc lập](docs/architecture.md)
 - [Hợp đồng API nền tảng](docs/contracts/api-foundation.md)
 - [Hướng dẫn chạy khung code của PR #1](docs/development.md)
 - [Trello audit](docs/project/trello-audit.md) và [52 US/phụ thuộc](docs/project/backlog-snapshot.json)
 - [Bằng chứng và giới hạn kiểm tra](docs/validation.md)
-- [Chỉ mục bàn giao](docs/handover/README.md) — backend foundation, F01, miniapp foundation, Render deploy và web Render (Task 2)
+- [Chỉ mục bàn giao](docs/handover/README.md) — backend foundation, F01, miniapp foundation, Render deploy, web Render (Task 2) và tách web độc lập (web-miniapp-separation)
 
 Từ gốc repo kiểm tra tài liệu:
 

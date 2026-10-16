@@ -1,0 +1,2089 @@
+{
+  "tool": "scripts/check_import_boundaries.mjs",
+  "version": 1,
+  "generatedAt": "2026-10-16T06:08:28.235Z",
+  "repoRoot": "/home/z/my-project/tmp-clean-fbwebsep",
+  "warnings": [],
+  "entries": {
+    "web": {
+      "entry": "web/index.html",
+      "present": true
+    },
+    "mini": {
+      "entry": "zalo-mini-app/index.html",
+      "present": true
+    }
+  },
+  "closures": {
+    "web": {
+      "entry": "web/index.html",
+      "nodes": 63,
+      "kinds": {
+        "html": 1,
+        "js": 58,
+        "asset": 4,
+        "bare": 0
+      },
+      "jsFiles": [
+        "web/src/main.js",
+        "web/src/app/store.js",
+        "web/src/app/router.js",
+        "web/src/core/config.js",
+        "web/src/core/login-startup.js",
+        "web/src/core/session.js",
+        "web/src/adapter/web-adapter.js",
+        "web/src/pages/welcome/index.js",
+        "web/src/pages/how-to-use/index.js",
+        "web/src/pages/role-select/index.js",
+        "web/src/pages/home/index.js",
+        "web/src/pages/companion/index.js",
+        "web/src/pages/mailbox/index.js",
+        "web/src/pages/diary/index.js",
+        "web/src/pages/profile/index.js",
+        "web/src/pages/connection-check/index.js",
+        "web/src/pages/help/index.js",
+        "web/src/pages/login/index.js",
+        "web/src/pages/consent/index.js",
+        "web/src/pages/connect/index.js",
+        "web/src/pages/compose/index.js",
+        "web/src/pages/cards/index.js",
+        "web/src/pages/signal/index.js",
+        "web/src/pages/message/index.js",
+        "web/src/pages/proposal/index.js",
+        "web/src/pages/settings/index.js",
+        "web/src/pages/privacy/index.js",
+        "web/src/pages/not-found/index.js",
+        "web/src/components/app-shell.js",
+        "web/src/components/bottom-nav.js",
+        "web/src/app/dom.js",
+        "packages/family_bridge_shared/src/api/client.mjs",
+        "packages/family_bridge_shared/src/session.js",
+        "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+        "packages/family_bridge_shared/src/adapter/contract.js",
+        "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+        "web/src/components/index.js",
+        "packages/family_bridge_shared/src/connection-check.js",
+        "web/src/core/policy.js",
+        "web/src/core/login-error.js",
+        "web/src/pages/login/credential-form.js",
+        "web/src/app/nav.js",
+        "web/src/components/icon.js",
+        "web/src/components/logo.js",
+        "packages/family_bridge_shared/src/fixtures/index.js",
+        "packages/family_bridge_shared/src/policy.js",
+        "web/src/components/button.js",
+        "web/src/components/input.js",
+        "web/src/components/card.js",
+        "web/src/components/sheet.js",
+        "web/src/components/dialog.js",
+        "web/src/components/skeleton.js",
+        "web/src/components/empty-state.js",
+        "web/src/components/error-state.js",
+        "web/src/components/status-badge.js",
+        "web/src/components/top-bar.js",
+        "web/src/components/demo-banner.js",
+        "packages/family_bridge_shared/src/login-error.js"
+      ],
+      "assets": [
+        "web/src/styles/index.css",
+        "web/src/assets/illustrations/hero-welcome-tea.jpg",
+        "web/src/assets/logo/logo-lockup-transparent.png",
+        "web/src/assets/logo/logo-mark-transparent.png"
+      ],
+      "bare": [],
+      "edges": [
+        {
+          "from": "web/index.html",
+          "to": "web/src/main.js",
+          "spec": "/src/main.js",
+          "via": "html-script"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/styles/index.css",
+          "spec": "./styles/index.css",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/app/store.js",
+          "spec": "./app/store.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/app/router.js",
+          "spec": "./app/router.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/core/config.js",
+          "spec": "./core/config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/core/login-startup.js",
+          "spec": "./core/login-startup.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/core/session.js",
+          "spec": "./core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/main.js",
+          "to": "web/src/adapter/web-adapter.js",
+          "spec": "./adapter/web-adapter.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/welcome/index.js",
+          "spec": "../pages/welcome/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/welcome/index.js",
+          "spec": "../pages/welcome/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/how-to-use/index.js",
+          "spec": "../pages/how-to-use/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/role-select/index.js",
+          "spec": "../pages/role-select/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/home/index.js",
+          "spec": "../pages/home/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/companion/index.js",
+          "spec": "../pages/companion/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/mailbox/index.js",
+          "spec": "../pages/mailbox/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/diary/index.js",
+          "spec": "../pages/diary/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/profile/index.js",
+          "spec": "../pages/profile/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/connection-check/index.js",
+          "spec": "../pages/connection-check/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/help/index.js",
+          "spec": "../pages/help/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/login/index.js",
+          "spec": "../pages/login/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/consent/index.js",
+          "spec": "../pages/consent/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/connect/index.js",
+          "spec": "../pages/connect/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/compose/index.js",
+          "spec": "../pages/compose/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/cards/index.js",
+          "spec": "../pages/cards/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/signal/index.js",
+          "spec": "../pages/signal/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/message/index.js",
+          "spec": "../pages/message/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/proposal/index.js",
+          "spec": "../pages/proposal/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/settings/index.js",
+          "spec": "../pages/settings/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/privacy/index.js",
+          "spec": "../pages/privacy/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/pages/not-found/index.js",
+          "spec": "../pages/not-found/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/components/app-shell.js",
+          "spec": "../components/app-shell.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/components/bottom-nav.js",
+          "spec": "../components/bottom-nav.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/app/dom.js",
+          "spec": "./dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/app/router.js",
+          "to": "web/src/core/session.js",
+          "spec": "../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/core/config.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../../../packages/family_bridge_shared/src/api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/core/session.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../../../packages/family_bridge_shared/src/session.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/adapter/web-adapter.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../../../packages/family_bridge_shared/src/api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/adapter/web-adapter.js",
+          "to": "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "spec": "../../../packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/adapter/web-adapter.js",
+          "to": "packages/family_bridge_shared/src/adapter/contract.js",
+          "spec": "../../../packages/family_bridge_shared/src/adapter/contract.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/adapter/web-adapter.js",
+          "to": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "spec": "../../../packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/adapter/web-adapter.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../../../packages/family_bridge_shared/src/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/adapter/web-adapter.js",
+          "to": "web/src/core/config.js",
+          "spec": "../core/config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/welcome/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/welcome/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/welcome/index.js",
+          "to": "web/src/assets/illustrations/hero-welcome-tea.jpg",
+          "spec": "../../assets/illustrations/hero-welcome-tea.jpg",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/how-to-use/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/how-to-use/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/role-select/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/role-select/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/home/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/home/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/home/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/companion/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/companion/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/mailbox/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/mailbox/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/mailbox/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/diary/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/diary/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/profile/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/profile/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/profile/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/connection-check/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/connection-check/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/connection-check/index.js",
+          "to": "packages/family_bridge_shared/src/connection-check.js",
+          "spec": "../../../../packages/family_bridge_shared/src/connection-check.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/help/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/help/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/core/config.js",
+          "spec": "../../core/config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/core/policy.js",
+          "spec": "../../core/policy.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/core/login-error.js",
+          "spec": "../../core/login-error.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/assets/logo/logo-lockup-transparent.png",
+          "spec": "../../assets/logo/logo-lockup-transparent.png",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/index.js",
+          "to": "web/src/pages/login/credential-form.js",
+          "spec": "./credential-form.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/consent/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/consent/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/consent/index.js",
+          "to": "web/src/core/policy.js",
+          "spec": "../../core/policy.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/consent/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/connect/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/connect/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/connect/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/compose/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/compose/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/compose/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/cards/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/cards/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/cards/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/signal/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/signal/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/signal/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/message/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/message/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/message/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/proposal/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/proposal/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/proposal/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/settings/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/settings/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/settings/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/privacy/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/privacy/index.js",
+          "to": "web/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/privacy/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/not-found/index.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/not-found/index.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/app-shell.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/app-shell.js",
+          "to": "web/src/app/nav.js",
+          "spec": "../app/nav.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/app-shell.js",
+          "to": "web/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/app-shell.js",
+          "to": "web/src/components/logo.js",
+          "spec": "./logo.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/bottom-nav.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/bottom-nav.js",
+          "to": "web/src/app/nav.js",
+          "spec": "../app/nav.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/bottom-nav.js",
+          "to": "web/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/fixtures/index.js",
+          "spec": "../fixtures/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/policy.js",
+          "spec": "../policy.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/button.js",
+          "spec": "./button.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/input.js",
+          "spec": "./input.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/card.js",
+          "spec": "./card.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/sheet.js",
+          "spec": "./sheet.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/dialog.js",
+          "spec": "./dialog.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/skeleton.js",
+          "spec": "./skeleton.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/empty-state.js",
+          "spec": "./empty-state.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/error-state.js",
+          "spec": "./error-state.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/status-badge.js",
+          "spec": "./status-badge.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/top-bar.js",
+          "spec": "./top-bar.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/bottom-nav.js",
+          "spec": "./bottom-nav.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/demo-banner.js",
+          "spec": "./demo-banner.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/logo.js",
+          "spec": "./logo.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/components/index.js",
+          "to": "web/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/core/policy.js",
+          "to": "packages/family_bridge_shared/src/policy.js",
+          "spec": "../../../packages/family_bridge_shared/src/policy.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/core/login-error.js",
+          "to": "packages/family_bridge_shared/src/login-error.js",
+          "spec": "../../../packages/family_bridge_shared/src/login-error.js",
+          "via": "export-from"
+        },
+        {
+          "from": "web/src/pages/login/credential-form.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/pages/login/credential-form.js",
+          "to": "web/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/logo.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/logo.js",
+          "to": "web/src/assets/logo/logo-mark-transparent.png",
+          "spec": "../assets/logo/logo-mark-transparent.png",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/button.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/input.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/card.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/sheet.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/dialog.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/skeleton.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/empty-state.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/error-state.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/status-badge.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/top-bar.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "web/src/components/demo-banner.js",
+          "to": "web/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        }
+      ],
+      "unresolved": []
+    },
+    "mini": {
+      "entry": "zalo-mini-app/index.html",
+      "nodes": 69,
+      "kinds": {
+        "html": 1,
+        "js": 63,
+        "asset": 4,
+        "bare": 1
+      },
+      "jsFiles": [
+        "zalo-mini-app/src/main.js",
+        "zalo-mini-app/src/app/store.js",
+        "zalo-mini-app/src/app/router.js",
+        "zalo-mini-app/src/core/config.js",
+        "zalo-mini-app/src/core/login-startup.js",
+        "zalo-mini-app/src/core/session.js",
+        "zalo-mini-app/src/core/adapter/adapter.js",
+        "zalo-mini-app/src/pages/welcome/index.js",
+        "zalo-mini-app/src/pages/how-to-use/index.js",
+        "zalo-mini-app/src/pages/role-select/index.js",
+        "zalo-mini-app/src/pages/home/index.js",
+        "zalo-mini-app/src/pages/companion/index.js",
+        "zalo-mini-app/src/pages/mailbox/index.js",
+        "zalo-mini-app/src/pages/diary/index.js",
+        "zalo-mini-app/src/pages/profile/index.js",
+        "zalo-mini-app/src/pages/connection-check/index.js",
+        "zalo-mini-app/src/pages/help/index.js",
+        "zalo-mini-app/src/pages/login/index.js",
+        "zalo-mini-app/src/pages/consent/index.js",
+        "zalo-mini-app/src/pages/connect/index.js",
+        "zalo-mini-app/src/pages/compose/index.js",
+        "zalo-mini-app/src/pages/cards/index.js",
+        "zalo-mini-app/src/pages/signal/index.js",
+        "zalo-mini-app/src/pages/message/index.js",
+        "zalo-mini-app/src/pages/proposal/index.js",
+        "zalo-mini-app/src/pages/settings/index.js",
+        "zalo-mini-app/src/pages/privacy/index.js",
+        "zalo-mini-app/src/pages/not-found/index.js",
+        "zalo-mini-app/src/components/app-shell.js",
+        "zalo-mini-app/src/components/bottom-nav.js",
+        "zalo-mini-app/src/app/dom.js",
+        "packages/family_bridge_shared/src/session.js",
+        "zalo-mini-app/src/core/adapter/mock-adapter.js",
+        "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+        "packages/family_bridge_shared/src/adapter/contract.js",
+        "zalo-mini-app/src/components/index.js",
+        "packages/family_bridge_shared/src/connection-check.js",
+        "zalo-mini-app/src/core/policy.js",
+        "zalo-mini-app/src/core/login-error.js",
+        "zalo-mini-app/src/pages/login/credential-form.js",
+        "zalo-mini-app/src/app/nav.js",
+        "zalo-mini-app/src/components/icon.js",
+        "zalo-mini-app/src/components/logo.js",
+        "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+        "packages/family_bridge_shared/src/api/client.mjs",
+        "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+        "zalo-mini-app/src/components/button.js",
+        "zalo-mini-app/src/components/input.js",
+        "zalo-mini-app/src/components/textarea.js",
+        "zalo-mini-app/src/components/list.js",
+        "zalo-mini-app/src/components/card.js",
+        "zalo-mini-app/src/components/sheet.js",
+        "zalo-mini-app/src/components/dialog.js",
+        "zalo-mini-app/src/components/skeleton.js",
+        "zalo-mini-app/src/components/empty-state.js",
+        "zalo-mini-app/src/components/error-state.js",
+        "zalo-mini-app/src/components/status-badge.js",
+        "zalo-mini-app/src/components/top-bar.js",
+        "zalo-mini-app/src/components/demo-banner.js",
+        "zalo-mini-app/src/components/app-header.js",
+        "packages/family_bridge_shared/src/policy.js",
+        "packages/family_bridge_shared/src/login-error.js",
+        "packages/family_bridge_shared/src/fixtures/index.js"
+      ],
+      "assets": [
+        "zalo-mini-app/src/styles/index.css",
+        "zalo-mini-app/src/assets/illustrations/hero-welcome-tea.jpg",
+        "zalo-mini-app/src/assets/logo/logo-lockup-transparent.png",
+        "zalo-mini-app/src/assets/logo/logo-mark-transparent.png"
+      ],
+      "bare": [
+        "bare:zmp-sdk"
+      ],
+      "edges": [
+        {
+          "from": "zalo-mini-app/index.html",
+          "to": "zalo-mini-app/src/main.js",
+          "spec": "/src/main.js",
+          "via": "html-script"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/styles/index.css",
+          "spec": "./styles/index.css",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/app/store.js",
+          "spec": "./app/store.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/app/router.js",
+          "spec": "./app/router.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/core/config.js",
+          "spec": "./core/config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/core/login-startup.js",
+          "spec": "./core/login-startup.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "./core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/main.js",
+          "to": "zalo-mini-app/src/core/adapter/adapter.js",
+          "spec": "./core/adapter/adapter.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/welcome/index.js",
+          "spec": "../pages/welcome/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/welcome/index.js",
+          "spec": "../pages/welcome/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/how-to-use/index.js",
+          "spec": "../pages/how-to-use/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/role-select/index.js",
+          "spec": "../pages/role-select/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/home/index.js",
+          "spec": "../pages/home/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/companion/index.js",
+          "spec": "../pages/companion/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/mailbox/index.js",
+          "spec": "../pages/mailbox/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/diary/index.js",
+          "spec": "../pages/diary/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/profile/index.js",
+          "spec": "../pages/profile/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/connection-check/index.js",
+          "spec": "../pages/connection-check/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/help/index.js",
+          "spec": "../pages/help/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/login/index.js",
+          "spec": "../pages/login/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/consent/index.js",
+          "spec": "../pages/consent/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/connect/index.js",
+          "spec": "../pages/connect/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/compose/index.js",
+          "spec": "../pages/compose/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/cards/index.js",
+          "spec": "../pages/cards/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/signal/index.js",
+          "spec": "../pages/signal/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/message/index.js",
+          "spec": "../pages/message/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/proposal/index.js",
+          "spec": "../pages/proposal/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/settings/index.js",
+          "spec": "../pages/settings/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/privacy/index.js",
+          "spec": "../pages/privacy/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/pages/not-found/index.js",
+          "spec": "../pages/not-found/index.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/components/app-shell.js",
+          "spec": "../components/app-shell.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/components/bottom-nav.js",
+          "spec": "../components/bottom-nav.js",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "./dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/app/router.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/session.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../../../packages/family_bridge_shared/src/session.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/adapter.js",
+          "to": "zalo-mini-app/src/core/adapter/mock-adapter.js",
+          "spec": "./mock-adapter.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/adapter.js",
+          "to": "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+          "spec": "./zalo-adapter.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/adapter.js",
+          "to": "zalo-mini-app/src/core/config.js",
+          "spec": "../config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/adapter.js",
+          "to": "packages/family_bridge_shared/src/adapter/contract.js",
+          "spec": "../../../../packages/family_bridge_shared/src/adapter/contract.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/welcome/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/welcome/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/welcome/index.js",
+          "to": "zalo-mini-app/src/assets/illustrations/hero-welcome-tea.jpg",
+          "spec": "../../assets/illustrations/hero-welcome-tea.jpg",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/how-to-use/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/how-to-use/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/role-select/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/role-select/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/home/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/home/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/home/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/companion/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/companion/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/mailbox/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/mailbox/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/mailbox/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/diary/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/diary/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/profile/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/profile/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/profile/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/connection-check/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/connection-check/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/connection-check/index.js",
+          "to": "packages/family_bridge_shared/src/connection-check.js",
+          "spec": "../../../../packages/family_bridge_shared/src/connection-check.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/help/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/help/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/core/config.js",
+          "spec": "../../core/config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/core/policy.js",
+          "spec": "../../core/policy.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/core/login-error.js",
+          "spec": "../../core/login-error.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/assets/logo/logo-lockup-transparent.png",
+          "spec": "../../assets/logo/logo-lockup-transparent.png",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/index.js",
+          "to": "zalo-mini-app/src/pages/login/credential-form.js",
+          "spec": "./credential-form.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/consent/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/consent/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/consent/index.js",
+          "to": "zalo-mini-app/src/core/policy.js",
+          "spec": "../../core/policy.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/consent/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/connect/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/connect/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/connect/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/compose/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/compose/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/compose/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/cards/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/cards/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/cards/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/signal/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/signal/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/signal/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/message/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/message/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/message/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/proposal/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/proposal/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/proposal/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/settings/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/settings/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/settings/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/privacy/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/privacy/index.js",
+          "to": "zalo-mini-app/src/core/session.js",
+          "spec": "../../core/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/privacy/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/not-found/index.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/not-found/index.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/app-shell.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/app-shell.js",
+          "to": "zalo-mini-app/src/app/nav.js",
+          "spec": "../app/nav.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/app-shell.js",
+          "to": "zalo-mini-app/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/app-shell.js",
+          "to": "zalo-mini-app/src/components/logo.js",
+          "spec": "./logo.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/bottom-nav.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/bottom-nav.js",
+          "to": "zalo-mini-app/src/app/nav.js",
+          "spec": "../app/nav.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/bottom-nav.js",
+          "to": "zalo-mini-app/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "spec": "../../../../packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+          "to": "bare:zmp-sdk",
+          "spec": "zmp-sdk",
+          "via": "dynamic-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../../../../packages/family_bridge_shared/src/api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+          "to": "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "spec": "../../../../packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../../../../packages/family_bridge_shared/src/session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/core/adapter/zalo-adapter.js",
+          "to": "zalo-mini-app/src/core/config.js",
+          "spec": "../config.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/button.js",
+          "spec": "./button.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/input.js",
+          "spec": "./input.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/textarea.js",
+          "spec": "./textarea.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/list.js",
+          "spec": "./list.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/card.js",
+          "spec": "./card.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/sheet.js",
+          "spec": "./sheet.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/dialog.js",
+          "spec": "./dialog.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/skeleton.js",
+          "spec": "./skeleton.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/empty-state.js",
+          "spec": "./empty-state.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/error-state.js",
+          "spec": "./error-state.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/status-badge.js",
+          "spec": "./status-badge.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/top-bar.js",
+          "spec": "./top-bar.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/bottom-nav.js",
+          "spec": "./bottom-nav.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/demo-banner.js",
+          "spec": "./demo-banner.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/logo.js",
+          "spec": "./logo.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/app-header.js",
+          "spec": "./app-header.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/components/index.js",
+          "to": "zalo-mini-app/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/core/policy.js",
+          "to": "packages/family_bridge_shared/src/policy.js",
+          "spec": "../../../packages/family_bridge_shared/src/policy.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/core/login-error.js",
+          "to": "packages/family_bridge_shared/src/login-error.js",
+          "spec": "../../../packages/family_bridge_shared/src/login-error.js",
+          "via": "export-from"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/credential-form.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/pages/login/credential-form.js",
+          "to": "zalo-mini-app/src/components/index.js",
+          "spec": "../../components/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/logo.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/logo.js",
+          "to": "zalo-mini-app/src/assets/logo/logo-mark-transparent.png",
+          "spec": "../assets/logo/logo-mark-transparent.png",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/fixtures/index.js",
+          "spec": "../fixtures/index.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/mock-adapter.js",
+          "to": "packages/family_bridge_shared/src/policy.js",
+          "spec": "../policy.js",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "to": "packages/family_bridge_shared/src/api/client.mjs",
+          "spec": "../api/client.mjs",
+          "via": "static-import"
+        },
+        {
+          "from": "packages/family_bridge_shared/src/adapter/http-endpoints.js",
+          "to": "packages/family_bridge_shared/src/session.js",
+          "spec": "../session.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/button.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/input.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/textarea.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/list.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/card.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/sheet.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/dialog.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/skeleton.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/empty-state.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/error-state.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/status-badge.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/top-bar.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/demo-banner.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/app-header.js",
+          "to": "zalo-mini-app/src/app/dom.js",
+          "spec": "../app/dom.js",
+          "via": "static-import"
+        },
+        {
+          "from": "zalo-mini-app/src/components/app-header.js",
+          "to": "zalo-mini-app/src/components/icon.js",
+          "spec": "./icon.js",
+          "via": "static-import"
+        }
+      ],
+      "unresolved": []
+    }
+  },
+  "shared": {
+    "dir": "packages/family_bridge_shared/src",
+    "present": true,
+    "scannedFiles": 10,
+    "bannedTokens": [
+      "zmp-sdk",
+      "window.",
+      "document.",
+      "localStorage",
+      "sessionStorage"
+    ],
+    "reachableFromMini": 9,
+    "reachableFromWeb": 9
+  },
+  "webBannedTokens": [
+    "zmp-sdk",
+    "localStorage.",
+    "sessionStorage."
+  ],
+  "checks": {
+    "b": {
+      "pass": true,
+      "hits": []
+    },
+    "c": {
+      "pass": true,
+      "hits": []
+    },
+    "a": {
+      "pass": true,
+      "hits": []
+    },
+    "d": {
+      "pass": true,
+      "hits": []
+    },
+    "e": {
+      "pass": true,
+      "hits": []
+    }
+  },
+  "unresolvedEdges": [],
+  "violations": [],
+  "summary": {
+    "ok": true,
+    "violationCount": 0,
+    "checked": [
+      "b",
+      "c",
+      "a",
+      "d",
+      "e"
+    ],
+    "skipped": []
+  }
+}

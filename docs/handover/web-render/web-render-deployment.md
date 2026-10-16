@@ -1,5 +1,7 @@
 # Web Render — triển khai static service `family-bridge-web` (Task 2, M6)
 
+> **SUPERSEDE 2026-10-16 (web-miniapp-separation):** web Render giờ build từ ứng dụng web độc lập `web/` (`buildCommand: cd web && npm ci && npm run build`, publish `web/dist`) — **không còn** build từ codebase `zalo-mini-app`. Các phần mô tả "một codebase duy nhất, không dựng frontend thứ hai" dưới đây chỉ còn giá trị lịch sử/rollback. Cấu hình mới, biến môi trường, CI job `web` và rollback: xem `docs/handover/web-miniapp-separation/deployment.md`.
+
 Nhánh: `tinh-nang/web-render-task2`. Tài liệu này bàn giao phần **triển khai web
 Render** của Task 2: một static service Render phục vụ build Vite của
 `zalo-mini-app` (một codebase duy nhất, không dựng frontend thứ hai).

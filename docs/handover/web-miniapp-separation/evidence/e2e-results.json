@@ -1,0 +1,124 @@
+{
+  "generatedAt": "2026-10-16T06:17:57.581Z",
+  "totals": {
+    "pass": 16,
+    "fail": 1,
+    "not_run": 2
+  },
+  "steps": [
+    {
+      "step": "P0",
+      "name": "migrate + provision_classroom (dry-run rồi apply)",
+      "verdict": "PASS",
+      "detail": "dry-run: dự kiến tạo 4 tài khoản + 2 proposal; apply: tạo 4, lỗi 0"
+    },
+    {
+      "step": "P1",
+      "name": "runserver + GET /api/v1/ready/ 200 (timeout 60s)",
+      "verdict": "PASS",
+      "detail": "ready 200 sau khi spawn (pid 11096)"
+    },
+    {
+      "step": "S1",
+      "name": "GET /auth/class-capabilities (no auth)",
+      "verdict": "PASS",
+      "detail": "status=200 login_methods={\"local_class\":true,\"zalo\":false}"
+    },
+    {
+      "step": "S2",
+      "name": "POST /auth/session (payload Zalo demo) — cổng Zalo đang dormant",
+      "verdict": "PASS",
+      "detail": "status=503 code=module_unavailable reason=zalo_login_disabled"
+    },
+    {
+      "step": "S3",
+      "name": "login HS001 + PH001 → 2 token độc lập (Bearer)",
+      "verdict": "PASS",
+      "detail": "HS status=200 role=student; PH status=200 role=caregiver; token_type=Bearer; token khác nhau=true; consents_required HS=[\"service\",\"ai_processing\",\"research\"]"
+    },
+    {
+      "step": "S4",
+      "name": "401 anti-enumeration: sai password vs mã không tồn tại",
+      "verdict": "PASS",
+      "detail": "sai-mk: status=401 code=not_authenticated reason=invalid_credentials; mã-lạ: status=401 code=not_authenticated; body GIỐNG HỆT byte-wise=true"
+    },
+    {
+      "step": "S5",
+      "name": "GET /auth/me không token → 401",
+      "verdict": "PASS",
+      "detail": "status=401 code=not_authenticated"
+    },
+    {
+      "step": "S6",
+      "name": "POST /consents purpose=service (HS + PH)",
+      "verdict": "PASS",
+      "detail": "consents_required sau login HS=[\"service\",\"ai_processing\",\"research\"]; HS POST status=201; PH POST status=201 (API thiết kế trả 201 Created)"
+    },
+    {
+      "step": "S7",
+      "name": "proposal HS confirm → awaiting_confirmation; PH confirm → connected",
+      "verdict": "PASS",
+      "detail": "proposal_id=b0964365-0da1-4d2b-a1b6-3f6b240de785 revision ban đầu=1; HS confirm=200 (awaiting_confirmation, my_confirmed=true); PH confirm=200 → connected; connection_id=728d50fc-0bc6-4513-a2fe-1b25d38ece27 relationship_kind=primary generation=1"
+    },
+    {
+      "step": "S8",
+      "name": "revision_conflict (expected_revision cũ) + proposal_not_confirmable (confirm lần nữa)",
+      "verdict": "PASS",
+      "detail": "confirm expected_revision CŨ: status=409 code=revision_conflict (kỳ vọng 409 revision_conflict); confirm lần nữa khi đã connected: status=400 code=input_invalid details={\"reason\":\"proposal_not_confirmable\",\"status\":\"connected\"} (400 + reason proposal_not_confirmable)"
+    },
+    {
+      "step": "S9",
+      "name": "cards preview → send (kỳ vọng 201 message_id)",
+      "verdict": "FAIL",
+      "detail": "catalog status=200 cards=0; preview status=404 code=not_found reason=card_not_available; send status=503 code=module_unavailable reason=transport_not_wired message_id=—"
+    },
+    {
+      "step": "S10",
+      "name": "PH GET /messages thấy tin của HS; PH read=200; HS read tin mình gửi=404",
+      "verdict": "NOT_RUN",
+      "detail": "PH GET /messages status=200 results=0; HS GET /messages status=200 results=0; KHÔNG có message để đọc (do S9 fail-closed) — read id lạ=404 code=not_found (hộp thư hoạt động, luồng recipient-only KHÔNG kiểm chứng được qua API)"
+    },
+    {
+      "step": "S11",
+      "name": "F06: tạo nháp → pause (deadline = giờ server + ~300s, server-decided; pause lần 2 không đổi deadline)",
+      "verdict": "PASS",
+      "detail": "pause#1 status=200 deadline-server_time=299.999s (kỳ vọng 290–310); pause#2 status=200 deadline KHÔNG đổi=true"
+    },
+    {
+      "step": "S12",
+      "name": "F04: GET /ai/status + POST /ai/refine (X-Idempotency-Key)",
+      "verdict": "NOT_RUN",
+      "detail": "GET /ai/status status=200 body={\"ai_enabled\":false}; POST /ai/refine status=503 code=module_unavailable reason=ai_unavailable_or_off — provider AI chưa cấu hình trên backend thật (fail-closed); kiểm chứng idempotent-replay NOT_RUN có lý do"
+    },
+    {
+      "step": "S13",
+      "name": "F15: tạo yêu cầu xóa → thấy qua GET → hủy",
+      "verdict": "PASS",
+      "detail": "POST status=201 request_status=requested; GET detail status=200 state=requested; cancel status=200 → cancelled; GET /privacy/overview status=200"
+    },
+    {
+      "step": "S14",
+      "name": "logout HS → /auth/me bằng token cũ → bị chặn 401",
+      "verdict": "PASS",
+      "detail": "logout status=200; me sau logout status=401 code=authentication_failed (token cũ không dùng lại được)"
+    },
+    {
+      "step": "S15",
+      "name": "rate limit: burst 12 login sai HS002 → 429 rate_limited (DB guard)",
+      "verdict": "PASS",
+      "detail": "chuỗi status: 401,401,401,401,401,401,401,401,429,429,429,429 — số 429=4, mã lỗi khi 429=rate_limited"
+    },
+    {
+      "step": "S16",
+      "name": "CORS preflight từ Origin http://127.0.0.1:8080",
+      "verdict": "PASS",
+      "detail": "status=200 Access-Control-Allow-Origin=http://127.0.0.1:8080 (không wildcard=true) allow-methods=DELETE, GET, OPTIONS, PATCH, POST, PUT"
+    },
+    {
+      "step": "P2",
+      "name": "dừng runserver đúng cách (SIGTERM → exit)",
+      "verdict": "PASS",
+      "detail": "server exit sau SIGTERM"
+    }
+  ]
+}
