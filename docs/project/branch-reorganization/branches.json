@@ -240,6 +240,30 @@
       "locked_paths_temporary": ["tests/feature-lab/harness/settings.py (cùng lock với W036/PR #34)", "packages/family_bridge_features/f01_identity/api.py", "packages/family_bridge_features/f01_identity/services/identity.py", "packages/family_bridge_features/f07_mood/auth.py", "packages/family_bridge_features/f07_mood/services/mood.py", "packages/family_bridge_features/f07_mood/services/registry.py", "packages/family_bridge_features/f08_journal/api.py", "packages/family_bridge_features/f08_journal/auth.py", "packages/family_bridge_features/f08_journal/services/**", "zalo-mini-app/src/app/router.js", "zalo-mini-app/src/pages/profile/index.js"],
       "dependencies": ["F01", "Grant providers F07/F08", "Deletion hooks theo domain"],
       "readiness": {"can_implement_now": true, "can_integrate_now": true, "can_pilot_now": false, "blocked_by": ["review PR #33", "deletion request ≠ hoàn tất xóa — gate B16 + retention policy"], "evidence": "PR #33 head aeae321 = head cũ #27; đã chứa main f8fc6a4; CI 8/8 trên SHA đó; 262 backend tests (258 PASS, 4 SKIP MySQL)"}
+    },
+    {
+      "feature": "WEB-T2",
+      "name": "tinh-nang/web-render-task2",
+      "label": "web_render_task2",
+      "owner": "huy (lead)",
+      "head_sha": "2ed4d3623cc5a41ebd09e61807ce2bb0c61409e7",
+      "head_sha_note": "chụp tại commit bàn giao web M5b (trước commit governance này); nhánh KHÔNG push theo giới hạn task — lead push/PR khi review",
+      "us_primary": [],
+      "own_paths": ["zalo-mini-app/src/components/app-shell.js", "zalo-mini-app/src/styles/shell.css", "zalo-mini-app/src/pages/cards/**", "zalo-mini-app/src/pages/signal/**", "zalo-mini-app/src/pages/message/**", "zalo-mini-app/src/pages/proposal/**", "zalo-mini-app/src/pages/settings/**", "zalo-mini-app/src/pages/privacy/**", "zalo-mini-app/src/pages/login/credential-form.js", "render.yaml", "docs/handover/web-render/**"],
+      "locked_paths_temporary": [],
+      "dependencies": ["Hợp đồng API cuối Task 19 (worklog): auth/class-session + class-password/class-code/class-display-name + classroom/proposals", "Endpoints thật F03/F04/F05/F07/F10/F13/F15 trên main", "Render Blueprint backend (family-bridge-backend) đã deploy; owner thêm CORS cho origin web"],
+      "coordination": {
+        "shared_files_touched": {
+          "zalo-mini-app/src/app/router.js": "thêm pattern route + chrome app + requiresAuth (M1) — router gốc thuộc F15/#33 và F01; tích hợp qua lead",
+          "zalo-mini-app/src/pages/login/index.js": "đăng nhập mã lớp w02 (credential-form.js là own path) — ownership F01 (PR #32)",
+          "zalo-mini-app/src/pages/mailbox/index.js": "w14 title-only theo hợp đồng F05 — ownership F05 (ban-2)",
+          "zalo-mini-app/src/pages/profile/index.js": "thay hàng 'Sắp có' bằng dẫn #/settings + #/privacy thật — ownership F15 (PR #33)",
+          "zalo-mini-app/src/pages/compose/index.js": "restyle w11/w12 giữ nguyên hành vi F06 — ownership F06",
+          "zalo-mini-app/tests/pages.test.mjs": "pin profile cập nhật theo lead"
+        },
+        "rule": "file dùng chung do lead (Huy) hợp nhất khi tích hợp — xem shared-integration.md; không owner khác sửa own_paths của WEB-T2 mà không qua lead"
+      },
+      "readiness": {"can_implement_now": true, "can_integrate_now": true, "can_pilot_now": false, "blocked_by": ["owner apply Render Blueprint service web + set VITE_API_BASE_URL + CORS", "backend thật với mã lớp provisioned (Task 1 f16)", "thiết bị Zalo thật cho webview"], "evidence": "M5b settings/privacy thật + M6 render.yaml static/docs/governance/qa-web-invariants; zalo-mini-app 274/274 node:test PASS; npm run build OK; NOT_RUN: Render apply, CORS, MySQL, thiết bị Zalo (docs/handover/web-render/verification-report.md)"}
     }
   ],
   "maintenance": [
@@ -255,5 +279,5 @@
     }
   ],
   "shared_files_owner": "lead (Huy) — xem shared-integration.md",
-  "end_state_refs": "main + 15 tinh-nang/* + 1 bao-tri/* = 17 remote branches (đã xác minh 15/10/2026)"
+  "end_state_refs": "main + 15 tinh-nang/* + 1 bao-tri/* = 17 remote branches (đã xác minh 15/10/2026); bổ sung 1 nhánh web mới tinh-nang/web-render-task2 (WEB-T2, chưa nằm trong lần xác minh trên)"
 }

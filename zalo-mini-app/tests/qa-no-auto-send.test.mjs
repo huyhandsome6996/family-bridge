@@ -150,36 +150,31 @@ describe("QA: connection-check destroy chặn cập nhật sau khi rời trang",
   });
 });
 
-describe("QA: nút tín hiệu chỉ xem trước, KHÔNG gửi", () => {
-  it("mở sheet, chọn người nhận -> chỉ thông báo 'sẽ sớm có', không 'Đã gửi'", async () => {
-    const { ctx } = makeCtx({ demo: true, role: "student" });
+describe("QA: nút tín hiệu dẫn sang trang riêng — KHÔNG tự gửi", () => {
+  it("CTA 'Con cần được lắng nghe' điều hướng #/signal; home không gửi tín hiệu", async () => {
+    // PIN UPDATE (task 3-b2, M3): tín hiệu là trang thật #/signal (w16) với
+    // preview máy chủ + xác nhận cuối + key idempotency. Bất biến không-tự-gửi
+    // giữ nguyên: home CHỈ dẫn đường; signalSend không thể được gọi từ home;
+    // trang #/signal cũng chỉ gửi sau khi người dùng xác nhận (test riêng
+    // trong tests/web-screens.test.mjs pin luồng preview → confirm).
+    const { ctx, adapter } = makeCtx({ demo: true, role: "student" });
+    let signalSendCalls = 0;
+    adapter.signalSend = async () => {
+      signalSendCalls += 1;
+      return { message_id: "demo-signal-x", state: "sent" };
+    };
     const { host, el } = mount(home, ctx);
-    await wait(1200); // mock latency: getConnectionStatus + getProfile
+    await wait(1200);
 
-    // Stitch upgrade: CTA amber có nhãn "Mở lời chia sẻ an toàn" (kicker
-    // "Con cần được lắng nghe" là tiêu đề thẻ). Quy tắc nghiệp vụ giữ nguyên:
-    // bấm CHỈ mở sheet xem trước — không gửi, không báo "đã gửi".
-    const signalBtn = findButton(el, "Mở lời chia sẻ an toàn");
-    assert.ok(signalBtn, "CTA tín hiệu phải tồn tại");
-    signalBtn.click();
+    const signalLink = el.querySelector("a[href='#/signal']");
+    assert.ok(signalLink, "CTA tín hiệu phải tồn tại (link sang #/signal)");
+    assert.ok(textOf(signalLink).includes("Con cần được lắng nghe"));
+    signalLink.click();
 
-    const sheet = el.querySelector(".fb-sheet");
-    assert.ok(sheet, "chỉ được mở sheet xem trước");
-    const sheetText = textOf(sheet);
-    assert.ok(
-      sheetText.includes("chưa có tín hiệu nào được gửi đi"),
-      "sheet phải nói rõ chưa gửi gì",
-    );
-
-    const recipientBtn = Array.from(sheet.querySelectorAll("button")).find((btn) =>
-      textOf(btn).includes("Người đồng hành"),
-    );
-    if (recipientBtn) recipientBtn.click();
-    const after = textOf(el);
-    assert.ok(after.includes("sẽ sớm có ở bản đầy đủ"), "phải là thông báo sắp có");
-    assert.doesNotMatch(after, /đã gửi/i, "không được báo đã gửi");
-    // Stitch: tile "Gửi thẻ cảm xúc" (disabled, trung thực) chứa chữ "Gửi" —
-    // rule nghiệp vụ là KHÔNG có nút gửi BẬT nào sau sheet tín hiệu.
+    assert.ok(!el.querySelector(".fb-sheet"), "home không mở sheet gửi tín hiệu");
+    assert.doesNotMatch(textOf(el), /đã gửi/i, "không được báo đã gửi");
+    assert.equal(signalSendCalls, 0, "home không được gọi signalSend");
+    // Vẫn không được có nút Gửi BẬT nào trên home sau khi bấm CTA.
     const activeSendButtons = Array.from(el.querySelectorAll("button"))
       .filter((btn) => !btn.disabled && textOf(btn).includes("Gửi"));
     assert.equal(activeSendButtons.length, 0, "không được có nút Gửi đang bật");

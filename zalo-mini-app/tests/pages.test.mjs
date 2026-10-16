@@ -251,49 +251,64 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(mounted2.host);
   });
 
-  it("Home student (demo): greeting fixture + DemoBanner + badge 'Dữ liệu minh họa' (Stitch)", async () => {
+  it("Home student (demo): greeting fixture + DemoBanner + dữ liệu thật qua mock (w08)", async () => {
+    // PIN UPDATE (task 3-b2, M3): home w08 nối API thật qua adapter. Mock
+    // programMy() rỗng → thẻ chương trình trung thực "Chưa tham gia";
+    // tile thẻ cảm xúc bật thật (F03) → #/cards; tín hiệu → trang #/signal.
+    // Quy tắc không-tự-gửi không đổi (xem qa-no-auto-send).
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(pages.home, ctx);
-    await wait(900);
+    await wait(1000);
     const text = textOf(el);
     // Greeting Stitch dùng displayName fixture thật, không hardcode tên mẫu.
     assert.ok(text.includes("Chào Học sinh Bảo Nam (minh họa), hôm nay bạn cảm thấy thế nào?"), `greeting fixture: ${text}`);
     assert.ok(text.includes("Dữ liệu minh họa"));
     assert.ok(text.includes("Đang đồng hành với: Người đồng hành (minh họa)"));
     assert.ok(text.includes("Cảm xúc lúc này"), "mood card Stitch phải có");
-    assert.ok(text.includes("Gửi thẻ cảm xúc"), "tile thẻ cảm xúc phải có");
-    assert.ok(findButton(el, "Sắp có"), "nút Sắp có (disabled) phải tồn tại");
-    assert.ok(text.includes("Tuần 1: Nhận diện cảm xúc & Tiếng lòng chưa nói"));
-    assert.ok(text.includes("Hộp thư gia đình"));
-    assert.ok(findButton(el, "Mở lời chia sẻ an toàn"), "CTA amber phải có");
+    assert.ok(el.querySelector("a[href='#/cards']"), "tile thẻ cảm xúc phải dẫn #/cards");
+    assert.ok(text.includes("Thư viện thẻ cảm xúc"), "tile thẻ cảm xúc phải có");
+    assert.ok(text.includes("Con cần được lắng nghe"), "tile tín hiệu phải có");
+    assert.ok(text.includes("Chưa tham gia chương trình 4 tuần"), "chương trình trung thực khi chưa ghi danh");
+    assert.ok(text.includes("Hộp thư trao đổi gần đây"), "mailbox preview phải có");
+    assert.ok(text.includes("Mới"), "thư chưa đọc phải có chip Mới");
     unmount(host);
   });
 
-  it("Home caregiver (demo): tự chăm sóc + hộp thư rỗng trung thực + bài học ngắn (Stitch)", async () => {
+  it("Home caregiver (demo): tự chăm sóc + thẻ lời nhắn + bài học trung thực (w09)", async () => {
+    // PIN UPDATE (task 3-b2, M3): caregiver home w09 — thẻ lời nhắn mới nhất
+    // qua listMessages + getMessage (mock), callout an toàn bắt buộc; bài
+    // học 60 giây đọc catalog F09 thật (mock rỗng → nói rỗng, không bịa).
     const { ctx } = makeCtx({ demo: true, role: "caregiver" });
     const { host, el } = mount(pages.home, ctx);
-    await wait(900);
+    await wait(1000);
     const text = textOf(el);
     assert.ok(text.includes("Chào Phụ huynh Minh Tâm (minh họa),"));
     assert.ok(text.includes("Tự chăm sóc bản thân"), "mood card người chăm sóc phải có");
-    assert.ok(text.includes("Tin nhắn & tín hiệu gửi riêng"), "section hộp thư phải có");
-    assert.ok(text.includes("Chưa có tín hiệu mới."));
-    assert.ok(text.includes("Bài học ngắn 60 giây"));
+    assert.ok(text.includes("Lời nhắn gửi đến anh/chị"), "thẻ lời nhắn phải có");
+    assert.ok(text.includes("Đây là nội dung con chủ động gửi cho anh/chị"), "callout an toàn bắt buộc");
+    assert.ok(text.includes("Bài học 60 giây"));
+    assert.ok(text.includes("Chưa có bài học ngắn nào được phát hành"), "không bịa bài học khi catalog rỗng");
     assert.ok(text.includes("Mở hộp thư"), "nút mở hộp thư phải có");
     assert.ok(text.includes("Tôn trọng không gian riêng của con"), "thẻ cam kết phải có");
     unmount(host);
   });
 
-  it("Home student (demo): CTA amber chỉ mở Sheet thông báo, không gửi", async () => {
+  it("Home student (demo): CTA 'Con cần được lắng nghe' chỉ điều hướng #/signal, không gửi", async () => {
+    // PIN UPDATE (task 3-b2, M3): tín hiệu đã có trang riêng #/signal với
+    // preview máy chủ + xác nhận cuối; home chỉ dẫn đường — không mở sheet
+    // và không gửi gì từ home (bất biến không-tự-gửi giữ nguyên).
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const { host, el } = mount(pages.home, ctx);
-    await wait(900);
-    const signalBtn = findButton(el, "Mở lời chia sẻ an toàn");
-    signalBtn.click();
-    const sheet = el.querySelector(".fb-sheet");
-    assert.ok(sheet, "phải mở sheet");
-    assert.ok(textOf(sheet).includes("Tính năng gửi tín hiệu sẽ sớm có ở bản đầy đủ."));
-    assert.ok(!textOf(sheet).includes("đã gửi"), "không được báo đã gửi");
+    await wait(1000);
+    const signalLink = el.querySelector("a[href='#/signal']");
+    assert.ok(signalLink, "phải có lối sang #/signal");
+    assert.ok(textOf(signalLink).includes("Con cần được lắng nghe"));
+    signalLink.click();
+    assert.ok(!el.querySelector(".fb-sheet"), "home không được mở sheet gửi tín hiệu");
+    assert.doesNotMatch(textOf(el), /đã gửi/i, "không được báo đã gửi");
+    const activeSendButtons = Array.from(el.querySelectorAll("button"))
+      .filter((btn) => !btn.disabled && textOf(btn).includes("Gửi"));
+    assert.equal(activeSendButtons.length, 0, "không được có nút Gửi đang bật trên home");
     unmount(host);
   });
 
@@ -347,7 +362,7 @@ describe("Render không throw + copy bắt buộc", () => {
     assert.ok(text.includes("Người đồng hành chính"));
     assert.ok(!text.includes("uuid-nguoi-kia"), "không được hiện UUID của người kia");
     assert.ok(text.includes("Quản lý kết nối"));
-    assert.ok(text.includes("Gửi thẻ cảm xúc"), "home student vẫn giữ các lối tắt nền tảng");
+    assert.ok(text.includes("Thư viện thẻ cảm xúc"), "home student giữ các lối tắt mở lời (w08)");
     clearSession();
     unmount(host);
   });
@@ -398,14 +413,45 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Hộp thư: EmptyState + nút kiểm tra kết nối", () => {
+  it("Hub Hộp thư (w14, PIN UPDATE task 3-b4): danh sách dữ liệu thật từ F05", async () => {
+    // PIN UPDATE (task 3-b4, M5a): mailbox w14 nối listMessages/listConnections
+    // thật qua adapter (mock trả 1 thư minh họa received-unread) → trang hiện
+    // danh sách + chip "Mới", không còn EmptyState tĩnh. Copy trống cũ được
+    // GIỮ NGUYÊN ở trạng thái rỗng thật — pin riêng ở test dưới với adapter
+    // trả rỗng. Trang giờ là chrome "app" + requiresAuth → test đặt phiên.
+    setSession({ token: "t-pages", userId: "u-pages", expiresAt: Date.now() + 3600_000 });
     const { ctx } = makeCtx({ demo: false, role: "student" });
     const { host, el } = mount(pages.mailbox, ctx);
+    await wait(400); // mock listMessages chờ ~150ms
+    const text = textOf(el);
+    assert.ok(text.includes("Hộp thư trao đổi thấu cảm"), `thấy: ${text.slice(0, 200)}`);
+    assert.ok(text.includes("Không áp lực trả lời ngay"));
+    assert.ok(text.includes("Lời nhắn từ người đồng hành (minh họa)"), "tiêu đề thật từ máy chủ");
+    assert.ok(text.includes("Mới"), "thư received-unread phải có chip Mới");
+    assert.ok(el.querySelector("a[data-message-id]"), "hàng phải là liên kết sang chi tiết");
+    unmount(host);
+    clearSession();
+  });
+
+  it("Hub Hộp thư rỗng (PIN UPDATE task 3-b4): giữ pin copy cũ + kiểm tra kết nối", async () => {
+    // PIN UPDATE (task 3-b4, M5a): trạng thái rỗng THẬT (máy chủ trả rỗng)
+    // giữ nguyên copy pin cũ của hub — "Chưa có tin nhắn nào" + mô tả + nút
+    // "Kiểm tra kết nối máy chủ".
+    setSession({ token: "t-pages", userId: "u-pages", expiresAt: Date.now() + 3600_000 });
+    const emptyAdapter = {
+      mode: "zalo",
+      listMessages: async () => ({ results: [], nextCursor: null }),
+      listConnections: async () => ({ results: [], nextCursor: null }),
+    };
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: emptyAdapter });
+    const { host, el } = mount(pages.mailbox, ctx);
+    await wait(50);
     const text = textOf(el);
     assert.ok(text.includes("Chưa có tin nhắn nào"));
     assert.ok(text.includes("Khi hai bên đã kết nối, lời nhắn và phản hồi nhanh sẽ xuất hiện ở đây."));
     assert.ok(findButton(el, "Kiểm tra kết nối máy chủ"));
     unmount(host);
+    clearSession();
   });
 
   it("Hub Nhật ký: chưa mở + nhấn mạnh chia sẻ từng trang do người dùng chọn", () => {
@@ -417,12 +463,15 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Cá nhân: đổi vai trò + mục Sắp có có lý do + phiên bản US-003", () => {
+  it("Hub Cá nhân: đổi vai trò + dẫn tới Cài đặt/Riêng tư thật + phiên bản US-003", () => {
     const { ctx, navigateCalls } = makeCtx({ demo: false, role: "caregiver" });
     const { host, el } = mount(pages.profile, ctx);
     const text = textOf(el);
     assert.ok(text.includes("Người chăm sóc"));
-    assert.ok(text.includes("Quản lý chia sẻ & đồng ý — Sắp có"));
+    // M5b: Riêng tư & đồng ý đã là trang thật → hàng "Sắp có" bị thay bằng
+    // dẫn đường thật tới #/settings và #/privacy (không còn disabled mù).
+    assert.ok(text.includes("Riêng tư & đồng ý"));
+    assert.ok(!text.includes("Sắp có"));
     assert.ok(text.includes("Phiên bản xem trước US-003"));
 
     const switchBtn = findButton(el, "Đổi vai trò xem trước");
@@ -431,6 +480,8 @@ describe("Render không throw + copy bắt buộc", () => {
     return wait(20).then(() => {
       assert.equal(getState().role, null);
       assert.ok(navigateCalls.includes("/role-select"));
+      const settingsBtn = findButton(el, "Mở Cài đặt (đổi mật khẩu / mã đăng nhập / tên hiển thị)");
+      assert.ok(settingsBtn, "phải có nút dẫn tới Cài đặt");
       unmount(host);
     });
   });

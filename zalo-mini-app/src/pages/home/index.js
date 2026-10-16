@@ -1,57 +1,60 @@
-// Home (U08 student / U10 caregiver) — Stitch upgrade 2026-10.
-// Tái tạo hai màn trang chủ theo docs/design/stitch-reference/
-// u08_trang_ch_h_c_sinh/ và u10_trang_ch_ng_i_ch_m_s_c/.
+// Home (w08 student / w09 caregiver) — Web Render Task 2, dữ liệu THẬT.
+// Tham chiếu Stitch: stitch_family_bridge_web_design_system/
+//   w08_trang_ch_h_c_sinh/ + w09_trang_ch_ng_i_ch_m_s_c/.
 //
-// LUỒNG GIỮ NGUYÊN từ nền tảng (pages.test / f01-flows / QA không-tự-gửi):
-//   - demo (adapter mock): getConnectionStatus fixture "đã kết nối" ->
-//     home đã kết nối kèm DemoBanner "Dữ liệu minh họa" rõ ràng.
-//   - production (adapter zalo): cần phiên (F01); có phiên -> listConnections()
-//     thật; chưa -> /connect. Không fake-success, không fallback mock.
-//   - Nút amber "Mở lời chia sẻ an toàn" (kicker "Con cần được lắng nghe")
-//     CHỈ mở Sheet xem trước — KHÔNG gửi tín hiệu, không báo "đã gửi".
-//   - 401 -> /login?reason=expired; lỗi khác -> ErrorState + thử lại.
+// Trang được bọc trong app-shell (page.chrome = "app" — router M1 tự bọc,
+// KHÔNG render createAppHeader riêng nữa).
 //
-// Sự thật dữ liệu (PROMPT Stitch §7):
-//   - Tên chào lấy từ profile/phiên thật (fixture có nhãn minh họa), không
-//     hardcode "An"/"Mẹ".
-//   - KHÔNG giả trạng thái online/presence (API không có) — chip kết nối nói
-//     "Kết nối hai phía đang hoạt động" (sự thật từ status active).
-//   - Chọn cảm xúc là hành vi CỤC BỘ, copy nói rõ chưa ghi nhận ở máy chủ —
-//     module mood F07 chưa được nối adapter ở bản này.
-//   - Hotline/số điện thoại chỉ dùng nguồn được duyệt: thanh trợ giúp dẫn về
-//     trang Trợ giúp trong app, không tự nhét "Tổng đài 111" từ mẫu.
+// Sự thật dữ liệu (hợp đồng worklog Task 19):
+//   - Kết nối: listConnections() thật (production) / fixture (demo, có
+//     DemoBanner). Không fake-success, không fallback mock khi lỗi.
+//   - Cảm xúc: 5 pill bunbind MÃ CẢM XÚC THẬT của backend F07
+//     (packages/family_bridge_features/f07_mood/models.py: vui, binh_an,
+//     met, buon, lo, buc, kho_noi) → POST /api/v1/mood/entries. Nhãn hiển
+//     thị là EMOTION_LABELS tiếng Việt của máy chủ (Stitch w08 dùng nhãn
+//     khác — Deviation đã ghi trong báo cáo task-3b2).
+//   - Trạng thái chọn hôm nay: GET /api/v1/mood/entries (listMoodEntries),
+//     so entry_date == ngày VN hôm nay; không có endpoint hôm-nay riêng →
+//     client so sánh trung thực trên dữ liệu đã tải.
+//   - Chương trình: programMy() (+ opted-out) → chưa tham gia hiển thị
+//     trung thực, KHÔNG gauge phần trăm, KHÔNG bịa số bước.
+//   - Hộp thư: listMessages chỉ metadata (không body); "Mới" chỉ khi
+//     received && !read.
+//   - 401 → /login?reason=expired; lỗi khác → ErrorState + thử lại.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession, getSession } from "../../core/session.js";
 import {
   createButton,
-  createSheet,
   createEmptyState,
   createErrorState,
   createDemoBanner,
-  createAppHeader,
   createIcon,
   createSkeleton,
 } from "../../components/index.js";
-import journeyRoomUrl from "../../assets/illustrations/journey-week1-room.jpg";
-import familyDinnerUrl from "../../assets/illustrations/activity-family-dinner.jpg";
+
+// ---- Hợp đồng backend F07: mã cảm xúc cho phép (đọc trực tiếp từ repo) ----
+const MOOD_PILLS = [
+  { code: "vui", label: "Vui", hint: "Một điều ấm áp" },
+  { code: "binh_an", label: "Bình an", hint: "Nhẹ nhõm và bình yên" },
+  { code: "lo", label: "Lo lắng", hint: "Nhiều gánh nặng" },
+  { code: "met", label: "Mệt", hint: "Cần được nạp lại năng lượng" },
+  { code: "kho_noi", label: "Khó nói thành lời", hint: "Có điều khó nói" },
+];
+
+// kind của F05 MessageTransport (packages/.../f05_inbox/models.py KINDS).
+const MESSAGE_KIND_LABELS = {
+  text: "Lời nhắn",
+  emotion_card: "Thẻ cảm xúc",
+  listening_signal: "Tín hiệu lắng nghe",
+  journal_reply: "Phản hồi nhật ký",
+  mood_reply: "Phản hồi cảm xúc",
+  quick_reply: "Trả lời nhanh",
+};
 
 /** ctx.store có thể là snapshot hoặc module store — đọc state an toàn. */
 function readState(store) {
   if (store && typeof store.getState === "function") return store.getState();
   return store || {};
-}
-
-/** Gắn sheet vào trang và dọn sạch khi đóng (phòng trường hợp component không tự xoá). */
-function openSheetIn(root, sheetOptions) {
-  let sheet;
-  sheet = createSheet({
-    ...sheetOptions,
-    onClose: () => {
-      if (sheet && sheet.isConnected) sheet.remove();
-    },
-  });
-  root.appendChild(sheet);
-  return sheet;
 }
 
 /** Ngày thật hiện tại, định dạng tiếng Việt ("Thứ Tư, 24 tháng 10"). */
@@ -67,11 +70,74 @@ function todayLabel() {
   }
 }
 
+/** Ngày hôm nay theo múi giờ VN (định dạng YYYY-MM-DD) để so entry_date. */
+function todayVnIso() {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Asia/Ho_Chi_Minh",
+    }).format(new Date());
+  } catch {
+    return new Date().toISOString().slice(0, 10);
+  }
+}
+
+/** Nhãn thời gian trung thực: "Hôm nay, 16:45" / "Hôm qua, 20:15" / ngày. */
+function messageTimeLabel(iso) {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const vnDay = (d) => {
+    try {
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: "Asia/Ho_Chi_Minh",
+      }).format(d);
+    } catch {
+      return d.toISOString().slice(0, 10);
+    }
+  };
+  const day = vnDay(date);
+  const time = (() => {
+    try {
+      return new Intl.DateTimeFormat("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(date);
+    } catch {
+      return "";
+    }
+  })();
+  if (day === todayVnIso()) return time ? `Hôm nay, ${time}` : "Hôm nay";
+  const yesterday = new Date(date.getTime() - 24 * 3600 * 1000);
+  if (day === vnDay(yesterday)) return time ? `Hôm qua, ${time}` : "Hôm qua";
+  try {
+    return new Intl.DateTimeFormat("vi-VN", {
+      timeZone: "Asia/Ho_Chi_Minh",
+      day: "numeric",
+      month: "numeric",
+    }).format(date);
+  } catch {
+    return day;
+  }
+}
+
+function messageKindLabel(kind) {
+  return MESSAGE_KIND_LABELS[kind] || "Trao đổi";
+}
+
+/** Trạng thái hoạt động tuần (F02 WeekProgress: done | skipped | reset|none). */
+function activityStatusLabel(status) {
+  if (status === "done") return "Hoàn thành";
+  if (status === "skipped") return "Đã bỏ qua";
+  return "Chưa làm";
+}
+
 export const page = {
-  id: "u08-home", // U08 student + U10 caregiver — dispatch theo vai trò
+  id: "u08-home", // w08 student + w09 caregiver — dispatch theo vai trò
   title: "Trang chủ",
   requiresRole: true,
   showBottomNav: true,
+  chrome: "app", // bọc trong app-shell web (router M1); không header riêng
 
   render(ctx) {
     if (typeof cleanupFn === "function") cleanupFn();
@@ -80,16 +146,9 @@ export const page = {
     const role = state.role;
 
     const root = h("div", {
-      class: "fb-page fb-page--under-header",
+      class: "fb-page fb-page--web",
       dataset: { page: "u08-home" },
     });
-
-    // App header Stitch (brand + Trợ giúp + avatar) — Trợ giúp luôn truy cập.
-    root.appendChild(createAppHeader({
-      subtitle: "Trang Chủ",
-      onProfile: () => ctx.navigate("/profile"),
-    }));
-
     const body = h("div", { class: "fb-page__body" });
     root.appendChild(body);
 
@@ -122,38 +181,107 @@ export const page = {
       return root;
     }
 
+    body.appendChild(createDemoBanner());
     body.appendChild(createSkeleton({ variant: "line", count: 1 }));
     body.appendChild(h("p", { role: "status" }, "Đang tải trang chủ…"));
 
     const currentRun = ++runId;
 
-    Promise.resolve()
-      .then(() => {
-        if (demo) {
-          return ctx.adapter.getConnectionStatus();
-        }
-        // A09: adapter trả { results, nextCursor } — home chỉ cần trang đầu.
-        return ctx.adapter.listConnections({ limit: 20 })
-          .then((pageData) => ({ rows: pageData.results || [], source: "backend" }));
-      })
-      .then((status) => {
-        if (cancelled || currentRun !== runId) return null;
-        if (status && status.source === "backend") return { status, profile: null };
-        return Promise.resolve()
+    // Mọi dữ liệu home được nạp SONG SONG; từng phần lỗi → null (hiển thị
+    // ghi chú trung thực trong thẻ đó) — CHỈ lỗi kết nối chính mới chặn trang.
+    const demoStatusPromise = demo
+      ? Promise.resolve()
+          .then(() => ctx.adapter.getConnectionStatus())
+          .then((status) => ({ source: "fixture", status }))
+      : null;
+    const profilePromise = demo
+      ? Promise.resolve()
           .then(() => ctx.adapter.getProfile(role))
-          .catch(() => null) // không có tên fixture -> chào chung, không chặn trang
-          .then((profile) => ({ status, profile }));
+          .catch(() => null)
+      : null;
+    const mailboxPromise = Promise.resolve()
+      .then(() => ctx.adapter.listMessages({ limit: role === "student" ? 3 : 20 }))
+      .then((pageData) => pageData && Array.isArray(pageData.results) ? pageData.results : [])
+      .then(async (rows) => {
+        if (role !== "caregiver") return { rows, detail: null };
+        const firstReceived = rows.find(
+          (row) => row && row.direction === "received",
+        );
+        if (!firstReceived) return { rows, detail: null };
+        const detail = await Promise.resolve()
+          .then(() => ctx.adapter.getMessage(firstReceived.message_id))
+          .catch(() => null);
+        return { rows, detail };
       })
-      .then((result) => {
-        if (!result || cancelled || currentRun !== runId) return;
-        if (result.status && result.status.source === "backend") {
-          // Production thật: kết nối đọc từ backend.
-          const rows = result.status.rows || [];
-          if (rows.length) renderConnectedProduction(body, ctx, role, rows);
-          else renderNotConnected(body, ctx);
+      .catch(() => null);
+    const programPromise = Promise.resolve()
+      .then(() => ctx.adapter.programMy())
+      .then((data) => {
+        const rows = (data && Array.isArray(data.results) ? data.results : [])
+          .filter((row) => row && row.active);
+        const enrollment = rows[0] || null;
+        if (!enrollment) return { enrollment: null, weeks: null };
+        return Promise.resolve()
+          .then(() => ctx.adapter.programWeeks(enrollment.program_key))
+          .then((weeks) => ({ enrollment, weeks: weeks || null }))
+          .catch(() => ({ enrollment, weeks: null }));
+      })
+      .catch(() => null);
+    const moodPromise = Promise.resolve()
+      .then(() => ctx.adapter.listMoodEntries({ limit: 5 }))
+      .then((data) => (data && Array.isArray(data.results) ? data.results : []))
+      .catch(() => null);
+    const lessonPromise = role === "caregiver"
+      ? Promise.resolve()
+          .then(() => ctx.adapter.activitiesCatalog({ kind: "micro_lesson", audience: "caregiver" }))
+          .then((data) => (data && Array.isArray(data.results) ? data.results : []))
+          .catch(() => null)
+      : Promise.resolve(null);
+
+    Promise.all([
+      demo ? demoStatusPromise : Promise.resolve(null),
+      demo ? profilePromise : Promise.resolve(null),
+      demo ? Promise.resolve(null) :
+        Promise.resolve()
+          .then(() => ctx.adapter.listConnections({ limit: 20 }))
+          .then((pageData) => ({ source: "backend", rows: (pageData && pageData.results) || [] })),
+      mailboxPromise,
+      programPromise,
+      moodPromise,
+      lessonPromise,
+    ])
+      .then(([demoStatus, profile, backendStatus, mailbox, program, mood, lessons]) => {
+        if (cancelled || currentRun !== runId) return;
+        const connection = backendStatus || demoStatus;
+        if (!connection) throw new Error("connection_unavailable");
+        if (connection.source === "backend") {
+          const rows = connection.rows || [];
+          renderHome(body, ctx, {
+            role,
+            demo,
+            connected: rows.length > 0,
+            rows,
+            profile: null,
+            mailbox,
+            program,
+            mood,
+            lessons,
+          });
           return;
         }
-        renderConnected(body, ctx, role, result.status, result.profile);
+        // Demo fixture: luôn "đã kết nối" với peer minh họa.
+        renderHome(body, ctx, {
+          role,
+          demo,
+          connected: true,
+          rows: [],
+          fixturePeer: connection.status && connection.status.peer,
+          profile,
+          mailbox,
+          program,
+          mood,
+          lessons,
+        });
       })
       .catch((error) => {
         if (cancelled || currentRun !== runId) return;
@@ -177,7 +305,34 @@ function destroy() {
 }
 page.destroy = destroy;
 
-/* --------------------------- Khối dựng chung (Stitch) --------------------------- */
+/* ------------------------------ Dựng home chung ------------------------------ */
+
+function renderHome(body, ctx, data) {
+  clear(body);
+  const isFixture = Boolean(data.demo);
+
+  if (isFixture) body.appendChild(createDemoBanner());
+
+  const displayName = data.profile && data.profile.displayName
+    ? String(data.profile.displayName)
+    : ((getSession() && getSession().displayName) || "");
+
+  // Production chưa có kết nối: mời sang /connect — không dựng phần home
+  // đã kết nối (trung thực về trạng thái).
+  if (!data.connected) {
+    renderGreeting(body, { displayName, role: data.role });
+    renderNotConnected(body, ctx);
+    return;
+  }
+
+  renderGreeting(body, { displayName, role: data.role });
+
+  if (data.role === "student") {
+    renderStudentHome(body, ctx, data);
+  } else {
+    renderCaregiverHome(body, ctx, data);
+  }
+}
 
 /** Section chào: pill ngữ cảnh + ngày thật + headline theo vai trò. */
 function renderGreeting(body, { displayName, role }) {
@@ -207,304 +362,430 @@ function renderGreeting(body, { displayName, role }) {
     );
   } else {
     section.appendChild(
-      h("h1", { class: "fb-sec__greeting" }, name ? `Chào ${name},` : "Chào bạn,"),
+      h("h1", { class: "fb-sec__greeting" }, name ? `Chào ${name},` : "Chào anh/chị,"),
     );
     section.appendChild(
-      h("p", { class: "fb-sec__sub" }, "Chúc bạn một ngày an lành và dịu êm."),
+      h("p", { class: "fb-sec__sub" }, "Dành một khoảng tĩnh lặng để cùng thấu hiểu và đồng hành."),
     );
   }
   body.appendChild(section);
 }
 
-/** Bộ chọn cảm xúc CỤC BỘ — không tự ghi nhận ở máy chủ (F07 chưa nối). */
-function renderMoodPicker(parent, { moods, warm = false, ariaLabel }) {
-  const grid = h("div", { class: `fb-mood-grid ${warm ? "fb-mood-grid--4" : "fb-mood-grid--3"}`, role: "group", "aria-label": ariaLabel });
-  const feedback = h("div", { class: "fb-mood-feedback", role: "status", hidden: true });
+/* ------------------------- Thẻ kết nối (dữ liệu thật) ------------------------- */
 
-  moods.forEach(({ emoji, label }) => {
-    const btn = h("button", {
-      class: `fb-mood${warm ? " fb-mood--warm" : ""}`,
-      type: "button",
-      "aria-pressed": "false",
-    },
-      h("span", { class: "fb-mood__emoji", "aria-hidden": "true" }, emoji),
-      h("span", { class: "fb-mood__label" }, label),
-    );
-    btn.addEventListener("click", () => {
-      grid.querySelectorAll(".fb-mood").forEach((other) => other.setAttribute("aria-pressed", "false"));
-      btn.setAttribute("aria-pressed", "true");
-      clear(feedback);
-      feedback.appendChild(
-        h("span", {},
-          `Bạn vừa chọn “${label}”. Thông tin này chỉ hiển thị trên máy của bạn — chưa được ghi nhận ở máy chủ.`,
-        ),
-      );
-      feedback.hidden = false;
-    });
-    grid.appendChild(btn);
-  });
+/**
+ * data.rows: kết nối active thật; data.fixturePeer: peer minh họa (demo).
+ * Trả peerLabel để các thẻ khác dùng (tên người đồng hành tự khai báo).
+ */
+function renderConnectionCard(body, ctx, data) {
+  let peerLabel;
+  let statusText;
+  let extraNote = "";
 
-  parent.appendChild(grid);
-  parent.appendChild(feedback);
-}
-
-/* ----------------------------- Đã kết nối (demo) ----------------------------- */
-
-function renderConnected(body, ctx, role, status, profile) {
-  clear(body);
-
-  const peer = status && status.peer;
-  const isFixture = Boolean(status && status.source === "fixture");
-
-  if (isFixture) body.appendChild(createDemoBanner());
-
-  const displayName = profile && profile.displayName;
-  renderGreeting(body, { displayName, role });
-
-  const peerLabel = peer && peer.displayLabel ? String(peer.displayLabel) : "Người đồng hành";
-
-  if (role === "student") {
-    renderStudentHome(body, ctx, { peer, peerLabel, isFixture });
+  if (data.fixturePeer) {
+    peerLabel = data.fixturePeer.displayLabel || "Người đồng hành (minh họa)";
+    statusText = `Đã kết nối cùng ${peerLabel}`;
+    extraNote = `Đang đồng hành với: ${peerLabel}`;
   } else {
-    renderCaregiverHome(body, ctx, { isFixture });
+    // A11: ưu tiên kết nối "primary"; khi có nhiều kết nối cùng hoạt động,
+    // nêu rõ số lượng để không khiến người dùng nhầm người đồng hành.
+    const primary = data.rows.find((row) => row && row.relationship_kind === "primary")
+      || data.rows[0];
+    const kindLabel = primary && primary.relationship_kind === "backup"
+      ? "Người hỗ trợ dự phòng"
+      : "Người đồng hành chính";
+    const peerName = primary && primary.counterpart && primary.counterpart.display_name
+      ? String(primary.counterpart.display_name)
+      : "Người đồng hành";
+    peerLabel = peerName;
+    statusText = `Đã kết nối cùng ${peerName}`;
+    extraNote = data.rows.length > 1
+      ? `Đang đồng hành với: ${peerName} — bạn có ${data.rows.length} kết nối đang hoạt động.`
+      : `Đang đồng hành với: ${peerName} (${kindLabel}) — kết nối đang hoạt động.`;
   }
-}
 
-/* ------------------------------ Home học sinh (U08) ------------------------------ */
-
-function renderStudentHome(body, ctx, { peer, peerLabel }) {
-  // 1) CTA amber: "Khi lòng đầy tâm sự" — CHỈ mở sheet xem trước.
-  const warm = h("section", { class: "fb-warm-card" });
-  warm.appendChild(h("span", { class: "fb-warm-card__halo", "aria-hidden": "true" }));
-  const warmHead = h("div", { class: "fb-sec__row" });
-  const warmWho = h("div", { style: "display:flex;align-items:flex-start;gap:var(--fb-space-2);min-width:0;" });
-  const forumCircle = h("span", { class: "fb-warm-card__icon", "aria-hidden": "true" });
-  forumCircle.appendChild(createIcon({ name: "forum", size: 24, fill: true }));
-  warmWho.appendChild(forumCircle);
-  warmWho.appendChild(
-    h("div", {},
-      h("span", { class: "fb-warm-card__kicker" }, "Khi lòng đầy tâm sự"),
-      h("span", { class: "fb-warm-card__title fb-warm-card__title--block" }, "Con cần được lắng nghe"),
-    ),
-  );
-  warmHead.appendChild(warmWho);
-  warmHead.appendChild(h("span", { class: "fb-chip" }, "Xem trước"));
-  warm.appendChild(warmHead);
-  warm.appendChild(
-    h("p", { class: "fb-warm-card__body" },
-      "Một cách an toàn, dịu dàng để mở lời với người đồng hành hoặc kênh trợ giúp khi bạn chưa biết bắt đầu từ đâu.",
-    ),
-  );
-  const amberBtn = h("button", { class: "fb-btn-amber", type: "button" },
-    createIcon({ name: "chat", size: 20, fill: true }),
-    h("span", {}, "Mở lời chia sẻ an toàn"),
-    createIcon({ name: "arrow_forward", size: 18 }),
-  );
-  amberBtn.addEventListener("click", () => {
-    openSignalSheet(body.closest(".fb-page") || body, peer);
-  });
-  warm.appendChild(amberBtn);
-  body.appendChild(warm);
-
-  // 2) Cảm xúc lúc này — chỉ mình bạn thấy (chọn cục bộ, trung thực).
-  const moodCard = h("section", { class: "fb-scard" });
-  const moodHead = h("div", { class: "fb-sec__row" });
-  const moodTitle = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" });
-  moodTitle.appendChild(createIcon({ name: "psychology_alt", size: 20, className: "fb-stitch-primary-icon" }));
-  moodTitle.appendChild(h("h2", { class: "fb-scard__title" }, "Cảm xúc lúc này"));
-  moodHead.appendChild(moodTitle);
-  const privacyChip = h("span", { class: "fb-chip" },
-    createIcon({ name: "lock", size: 14 }),
-    h("span", {}, "Chỉ mình bạn thấy"),
-  );
-  moodHead.appendChild(privacyChip);
-  moodCard.appendChild(moodHead);
-  renderMoodPicker(moodCard, {
-    ariaLabel: "Chọn cảm xúc lúc này",
-    moods: [
-      { emoji: "😊", label: "Vui vẻ" },
-      { emoji: "🍃", label: "Bình yên" },
-      { emoji: "🥱", label: "Mệt mỏi" },
-      { emoji: "💭", label: "Lo lắng" },
-      { emoji: "🌧️", label: "Buồn bã" },
-      { emoji: "⚡", label: "Căng thẳng" },
-    ],
-  });
-  body.appendChild(moodCard);
-
-  // 3) Kết nối + cam kết ranh giới (dữ liệu thật từ adapter/fixture).
-  const connectCard = h("section", { class: "fb-scard" });
-  const connectHead = h("div", { class: "fb-sec__row" });
-  const connectWho = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-3);min-width:0;" });
-  const familyCircle = h("span", { class: "fb-connect__icon", "aria-hidden": "true" });
-  familyCircle.appendChild(createIcon({ name: "family_restroom", size: 26 }));
-  connectWho.appendChild(familyCircle);
+  const card = h("section", { class: "fb-scard" });
+  const head = h("div", { class: "fb-sec__row" });
+  const who = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-3);min-width:0;" });
+  const circle = h("span", { class: "fb-connect__icon", "aria-hidden": "true" });
+  circle.appendChild(createIcon({ name: "family_restroom", size: 26 }));
+  who.appendChild(circle);
   const whoText = h("div", { style: "display:flex;flex-direction:column;min-width:0;" });
-  whoText.appendChild(h("span", { class: "fb-scard__title fb-connect__name" }, peerLabel));
+  whoText.appendChild(h("span", { class: "fb-scard__title fb-connect__name" }, statusText));
   whoText.appendChild(
     h("span", { class: "fb-sec__sub fb-connect__status" },
       h("span", { class: "fb-connect__dot", "aria-hidden": "true" }),
       " Kết nối hai phía đang hoạt động",
     ),
   );
-  connectWho.appendChild(whoText);
-  connectHead.appendChild(connectWho);
-  connectHead.appendChild(
+  who.appendChild(whoText);
+  head.appendChild(who);
+  head.appendChild(
     h("span", { class: "fb-chip" },
       createIcon({ name: "verified_user", size: 14, className: "fb-stitch-primary-icon" }),
       h("span", {}, "Ranh giới riêng tư"),
     ),
   );
-  connectCard.appendChild(connectHead);
-
-  // Dòng nguồn dữ liệu (giữ đúng thông báo minh họa của nền tảng).
-  connectCard.appendChild(
-    h("p", { class: "fb-page__note" }, `Đang đồng hành với: ${peerLabel}`),
-  );
-
-  const boundary = h("div", { class: "fb-connect__boundary" });
-  boundary.appendChild(createIcon({ name: "shield", size: 20, className: "fb-stitch-primary-icon" }));
-  boundary.appendChild(
-    h("div", {},
-      h("span", { class: "fb-connect__boundary-title" }, "Cam kết tôn trọng ranh giới"),
-      h("p", { class: "fb-connect__boundary-text" },
-        "Kết nối gia đình ",
-        h("strong", {}, "không bao giờ tự động mở nhật ký hay tâm trạng"),
-        " của bạn. Chỉ những gì bạn chủ động gửi mới xuất hiện ở phía người đồng hành.",
-      ),
+  card.appendChild(head);
+  card.appendChild(h("p", { class: "fb-page__note" }, extraNote));
+  card.appendChild(
+    h("p", { class: "fb-page__note" },
+      "Chỉ những thông điệp bạn chủ động bấm gửi mới đến được người đồng hành.",
     ),
   );
-  connectCard.appendChild(boundary);
-  body.appendChild(connectCard);
-
-  // 4) Hành trình 4 tuần — tuần 1, dẫn sang /companion (module có thật).
-  const journey = h("section", { class: "fb-scard" });
-  const journeyHead = h("div", { class: "fb-sec__row" });
-  journeyHead.appendChild(
-    h("div", {},
-      h("span", { class: "fb-journey__kicker" }, "Hành trình thấu hiểu 4 tuần"),
-      h("h2", { class: "fb-scard__title" }, "Tuần 1: Nhận diện cảm xúc & Tiếng lòng chưa nói"),
-    ),
-  );
-  journeyHead.appendChild(h("span", { class: "fb-journey__count", "aria-label": "Tuần 1 của 4" }, "1/4"));
-  journey.appendChild(journeyHead);
-
-  journey.appendChild(
-    h("figure", { class: "fb-photo" },
-      h("img", {
-        src: journeyRoomUrl,
-        alt: "Góc phòng ấm áp với ánh nắng chiều qua khung cửa gỗ, sổ tay và tách trà",
-        width: "1200",
-        height: "655",
-        loading: "lazy",
-        decoding: "async",
+  if (!data.fixturePeer) {
+    card.appendChild(
+      createButton({
+        label: "Quản lý kết nối",
+        variant: "ghost",
+        onClick: () => ctx.navigate("/connect"),
       }),
-      h("figcaption", { class: "fb-photo__overlay" },
-        h("span", { class: "fb-photo__caption" }, "Hoạt động tự chọn • Không chấm điểm"),
-      ),
+    );
+  }
+  body.appendChild(card);
+  return peerLabel;
+}
+
+/* --------------------------- Cảm xúc (F07 thật) --------------------------- */
+
+function renderMoodCard(body, ctx, { kicker, title, moodResults }) {
+  const todayIso = todayVnIso();
+  const todayEntry = Array.isArray(moodResults)
+    ? moodResults.find((row) => row && row.entry_date === todayIso)
+    : null;
+
+  const card = h("section", { class: "fb-scard" });
+  const head = h("div", { class: "fb-sec__row" });
+  const titleWrap = h("div", {});
+  if (kicker) titleWrap.appendChild(h("span", { class: "fb-care__kicker" }, kicker));
+  titleWrap.appendChild(h("h2", { class: "fb-scard__title" }, title));
+  head.appendChild(titleWrap);
+  head.appendChild(
+    h("span", { class: "fb-chip" },
+      createIcon({ name: "lock", size: 14 }),
+      h("span", {}, "Chỉ mình bạn thấy ghi chú"),
     ),
   );
+  card.appendChild(head);
 
-  const lessonRow = h("div", { class: "fb-sec__row" });
-  lessonRow.appendChild(h("span", { class: "fb-journey__lesson-label" }, "Bài học hôm nay:"));
-  lessonRow.appendChild(h("span", { class: "fb-sec__sub" }, "3 phút đọc"));
-  journey.appendChild(lessonRow);
-  journey.appendChild(
-    h("p", { class: "fb-journey__lesson" }, "“Khoảng dừng 60 giây trước khi nói lời tổn thương”"),
-  );
-  journey.appendChild(
+  card.appendChild(
     h("p", { class: "fb-sec__sub" },
-      "Lắng nghe nhịp tim và cho chính mình quyền im lặng trong một phút khi cảm thấy bị hiểu lầm.",
+      "Không có cảm xúc nào là đúng hay sai. Mọi cảm xúc đều đáng được lắng nghe.",
     ),
   );
-  journey.appendChild(
-    h("button", {
-      class: "fb-btn fb-btn--primary fb-btn--lg fb-journey__cta",
-      type: "button",
-      onclick: () => ctx.navigate("/companion"),
-    },
-      createIcon({ name: "play_circle", size: 20 }),
-      h("span", {}, "Bắt đầu khoảng dừng hôm nay"),
-    ),
-  );
-  body.appendChild(journey);
 
-  // 5) Lối tắt nhanh — chỉ dẫn tới route/module được support (thẻ cảm xúc
-  //    F03 chưa nối -> tile disabled trung thực).
-  const shortcuts = h("section", { class: "fb-sec" });
-  shortcuts.appendChild(h("h2", { class: "fb-scard__title" }, "Lối tắt nhanh"));
+  const feedback = h("div", { class: "fb-mood-feedback", role: "status" });
+  const grid = h("div", {
+    class: "fb-mood-grid fb-mood-grid--4",
+    role: "group",
+    "aria-label": "Ghi nhận cảm xúc hôm nay",
+  });
+
+  MOOD_PILLS.forEach(({ code, label, hint }) => {
+    const btn = h("button", {
+      class: "fb-mood fb-mood--warm",
+      type: "button",
+      dataset: { emotion: code },
+      "aria-pressed": todayEntry && todayEntry.emotion === code ? "true" : "false",
+    },
+      h("span", { class: "fb-mood__label" }, label),
+      h("span", { class: "fb-sec__sub" }, hint),
+    );
+    btn.addEventListener("click", () => {
+      grid.querySelectorAll(".fb-mood").forEach((other) => other.setAttribute("aria-pressed", "false"));
+      btn.setAttribute("aria-pressed", "true");
+      clear(feedback);
+      feedback.appendChild(h("span", {}, `Đang ghi nhận cảm xúc “${label}”…`));
+      feedback.hidden = false;
+      Promise.resolve()
+        .then(() => ctx.adapter.createMoodEntry({ emotion: code }))
+        .then((entry) => {
+          clear(feedback);
+          feedback.appendChild(
+            h("span", {},
+              `Bạn vừa ghi nhận “${(entry && entry.emotion_label) || label}” vào ngày ${todayIso}. `
+              + "Ghi chú cảm xúc chỉ mình bạn thấy.",
+            ),
+          );
+        })
+        .catch((error) => {
+          btn.setAttribute("aria-pressed", "false");
+          clear(feedback);
+          if (error && error.details && error.details.reason === "entry_already_exists_use_edit") {
+            feedback.appendChild(
+              h("span", {},
+                `Hôm nay (${todayIso}) bạn đã ghi nhận cảm xúc rồi — mỗi ngày một ghi nhận. `
+                + "Màn nhật ký sẽ cho phép chỉnh sửa ở bản đầy đủ.",
+              ),
+            );
+          } else if (error && error.kind === "timeout") {
+            feedback.appendChild(
+              h("span", {}, "Kết nối quá thời gian chờ. Vui lòng thử lại."),
+            );
+          } else {
+            feedback.appendChild(
+              h("span", {}, "Chưa ghi được cảm xúc vào máy chủ. Vui lòng thử lại."),
+            );
+          }
+        });
+    });
+    grid.appendChild(btn);
+  });
+
+  card.appendChild(grid);
+  if (todayEntry) {
+    feedback.appendChild(
+      h("span", {},
+        `Hôm nay bạn đã ghi nhận: ${(todayEntry.emotion_label
+          || (MOOD_PILLS.find((m) => m.code === todayEntry.emotion) || {}).label
+          || todayEntry.emotion)}.`,
+      ),
+    );
+    feedback.hidden = false;
+  } else if (Array.isArray(moodResults)) {
+    feedback.appendChild(
+      h("span", {}, "Hôm nay chưa có ghi nhận cảm xúc nào."),
+    );
+  } else {
+    feedback.appendChild(
+      h("span", {}, "Chưa tải được lịch sử cảm xúc — chọn pill để ghi nhận mới."),
+    );
+  }
+  card.appendChild(feedback);
+  body.appendChild(card);
+}
+
+/* ------------------------------ Home học sinh (w08) ------------------------------ */
+
+function renderStudentHome(body, ctx, data) {
+  const peerLabel = renderConnectionCard(body, ctx, data);
+
+  // 1) Cảm xúc lúc này — ghi nhận thật qua F07.
+  renderMoodCard(body, ctx, {
+    title: "Cảm xúc lúc này",
+    moodResults: data.mood,
+  });
+
+  // 2) Hành động mở lời (w08): thẻ cảm xúc / soạn lời / tín hiệu.
+  const actions = h("section", { class: "fb-scard" });
+  actions.appendChild(
+    h("h2", { class: "fb-scard__title" }, "Mở lời nhẹ nhàng"),
+  );
   const tiles = h("div", { class: "fb-tiles" });
 
-  const diaryTile = h("a", { class: "fb-tile", href: "#/diary" });
-  const diaryIcon = h("span", { class: "fb-tile__icon fb-tile__icon--primary", "aria-hidden": "true" });
-  diaryIcon.appendChild(createIcon({ name: "edit_note", size: 22, fill: true }));
-  diaryTile.appendChild(diaryIcon);
-  diaryTile.appendChild(h("span", { class: "fb-tile__label" }, "Viết nhật ký riêng"));
-  diaryTile.appendChild(h("span", { class: "fb-tile__hint" }, "Bảo mật"));
-  tiles.appendChild(diaryTile);
-
-  const cardsTile = h("button", {
-    class: "fb-tile",
-    type: "button",
-    disabled: true,
-    title: "Tính năng thẻ cảm xúc sẽ có ở bản đầy đủ.",
-  });
+  const cardsTile = h("a", { class: "fb-tile", href: "#/cards" });
   const cardsIcon = h("span", { class: "fb-tile__icon fb-tile__icon--warm", "aria-hidden": "true" });
   cardsIcon.appendChild(createIcon({ name: "style", size: 22, fill: true }));
   cardsTile.appendChild(cardsIcon);
-  cardsTile.appendChild(h("span", { class: "fb-tile__label" }, "Gửi thẻ cảm xúc"));
-  cardsTile.appendChild(h("span", { class: "fb-tile__hint" }, "Sắp có"));
+  cardsTile.appendChild(h("span", { class: "fb-tile__label" }, "Thư viện thẻ cảm xúc"));
+  cardsTile.appendChild(h("span", { class: "fb-tile__hint" }, "Chọn mẫu, bạn duyệt trước khi gửi"));
   tiles.appendChild(cardsTile);
 
-  const mailboxTile = h("a", { class: "fb-tile", href: "#/mailbox" });
-  const mailboxIcon = h("span", { class: "fb-tile__icon fb-tile__icon--amber", "aria-hidden": "true" });
-  mailboxIcon.appendChild(createIcon({ name: "drafts", size: 22, fill: true }));
-  mailboxTile.appendChild(mailboxIcon);
-  mailboxTile.appendChild(h("span", { class: "fb-tile__label" }, "Hộp thư gia đình"));
-  mailboxTile.appendChild(h("span", { class: "fb-tile__hint" }, "Lá thư chậm"));
-  tiles.appendChild(mailboxTile);
+  const composeTile = h("a", { class: "fb-tile", href: "#/compose" });
+  const composeIcon = h("span", { class: "fb-tile__icon fb-tile__icon--primary", "aria-hidden": "true" });
+  composeIcon.appendChild(createIcon({ name: "edit_note", size: 22, fill: true }));
+  composeTile.appendChild(composeIcon);
+  composeTile.appendChild(h("span", { class: "fb-tile__label" }, "Soạn lời nhắn"));
+  composeTile.appendChild(h("span", { class: "fb-tile__hint" }, "Có khoảng dừng 5 phút trước khi gửi"));
+  tiles.appendChild(composeTile);
 
-  shortcuts.appendChild(tiles);
-  body.appendChild(shortcuts);
+  const signalTile = h("a", { class: "fb-tile fb-tile--amber", href: "#/signal" });
+  const signalIcon = h("span", { class: "fb-tile__icon fb-tile__icon--amber", "aria-hidden": "true" });
+  signalIcon.appendChild(createIcon({ name: "hearing", size: 22, fill: true }));
+  signalTile.appendChild(signalIcon);
+  signalTile.appendChild(h("span", { class: "fb-tile__label" }, "Con cần được lắng nghe"));
+  signalTile.appendChild(h("span", { class: "fb-tile__hint" }, "Gửi tín hiệu bằng một lần chạm xác nhận"));
+  tiles.appendChild(signalTile);
+
+  actions.appendChild(tiles);
+  body.appendChild(actions);
+
+  // 3) Hộp thư trao đổi gần đây — metadata thật, không body trong danh sách.
+  body.appendChild(renderMailboxPreview(ctx, data));
+
+  // 4) Hành trình 4 tuần — dữ liệu thật từ F02, không gauge.
+  body.appendChild(renderProgramCard(ctx, data));
+
+  // 5) Nhật ký riêng tư — dẫn sang trang nhật ký (stub trung thực còn giữ).
+  const journal = h("section", { class: "fb-scard" });
+  journal.appendChild(
+    h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" },
+      createIcon({ name: "menu_book", size: 20, className: "fb-stitch-primary-icon" }),
+      h("h2", { class: "fb-scard__title" }, "Nhật ký riêng tư của bạn"),
+    ),
+  );
+  journal.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      "Góc ghi chép riêng của bạn. Người đồng hành và giáo viên không thể xem nếu bạn không chủ động bấm chia sẻ.",
+    ),
+  );
+  journal.appendChild(
+    createButton({
+      label: "Mở nhật ký cá nhân",
+      variant: "ghost",
+      onClick: () => ctx.navigate("/diary"),
+    }),
+  );
+  body.appendChild(journal);
 
   // 6) Thanh trợ giúp — dẫn về nguồn được duyệt (trang Trợ giúp), không tự
   //    nhét số hotline từ mẫu thiết kế.
   body.appendChild(renderHelpBar());
 }
 
-/** Sheet xem trước tín hiệu — GIỮ NGUYÊN hành vi/copy nền tảng (QA pin). */
-function openSignalSheet(root, peer) {
-  const notice = h(
-    "p",
-    { class: "fb-page__note", role: "status" },
-    "Tính năng gửi tín hiệu sẽ sớm có ở bản đầy đủ.",
+/** Hộp thư preview: listMessages metadata; "Mới" chỉ khi received && !read. */
+function renderMailboxPreview(ctx, data) {
+  const section = h("section", { class: "fb-scard" });
+  const head = h("div", { class: "fb-sec__row" });
+  head.appendChild(
+    h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" },
+      createIcon({ name: "mark_email_unread", size: 20, fill: true, className: "fb-stitch-primary-icon" }),
+      h("h2", { class: "fb-scard__title" }, "Hộp thư trao đổi gần đây"),
+    ),
+  );
+  section.appendChild(head);
+  section.appendChild(
+    h("p", { class: "fb-sec__sub" }, "Không áp lực trả lời ngay — giữ nhịp tâm tình từ tốn."),
   );
 
-  const content = h("div", {},
-    h("p", {}, "Đây là bản xem trước. Bạn có thể chọn người nhận để xem giao diện — chưa có tín hiệu nào được gửi đi."),
-  );
-
-  if (peer && peer.displayLabel) {
-    content.appendChild(
-      createButton({
-        label: peer.displayLabel,
-        variant: "primary",
-        onClick: () => {
-          notice.textContent = `Đã chọn: ${peer.displayLabel}. Tính năng gửi tín hiệu sẽ sớm có ở bản đầy đủ.`;
-        },
-      }),
+  const mailbox = data.mailbox;
+  if (mailbox === null) {
+    section.appendChild(
+      h("p", { class: "fb-page__note", role: "status" },
+        "Chưa tải được hộp thư. Mở Hộp thư để xem trực tiếp.",
+      ),
     );
+    return section;
   }
 
-  content.appendChild(notice);
-
-  openSheetIn(root, {
-    title: "Con cần được lắng nghe",
-    content,
-  });
+  const rows = (mailbox.rows || []).slice(0, 3);
+  if (!rows.length) {
+    section.appendChild(
+      h("p", { class: "fb-page__note" },
+        "Chưa có trao đổi nào trong hộp thư. Khi hai bên nhắn tin, nội dung sẽ hiện ở đây.",
+      ),
+    );
+  } else {
+    const list = h("ul", { class: "fb-mail-list" });
+    rows.forEach((row) => {
+      const isUnread = row.direction === "received" && !row.read;
+      const item = h("li", { class: "fb-mail-list__row" });
+      const main = h("a", {
+        class: "fb-mail-list__link",
+        href: row.direction === "received" ? `#/messages/${encodeURIComponent(row.message_id)}` : "#/mailbox",
+      });
+      main.appendChild(
+        h("span", { class: "fb-mail-list__title" },
+          row.title ? String(row.title) : messageKindLabel(row.kind),
+        ),
+      );
+      main.appendChild(
+        h("span", { class: "fb-sec__sub" },
+          row.direction === "sent"
+            ? `Gửi lúc ${messageTimeLabel(row.created_at)}`
+            : messageTimeLabel(row.created_at),
+        ),
+      );
+      item.appendChild(main);
+      if (isUnread) {
+        item.appendChild(h("span", { class: "fb-chip fb-chip--high" }, "Mới"));
+      }
+      list.appendChild(item);
+    });
+    section.appendChild(list);
+  }
+  section.appendChild(
+    h("a", { class: "fb-btn fb-btn--ghost", href: "#/mailbox" }, "Mở hộp thư"),
+  );
+  return section;
 }
 
-/** Thanh trợ giúp khẩn cấp dùng chung (U08). */
+/** Chương trình 4 tuần (F02): trung thực — không gauge, không số bịa. */
+function renderProgramCard(ctx, data) {
+  const section = h("section", { class: "fb-scard" });
+  const head = h("div", { class: "fb-sec__row" });
+  head.appendChild(
+    h("div", {},
+      h("span", { class: "fb-journey__kicker" }, "Hành trình 4 tuần"),
+      h("h2", { class: "fb-scard__title" }, "Không gian thấu hiểu bản thân"),
+    ),
+  );
+  head.appendChild(
+    h("span", { class: "fb-chip" }, "Tinh thần tự nguyện"),
+  );
+  section.appendChild(head);
+
+  const program = data.program;
+  if (program === null) {
+    section.appendChild(
+      h("p", { class: "fb-page__note", role: "status" },
+        "Chưa tải được trạng thái chương trình. Vui lòng thử lại sau.",
+      ),
+    );
+    return section;
+  }
+
+  if (!program.enrollment) {
+    section.appendChild(
+      h("p", { class: "fb-sec__sub" },
+        "Chưa tham gia chương trình 4 tuần. Nếu bạn muốn, có thể tìm hiểu ở mục Đồng hành — hoàn toàn tự nguyện, không áp lực.",
+      ),
+    );
+    section.appendChild(
+      createButton({
+        label: "Xem mục Đồng hành",
+        variant: "ghost",
+        onClick: () => ctx.navigate("/companion"),
+      }),
+    );
+    return section;
+  }
+
+  const weeks = program.weeks && Array.isArray(program.weeks.weeks)
+    ? program.weeks.weeks
+    : [];
+  if (!weeks.length) {
+    section.appendChild(
+      h("p", { class: "fb-page__note" },
+        "Bạn đã tham gia chương trình nhưng máy chủ chưa trả được danh sách tuần. Vui lòng thử lại sau.",
+      ),
+    );
+    return section;
+  }
+
+  const suggestedWeekNo = program.weeks.suggested_week || null;
+  const currentWeek = weeks.find((week) => week.week_no === suggestedWeekNo) || weeks[0];
+  section.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      `Tuần ${currentWeek.week_no}: ${currentWeek.title} — gợi ý theo tiến độ của bạn, không khóa tuần nào.`,
+    ),
+  );
+  const steps = h("ul", { class: "fb-step-list" });
+  (currentWeek.activities || []).forEach((activity) => {
+    steps.appendChild(
+      h("li", { class: "fb-step-list__row" },
+        h("span", { class: "fb-step-list__key" }, String(activity.activity_key)),
+        h("span", { class: "fb-sec__sub" }, activityStatusLabel(activity.status)),
+      ),
+    );
+  });
+  if ((currentWeek.activities || []).length) {
+    section.appendChild(steps);
+  } else {
+    section.appendChild(
+      h("p", { class: "fb-page__note" }, "Tuần này chưa có hoạt động nào được đăng tải."),
+    );
+  }
+  section.appendChild(
+    h("p", { class: "fb-page__note" },
+      `Đang theo chương trình ${program.enrollment.program_key} (bản ${program.enrollment.program_revision}). `
+      + "Tự nguyện thực hiện — không tính điểm thi đua.",
+    ),
+  );
+  return section;
+}
+
+/** Thanh trợ giúp khẩn cấp dùng chung (w08/w09). */
 function renderHelpBar() {
   const bar = h("section", { class: "fb-help-bar" });
   const who = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-2);min-width:0;" });
@@ -527,108 +808,62 @@ function renderHelpBar() {
   return bar;
 }
 
-/* ---------------------------- Home người chăm sóc (U10) ---------------------------- */
+/* ---------------------------- Home người chăm sóc (w09) ---------------------------- */
 
-function renderCaregiverHome(body, ctx, { isFixture }) {
-  // 1) Tự chăm sóc bản thân — bộ chọn cảm xúc 4 mục (cục bộ, trung thực).
-  const selfCare = h("section", { class: "fb-scard" });
-  const selfHead = h("div", { class: "fb-sec__row" });
-  const selfTitle = h("div", {});
-  selfTitle.appendChild(
-    h("span", { class: "fb-care__kicker" }, "Tự chăm sóc bản thân"),
-  );
-  selfTitle.appendChild(h("h2", { class: "fb-scard__title" }, "Ghi nhận cảm xúc của bạn hôm nay"));
-  selfHead.appendChild(selfTitle);
-  const spaCircle = h("span", { class: "fb-care__icon", "aria-hidden": "true" });
-  spaCircle.appendChild(createIcon({ name: "spa", size: 22, fill: true }));
-  selfHead.appendChild(spaCircle);
-  selfCare.appendChild(selfHead);
-  selfCare.appendChild(
-    h("p", { class: "fb-care__reminder" },
-      h("span", { class: "fb-care__reminder-strong" }, "Lời nhắc ấm áp: "),
-      "Chăm sóc cảm xúc của chính mình là bước đầu tiên để lắng nghe con một cách trọn vẹn nhất.",
-    ),
-  );
-  renderMoodPicker(selfCare, {
-    warm: true,
-    ariaLabel: "Ghi nhận cảm xúc của bạn",
-    moods: [
-      { emoji: "🌱", label: "An lòng" },
-      { emoji: "🌧️", label: "Hơi mệt" },
-      { emoji: "💭", label: "Băn khoăn" },
-      { emoji: "☀️", label: "Biết ơn" },
-    ],
+function renderCaregiverHome(body, ctx, data) {
+  renderConnectionCard(body, ctx, data);
+
+  // 1) Lời nhắn mới nhất từ con (metadata + body của MỘT thư đã tải) —
+  //    kèm callout an toàn: đây là nội dung con chủ động gửi.
+  body.appendChild(renderCaregiverLatestMessage(ctx, data));
+
+  // 2) Hành động nhanh.
+  const actions = h("section", { class: "fb-scard" });
+  actions.appendChild(h("h2", { class: "fb-scard__title" }, "Việc bạn có thể làm ngay"));
+  const tiles = h("div", { class: "fb-tiles" });
+  const composeTile = h("a", { class: "fb-tile", href: "#/compose" });
+  const composeIcon = h("span", { class: "fb-tile__icon fb-tile__icon--primary", "aria-hidden": "true" });
+  composeIcon.appendChild(createIcon({ name: "edit_note", size: 22, fill: true }));
+  composeTile.appendChild(composeIcon);
+  composeTile.appendChild(h("span", { class: "fb-tile__label" }, "Soạn lời nhắn"));
+  composeTile.appendChild(h("span", { class: "fb-tile__hint" }, "Gửi kèm thẻ cảm xúc nếu muốn"));
+  tiles.appendChild(composeTile);
+  const signalTile = h("a", { class: "fb-tile", href: "#/signal" });
+  const signalIcon = h("span", { class: "fb-tile__icon fb-tile__icon--amber", "aria-hidden": "true" });
+  signalIcon.appendChild(createIcon({ name: "hearing", size: 22, fill: true }));
+  signalTile.appendChild(signalIcon);
+  signalTile.appendChild(h("span", { class: "fb-tile__label" }, "Tín hiệu từ con"));
+  signalTile.appendChild(h("span", { class: "fb-tile__hint" }, "Xác nhận đã nhận tín hiệu"));
+  tiles.appendChild(signalTile);
+  actions.appendChild(tiles);
+  body.appendChild(actions);
+
+  // 3) Bài học 60 giây — từ catalog F09 thật; rỗng thì nói rỗng.
+  body.appendChild(renderCaregiverLesson(data));
+
+  // 4) Góc tự suy ngẫm — ghi nhận cảm xúc thật (F07) + dẫn sang nhật ký.
+  renderMoodCard(body, ctx, {
+    kicker: "Tự chăm sóc bản thân",
+    title: "Ghi nhận cảm xúc của bạn hôm nay",
+    moodResults: data.mood,
   });
-  body.appendChild(selfCare);
 
-  // 2) Rust card: thư viện thẻ mở đầu (F03 chưa nối) — sheet trung thực,
-  //    không tự khởi tạo gửi hay lời mời khi chỉ render thẻ.
-  const rust = h("section", { class: "fb-rust-card" });
-  rust.appendChild(h("span", { class: "fb-rust-card__halo", "aria-hidden": "true" }));
-  const rustHead = h("div", { style: "display:flex;flex-direction:column;gap:var(--fb-space-1);position:relative;z-index:1;" });
-  rustHead.appendChild(
-    h("span", { class: "fb-rust-card__kicker" },
-      createIcon({ name: "volunteer_activism", size: 16 }),
-      h("span", {}, "Thư viện gợi ý mở đầu"),
+  const reflection = h("section", { class: "fb-scard" });
+  reflection.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      "Làm cha mẹ là một hành trình cần nhiều nhẫn nại. Góc tự suy ngẫm của bạn nằm trong nhật ký riêng tư.",
     ),
   );
-  rustHead.appendChild(h("h2", { class: "fb-rust-card__title" }, "Chủ động kết nối nhẹ nhàng"));
-  rustHead.appendChild(
-    h("p", { class: "fb-rust-card__body" },
-      "Bạn chưa biết bắt đầu thế nào mà không làm con ngại? Thư viện thiệp và lời mở đầu sẽ có ở bản đầy đủ.",
-    ),
-  );
-  rust.appendChild(rustHead);
-  const rustCta = h("button", { class: "fb-btn-inverse", type: "button" });
-  rustCta.appendChild(h("span", {}, "Mở lời với con"));
-  rustCta.appendChild(createIcon({ name: "arrow_forward", size: 20 }));
-  rustCta.addEventListener("click", () => {
-    const note = h("p", { class: "fb-page__note", role: "status" },
-      "Thư viện thẻ mở đầu sẽ sớm có ở bản đầy đủ. Trong lúc chờ, bạn có thể dùng hộp thư để nhắn cho con.");
-    const content = h("div", {},
-      h("p", {}, "Đây là bản xem trước giao diện — chưa gửi gì cho con."),
-      note,
-      createButton({
-        label: "Mở hộp thư",
-        variant: "primary",
-        onClick: () => ctx.navigate("/mailbox"),
-      }),
-    );
-    openSheetIn(body.closest(".fb-page") || body, {
-      title: "Chủ động kết nối nhẹ nhàng",
-      content,
-    });
-  });
-  rust.appendChild(h("div", { style: "position:relative;z-index:1;padding-top:var(--fb-space-1);" }, rustCta));
-  body.appendChild(rust);
-
-  // 3) Hộp thư & tín hiệu — trạng thái thật (rỗng) với hình khối như mẫu.
-  const inbox = h("section", { class: "fb-sec" });
-  const inboxHead = h("div", { class: "fb-sec__row" });
-  const inboxTitle = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" });
-  inboxTitle.appendChild(createIcon({ name: "mark_email_unread", size: 20, fill: true, className: "fb-stitch-primary-icon" }));
-  inboxTitle.appendChild(h("h2", { class: "fb-scard__title" }, "Tin nhắn & tín hiệu gửi riêng"));
-  inboxHead.appendChild(inboxTitle);
-  inboxHead.appendChild(h("span", { class: "fb-chip fb-chip--warm" }, "Chưa có mục mới"));
-  inbox.appendChild(inboxHead);
-
-  const inboxCard = h("section", { class: "fb-scard" });
-  inboxCard.appendChild(
-    h("p", { class: "fb-page__note" },
-      "Chưa có tín hiệu mới. Khi con chủ động gửi thẻ cảm xúc hay lời nhắn, nội dung sẽ hiện tại đây.",
-    ),
-  );
-  inboxCard.appendChild(
+  reflection.appendChild(
     createButton({
-      label: "Mở hộp thư",
-      variant: "primary",
-      onClick: () => ctx.navigate("/mailbox"),
+      label: "Mở nhật ký cá nhân",
+      variant: "ghost",
+      onClick: () => ctx.navigate("/diary"),
     }),
   );
-  inbox.appendChild(inboxCard);
-  body.appendChild(inbox);
+  body.appendChild(reflection);
 
-  // 4) Cam kết tôn trọng không gian riêng của con.
+  // 5) Cam kết tôn trọng không gian riêng của con (giữ nguyên copy tốt).
   const trust = h("section", { class: "fb-scard fb-trust" });
   const trustRow = h("div", { style: "display:flex;align-items:flex-start;gap:var(--fb-space-3);" });
   const lockCircle = h("span", { class: "fb-trust__icon", "aria-hidden": "true" });
@@ -650,124 +885,166 @@ function renderCaregiverHome(body, ctx, { isFixture }) {
   trust.appendChild(trustRow);
   body.appendChild(trust);
 
-  // 5) Bài học ngắn 60 giây — nội dung mẫu từ thiết kế được duyệt (sẽ thay
-  //    bằng nội dung Thầy duyệt trước pilot — US-047); nút xem thêm Sắp có.
-  const lesson = h("section", { class: "fb-sec" });
-  const lessonHead = h("div", { class: "fb-sec__row" });
-  const lessonTitle = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" });
-  lessonTitle.appendChild(createIcon({ name: "timer", size: 20, fill: true, className: "fb-stitch-tertiary-icon" }));
-  lessonTitle.appendChild(h("h2", { class: "fb-scard__title" }, "Bài học ngắn 60 giây"));
-  lessonHead.appendChild(lessonTitle);
-  lessonHead.appendChild(h("span", { class: "fb-sec__sub" }, "1 phút đọc"));
-  lesson.appendChild(lessonHead);
-
-  const lessonCard = h("section", { class: "fb-scard" });
-  lessonCard.appendChild(
-    h("span", { class: "fb-chip" },
-      createIcon({ name: "headset_mic", size: 15 }),
-      h("span", {}, "Kỹ năng cha mẹ thời Gen Z"),
-    ),
-  );
-  lessonCard.appendChild(
-    h("h3", { class: "fb-scard__title" }, "Lắng nghe không ngắt lời: 3 điều cần tránh khi con chia sẻ khó khăn"),
-  );
-  const items = h("div", { style: "display:flex;flex-direction:column;gap:var(--fb-space-2);" });
-  [
-    ["Đừng vội đưa giải pháp:", " Con thường cần giải tỏa cảm xúc trước khi tìm cách giải quyết vấn đề."],
-    ["Tránh so sánh thời xưa:", " Cụm từ “Thời bố mẹ ngày xưa…” dễ làm con đóng chặt cánh cửa chia sẻ."],
-    ["Không giảm nhẹ nỗi đau của con:", " “Chuyện có gì đâu mà khóc” khiến con cảm thấy mình không được thấu cảm."],
-  ].forEach(([strong, rest], index) => {
-    items.appendChild(
-      h("div", { class: "fb-numbered" },
-        h("span", { class: "fb-numbered__n", "aria-hidden": "true" }, String(index + 1)),
-        h("p", { class: "fb-numbered__text" }, h("strong", {}, strong), rest),
-      ),
-    );
-  });
-  lessonCard.appendChild(items);
-  lessonCard.appendChild(
-    createButton({
-      label: "Sắp có",
-      variant: "ghost",
-      disabled: true,
-      title: "Tính năng bài học ngắn sẽ có ở bản đầy đủ.",
-    }),
-  );
-  lesson.appendChild(lessonCard);
-  body.appendChild(lesson);
-
-  // 6) Hoạt động gia đình tuần 1 — tự nguyện, không tick giúp người dùng.
-  const activity = h("section", { class: "fb-scard" });
-  const activityHead = h("div", { class: "fb-sec__row" });
-  activityHead.appendChild(
-    h("span", { class: "fb-chip" },
-      createIcon({ name: "calendar_month", size: 15 }),
-      h("span", {}, "Thử thách gắn kết • Tuần 1"),
-    ),
-  );
-  activityHead.appendChild(
-    h("span", { class: "fb-sec__sub", style: "display:inline-flex;align-items:center;gap:4px;" },
-      createIcon({ name: "volunteer_activism", size: 14 }),
-      "Hoàn toàn tự nguyện",
-    ),
-  );
-  activity.appendChild(activityHead);
-  activity.appendChild(
-    h("figure", { class: "fb-photo" },
-      h("img", {
-        src: familyDinnerUrl,
-        alt: "Mâm cơm gia đình ấm cúng dưới ánh đèn buổi tối, không có điện thoại trên bàn",
-        width: "1200",
-        height: "655",
-        loading: "lazy",
-        decoding: "async",
-      }),
-      h("figcaption", { class: "fb-photo__overlay" },
-        h("span", { class: "fb-photo__caption fb-photo__caption--headline" },
-          "Cùng con: Bữa tối 15 phút không dùng điện thoại",
-        ),
-      ),
-    ),
-  );
-  activity.appendChild(
-    h("p", { class: "fb-sec__sub" },
-      "Dành trọn vẹn 15 phút bên mâm cơm ấm cúng, cất điện thoại sang một bên để cùng nghe tiếng cười và những mẩu chuyện nhỏ ở trường của con.",
-    ),
-  );
-  activity.appendChild(
-    h("div", { class: "fb-connect__boundary" },
-      h("div", { style: "display:flex;flex-direction:column;gap:2px;" },
-        h("span", { class: "fb-connect__boundary-title" }, "Mẹ đã sẵn sàng thử hôm nay?"),
-        h("span", { class: "fb-sec__sub" }, "Không áp lực hoàn thành hay tính điểm"),
-      ),
-      createButton({
-        label: "Sắp có",
-        variant: "ghost",
-        disabled: true,
-        title: "Ghi nhận tham gia hoạt động sẽ có ở bản đầy đủ — bạn luôn tự nguyện.",
-      }),
-    ),
-  );
-  body.appendChild(activity);
-
-  // 7) Footer ghi chú + thanh trợ giúp.
-  body.appendChild(
-    h("footer", { class: "fb-page-footer" },
-      h("p", { class: "fb-sec__sub" }, "Family Bridge • Đồng hành xây đắp cầu nối thế hệ yêu thương"),
-      h("div", { class: "fb-page-footer__line", "aria-hidden": "true" }),
-    ),
-  );
   body.appendChild(renderHelpBar());
 
-  if (isFixture) {
-    // Nhãn minh họa đã ở DemoBanner đầu trang — nhắc lại ở cuối cho rõ.
+  if (data.demo) {
     body.appendChild(
       h("p", { class: "fb-page__note", role: "status" }, "Dữ liệu minh họa — chế độ xem trước."),
     );
   }
 }
 
-/* --------------------------- Chưa kết nối (production) --------------------------- */
+/** Thẻ lời nhắn mới nhất của con (w09) — body chỉ từ getMessage thật. */
+function renderCaregiverLatestMessage(ctx, data) {
+  const section = h("section", { class: "fb-scard" });
+  const head = h("div", { class: "fb-sec__row" });
+  head.appendChild(
+    h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" },
+      createIcon({ name: "mark_email_unread", size: 20, fill: true, className: "fb-stitch-primary-icon" }),
+      h("h2", { class: "fb-scard__title" }, "Lời nhắn gửi đến anh/chị"),
+    ),
+  );
+  section.appendChild(head);
+
+  const mailbox = data.mailbox;
+  if (mailbox === null) {
+    section.appendChild(
+      h("p", { class: "fb-page__note", role: "status" },
+        "Chưa tải được hộp thư. Mở Hộp thư để xem trực tiếp.",
+      ),
+    );
+  } else {
+    const firstReceived = (mailbox.rows || []).find(
+      (row) => row && row.direction === "received",
+    );
+    const detail = firstReceived ? mailbox.detail : null;
+    if (firstReceived && detail && typeof detail.body === "string") {
+      section.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          `Được gửi lúc ${messageTimeLabel(firstReceived.created_at)}`,
+        ),
+      );
+      section.appendChild(
+        h("p", { class: "fb-compose__preview-body" }, detail.body),
+      );
+      if (detail.title) {
+        section.appendChild(h("p", { class: "fb-page__note" }, `Chủ đề: ${detail.title}`));
+      }
+    } else if (firstReceived) {
+      section.appendChild(
+        h("p", { class: "fb-page__note", role: "status" },
+          "Có một lời nhắn mới nhưng chưa tải được nội dung. Mở Hộp thư để đọc.",
+        ),
+      );
+    } else {
+      section.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          "Chưa có lời nhắn nào từ con. Khi con chủ động gửi, nội dung sẽ hiện tại đây.",
+        ),
+      );
+    }
+  }
+
+  const safety = h("div", { class: "fb-connect__boundary" });
+  safety.appendChild(createIcon({ name: "shield", size: 20, className: "fb-stitch-primary-icon" }));
+  safety.appendChild(
+    h("div", {},
+      h("span", { class: "fb-connect__boundary-title" }, "Không gian an toàn"),
+      h("p", { class: "fb-connect__boundary-text" },
+        "Đây là nội dung con chủ động gửi cho anh/chị. Mọi nhật ký cá nhân khác của con "
+        + "vẫn thuộc không gian riêng tư được bảo vệ.",
+      ),
+    ),
+  );
+  section.appendChild(safety);
+
+  const actions = h("div", { class: "fb-compose__pause-buttons" });
+  actions.appendChild(
+    createButton({
+      label: "Mở hộp thư",
+      variant: "primary",
+      onClick: () => ctx.navigate("/mailbox"),
+    }),
+  );
+  actions.appendChild(
+    createButton({
+      label: "Soạn lời nhắn",
+      variant: "ghost",
+      onClick: () => ctx.navigate("/compose"),
+    }),
+  );
+  section.appendChild(actions);
+  return section;
+}
+
+/** Bài học 60 giây (w09) — catalog F09 thật, kind=micro_lesson. */
+function renderCaregiverLesson(data) {
+  const section = h("section", { class: "fb-sec" });
+  const head = h("div", { class: "fb-sec__row" });
+  const title = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-1);" });
+  title.appendChild(createIcon({ name: "timer", size: 20, fill: true, className: "fb-stitch-tertiary-icon" }));
+  title.appendChild(h("h2", { class: "fb-scard__title" }, "Bài học 60 giây"));
+  head.appendChild(title);
+  head.appendChild(h("span", { class: "fb-sec__sub" }, "1 phút đọc"));
+  section.appendChild(head);
+
+  const card = h("section", { class: "fb-scard" });
+  const lessons = data.lessons;
+  if (lessons === null) {
+    card.appendChild(
+      h("p", { class: "fb-page__note", role: "status" },
+        "Chưa tải được bài học ngắn. Vui lòng thử lại sau.",
+      ),
+    );
+  } else if (!lessons.length) {
+    card.appendChild(
+      h("p", { class: "fb-page__note" },
+        "Chưa có bài học ngắn nào được phát hành. Nội dung sẽ xuất hiện khi chương trình đăng tải.",
+      ),
+    );
+  } else {
+    const lesson = lessons[0];
+    card.appendChild(
+      h("span", { class: "fb-chip" },
+        createIcon({ name: "psychology_alt", size: 15 }),
+        h("span", {}, lesson.audience === "caregiver" ? "Kỹ năng cha mẹ" : "Chuyên đề"),
+      ),
+    );
+    card.appendChild(h("h3", { class: "fb-scard__title" }, String(lesson.title || "Bài học ngắn")));
+    card.appendChild(
+      h("p", { class: "fb-page__note" },
+        "Nội dung chi tiết sẽ mở ở bản đầy đủ — hiện tại chỉ hiển thị tiêu đề từ máy chủ.",
+      ),
+    );
+  }
+  section.appendChild(card);
+  return section;
+}
+
+/* --------------------------- Chưa kết nối / lỗi --------------------------- */
+
+function renderNotConnected(body, ctx) {
+  body.appendChild(
+    createEmptyState({
+      title: "Chưa kết nối với người đồng hành",
+      description:
+        "Hai bên sẽ kết nối với nhau bằng một mã mời riêng và xác nhận hai chiều. "
+        + "Bạn có thể tạo mã mời hoặc nhập mã nhận được ngay bây giờ.",
+      action: {
+        label: "Kết nối với người đồng hành",
+        onClick: () => ctx.navigate("/connect"),
+      },
+    }),
+  );
+
+  body.appendChild(
+    h("p", { class: "fb-page__note" },
+      "Kết nối không cho phép đọc nhật ký hay dữ liệu riêng của nhau — mọi mục chia sẻ vẫn do bạn quyết định.",
+    ),
+  );
+
+  body.appendChild(renderHelpBar());
+}
 
 function renderNeedsLogin(body, ctx) {
   clear(body);
@@ -776,8 +1053,8 @@ function renderNeedsLogin(body, ctx) {
     createEmptyState({
       title: "Chưa đăng nhập",
       description:
-        "Đăng nhập bằng tài khoản Zalo để tạo phiên riêng của bạn. " +
-        "Chúng tôi chỉ nhận mã định danh Zalo, không xin quyền đọc thông tin cá nhân.",
+        "Đăng nhập bằng tài khoản lớp học của bạn để tạo phiên riêng. "
+        + "Chúng tôi chỉ xác minh tài khoản do trường cấp, không đọc thông tin cá nhân khác.",
       action: {
         label: "Đăng nhập",
         onClick: () => ctx.navigate("/login"),
@@ -803,102 +1080,4 @@ function renderLoadError(body, ctx, error) {
       onRetry: () => window.dispatchEvent(new HashChangeEvent("hashchange")),
     }),
   );
-}
-
-function renderConnectedProduction(body, ctx, role, rows) {
-  clear(body);
-
-  // A11: KHÔNG chọn mù rows[0] — ưu tiên kết nối "primary" nếu có nhiều;
-  // khi có nhiều kết nối cùng hoạt động, nêu rõ số lượng để không khiến
-  // người dùng nhầm người đồng hành.
-  const primary = rows.find((row) => row && row.relationship_kind === "primary")
-    || rows[0];
-  const kindLabel = primary && primary.relationship_kind === "backup"
-    ? "Người hỗ trợ dự phòng"
-    : "Người đồng hành chính";
-  const peerName = primary && primary.counterpart && primary.counterpart.display_name
-    ? String(primary.counterpart.display_name)
-    : "Người đồng hành";
-  const countNote = rows.length > 1
-    ? ` Hiện có ${rows.length} kết nối đang hoạt động — xem tất cả trong "Quản lý kết nối".`
-    : "";
-
-  renderGreeting(body, {
-    displayName: (getSession() && getSession().displayName) || "",
-    role,
-  });
-
-  // Thẻ kết nối (hình khối U08/U10, dữ liệu thật từ backend).
-  const connectCard = h("section", { class: "fb-scard" });
-  const connectHead = h("div", { class: "fb-sec__row" });
-  const connectWho = h("div", { style: "display:flex;align-items:center;gap:var(--fb-space-3);min-width:0;" });
-  const familyCircle = h("span", { class: "fb-connect__icon", "aria-hidden": "true" });
-  familyCircle.appendChild(createIcon({ name: "family_restroom", size: 26 }));
-  connectWho.appendChild(familyCircle);
-  const whoText = h("div", { style: "display:flex;flex-direction:column;min-width:0;" });
-  whoText.appendChild(h("span", { class: "fb-scard__title fb-connect__name" }, peerName));
-  whoText.appendChild(
-    h("span", { class: "fb-sec__sub fb-connect__status" },
-      h("span", { class: "fb-connect__dot", "aria-hidden": "true" }),
-      ` ${kindLabel}${primary && primary.generation ? `, thế hệ ${primary.generation}` : ""}`,
-    ),
-  );
-  connectWho.appendChild(whoText);
-  connectHead.appendChild(connectWho);
-  connectHead.appendChild(
-    h("span", { class: "fb-chip" },
-      createIcon({ name: "verified_user", size: 14, className: "fb-stitch-primary-icon" }),
-      h("span", {}, "Ranh giới riêng tư"),
-    ),
-  );
-  connectCard.appendChild(connectHead);
-  connectCard.appendChild(
-    h("p", { class: "fb-page__note" },
-      (rows.length > 1
-        ? `Bạn có ${rows.length} kết nối đang hoạt động.` + countNote
-        : "Bạn có một kết nối đang hoạt động.") +
-      " Chúng tôi hiển thị kết nối mà không lộ thông tin cá nhân của hai bên.",
-    ),
-  );
-  connectCard.appendChild(
-    createButton({
-      label: "Quản lý kết nối",
-      variant: "ghost",
-      onClick: () => ctx.navigate("/connect"),
-    }),
-  );
-  body.appendChild(connectCard);
-
-  if (role === "student") {
-    renderStudentHome(body, ctx, { peer: null, peerLabel: peerName });
-  } else {
-    renderCaregiverHome(body, ctx, { isFixture: false });
-  }
-}
-
-function renderNotConnected(body, ctx) {
-  clear(body);
-
-  body.appendChild(h("h1", { class: "fb-sec__greeting" }, "Xin chào!"));
-
-  body.appendChild(
-    createEmptyState({
-      title: "Chưa kết nối với người đồng hành",
-      description:
-        "Hai bên sẽ kết nối với nhau bằng một mã mời riêng và xác nhận hai chiều. " +
-        "Bạn có thể tạo mã mời hoặc nhập mã nhận được ngay bây giờ.",
-      action: {
-        label: "Kết nối với người đồng hành",
-        onClick: () => ctx.navigate("/connect"),
-      },
-    }),
-  );
-
-  body.appendChild(
-    h("p", { class: "fb-page__note" },
-      "Kết nối không cho phép đọc nhật ký hay dữ liệu riêng của nhau — mọi mục chia sẻ vẫn do bạn quyết định.",
-    ),
-  );
-
-  body.appendChild(renderHelpBar());
 }

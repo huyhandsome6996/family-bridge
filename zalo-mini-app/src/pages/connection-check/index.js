@@ -151,14 +151,14 @@ export const page = {
       renderLoading();
 
       Promise.resolve()
-        .then(() => ctx.adapter.getBackendHealth())
+        .then(() => ctx.adapter.getBackendHealth(15000))
         .then((health) => {
           if (cancelled || current !== runId) return null;
           if (health !== "ok") {
             return { kind: "error", error: new Error("Không xác định được trạng thái máy chủ. Vui lòng thử lại.") };
           }
           return Promise.resolve()
-            .then(() => ctx.adapter.getBackendReady())
+            .then(() => ctx.adapter.getBackendReady(15000))
             .then((ready) => {
               if (cancelled || current !== runId) return null;
               if (ready === "ok") return { kind: "success" };

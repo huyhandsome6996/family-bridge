@@ -119,4 +119,10 @@
   --fb-shadow-sm: 0 1px 2px rgba(113, 61, 50, 0.06), 0 1px 3px rgba(113, 61, 50, 0.08);
   --fb-shadow-header: 0 1px 8px rgba(113, 61, 50, 0.05);
   --fb-shadow-nav: 0 -2px 12px rgba(113, 61, 50, 0.06);
+
+  /* --- Web Render (Task 2): khung web desktop — CHỈ THÊM, không đổi giá trị cũ --- */
+  --fb-sidebar-w: 240px;      /* sidebar Stitch w05/w08 */
+  --fb-header-h: 64px;        /* topbar cao 64px */
+  --fb-content-max: 1280px;   /* nội dung chính không tràn màn rộng */
+  --fb-cta-hover: #7D2612;    /* hover CTA (primary deep trong palette Stitch) */
 }

@@ -31,6 +31,7 @@ const assert = (await import("node:assert/strict")).default;
 const { createRouter, routes, parseHash, navigate } = await import("../src/app/router.js");
 const { initStore, setRole, resetState, getState } = await import("../src/app/store.js");
 const { createMockAdapter } = await import("../src/core/adapter/mock-adapter.js");
+const { setSession } = await import("../src/core/session.js");
 const notFoundModule = await import("../src/pages/not-found/index.js");
 
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -189,6 +190,10 @@ describe("QA: router.stop() gọi page.destroy và chặn pending cập nhật",
   });
 
   it("start() render theo hash hiện tại; stop() gỡ listener", async () => {
+    // PIN UPDATE (task 3-b4, M5a): mailbox w14 là trang chrome "app" +
+    // requiresAuth (phiên web sống) — guard yêu cầu phiên trước khi vào
+    // #/mailbox, nên test đặt phiên sống trước khi start router.
+    setSession({ token: "t-router", userId: "u-router", expiresAt: Date.now() + 3600_000 });
     domWindow.location.hash = "#/mailbox";
     setRole("student"); // mailbox requiresRole
     const r = freshRouter();

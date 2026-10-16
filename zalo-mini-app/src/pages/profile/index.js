@@ -166,13 +166,17 @@ export const page = {
         title: "Cài đặt",
         children: h("div", { class: "fb-profile__actions" },
           createButton({
-            label: "Quản lý chia sẻ & đồng ý — Sắp có",
+            label: "Mở Cài đặt (đổi mật khẩu / mã đăng nhập / tên hiển thị)",
+            variant: "primary",
+            onClick: () => ctx.navigate("/settings"),
+          }),
+          createButton({
+            label: "Riêng tư & đồng ý",
             variant: "ghost",
-            disabled: true,
-            title: "Tính năng quản lý chia sẻ từng mục sẽ có ở bản đầy đủ.",
+            onClick: () => ctx.navigate("/privacy"),
           }),
           h("p", { class: "fb-page__note" },
-            "Khi có, bạn sẽ chọn rõ từng thông tin muốn chia sẻ với người đồng hành trước khi bật tính năng này.",
+            "Quản lý chia sẻ từng mục, yêu cầu xóa dữ liệu và rút đồng ý nằm ở trang Riêng tư & đồng ý.",
           ),
           createButton({
             label: "Kiểm tra kết nối máy chủ",

@@ -26,6 +26,7 @@ Chưa làm (trung thực): kiểm thử Zalo trên thiết bị thật (US-049),
 - [Hướng dẫn chạy khung code của PR #1](docs/development.md)
 - [Trello audit](docs/project/trello-audit.md) và [52 US/phụ thuộc](docs/project/backlog-snapshot.json)
 - [Bằng chứng và giới hạn kiểm tra](docs/validation.md)
+- [Chỉ mục bàn giao](docs/handover/README.md) — backend foundation, F01, miniapp foundation, Render deploy và web Render (Task 2)
 
 Từ gốc repo kiểm tra tài liệu:
 

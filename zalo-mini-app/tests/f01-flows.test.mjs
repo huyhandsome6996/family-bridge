@@ -174,13 +174,27 @@ describe("F01 adapter surface", () => {
       "listDrafts", "createDraft", "getDraft", "editDraft", "discardDraft",
       "pauseDraft", "cancelDraftPause", "previewDraft", "confirmDraftSend",
     ]);
+    // Web Render (Task 2): các method GỬI là hợp đồng thật với backend —
+    // tên động từ trùng với endpoint POST thật (F05/F03/F10/F04). Đây là
+    // HÀNH ĐỘNG do người dùng bấm xác nhận cuối (crypto.randomUUID key),
+    // KHÔNG phải cơ chế client tự gửi mà rule này cấm. Giữ tên trung thực
+    // khớp endpoint (sendMessage -> POST /messages, sendCard -> /cards/send,
+    // signalSend -> /signals/send, aiRefine -> /ai/refine).
+    const WEB_CONTRACT_SEND_METHODS = new Set([
+      "sendMessage", "sendCard", "signalSend", "aiRefine",
+    ]);
     for (const name of ADAPTER_METHODS) {
       if (F06_CONTRACT_METHODS.has(name)) continue;
+      if (WEB_CONTRACT_SEND_METHODS.has(name)) continue;
       assert.doesNotMatch(name, /send|submit|push|publish|post/i,
         `tên method không được gợi ý auto-send: ${name}`);
     }
     for (const name of F06_CONTRACT_METHODS) {
       assert.ok(ADAPTER_METHODS.includes(name), `thiếu method F06 ${name}`);
+    }
+    // Method gửi web phải được khai báo danh exclusion tường minh (không lọt qua regex khác).
+    for (const name of WEB_CONTRACT_SEND_METHODS) {
+      assert.ok(ADAPTER_METHODS.includes(name), `thiếu method web gửi ${name}`);
     }
   });
 
@@ -571,17 +585,24 @@ describe("zalo-adapter session generation", () => {
 // ---------------------------------------------------------------- login page
 describe("F01 trang đăng nhập", () => {
 
-  it("production ngoài Zalo: hướng dẫn mở trong Zalo, nút đăng nhập bị chặn", () => {
+  it("production ngoài Zalo (web Render Task 2): form mã tài khoản trung thực thay hướng dẫn mở Zalo", () => {
+    // Cập nhật pin CÓ CƠ SỞ (Task 2 web Render): host web KHÔNG có SDK Zalo,
+    // đường đăng nhập thật là form mã tài khoản/mật khẩu → /auth/class-session.
+    // Card "Hãy mở trong Zalo" + nút chặn chỉ còn ý nghĩa trong Mini App.
     clearSession();
     const { ctx } = makeCtx({ demo: false });
     const { host, el } = mount(loginPage, ctx);
     const text = textOf(el);
-    assert.ok(text.includes("Hãy mở trong Zalo"), `nhưng thấy: ${text}`);
-    const loginBtn = findButton(el, "Đăng nhập bằng Zalo");
-    assert.ok(loginBtn, "thiếu nút đăng nhập");
-    assert.equal(loginBtn.disabled, true, "ngoài Zalo phải chặn nút");
-    assert.ok(loginBtn.title && loginBtn.title.length > 0, "nút disabled phải có lý do");
+    assert.ok(text.includes("Đăng nhập Family Bridge"), `nhưng thấy: ${text}`);
+    assert.ok(text.includes("Mã tài khoản"), "form phải có trường mã tài khoản");
+    assert.ok(el.querySelector("input[type=password]"), "phải có ô mật khẩu");
+    assert.ok(!text.includes("Hãy mở trong Zalo"), "host web không hướng dẫn mở Zalo");
+    // Không được có nút đăng nhập Zalo BẬT ngoài Zalo (SDK không tồn tại).
+    const zaloBtn = findButton(el, "Đăng nhập bằng Zalo");
+    if (zaloBtn) assert.equal(zaloBtn.disabled, true, "nút Zalo ngoài host Zalo phải bị chặn");
     assert.ok(text.includes("Tìm trợ giúp"), "trợ giúp luôn truy cập được");
+    // Không implied-consent: phải ghi rõ đăng nhập ≠ đồng ý nghiên cứu.
+    assert.ok(text.includes("Đăng nhập không đồng nghĩa với đồng ý nghiên cứu"));
     unmount(host);
   });
 

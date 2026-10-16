@@ -47,6 +47,51 @@ export const ADAPTER_METHODS = [
   "previewDraft",       // POST   /api/v1/drafts/{id}/preview (chỉ sau deadline)
   "confirmDraftSend",   // POST   /api/v1/drafts/{id}/confirm-send — HÀNH ĐỘNG
                         //   CUỐI CÙNG của người dùng, KHÔNG tự retry.
+  // ---- Web (Task 2 — Render): đăng nhập lớp học + màn web mới ----
+  // Tất cả thao tác GỬI (sendMessage/sendCard/signalSend/aiRefine) đều BẮT
+  // BUỘC `key` do caller tạo tại nút xác nhận (crypto.randomUUID) — không có
+  // cơ chế client tự gửi; mất response → UI tra cứu /operations/{key}.
+  "loginWithCredentials", // POST /api/v1/auth/class-session {code,password}
+  "getCapabilities",      // GET  /api/v1/auth/class-capabilities (best-effort)
+  "changeClassPassword",  // POST /api/v1/auth/class-password
+  "changeClassCode",      // POST /api/v1/auth/class-code
+  "changeClassDisplayName", // POST /api/v1/auth/class-display-name
+  "listClassProposals",   // GET  /api/v1/classroom/proposals
+  "confirmClassProposal", // POST /api/v1/classroom/proposals/{id}/confirm
+  "declineClassProposal", // POST /api/v1/classroom/proposals/{id}/decline
+  "cancelClassProposal",  // POST /api/v1/classroom/proposals/{id}/cancel
+  "listMessages",         // GET  /api/v1/messages (metadata, KHÔNG body)
+  "getMessage",           // GET  /api/v1/messages/{id} (+ body)
+  "markMessageRead",      // POST /api/v1/messages/{id}/read (recipient-only)
+  "sendMessage",          // POST /api/v1/messages (+X-Idempotency-Key)
+  "quickReplies",         // GET  /api/v1/messages/quick-replies
+  "lookupOperation",      // GET  /api/v1/operations/{key} (tra cứu lost-response)
+  "listCards",            // GET  /api/v1/cards
+  "previewCard",          // POST /api/v1/cards/preview
+  "sendCard",             // POST /api/v1/cards/send (+X-Idempotency-Key)
+  "cardSnapshot",         // GET  /api/v1/cards/{id}
+  "cardReplySuggestions", // GET  /api/v1/cards/{id}/reply-suggestions
+  "signalMeta",           // GET  /api/v1/signals/meta (3 nhu cầu allowlist)
+  "signalPreview",        // POST /api/v1/signals/preview
+  "signalSend",           // POST /api/v1/signals/send (+X-Idempotency-Key)
+  "signalDetail",         // GET  /api/v1/signals/{id}
+  "signalAck",            // POST /api/v1/signals/{id}/ack (recipient-only)
+  "aiStatus",             // GET  /api/v1/ai/status
+  "aiRefine",             // POST /api/v1/ai/refine (+X-Idempotency-Key)
+  "aiAccept",             // POST /api/v1/ai/suggestions/{id}/accept
+  "aiDiscard",            // POST /api/v1/ai/suggestions/{id}/discard
+  "helpDirectory",        // GET  /api/v1/help/directory (public, AllowAny)
+  "privacyOverview",      // GET  /api/v1/privacy/overview
+  "revokeGrant",          // POST /api/v1/privacy/grants/{type}/{id}/revoke
+  "requestDeletion",      // POST /api/v1/privacy/deletion-requests
+  "getDeletionRequest",   // GET  /api/v1/privacy/deletion-requests/{id}
+  "cancelDeletionRequest",// POST /api/v1/privacy/deletion-requests/{id}/cancel
+  "withdrawConsent",      // POST /api/v1/privacy/consents/{purpose}/withdraw
+  "createMoodEntry",      // POST /api/v1/mood/entries (F07 emotion allowlist)
+  "listMoodEntries",      // GET  /api/v1/mood/entries
+  "programMy",            // GET  /api/v1/program/my (kèm opted-out)
+  "programWeeks",         // GET  /api/v1/program/weeks/{program_key}
+  "activitiesCatalog",    // GET  /api/v1/activities/catalog
 ];
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".
