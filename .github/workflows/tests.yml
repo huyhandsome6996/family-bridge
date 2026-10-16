@@ -30,7 +30,7 @@ jobs:
           # Harness refuses to load feature apps without FB_FEATURES; without
           # it the suite errors spuriously (apps uninstalled -> missing tables).
           # Label list = B18 integration set (docs/features/integration/report.md).
-          FB_FEATURES: "f01_identity,f15_privacy,f05_inbox,f03_cards,f04_ai,f06_drafts,f07_mood,f08_journal,f10_signal,f11_supporters,f13_help,f12_appointments,f09_activities,f02_program,f14_surveys,admin_core"
+          FB_FEATURES: "f01_identity,f15_privacy,f05_inbox,f03_cards,f04_ai,f06_drafts,f07_mood,f08_journal,f10_signal,f11_supporters,f13_help,f12_appointments,f09_activities,f02_program,f14_surveys,admin_core,f16_classroom"
         run: |
           python manage.py test harness labgrants \
             family_bridge_features.f01_identity \
@@ -48,7 +48,8 @@ jobs:
             family_bridge_features.f09_activities \
             family_bridge_features.f02_program \
             family_bridge_features.f14_surveys \
-            family_bridge_features.admin_core -v 1
+            family_bridge_features.admin_core \
+            family_bridge_features.f16_classroom -v 1
 
   mobile:
     runs-on: ubuntu-latest

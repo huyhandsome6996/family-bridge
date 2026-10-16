@@ -52,6 +52,7 @@ VALID_LABELS = {
     "f06_drafts", "f07_mood", "f08_journal", "f09_activities", "f10_signal",
     "f11_supporters", "f12_appointments", "f13_help", "f14_surveys",
     "f15_privacy", "admin_core", "ops_core",
+    "f16_classroom",
 }
 unknown = [name for name in _requested if name not in VALID_LABELS]
 if unknown:
@@ -77,6 +78,7 @@ HARNESS_DEPS = {
     "f14_surveys": ["f01_identity"],
     "admin_core": ["f01_identity", "f15_privacy"],
     "ops_core": ["f15_privacy"],
+    "f16_classroom": ["f01_identity"],
 }
 import importlib.util as _ilu
 
@@ -142,7 +144,7 @@ REST_FRAMEWORK = {
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "EXCEPTION_HANDLER": "family_bridge_core.drf.fb_exception_handler",
     "DEFAULT_THROTTLE_CLASSES": ["rest_framework.throttling.ScopedRateThrottle"],
-    "DEFAULT_THROTTLE_RATES": {"invite_claim": "30/hour", "send_message": "60/hour", "ai_refine": "30/hour", "survey_report": "20/hour"},
+    "DEFAULT_THROTTLE_RATES": {"invite_claim": "30/hour", "send_message": "60/hour", "ai_refine": "30/hour", "survey_report": "20/hour", "class_login": "200/hour"},
     "UNAUTHENTICATED_USER": None,
 }
 

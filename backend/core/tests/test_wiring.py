@@ -22,7 +22,7 @@ EXPECTED_FEATURE_APPS = {
     "f01_identity", "f02_program", "f03_cards", "f04_ai", "f05_inbox",
     "f06_drafts", "f07_mood", "f08_journal", "f09_activities", "f10_signal",
     "f11_supporters", "f12_appointments", "f13_help", "f14_surveys",
-    "f15_privacy", "admin_core",
+    "f15_privacy", "admin_core", "f16_classroom",
 }
 
 # One stable, side-effect-free route per feature (public or auth-guarded;
@@ -44,11 +44,12 @@ REPRESENTATIVE_ROUTES = {
     "f14_surveys": "/api/v1/surveys/forms",
     "f15_privacy": "/api/v1/privacy/overview",
     "admin_core": "/api/v1/admin/dashboard",
+    "f16_classroom": "/api/v1/auth/class-capabilities",
 }
 
 
 class InstalledAppsTests(TestCase):
-    def test_all_16_feature_apps_installed(self):
+    def test_all_17_feature_apps_installed(self):
         installed = set(settings.INSTALLED_APPS)
         for label in EXPECTED_FEATURE_APPS:
             self.assertIn(f"family_bridge_features.{label}", installed)
@@ -86,6 +87,12 @@ class RealAuthenticationTests(TestCase):
         self.assertEqual(
             response["WWW-Authenticate"], 'Bearer realm="family-bridge"')
 
+    def test_classroom_proposals_requires_bearer(self):
+        # F16 routes resolve and enforce the same contract 401 envelope.
+        response = self.client.get("/api/v1/classroom/proposals")
+        self.assertEqual(response.status_code, 401)
+        self.assertEqual(response["Cache-Control"], "no-store")
+
     def test_garbage_bearer_token_gets_401_not_500(self):
         response = self.client.get(
             "/api/v1/consents", HTTP_AUTHORIZATION="Bearer not-a-real-token")
@@ -100,6 +107,7 @@ class ThrottleWiringTests(TestCase):
         self.assertEqual(rates["send_message"], "60/hour")
         self.assertEqual(rates["ai_refine"], "30/hour")
         self.assertEqual(rates["survey_report"], "20/hour")
+        self.assertEqual(rates["class_login"], "200/hour")
         self.assertIn(
             "rest_framework.throttling.ScopedRateThrottle",
             settings.REST_FRAMEWORK["DEFAULT_THROTTLE_CLASSES"],

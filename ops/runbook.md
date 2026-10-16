@@ -41,3 +41,29 @@
 
 - Xem `docs/operations/zalo-submission-dossier-checklist.md`: inventory
   quyền/nguồn + release checklist; KHÔNG tự submit.
+
+## Cấp tài khoản lớp HS/PH (F16, bổ sung 16/10/2026)
+
+- Chuẩn bị CSV tài khoản (header bắt buộc:
+  `external_ref,login_code,role,class_ref,display_name`; login_code dạng
+  HS001–HS050/PH001–PH050, chuẩn hóa UPPERCASE) và CSV cặp đề xuất
+  (`student_login_code,caregiver_login_code`) hoặc dùng
+  `--auto-pair-by-index` (HS{n} ↔ PH{n}).
+- **Mật khẩu khởi tạo chung PHÁT NGOÀI KÊNH RIÊNG** (in giấy/trao đổi trực
+  tiếp với lớp): đặt biến môi trường `FB_CLASS_INITIAL_PASSWORD` trong phiên
+  chạy lệnh — KHÔNG truyền mật khẩu qua đối số dòng lệnh, KHÔNG commit giá
+  trị, KHÔNG log. Lệnh fail-closed: thiếu biến/quá ngắn (<8) → không ghi gì.
+- Dry-run trước (không ghi DB, in dự kiến tạo bao nhiêu):
+  `python manage.py provision_classroom --csv accounts.csv --proposals-csv pairs.csv --dry-run --json`
+- Apply (idempotent theo external_ref; chạy lại file giống hệt không tạo
+  thêm, không đổi mật khẩu đã cấp):
+  `FB_CLASS_INITIAL_PASSWORD=... python manage.py provision_classroom --csv accounts.csv --proposals-csv pairs.csv --json`
+- Cặp đã tồn ở BẤT KỲ trạng thái (proposed/awaiting/connected/declined/
+  canceled) → skip, không bao giờ hồi sinh proposal đã declined/canceled.
+- Khi tắt đăng nhập Zalo (dormancy): đặt `FB_ZALO_LOGIN_ENABLED=false` ở env
+  backend → `POST /api/v1/auth/session` trả 503
+  `module_unavailable/zalo_login_disabled`, đăng nhập lớp
+  (`/auth/class-session`) và mọi endpoint khác giữ nguyên.
+- Guard đăng nhập: 10 lần sai/15 phút theo tài khoản + mã (HMAC) + IP; khóa
+  tự mở sau cửa sổ 15 phút. Purge định kỳ `LoginAttempt` cũ hơn 30 ngày là
+  việc cleanup theo chu kỳ (task dọn dẹp), không xóa theo user.

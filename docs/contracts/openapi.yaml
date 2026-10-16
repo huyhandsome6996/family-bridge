@@ -159,6 +159,121 @@ paths:
       responses:
         "200": { $ref: "#/components/responses/GrantRevoked" }
         "403": { $ref: "#/components/responses/Error403" }
+  /auth/class-session:
+    post:
+      summary: Đăng nhập tài khoản lớp (mã lớp + mật khẩu) — không qua Zalo
+      description: >-
+        F16. Lỗi 401 generic GIỐNG HỆT nhau cho mã không tồn tại / sai mật
+        khẩu / tài khoản vô hiệu (chống dò mã). 429 khi guard DB 10 fail/15ph
+        hoặc throttle class_login 200/hour. Không có "ép đổi mật khẩu lần
+        đầu".
+      x-owner-feature: F16
+      x-status: implemented
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code, password]
+              properties:
+                code: { type: string, example: "HS001" }
+                password: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/ClassSessionIssued" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "429": { $ref: "#/components/responses/Error429" }
+  /auth/class-capabilities:
+    get:
+      summary: Snapshot công khai các phương thức đăng nhập + cài đặt F16
+      description: >-
+        zalo=false khi FB_ZALO_LOGIN_ENABLED tắt HOẶC thiếu
+        ZALO_APP_ID/ZALO_APP_SECRET (fail closed).
+      x-owner-feature: F16
+      x-status: implemented
+      security: []
+      responses:
+        "200": { $ref: "#/components/responses/ClassCapabilities" }
+  /auth/class-password:
+    post:
+      summary: Đổi mật khẩu (yêu cầu mật khẩu hiện tại); thu hồi phiên KHÁC
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassPasswordChanged" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+  /auth/class-code:
+    post:
+      summary: Đổi mã đăng nhập lớp (yêu cầu mật khẩu hiện tại)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassCodeChanged" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+  /auth/class-display-name:
+    post:
+      summary: Đặt tên gọi tự khai báo (yêu cầu mật khẩu hiện tại)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassDisplayNameSet" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+  /classroom/proposals:
+    get:
+      summary: Danh sách đề xuất kết nối HS/PH mà tôi là một trong hai bên
+      description: >-
+        Cursor (updated_at, id), page 20/max 50; không đếm toàn bộ. Đối tác
+        chỉ hiện display_name tự khai báo + identity_basis.
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassProposalPage" }
+        "401": { $ref: "#/components/responses/Error401" }
+  /classroom/proposals/{proposal_id}/confirm:
+    post:
+      summary: Xác nhận đề xuất (2 bước; bước 2 tạo invite + connection trong 1 transaction)
+      description: >-
+        Xác nhận 1 → awaiting_confirmation (không tạo invite). Xác nhận 2 →
+        pre-check lời mời primary đang mở của người xác nhận (400
+        proposal_blocked_by_open_invite) và cặp kết nối active (400
+        already_connected), rồi InviteService của F01 chạy trong CÙNG
+        transaction. Không thuộc proposal → 404.
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassProposalConfirmed" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+        "404": { $ref: "#/components/responses/Error404" }
+        "409": { $ref: "#/components/responses/Error409" }
+        "429": { $ref: "#/components/responses/Error429" }
+  /classroom/proposals/{proposal_id}/decline:
+    post:
+      summary: Từ chối đề xuất (refused | wrong_pair); đóng invite nền nếu có
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassProposalClosed" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
+  /classroom/proposals/{proposal_id}/cancel:
+    post:
+      summary: Hủy đề xuất (một trong hai bên, khi còn mở)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { $ref: "#/components/responses/ClassProposalClosed" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "404": { $ref: "#/components/responses/Error404" }
 components:
   securitySchemes:
     bearerAuth:
@@ -192,6 +307,24 @@ components:
       type: object
       properties:
         status: { type: string, example: "unavailable" }
+    ClassProposal:
+      type: object
+      properties:
+        proposal_id: { type: string, format: uuid }
+        status:
+          type: string
+          enum: [proposed, awaiting_confirmation, connected, declined, canceled]
+        my_role: { type: string, enum: [student, caregiver] }
+        my_confirmed: { type: boolean }
+        counterpart_confirmed: { type: boolean }
+        counterpart:
+          type: object
+          properties:
+            display_name: { type: string }
+            identity_basis: { type: string, example: "self_declared" }
+        revision: { type: integer }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
   responses:
     SessionIssued:
       description: Phiên ứng dụng đã cấp
@@ -263,6 +396,109 @@ components:
             type: object
             properties:
               revoked_at: { type: string, format: date-time }
+    ClassSessionIssued:
+      description: Phiên ứng dụng đã cấp cho tài khoản lớp (F16)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              token: { type: string }
+              token_type: { type: string, example: "Bearer" }
+              expires_at: { type: string, format: date-time }
+              user:
+                type: object
+                properties:
+                  id: { type: string, format: uuid }
+                  display_name: { type: string }
+                  role: { type: string, enum: [student, caregiver] }
+                  class_ref: { type: string }
+              consents_required: { type: array, items: { type: string } }
+    ClassCapabilities:
+      description: Snapshot capability công khai (F16)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              login_methods:
+                type: object
+                properties:
+                  local_class: { type: boolean }
+                  zalo: { type: boolean }
+              settings:
+                type: object
+                properties:
+                  change_password: { type: boolean }
+                  change_code: { type: boolean }
+                  change_display_name: { type: boolean }
+              policy:
+                type: object
+                properties:
+                  no_forced_password_change: { type: boolean }
+    ClassPasswordChanged:
+      description: Phiên hiện tại giữ nguyên; các phiên khác đã thu hồi
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              changed: { type: boolean }
+              sessions_revoked_other: { type: integer }
+    ClassCodeChanged:
+      description: Mã đăng nhập mới (chuẩn hóa UPPERCASE)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              login_code: { type: string, example: "HS001" }
+              changed: { type: boolean }
+    ClassDisplayNameSet:
+      description: Tên gọi tự khai báo đã lưu
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              display_name: { type: string }
+              identity_basis: { type: string, example: "self_declared" }
+    ClassProposalPage:
+      description: Trang đề xuất của chính mình (cursor, không COUNT toàn bộ)
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              results:
+                type: array
+                items: { $ref: "#/components/schemas/ClassProposal" }
+              next_cursor: { type: string, nullable: true }
+    ClassProposalConfirmed:
+      description: Bước 1 → connection null; bước 2 → connection active
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              proposal_id: { type: string, format: uuid }
+              status: { type: string }
+              my_confirmed: { type: boolean }
+              counterpart_confirmed: { type: boolean }
+              connection:
+                nullable: true
+                type: object
+                properties:
+                  connection_id: { type: string, format: uuid }
+                  status: { type: string }
+                  relationship_kind: { type: string, enum: [primary, backup] }
+                  generation: { type: integer }
+    ClassProposalClosed:
+      description: Đề xuất đã declined/canceled (payload danh sách đầy đủ)
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ClassProposal"
     Error400:
       description: Lỗi đầu vào
       content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } }
