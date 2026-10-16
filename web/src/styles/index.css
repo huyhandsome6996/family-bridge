@@ -1,0 +1,13 @@
+/* ============================================================
+   index.css — điểm vào CSS của design system (US-003 + Stitch upgrade).
+   Lead import đúng file này (contract mục 4). Thứ tự @import bắt buộc:
+   fonts → tokens → base → components (fonts đứng trước để @font-face
+   khả dụng ngay khi token/base tham chiếu font family).
+   ============================================================ */
+
+@import "./fonts.css";
+@import "./tokens.css";
+@import "./base.css";
+@import "./components.css";
+/* Web Render (Task 2): khung web desktop (sidebar + topbar). */
+@import "./shell.css";
