@@ -1732,6 +1732,34 @@ describe("Web M5b — settings: đổi mật khẩu / mã đăng nhập / tên h
     unmount(host);
   });
 
+  it("đổi mã khớp giới hạn backend 3–16 ký tự, chặn 2/17 trước API", async () => {
+    withSession();
+    const behavior = {};
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    const codeCard = Array.from(el.querySelectorAll(".fb-card"))
+      .find((card) => textOf(card).includes("Mã đăng nhập"));
+    const input = codeCard.querySelector("input[type='text']");
+    codeCard.querySelector("input[type='password']").value = "mk-cu";
+    assert.equal(input.getAttribute("maxlength"), "16");
+    for (const invalid of ["HS", "HS123456789012345"] ) {
+      input.value = invalid;
+      findButton(codeCard, "Đổi mã đăng nhập").click();
+      await wait(20);
+      assert.equal(behavior.codeCalls, undefined);
+    }
+    for (const valid of ["HS1", "HS12345678901234"]) {
+      input.value = valid;
+      findButton(codeCard, "Đổi mã đăng nhập").click();
+      await wait(40);
+      assert.equal(behavior.codeCalls.at(-1).newCode, valid);
+    }
+    unmount(host);
+  });
+
   it("mã sai định dạng → lỗi client-side không gọi máy chủ; duplicate_code → copy máy chủ", async () => {
     withSession();
     const behavior = {};

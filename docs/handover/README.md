@@ -10,7 +10,7 @@ thái vì docs tồn tại).
 | [f01-login-connections/](f01-login-connections/README.md) | F01 đăng nhập Zalo + kết nối hai phía (US-011/013), kịch bản hai tài khoản |
 | [miniapp-foundation/](miniapp-foundation/README.md) | Nền tảng Zalo Mini App US-003: router hash, session in-memory, stitch-mapping, zalo-policy-report |
 | [blueprint-deployment-guide.md](blueprint-deployment-guide.md) | Hướng dẫn triển khai backend Render bằng Blueprint (Docker, MySQL, migration tay trên Free) |
-| [web-render/](web-render/README.md) | Task 2 web Render: static service `family-bridge-web`, bàn giao Stitch web, teacher quick start, verification |
+| [web-render/](web-render/web-render-deployment.md) | Task 2 web Render: static service `family-bridge-web`, bàn giao Stitch web, teacher quick start, verification |
 
 ## web-render/ (Task 2, nhánh `tinh-nang/web-render-task2`)
 

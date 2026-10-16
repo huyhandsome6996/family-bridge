@@ -240,7 +240,10 @@ describe("QA web: cấu hình deploy & env", () => {
     const envBlock = content.slice(content.indexOf("family-bridge-web"));
     assert.ok(/- key: VITE_API_BASE_URL\s*\n\s*sync: false/.test(envBlock),
       "VITE_API_BASE_URL phải sync:false");
-    // headers cache bất biến cho /assets/* + no-cache index.html.
+    // Stable Zalo entry/CSS filenames must revalidate after each web deployment.
+    assert.match(envBlock, /path: \/assets\/\*\s*\n\s*name: Cache-Control\s*\n\s*value: no-cache/);
+    assert.doesNotMatch(envBlock, /immutable/);
+    assert.doesNotMatch(envBlock, /^\s+region:/m, "static sites have no compute region");
     assert.ok(content.includes("path: /assets/*"), "thiếu header /assets/*");
     assert.ok(content.includes("value: no-cache"), "index.html phải no-cache");
     assert.ok(content.includes("X-Content-Type-Options"), "thiếu header bảo mật cơ bản");

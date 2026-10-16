@@ -106,7 +106,6 @@ services:
   - type: web
     name: family-bridge-web
     runtime: static
-    region: singapore
     branch: main
     buildCommand: cd zalo-mini-app && npm ci && npm run build
     staticPublishPath: zalo-mini-app/www
@@ -124,10 +123,11 @@ services:
       - key: VITE_TEST_LABEL
         sync: false
     headers:
-      # Hashed Vite assets are immutable — cache forever.
+      # The Zalo-compatible entry and CSS filenames are stable, not hashed.
+      # Revalidate assets so a new release never mixes old JS/CSS with new chunks.
       - path: /assets/*
         name: Cache-Control
-        value: public, max-age=31536000, immutable
+        value: no-cache
       # index.html is the hash-router bootstrap — always revalidate.
       - path: /index.html
         name: Cache-Control

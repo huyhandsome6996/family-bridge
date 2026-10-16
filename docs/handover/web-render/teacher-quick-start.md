@@ -26,8 +26,8 @@ Dành cho giáo viên phụ trách lớp dùng Family Bridge bản web
 6. **Đổi mật khẩu / đổi mã tại Cài đặt** (`#/settings`):
    - Đổi **mật khẩu** cần mật khẩu hiện tại; đổi xong các phiên khác bị đăng
      xuất (số phiên do máy chủ báo).
-   - Đổi **mã đăng nhập** cần mật khẩu hiện tại; mã mới 4–32 chữ cái/số.
-   - Đổi **tên hiển thị** không cần mật khẩu.
+   - Đổi **mã đăng nhập** cần mật khẩu hiện tại; mã mới 3–16 chữ cái/số.
+   - Đổi **tên hiển thị** cũng cần mật khẩu hiện tại để xác nhận.
 7. **Đăng xuất** ở cuối trang Cài đặt — phiên trên thiết bị này bị thu hồi.
 
 ## 2. Hỗ trợ riêng tư cho học sinh

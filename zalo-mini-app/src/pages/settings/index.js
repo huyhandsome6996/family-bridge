@@ -26,7 +26,7 @@ import {
   createButton, createCard, createDialog, createEmptyState, createDemoBanner,
 } from "../../components/index.js";
 
-const CODE_PATTERN = /^[A-Za-z0-9]{4,32}$/;
+const CODE_PATTERN = /^[A-Za-z0-9]{3,16}$/;
 
 function readState(store) {
   if (store && typeof store.getState === "function") return store.getState();
@@ -58,7 +58,7 @@ export function settingsErrorCopy(error) {
     return "Mã mới trùng mã hiện tại.";
   }
   if (reason === "invalid_code_format" || code === "invalid_code_format") {
-    return "Mã mới chưa đúng định dạng (4–32 chữ cái hoặc số, không dấu cách/ký tự đặc biệt).";
+    return "Mã mới chưa đúng định dạng (3–16 chữ cái hoặc số, không dấu cách/ký tự đặc biệt).";
   }
   if (error.status === 400 && reason === "weak_password") {
     return "Mật khẩu mới chưa đủ mạnh theo yêu cầu của máy chủ.";
@@ -429,8 +429,8 @@ function renderClassCodeCard(ctx, { disabledByServer }) {
     });
     const newCode = h("input", {
       class: "fb-input", type: "text", autocomplete: "off",
-      placeholder: "Mã mới (4–32 chữ cái/số)", "aria-label": "Mã đăng nhập mới",
-      maxlength: "32",
+      placeholder: "Mã mới (3–16 chữ cái/số)", "aria-label": "Mã đăng nhập mới",
+      maxlength: "16",
     });
     const submit = createButton({
       label: "Đổi mã đăng nhập",
@@ -443,7 +443,7 @@ function renderClassCodeCard(ctx, { disabledByServer }) {
       const code = String(newCode.value || "").trim();
       if (!CODE_PATTERN.test(code)) {
         note.appendChild(h("span", { class: "fb-field__error", role: "alert" },
-          "Mã mới chưa đúng định dạng (4–32 chữ cái hoặc số, không dấu cách/ký tự đặc biệt)."));
+          "Mã mới chưa đúng định dạng (3–16 chữ cái hoặc số, không dấu cách/ký tự đặc biệt)."));
         return;
       }
       submit.disabled = true;
