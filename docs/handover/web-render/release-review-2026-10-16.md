@@ -43,4 +43,58 @@ invoked by web classroom login. No forced SDK downgrade/upgrade was applied.
 SDK dependency maintenance remains follow-up work; this is not a security
 certification or evidence for all 15 features.
 
-Live deployment and smoke-test results are recorded after verification.
+## Live verification completed
+
+- PR #36 merged to main `41b17a37732f6cf958b36b1f4265c6aabed2d6a8`
+  after all four GitHub workflows passed, including real MySQL checks.
+- Existing backend deployed main's F16 code `7cf3851`, Render deployment
+  `dep-db8p50bl550s73emsobg` (Live). Backend source is identical in the web merge.
+- Blueprint created static service `srv-db8p6p4s728c73ailbig`; frontend deployed
+  the merge with the real API build variable, deployment
+  `dep-db8p7j49v7es73dcur30` (Live).
+- Public site: <https://family-bridge-web.onrender.com/#/login>.
+  Existing API: <https://family-bridge-backend.onrender.com>.
+- Health and database readiness both HTTP 200/ok. Capabilities return
+  local_class=true, zalo=false and all three classroom settings enabled.
+- API CORS preflight accepts the exact web origin, preserving prior origins.
+  Production JS includes the configured API origin and returns no-cache/nosniff.
+- Provisioned 100 synthetic pilot accounts (HS001–HS050, PH001–PH050) and 50
+  same-index proposals via the idempotent management command after a clean
+  dry-run. Passwords are hashed; initialization credentials stay in private
+  owner handover, never in this repository or frontend bundle.
+- Live API smoke: HS001 and PH001 login HTTP 200 with their server-assigned
+  student/caregiver roles; profile and own proposal list HTTP 200, one proposed
+  pair per actor. Logout HTTP 200; the revoked token then returns HTTP 401.
+- Real browser: HS001 submitted the public web login form and reached
+  `#/consent` with all purposes initially unchecked. No terms, research/AI
+  consent or partner confirmation was submitted on behalf of the user.
+- Real backend wiring/Zalo dormancy tests: 18 passed. Deployment checks have
+  only W005/W021 (HSTS subdomain/preload not enabled on the shared Render host).
+- Enabled frontend push-to-deploy on main after the successful manual smoke.
+  Backend auto-deploy remains off because schema changes require migration.
+
+## Additional real integration defects repaired
+
+Live navigation exposed false session expiry in feature consumers. Production
+F15/F05 fallbacks had incorrect sibling imports, F05 returned a Session where
+its authenticator expects `(user, session)`, and several other feature session
+ports had no production fallback. A shared fallback now validates persisted
+F01 sessions and supplies that exact pair; registered standalone test ports
+retain precedence. It creates no sessions and grants no extra capabilities.
+
+The new real-backend regression reproduced 401 failures on privacy, messages
+and drafts and a missing connection reader before the fix. After repair, 16
+backend integration/wiring tests pass, covering all 13 registry consumers,
+invalid and revoked tokens, and denial of admin access to a classroom user.
+Database migrations remain unchanged.
+
+Logout UI captured the generation before the real adapter synchronously
+cleared the session, mistaking its own logout for a new actor. Settings and
+Profile now capture after invalidation and still protect a newer signed-in
+actor. 132 focused frontend auth/screen regressions pass, including successful
+logout, pending server revocation and a late response after another login.
+
+Scope limits: this proves deployment and the login/session path; it does not
+certify all 15 features, bilateral confirmation on live participant accounts,
+actual delivery/AI configuration, or Zalo device execution. Local full harness
+results, when available, are separate from the passing GitHub workflow evidence.

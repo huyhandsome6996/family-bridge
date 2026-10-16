@@ -41,4 +41,5 @@ def get_ai_provider() -> Optional[Callable]:
 
 
 def get_session_resolver() -> Optional[Callable]:
-    return _session_resolver
+    from family_bridge_core.sessions import resolve_identity_session
+    return _session_resolver or resolve_identity_session

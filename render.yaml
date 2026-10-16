@@ -93,9 +93,8 @@ services:
   #    (sync:false — never commit it; it is baked into the JS bundle at build).
   # 3. Backend env CORS_ALLOWED_ORIGINS += https://family-bridge-web.onrender.com
   #    (comma-separated list, no wildcards).
-  # 4. First deploy is MANUAL ("Manual Deploy" button) — autoDeployTrigger stays
-  #    'off' until the first successful verification from the live site; flip it
-  #    afterwards if you want push-to-deploy.
+  # 4. First live login was verified on 2026-10-16. The static web now deploys
+  #    each main commit; backend schema releases remain explicitly managed.
   # 5. Verify: open the site, login with a class code, check /api/v1/health/.
   #
   # NOTE: buildCommand deliberately EXCLUDES `npm test` — tests run in CI
@@ -109,7 +108,7 @@ services:
     branch: main
     buildCommand: cd zalo-mini-app && npm ci && npm run build
     staticPublishPath: zalo-mini-app/www
-    autoDeployTrigger: 'off'
+    autoDeployTrigger: commit
     pullRequestPreviewsEnabled: false
     envVars:
       - key: NODE_VERSION

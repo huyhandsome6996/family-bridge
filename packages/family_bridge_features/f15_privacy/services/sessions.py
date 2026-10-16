@@ -37,7 +37,7 @@ def resolve_session(raw_token: str) -> Optional[Tuple[object, object]]:
     if _resolver is not None:
         return _resolver(raw_token)
     try:  # integration path: F01 present
-        from ..f01_identity.services.identity import SessionService
+        from family_bridge_features.f01_identity.services.identity import SessionService
         session = SessionService.resolve_session(raw_token)
         return (session.user, session) if session else None
     except ImportError:

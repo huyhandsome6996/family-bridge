@@ -43,7 +43,7 @@ def get_connection_reader() -> Optional[Callable]:
     if _connection_reader is not None:
         return _connection_reader
     try:  # integration path
-        from ..f01_identity.services.invites import InviteService
+        from family_bridge_features.f01_identity.services.invites import InviteService
         service = InviteService()
         return service
     except ImportError:
@@ -85,11 +85,5 @@ def register_session_resolver(fn: Callable) -> None:
 
 
 def get_session_resolver() -> Optional[Callable]:
-    global _session_resolver
-    if _session_resolver is not None:
-        return _session_resolver
-    try:
-        from ..f01_identity.services.identity import SessionService
-        return SessionService.resolve_session
-    except ImportError:
-        return None
+    from family_bridge_core.sessions import resolve_identity_session
+    return _session_resolver or resolve_identity_session
