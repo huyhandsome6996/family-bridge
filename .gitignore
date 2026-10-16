@@ -106,3 +106,4 @@ ehthumbs.db
 .claude/
 .grok/
 .agents/mcp_config.json
+.grok/config.toml
