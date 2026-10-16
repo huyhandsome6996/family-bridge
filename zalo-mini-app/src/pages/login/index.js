@@ -10,7 +10,7 @@ import { POLICY_PURPOSES } from "../../core/policy.js";
 import { loginErrorMessage } from "../../core/login-error.js";
 import logoLockupUrl from "../../assets/logo/logo-lockup-transparent.png";
 import {
-  createButton, createCard, createStatusBadge, createTopBar,
+  createButton, createCard, createStatusBadge, createTopBar, createLogo,
 } from "../../components/index.js";
 import {
   createCredentialForm, createLocalClassDisabledCard,
@@ -29,10 +29,22 @@ export const page = {
     let cancelled = false;
     markRenderCancelled = () => { cancelled = true; };
 
-    const root = h("div", { class: "fb-page", dataset: { page: "f01-login" } });
+    const webLogin = !isZaloHost() && !ctx.store.getState().demoMode;
+    const root = h("div", {
+      class: webLogin ? "fb-page fb-page--web-login" : "fb-page",
+      dataset: { page: "f01-login" },
+    });
 
     root.appendChild(
-      createTopBar({
+      webLogin ? h("header", { class: "fb-login-header" },
+        h("a", { class: "fb-login-header__brand", href: "#/welcome", "aria-label": "Family Bridge — Giới thiệu" },
+          createLogo({ size: "md" }), h("span", {}, "Family Bridge"),
+        ),
+        h("nav", { class: "fb-login-header__nav", "aria-label": "Hướng dẫn và hỗ trợ" },
+          h("a", { href: "#/how-to-use" }, "Cách sử dụng"),
+          h("a", { href: "#/help" }, "Tìm trợ giúp"),
+        ),
+      ) : createTopBar({
         title: "Đăng nhập",
         showBack: true,
         onBack: () => ctx.navigate("/how-to-use"),
