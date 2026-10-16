@@ -1290,6 +1290,18 @@
 
 .fb-compose__ai-suggestion[hidden] { display: none; }
 
+/* R2A3-08: lỗi trong sheet (consent/confirm) cần nổi bật — mirror .fb-cred__error,
+   chỉ dùng token hiện có (--fb-error/--fb-error-bg). */
+.fb-compose__sheet-error {
+  margin: 0;
+  color: var(--fb-error);
+  background: var(--fb-error-bg);
+  border-radius: var(--fb-radius-control);
+  padding: 8px 12px;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
 .fb-compose__ai-suggest-label {
   margin: 0;
   font-size: var(--fb-fs-label-sm);
@@ -1302,6 +1314,80 @@
   line-height: 1.55;
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* ---- F04 (US-029/US-033): trạng thái gợi ý AI (stale/error/consent) ---- */
+
+.fb-compose__ai-suggest-note {
+  margin: 0;
+  font-size: var(--fb-fs-label-sm);
+  line-height: 1.5;
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__ai-banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+  padding: var(--fb-space-2) var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  border: 1px solid transparent;
+}
+
+.fb-compose__ai-banner--warn {
+  background: var(--fb-surface-container);
+  border-color: var(--fb-accent);
+}
+
+.fb-compose__ai-banner-title {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  color: var(--fb-text);
+}
+
+.fb-compose__ai-banner-text {
+  margin: 0;
+  font-size: var(--fb-fs-label-sm);
+  line-height: 1.5;
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__ai-cancel {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 var(--fb-space-3);
+}
+
+.fb-ai-consent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-ai-consent__block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+}
+
+.fb-ai-consent__head {
+  margin: 0;
+  font-weight: 600;
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+}
+
+.fb-ai-consent__list {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
 }
 
 /* ============ Web M5a — Hộp thư w14 (master list + detail) ============ */

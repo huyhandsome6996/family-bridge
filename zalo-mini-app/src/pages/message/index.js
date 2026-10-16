@@ -19,10 +19,23 @@
 // - KHÔNG hiển thị trạng thái xem của người nhận (không có tính năng đó).
 // - KHÔNG nháp tự động giả; AI (F04) chỉ là gợi ý điền VÀO TEXTAREA.
 // - Body render bằng textContent (SEC-12) — bong bóng căn theo direction.
+//
+// F04 hợp đồng v1 (US-029/US-033) — đồng bộ với compose/index.js:
+// - suggested_text là field duy nhất (không refined_text); render textContent.
+// - inputRevision (C4): revision bắt đầu 1, tăng MỖI input event trên
+//   textarea của khung phản hồi; gửi kèm aiRefine; gợi ý gắn revision lúc
+//   tạo — sửa nội dung trước/trong/sau response → STALE: cảnh báo (frame
+//   zalo_f04_07) + "Dùng gợi ý" DISABLED, kiểm tra lại revision khi bấm apply.
+// - Consent `ai_processing` (C5): sheet disclosure trước lần refine đầu tiên
+//   khi chưa active; từ chối vẫn viết/gửi tay bình thường.
+// - Không auto-generate (C6); loading không chặn gõ tay; lỗi/off trung thực;
+//   apply/discard gọi API thật (aiAccept/aiDiscard), không tạo Message.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
+import { POLICY_PURPOSES } from "../../core/policy.js";
 import {
   createButton,
+  createSheet,
   createEmptyState,
   createErrorState,
   createDemoBanner,
@@ -75,6 +88,22 @@ const KIND_LABELS = {
 };
 
 function describeError(error, fallback) {
+  // R2A3-03: quota thật của backend = 503 temporarily_unavailable +
+  // details.reason="provider_quota_exceeded" — đọc details.reason trước,
+  // giữ status/code làm fallback (đồng bộ compose/index.js).
+  const quotaReason = error && error.details && error.details.reason;
+  if (error && error.code === "consent_required") {
+    return "Cần đồng ý xử lý AI trước khi tạo gợi ý. Bạn vẫn viết tay và gửi bình thường.";
+  }
+  if (error && (error.status === 429
+    || quotaReason === "provider_quota_exceeded"
+    || error.code === "provider_quota_exceeded"
+    || error.code === "quota_exceeded")) {
+    return "Hết lượt gợi ý AI trong thời gian này. Lời phản hồi của bạn giữ nguyên — bạn viết tay bình thường và thử lại sau.";
+  }
+  if (error && (error.status === 503 || error.code === "ai_disabled" || error.code === "provider_disabled")) {
+    return "Tính năng gợi ý AI đang tắt hoặc bảo trì trên máy chủ. Lời phản hồi của bạn giữ nguyên — bạn viết tay bình thường.";
+  }
   if (error && error.kind === "timeout") {
     return `Kết nối quá thời gian chờ. ${fallback}`;
   }
@@ -104,6 +133,8 @@ export const page = {
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
+      // C7: rời trang phải gỡ sheet (consent AI) còn mở — không render state cũ.
+      root.querySelectorAll(".fb-sheet-root, .fb-sheet, .fb-overlay").forEach((el) => el.remove());
     };
 
     const messageId = ctx.params ? ctx.params.get("id") : null;
@@ -308,11 +339,30 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   composeCard.appendChild(statusNote);
   body.appendChild(composeCard);
 
+  const sending = { busy: false };
+
+  // F04 (C4): revision của khung phản hồi — tăng MỖI input event trên textarea.
+  const ai = {
+    revision: 1,
+    suggestion: null, // { dto, key, boundRevision }
+    consentChecked: false,
+    consentChecking: false, // R2A3-02: đang bay lượt listConsents — chặn double-click
+    consentActive: false,
+    policyVersion: POLICY_PURPOSES.ai_processing.version,
+    busy: false,
+    gen: 0,
+    applying: false,
+    discarding: false,
+    rerender: null, // renderAiSlot gán hàm render thẻ gợi ý
+  };
+
   textarea.addEventListener("input", () => {
     sendBtn.disabled = !textarea.value.trim();
+    // C4: mỗi keystroke tăng inputRevision + render lại thẻ gợi ý nếu đang có
+    // (gợi ý tạo từ revision cũ chuyển STALE ngay lập tức).
+    ai.revision += 1;
+    if (ai.rerender) ai.rerender();
   });
-
-  const sending = { busy: false };
 
   function onSend() {
     const text = textarea.value.trim();
@@ -411,22 +461,42 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
     .then(() => ctx.adapter.aiStatus())
     .then((aiStatus) => {
       if (stale()) return;
-      const enabled = Boolean(
-        aiStatus && (aiStatus.enabled === true || aiStatus.ai_enabled === true),
-      );
+      // Hợp đồng C1: máy chủ trả {ai_enabled} — đọc đúng shape, không fallback
+      // shape lạ (R2A3-05). Lỗi fetch -> catch: không render nút, không tuyên bố.
+      const enabled = Boolean(aiStatus && aiStatus.ai_enabled === true);
       if (!enabled) return; // trung thực: không có cổng thì không có nút
-      renderAiSlot(ctx, { aiSlot, textarea, stale });
+      renderAiSlot(ctx, { aiSlot, textarea, stale, ai, pageBody: body });
     })
     .catch(() => { /* không có trạng thái AI → không nút */ });
 }
 
 /* --------------------------- AI gợi ý (chỉ điền textarea) --------------------------- */
 
-function renderAiSlot(ctx, { aiSlot, textarea, stale }) {
+/** Đánh giá consent `ai_processing` (đồng bộ compose/index.js — C5). */
+function evaluateAiConsent(rows) {
+  const fallbackVersion = POLICY_PURPOSES.ai_processing.version;
+  const row = Array.isArray(rows)
+    ? rows.find((item) => item && item.purpose === "ai_processing")
+    : null;
+  if (!row) return { active: false, policyVersion: fallbackVersion };
+  const accepted = row.decision === "accepted" && !row.withdrawn;
+  let currentOk;
+  if (row.current === true) currentOk = true;
+  else if (row.current === false) currentOk = false;
+  else currentOk = !row.policy_version || row.policy_version === fallbackVersion;
+  return {
+    active: Boolean(accepted && currentOk),
+    policyVersion: row.current === true && row.policy_version
+      ? row.policy_version
+      : fallbackVersion,
+  };
+}
+
+function renderAiSlot(ctx, { aiSlot, textarea, stale, ai, pageBody }) {
   const pill = h("button", {
     class: "fb-btn fb-btn--neutral",
     type: "button",
-    title: "Xin gợi ý diễn đạt êm ái hơn cho lời phản hồi hiện tại.",
+    title: "Xin gợi ý diễn đạt êm ái hơn cho lời phản hồi hiện tại. Bạn xem, sửa và quyết định trước khi dùng.",
     onclick: () => onAiRefine(),
   },
     createIcon({ name: "auto_awesome", size: 18 }),
@@ -434,89 +504,326 @@ function renderAiSlot(ctx, { aiSlot, textarea, stale }) {
   );
   const aiMsg = h("p", { class: "fb-sec__sub", role: "status" },
     "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời phản hồi của mình.");
+  const cancelBtn = h("button", {
+    class: "fb-btn fb-btn--ghost fb-compose__ai-cancel",
+    type: "button",
+    hidden: true,
+  }, "Hủy chờ gợi ý");
   const suggestion = h("div", { class: "fb-compose__ai-suggestion", hidden: true });
   aiSlot.appendChild(pill);
   aiSlot.appendChild(aiMsg);
+  aiSlot.appendChild(cancelBtn);
   aiSlot.appendChild(suggestion);
 
-  let current = null;
+  function setBusy(loading) {
+    pill.disabled = Boolean(loading);
+    cancelBtn.hidden = !loading;
+  }
 
-  function onAiRefine() {
+  function setMsg(text) {
+    aiMsg.textContent = text;
+  }
+
+  cancelBtn.addEventListener("click", () => {
+    if (!ai.busy) return;
+    ai.gen += 1;
+    ai.busy = false;
+    setBusy(false);
+    setMsg("Bạn đã hủy chờ gợi ý — lời phản hồi giữ nguyên. Bấm lại khi bạn sẵn sàng.");
+  });
+
+  ai.rerender = () => renderSuggestion();
+
+  function onAiRefine({ regenerate = false } = {}) {
+    if (ai.busy) {
+      if (!regenerate) return; // double-click / chồng lượt
+      ai.gen += 1; // hủy CHỜ lượt cũ rồi gọi lượt mới (một inflight)
+      ai.busy = false;
+    }
     const text = textarea.value.trim();
     if (!text) {
-      aiMsg.textContent = "Hãy viết vài dòng trước khi dùng gợi ý AI.";
+      setMsg("Hãy viết vài dòng trước khi dùng gợi ý AI.");
       return;
     }
-    pill.disabled = true;
-    aiMsg.textContent = "Đang xin gợi ý từ máy chủ…";
-    const key = newIdemKey();
+    if (ai.consentChecked && ai.consentActive) {
+      requestRefine();
+      return;
+    }
+    // R2A3-02: double-click trong cửa sổ listConsents đang bay → chỉ MỘT lượt
+    // kiểm tra (1 sheet / tối đa 1 POST consents) — đồng bộ compose/index.js.
+    if (ai.consentChecking) return;
+    setMsg("Đang kiểm tra thiết lập đồng ý…");
+    ai.consentChecking = true;
     Promise.resolve()
-      .then(() => ctx.adapter.aiRefine({ text, key }))
-      .then((result) => {
-        pill.disabled = false;
+      .then(() => ctx.adapter.listConsents())
+      .then((rows) => {
         if (stale()) return;
-        if (!result || !result.suggestion_id) throw new Error("invalid_suggestion");
-        current = result;
+        ai.consentChecking = false;
+        const verdict = evaluateAiConsent(rows);
+        ai.consentChecked = true;
+        ai.consentActive = verdict.active;
+        ai.policyVersion = verdict.policyVersion;
+        if (verdict.active) {
+          requestRefine();
+          return;
+        }
+        openConsentSheet();
+      })
+      .catch(() => {
+        if (stale()) return;
+        ai.consentChecking = false;
+        openConsentSheet();
+      });
+  }
+
+  function requestRefine() {
+    const text = textarea.value.trim();
+    if (!text) {
+      setMsg("Hãy viết vài dòng trước khi dùng gợi ý AI.");
+      return;
+    }
+    ai.busy = true;
+    ai.gen += 1;
+    const myGen = ai.gen;
+    setBusy(true);
+    setMsg("Đang tạo gợi ý diễn đạt… Bạn vẫn gõ tay và gửi phản hồi bình thường.");
+    const key = newIdemKey();
+    const revisionAtRequest = ai.revision;
+    Promise.resolve()
+      .then(() => ctx.adapter.aiRefine({ text, key, inputRevision: revisionAtRequest }))
+      .then((result) => {
+        if (stale() || myGen !== ai.gen) return;
+        ai.busy = false;
+        setBusy(false);
+        if (!result
+          || !result.suggestion_id
+          || typeof result.suggested_text !== "string"
+          || !result.suggested_text.trim()) {
+          throw new Error("invalid_suggestion");
+        }
+        const echo = Number(result.input_revision);
+        ai.suggestion = {
+          dto: result,
+          key,
+          boundRevision: Number.isFinite(echo) && echo > 0 ? echo : revisionAtRequest,
+        };
         renderSuggestion();
-        aiMsg.textContent = "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời phản hồi của mình.";
+        setMsg("Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời phản hồi của mình.");
       })
       .catch((error) => {
-        pill.disabled = false;
-        aiMsg.textContent = describeError(error, "Chưa lấy được gợi ý AI — lời phản hồi của bạn giữ nguyên.");
+        if (stale() || myGen !== ai.gen) return;
+        ai.busy = false;
+        setBusy(false);
+        if (error && error.code === "consent_required") {
+          ai.consentChecked = false;
+          ai.consentActive = false;
+          setMsg("Máy chủ yêu cầu đồng ý xử lý AI trước khi tạo gợi ý.");
+          openConsentSheet();
+          return;
+        }
+        setMsg(describeError(error,
+          "Chưa tạo được gợi ý — hệ thống hỗ trợ diễn đạt đang bận hoặc gián đoạn. "
+          + "Lời phản hồi của bạn giữ nguyên: bạn có thể viết tay hoặc thử lại sau."));
       });
   }
 
-  function onAiAccept(suggestionRow) {
+  /** Sheet disclosure consent AI (frames zalo_f04_02/03) — C5. */
+  function openConsentSheet() {
+    const sheetError = h("div", { role: "alert" });
+
+    const agreeBtn = createButton({
+      label: "Đồng ý và tạo gợi ý",
+      variant: "primary",
+      onClick: () => {
+        agreeBtn.disabled = true;
+        Promise.resolve()
+          .then(() => ctx.adapter.recordConsent({
+            purpose: "ai_processing",
+            policyVersion: ai.policyVersion || POLICY_PURPOSES.ai_processing.version,
+            decision: "accepted",
+          }))
+          .then(() => {
+            ai.consentChecked = true;
+            ai.consentActive = true;
+            closeSheet();
+            setMsg("Bạn đã cho phép xử lý để tạo gợi ý — đang tạo…");
+            requestRefine();
+          })
+          .catch((error) => {
+            agreeBtn.disabled = false;
+            clear(sheetError);
+            sheetError.appendChild(
+              h("p", { class: "fb-compose__sheet-error", role: "alert" },
+                describeError(error,
+                  "Chưa ghi nhận được lựa chọn đồng ý. Bạn vẫn viết tay và gửi bình thường — thử lại sau."),
+              ),
+            );
+          });
+      },
+    });
+
+    const declineBtn = createButton({
+      label: "Viết tay thôi",
+      variant: "ghost",
+      onClick: () => {
+        closeSheet();
+        setMsg("Bạn chọn không dùng gợi ý AI — bạn vẫn viết tay, lưu và gửi phản hồi bình thường.");
+      },
+    });
+
+    const content = h("div", { class: "fb-ai-consent" },
+      h("p", { class: "fb-page__note" },
+        "Để tạo gợi ý diễn đạt, bạn cần cho phép xử lý nội dung sau. Việc này riêng cho gợi ý AI — không liên quan đến bước gửi thư."),
+      h("div", { class: "fb-ai-consent__block" },
+        h("p", { class: "fb-ai-consent__head" }, "Dữ liệu sẽ được gửi đi:"),
+        h("ul", { class: "fb-ai-consent__list" },
+          h("li", {}, "Câu bạn đang soạn trong ô phản hồi."),
+          h("li", {}, "Ngữ cảnh bạn tự nguyện thêm (nếu có)."),
+          h("li", {}, "Không gửi lịch sử trò chuyện, nhật ký hay thông tin của người khác."),
+        ),
+      ),
+      h("div", { class: "fb-ai-consent__block" },
+        h("p", { class: "fb-ai-consent__head" }, "Ai xử lý dữ liệu này:"),
+        h("ul", { class: "fb-ai-consent__list" },
+          h("li", {}, "Câu và ngữ cảnh trên được chuyển đến dịch vụ AI (Gemini của Google) — bên xử lý kỹ thuật theo chính sách của ứng dụng — để đề xuất cách diễn đạt."),
+          h("li", {}, "Người thân của bạn không đọc phần này. Người nhận chỉ thấy lời phản hồi cuối cùng sau khi bạn tự bấm gửi; bản gốc và gợi ý không được gửi kèm."),
+        ),
+      ),
+      h("div", { class: "fb-ai-consent__block" },
+        h("p", { class: "fb-ai-consent__head" }, "Bạn luôn kiểm soát:"),
+        h("ul", { class: "fb-ai-consent__list" },
+          h("li", {}, "Gợi ý chỉ điền vào ô phản hồi để bạn xem và sửa; không gì được gửi đi khi thiếu bước xác nhận của bạn."),
+          h("li", {}, "Từ chối cũng không sao: bạn vẫn viết tay và gửi phản hồi bình thường."),
+        ),
+      ),
+      sheetError,
+      agreeBtn,
+      declineBtn,
+    );
+
+    const sheet = createSheet({
+      title: "Trước khi dùng gợi ý AI",
+      content,
+      onClose: () => {
+        if (sheet && sheet.isConnected) sheet.remove();
+      },
+    });
+    // Dời sheet vào trang để destroy() dọn được theo trang (C7).
+    pageBody.appendChild(sheet);
+    function closeSheet() {
+      if (sheet && sheet.isConnected) sheet.remove();
+    }
+  }
+
+  /** Dùng gợi ý: aiAccept rồi điền suggested_text VÀO TEXTAREA (C4 + C7). */
+  function onAiAccept() {
+    const row = ai.suggestion;
+    if (!row || ai.applying) return;
+    if (row.boundRevision !== ai.revision) {
+      renderSuggestion();
+      setMsg("Gợi ý đã cũ sau khi bạn sửa nội dung — hãy tạo gợi ý mới hoặc viết tay.");
+      return;
+    }
+    const revisionAtClick = ai.revision;
+    ai.applying = true;
+    renderSuggestion(); // khóa nút theo ai.applying
     Promise.resolve()
-      .then(() => ctx.adapter.aiAccept(suggestionRow.suggestion_id))
+      .then(() => ctx.adapter.aiAccept(row.dto.suggestion_id))
       .then(() => {
         if (stale()) return;
-        textarea.value = String(suggestionRow.refined_text || textarea.value);
-        textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        current = null;
+        ai.applying = false;
+        if (ai.revision !== revisionAtClick) {
+          renderSuggestion();
+          setMsg("Bạn đã sửa nội dung trong lúc ghi nhận — gợi ý không được điền đè. Hãy tạo gợi ý mới cho nội dung hiện tại.");
+          return;
+        }
+        const suggested = String(row.dto.suggested_text || "");
+        ai.suggestion = null;
         renderSuggestion();
-        aiMsg.textContent = "Bạn đã dùng gợi ý — nội dung chỉ nằm trong ô soạn, chưa gửi.";
+        textarea.value = suggested; // value — CẤM innerHTML
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        setMsg("Bạn đã dùng gợi ý — nội dung chỉ nằm trong ô soạn, chưa gửi.");
       })
-      .catch(() => {
-        aiMsg.textContent = "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại.";
+      .catch((error) => {
+        if (stale()) return;
+        ai.applying = false;
+        renderSuggestion();
+        setMsg(describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
       });
   }
 
-  function onAiDiscard(suggestionRow) {
+  function onAiDiscard() {
+    const row = ai.suggestion;
+    if (!row || ai.discarding) return;
+    ai.discarding = true;
+    renderSuggestion();
     Promise.resolve()
-      .then(() => ctx.adapter.aiDiscard(suggestionRow.suggestion_id))
+      .then(() => ctx.adapter.aiDiscard(row.dto.suggestion_id))
       .then(() => {
-        current = null;
+        if (stale()) return;
+        ai.discarding = false;
+        ai.suggestion = null;
         renderSuggestion();
-        aiMsg.textContent = "Bạn đã bỏ gợi ý — lời phản hồi hiện tại giữ nguyên.";
+        setMsg("Bạn đã bỏ gợi ý — lời phản hồi hiện tại giữ nguyên.");
       })
-      .catch(() => {
-        aiMsg.textContent = "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại.";
+      .catch((error) => {
+        if (stale()) return;
+        ai.discarding = false;
+        renderSuggestion();
+        setMsg(describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
       });
   }
 
   function renderSuggestion() {
     clear(suggestion);
-    if (!current) {
+    const row = ai.suggestion;
+    if (!row) {
       suggestion.hidden = true;
       return;
     }
     suggestion.hidden = false;
-    suggestion.appendChild(h("p", { class: "fb-compose__ai-suggest-label" }, "Gợi ý của máy chủ:"));
+    const isStale = row.boundRevision !== ai.revision;
     suggestion.appendChild(
-      h("p", { class: "fb-compose__ai-suggest-text" }, String(current.refined_text || "")),
+      h("p", { class: "fb-compose__ai-suggest-label" },
+        isStale ? "Gợi ý của máy chủ (đã cũ):" : "Gợi ý của máy chủ:"),
     );
-    const row = h("div", { class: "fb-compose__pause-buttons" });
-    row.appendChild(createButton({
+    suggestion.appendChild(
+      h("p", { class: "fb-compose__ai-suggest-text" }, String(row.dto.suggested_text || "")),
+    );
+    if (isStale) {
+      suggestion.appendChild(
+        h("div", { class: "fb-compose__ai-banner fb-compose__ai-banner--warn", role: "alert" },
+          h("p", { class: "fb-compose__ai-banner-title" }, "Nội dung đã thay đổi kể từ khi tạo gợi ý"),
+          h("p", { class: "fb-compose__ai-banner-text" },
+            "Gợi ý này được tạo từ bản trước và có thể không còn phù hợp. Nút “Dùng gợi ý” tạm khóa để không ghi đè nội dung bạn vừa sửa — bạn vẫn viết tay bình thường."),
+        ),
+      );
+    } else {
+      suggestion.appendChild(
+        h("p", { class: "fb-compose__ai-suggest-note" },
+          "Bản gốc và gợi ý này không được gửi cho người nhận — chỉ lời phản hồi cuối cùng bạn chủ động gửi."),
+      );
+    }
+    const row2 = h("div", { class: "fb-compose__pause-buttons" });
+    const useBtn = createButton({
       label: "Dùng gợi ý",
       variant: "primary",
-      onClick: () => onAiAccept(current),
-    }));
-    row.appendChild(createButton({
+      onClick: () => onAiAccept(),
+    });
+    useBtn.disabled = isStale || ai.applying;
+    row2.appendChild(useBtn);
+    if (isStale) {
+      row2.appendChild(createButton({
+        label: "Tạo gợi ý mới",
+        variant: "ghost",
+        onClick: () => onAiRefine({ regenerate: true }),
+      }));
+    }
+    row2.appendChild(createButton({
       label: "Bỏ",
       variant: "ghost",
-      onClick: () => onAiDiscard(current),
+      onClick: () => onAiDiscard(),
     }));
-    suggestion.appendChild(row);
+    suggestion.appendChild(row2);
   }
 }

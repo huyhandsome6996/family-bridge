@@ -1,25 +1,43 @@
 {
   "feature_id": "F04",
-  "branch": "feat/f04-ai-expression",
-  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
+  "branch": "tinh-nang/f04-ai-ho-tro-dien-dat-us029-us033",
+  "baseline_sha": "72930ae",
   "us": ["US-029", "US-033"],
   "backend": {
     "app_label": "f04_ai",
     "package": "family_bridge_features.f04_ai",
     "routes_prefix": "",
     "endpoints": [
-      "GET /api/v1/ai/status (truthful ai_enabled flag)",
-      "POST /api/v1/ai/refine (X-Idempotency-Key; replay không gọi provider lần 2)",
+      "GET /api/v1/ai/status (truthful ai_enabled flag; cần auth)",
+      "POST /api/v1/ai/refine (X-Idempotency-Key bắt buộc; body {original_text 1..4000, purpose=refine_expression, input_revision? int dương <= 2147483647}; consent ai_processing gate server-side TRƯỚC provider call; replay cùng key+payload không gọi provider lần 2; cùng key khác payload -> 409 duplicate_key_payload_mismatch; provider NGOÀI atomic; 201 = AiSuggestion.view() + echo input_revision)",
       "GET /api/v1/ai/suggestions (author-only, latest 20)",
-      "GET /api/v1/ai/suggestions/{id} (author-only)",
-      "POST /api/v1/ai/suggestions/{id}/accept (author-only, không gửi)",
-      "POST /api/v1/ai/suggestions/{id}/discard (author-only)"
+      "GET /api/v1/ai/suggestions/{id} (author-only; người khác -> 404)",
+      "POST /api/v1/ai/suggestions/{id}/accept (author-only, một chiều, KHÔNG gửi)",
+      "POST /api/v1/ai/suggestions/{id}/discard (author-only, một chiều)"
     ],
-    "models": ["AiSuggestion"],
-    "ports_provided": ["AiExpressService (refine/decide/status)"],
-    "ports_consumed": ["AI provider port (B18 wiring — server allowlist + env keys; US-008 duyệt)", "session resolver"]
+    "models": ["AiSuggestion (+ input_revision nullable)"],
+    "ports_provided": ["AiExpressService (refine/decide/status)", "deletion hook category 'ai' (F15 register_deletion_hook)"],
+    "ports_consumed": ["AI provider port (Gemini REST qua stdlib, host allowlist generativelanguage.googleapis.com; env GEMINI_API_KEY secret / GEMINI_MODEL pin / FB_AI_ENABLED kill switch mặc định off / GEMINI_TIMEOUT_SECONDS 3..30 default 15 / GEMINI_MAX_OUTPUT_TOKENS 64..4096 default 1024; không network ở import/startup/health; thiếu config -> AI off fail closed)", "consent has_active_consent(user, ai_processing) của F01", "session resolver"]
+  },
+  "shared": {
+    "package": "packages/family_bridge_shared",
+    "adapter": [
+      "aiStatus -> GET /api/v1/ai/status (fallback {ai_enabled:false})",
+      "aiRefine({text,purpose,key,inputRevision?}) -> POST /api/v1/ai/refine; DTO pass-through NGUYÊN VẸN (suggested_text, không refined_text)",
+      "aiAccept/aiDiscard -> POST /api/v1/ai/suggestions/{id}/accept|discard",
+      "editDraft KHÔNG gửi kind (C8); listMessages/listMoodEntries dùng page_size + map next; listDrafts map server_time/pause_seconds",
+      "mock-adapter khớp serializer thật + echo input_revision + replay theo key"
+    ],
+    "regression_tests": "packages/family_bridge_shared/tests/f04-contract.test.mjs"
   },
   "mobile": {"module": "packages/family_bridge_mobile/f04_ai", "pages": ["refine"]},
-  "tests": {"backend": "18 PASS (SQLite; 46/46 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL quota race", "provider HTTP thật"]},
-  "status": "implemented"
+  "ui_owners": {"web": "A4 (web/src/pages/compose|message + components/ai-assist.js)", "zalo": "A3 (zalo-mini-app/src/pages/compose|message)"},
+  "tests": {
+    "shared": "node --test packages/family_bridge_shared/tests/*.test.mjs -> 50/50 PASS (50 gồm 16 regression F04-A1)",
+    "backend": "do A2 duy trì (working tree đang sửa: consent gate, provider ngoài atomic, input_revision, Gemini transport)",
+    "mobile": "3 PASS",
+    "not_run": ["MySQL quota race (SQLite thay thế không được coi là bằng chứng)", "live Gemini smoke (opt-in, key đã rotate)"]
+  },
+  "status": "in_progress",
+  "status_note": "Trung thực theo lớp: shared contract/adapter/mock/tests = implemented (A1); backend Django/Gemini/consent = do A2 đang hoàn thiện trên cùng nhánh (working tree, chưa commit); web/zalo UI = A4/A3; QA độc lập = A5. Không giữ claim 'implemented' tổng thể."
 }

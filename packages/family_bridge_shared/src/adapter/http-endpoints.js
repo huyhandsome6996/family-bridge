@@ -265,6 +265,14 @@ export function createHttpEndpoints({
       return data; // draft.view + server_time (countdown từ MÁY CHỦ)
     },
 
+    /**
+     * POST /api/v1/drafts/{id} — edit theo hợp đồng C8: `kind` OPTIONAL khi
+     * edit (bất biến sau create) — adapter KHÔNG BAO GIỜ gửi `kind` trong body
+     * edit; edit chỉ mang field có mặt (body/title/card/recipient). Lưu ý:
+     * backend f06_drafts tại baseline 72930ae vẫn validate `kind` ở edit
+     * (DraftDetailView.post -> _content_fields require_all=True rồi mới pop)
+     * — gap backend thuộc A2, không fix bằng cách gửi kind từ client.
+     */
     async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId }) {
       requireBaseUrl();
       const data = await authed(() =>
@@ -480,15 +488,17 @@ export function createHttpEndpoints({
     },
 
     // ---------------------- Web (Task 2): F05 hộp thư ------------------------
-    // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Cursor của
-    // f05 dùng tên "next" trong envelope → map về nextCursor cho UI.
+    // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Envelope của
+    // f05: param trang là `page_size`, cursor là `next` → map về
+    // { results, nextCursor } cho UI (handoff 02 §4.6: không để tham số trang
+    // bị máy chủ bỏ im lặng).
 
     async listMessages({ cursor = null, limit, timeoutMs } = {}) {
       requireBaseUrl();
       const data = await authed(() => request("/api/v1/messages", {
         query: {
           ...(cursor ? { cursor } : {}),
-          ...(limit ? { limit: String(limit) } : {}),
+          ...(limit ? { page_size: String(limit) } : {}),
         },
         ...(timeoutMs ? { timeoutMs } : {}),
       }));
@@ -675,19 +685,41 @@ export function createHttpEndpoints({
       return data || { ai_enabled: false };
     },
 
-    /** POST /api/v1/ai/refine — key bắt buộc; replay cùng key trả CÙNG gợi ý. */
-    async aiRefine({ text, purpose = "refine_expression", key, timeoutMs } = {}) {
+    /**
+     * POST /api/v1/ai/refine — key BẮT BUỘC do caller tạo (crypto.randomUUID);
+     * replay cùng key trả CÙNG gợi ý (máy chủ quyết). Body mapping theo hợp
+     * đồng freeze v1 (C2): {original_text, purpose, input_revision?}.
+     * inputRevision là field MỚI optional (counter keystroke của composer):
+     *  - KHÔNG truyền / null  → body legacy {original_text, purpose} — máy chủ
+     *    hiện hành chấp nhận (payload thiếu input_revision vẫn hợp lệ).
+     *  - Truyền số nguyên dương ≤ 2147483647 → gửi kèm `input_revision`; máy chủ
+     *    echo lại trong DTO để UI đối chiếu stale (C7).
+     * Response trả NGUYÊN VẸN DTO của máy chủ (AiSuggestion.view() + echo) —
+     * adapter KHÔNG đổi tên field: text duy nhất là `suggested_text`, không
+     * bao giờ `refined_text`, không biến đổi envelope.
+     */
+    async aiRefine({ text, purpose = "refine_expression", key, inputRevision, timeoutMs } = {}) {
       requireBaseUrl();
       if (!key) {
         throw new ApiError("Thiếu khóa lượt gửi (idempotency key).", 0, "configuration");
       }
+      const body = { original_text: text, purpose };
+      if (inputRevision !== undefined && inputRevision !== null) {
+        if (!Number.isInteger(inputRevision) || inputRevision < 1
+          || inputRevision > 2147483647) {
+          // Chặn trước fetch — 1..2147483647 theo hợp đồng C2 (int dương).
+          throw new ApiError("inputRevision phải là số nguyên dương.", 400, "http",
+            { code: "input_invalid", details: { field: "input_revision", reason: "must_be_positive_int" } });
+        }
+        body.input_revision = inputRevision;
+      }
       const data = await authed(() => request("/api/v1/ai/refine", {
         method: "POST",
-        body: { original_text: text, purpose },
+        body,
         idempotencyKey: key,
         ...(timeoutMs ? { timeoutMs } : {}),
       }));
-      return data; // suggestion.view() (201)
+      return data; // suggestion.view() (201) — pass-through, không rename field
     },
 
     async aiAccept(suggestionId) {
@@ -797,7 +829,8 @@ export function createHttpEndpoints({
       const data = await authed(() => request("/api/v1/mood/entries", {
         query: {
           ...(cursor ? { cursor } : {}),
-          ...(limit ? { limit: String(limit) } : {}),
+          // F07 dùng param trang `page_size` + envelope `next` (giống F05).
+          ...(limit ? { page_size: String(limit) } : {}),
         },
       }));
       return {

@@ -25,12 +25,28 @@
 // - w12: SVG vòng đếm pause (stroke --fb-accent, đổi --fb-success khi hết)
 //   TÍNH TỪ remainingFromServer()/deadline máy chủ — KHÔNG timer lặp
 //   (DSA-10); body nháp bị làm mờ (niêm phong) trong lúc paused.
-// - AI (F04) là cổng THẬT: aiStatus() bật/tắt; aiRefine({text,key}) -> thẻ
-//   gợi ý; "Dùng gợi ý" -> aiAccept + chỉ điền VÀO TEXTAREA (không auto-save,
-//   không tự gửi — mọi thao tác ghi chờ người dùng xác nhận); "Bỏ" ->
-//   aiDiscard. Không có key -> không gọi.
+// - AI (F04) là cổng THẬT: aiStatus() bật/tắt; aiRefine({text,key,inputRevision})
+//   -> thẻ gợi ý; "Dùng gợi ý" -> aiAccept + chỉ điền VÀO TEXTAREA (không auto-save,
+//   không tự gửi — mọi thao tác ghi chờ người dùng xác nhận); "Bỏ" -> aiDiscard.
+//   Không có key -> không gọi.
+//
+// F04 hợp đồng v1 (coordinator freeze — US-029/US-033):
+// - Response DTO NGUYÊN từ máy chủ, field text duy nhất là `suggested_text`
+//   (không có refined_text). Gợi ý render qua textContent — KHÔNG innerHTML.
+// - inputRevision (C4): mỗi ô soạn giữ revision bắt đầu từ 1, tăng MỖI input
+//   event; gửi kèm aiRefine. Gợi ý gắn với revision lúc tạo: người dùng sửa
+//   text trước/trong/sau khi response về -> gợi ý STALE (frame zalo_f04_07):
+//   cảnh báo + nút "Dùng gợi ý" DISABLED, chỉ còn viết tay / tạo gợi ý mới.
+// - Consent (C5): trước lần gọi refine đầu tiên khi chưa có consent
+//   `ai_processing` active -> sheet disclosure: nói rõ dữ liệu gì được gửi,
+//   Gemini là BÊN XỬ LÝ KỸ THUẬT (không phải người thân đọc tin), từ chối vẫn
+//   viết/lưu/gửi tay. Không precheck-bọc-gộp với gửi tin.
+// - Không auto-generate (C6): AI chỉ chạy khi bấm nút; loading không chặn gõ
+//   tay/lưu nháp/help; AI off/503/timeout/quota -> thông báo trung thực,
+//   KHÔNG fallback giả gợi ý.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
+import { POLICY_PURPOSES } from "../../core/policy.js";
 import {
   createButton,
   createSheet,
@@ -45,6 +61,10 @@ import {
 const BODY_MAX = 4000; // ràng buộc backend (f06 _content_fields)
 const PAUSE_SECONDS = 300; // hiển thị khoảng dừng chuẩn (máy chủ quyết thật)
 const DRAFT_KIND = "text"; // backend KINDS chỉ nhận ("text","emotion_card")
+
+// R2A3-04: aiStatus LỖI (mạng/phiên) ≠ AI OFF thật — sentinel để note không
+// tuyên bố sai "chưa được bật trên máy chủ" khi thực ra là không kiểm tra được.
+const AI_STATUS_UNREACHABLE = { unreachable: true };
 
 // Vòng đếm pause SVG (w12): stroke chạy theo tỷ lệ remaining/PAUSE_SECONDS.
 const RING_RADIUS = 28;
@@ -160,8 +180,9 @@ export const page = {
       Promise.resolve().then(() => ctx.adapter.listConnections({ limit: 20 })).catch(() => null),
       Promise.resolve().then(() => ctx.adapter.listDrafts({ limit: 20 })).catch(() => null),
       // F04 AI: trạng thái cổng gợi ý THẬT — lỗi/không bật không chặn trang;
-      // nút AI chỉ mở khi máy chủ báo bật (ai_enabled).
-      Promise.resolve().then(() => ctx.adapter.aiStatus()).catch(() => null),
+      // nút AI chỉ mở khi máy chủ báo bật (ai_enabled). Lỗi mạng → sentinel
+      // riêng (R2A3-04): không được nuốt thành "AI off".
+      Promise.resolve().then(() => ctx.adapter.aiStatus()).catch(() => AI_STATUS_UNREACHABLE),
     ])
       .then(([connectionsPage, draftsPage, aiStatus]) => {
         if (cancelled || currentRun !== runId) return;
@@ -177,9 +198,12 @@ export const page = {
           // còn lại của bản nháp đang paused khi tải lại trang (QA fix 3).
           listServerTimeIso: draftsPage && draftsPage.serverTime ? draftsPage.serverTime : null,
           demo,
-          aiEnabled: Boolean(
-            aiStatus && (aiStatus.ai_enabled === true || aiStatus.enabled === true),
-          ),
+          // Hợp đồng C1: máy chủ trả {ai_enabled} (express.py status()) — đọc
+          // đúng shape, không fallback shape lạ (R2A3-05).
+          aiEnabled: Boolean(aiStatus && aiStatus.ai_enabled === true),
+          aiStatusUnknown: aiStatus === AI_STATUS_UNREACHABLE,
+          // F04 (C7): mọi async AI phải bỏ qua kết quả khi đã rời trang/phiên cũ.
+          stale: () => cancelled || currentRun !== runId,
         });
       })
       .catch(() => {
@@ -212,7 +236,7 @@ function renderLoadError(body) {
 
 /* ------------------------------ Màn soạn chính ------------------------------ */
 
-function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEnabled = false }) {
+function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEnabled = false, aiStatusUnknown = false, stale = () => false }) {
   clear(body);
 
   const guarded = busyGuard();
@@ -235,6 +259,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     aiPill: null,
     aiMsg: null,
     aiSuggestion: null,
+    aiCancel: null, // F04: hủy CHỜ gợi ý (local, không tự retry)
   };
 
   const state = {
@@ -251,7 +276,22 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     recipientId: draft ? draft.recipient_id : null,
     connections,
     aiEnabled,
-    aiSuggestion: null,
+    aiStatusUnknown, // R2A3-04: không kiểm tra được trạng thái AI ≠ AI off
+  };
+
+  // F04 hợp đồng v1 — trạng thái riêng của cổng AI trên trang này.
+  // inputRevision (C4): bắt đầu 1, tăng MỖI input event trên textarea.
+  const ai = {
+    revision: 1,
+    suggestion: null, // { dto, key, boundRevision } — dto là response NGUYÊN
+    consentChecked: false, // đã đọc GET /consents trong phiên trang này
+    consentChecking: false, // R2A3-02: đang bay lượt listConsents — chặn double-click
+    consentActive: false, // ai_processing: accepted + current + không withdrawn
+    policyVersion: POLICY_PURPOSES.ai_processing.version,
+    busy: false, // refine đang chạy
+    gen: 0, // generation — dùng để HỦY CHỜ local (không hủy request máy chủ)
+    applying: false, // accept đang chạy (chống double-click)
+    discarding: false, // discard đang chạy
   };
 
   // ---- Bố cục desktop 2 cột (w11): <1024px vẫn 1 cột (CSS) ----
@@ -353,7 +393,13 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   const syncCounter = () => {
     ui.counter.textContent = `${ui.textarea.value.length} ký tự`;
   };
-  ui.textarea.addEventListener("input", syncCounter);
+  ui.textarea.addEventListener("input", () => {
+    // C4: MỖI input event tăng inputRevision — gợi ý AI gắn với revision lúc
+    // tạo; sửa nội dung làm gợi ý cũ thành STALE (render lại thẻ ngay).
+    ai.revision += 1;
+    syncCounter();
+    if (ai.suggestion) renderAiSuggestion(ctx, ai, ui, state, stale);
+  });
   syncCounter(); // đếm đúng cả khi tải lại bản nháp đã có nội dung
   editor.appendChild(ui.textarea);
 
@@ -471,18 +517,20 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     type: "button",
     disabled: !state.aiEnabled,
     title: state.aiEnabled
-      ? "Xin gợi ý diễn đạt êm ái hơn cho lời nhắn hiện tại."
-      : "Tính năng gợi ý AI chưa được bật ở bản này.",
+      ? "Xin gợi ý diễn đạt êm ái hơn cho lời nhắn hiện tại. Bạn xem, sửa và quyết định trước khi dùng."
+      : aiGateNote(state).trim(),
   },
     createIcon({ name: "auto_awesome", size: 18 }),
     h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
   );
-  ui.aiPill.addEventListener("click", () => guarded("ai", () => onAiRefine(ctx, state, ui)));
+  ui.aiPill.addEventListener("click", () => guarded("ai", () => onAiRefine(ctx, ai, ui, state, stale)));
   aiRow.appendChild(ui.aiPill);
+  // Nhãn cạnh nút nói về SỰ KIỂM SOÁT của người dùng (C5) — không dùng nhãn
+  // "Riêng tư" ngụ ý dữ liệu không rời máy chủ.
   aiRow.appendChild(
     h("span", { class: "fb-sec__sub", style: "display:inline-flex;align-items:center;gap:4px;" },
       createIcon({ name: "shield", size: 14 }),
-      "Riêng tư",
+      "Bạn duyệt trước khi dùng",
     ),
   );
   aiBox.appendChild(aiRow);
@@ -491,9 +539,24 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     h("span", {},
       state.aiEnabled
         ? " Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình."
-        : " Cổng gợi ý AI chưa được bật trên máy chủ — nút sẽ mở khi máy chủ bật."),
+        : aiGateNote(state)),
   );
   aiBox.appendChild(ui.aiMsg);
+  // Loading (frame zalo_f04_04): KHÔNG khóa soạn/lưu/help; chỉ có nút HỦY CHỜ
+  // — hủy locally việc nhận kết quả, không tự retry, không hủy máy chủ.
+  ui.aiCancel = h("button", {
+    class: "fb-btn fb-btn--ghost fb-compose__ai-cancel",
+    type: "button",
+    hidden: true,
+  }, "Hủy chờ gợi ý");
+  ui.aiCancel.addEventListener("click", () => {
+    if (!ai.busy) return;
+    ai.gen += 1;
+    ai.busy = false;
+    setAiLoading(ui, false, state);
+    setAiMsg(ui, "Bạn đã hủy chờ gợi ý — lời nhắn giữ nguyên. Bấm lại khi bạn sẵn sàng.");
+  });
+  aiBox.appendChild(ui.aiCancel);
   ui.aiSuggestion = h("div", { class: "fb-compose__ai-suggestion", hidden: true });
   aiBox.appendChild(ui.aiSuggestion);
   aiCard.appendChild(aiBox);
@@ -526,93 +589,376 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
 
 /* ------------------------ Hành vi: gợi ý AI (F04) ------------------------ */
 
-/** Xin gợi ý từ máy chủ (aiRefine, key idempotency do client tạo). */
-function onAiRefine(ctx, state, ui) {
+/**
+ * Đánh giá consent `ai_processing` từ GET /api/v1/consents (shape backend:
+ * {purpose, decision, policy_version, withdrawn, current}; mock/demo có thể
+ * thiếu `current` — khi đó đối chiếu policy_version hiện hành client-side).
+ * Active = accepted + không withdrawn + phiên bản hiện hành.
+ */
+function evaluateAiConsent(rows) {
+  const fallbackVersion = POLICY_PURPOSES.ai_processing.version;
+  const row = Array.isArray(rows)
+    ? rows.find((item) => item && item.purpose === "ai_processing")
+    : null;
+  if (!row) return { active: false, policyVersion: fallbackVersion };
+  const accepted = row.decision === "accepted" && !row.withdrawn;
+  let currentOk;
+  if (row.current === true) currentOk = true;
+  else if (row.current === false) currentOk = false;
+  else currentOk = !row.policy_version || row.policy_version === fallbackVersion;
+  return {
+    active: Boolean(accepted && currentOk),
+    policyVersion: row.current === true && row.policy_version
+      ? row.policy_version
+      : fallbackVersion,
+  };
+}
+
+/**
+ * R2A3-04: note trạng thái cổng AI trung thực theo nguyên nhân —
+ * (a) máy chủ trả {ai_enabled:false} → "chưa được bật";
+ * (b) không kiểm tra được (lỗi mạng/phiên) → không tuyên bố thay máy chủ.
+ */
+function aiGateNote(state) {
+  return state.aiStatusUnknown
+    ? " Chưa kiểm tra được trạng thái cổng gợi ý AI (mạng hoặc phiên) — bạn vẫn viết tay, lưu nháp và gửi bình thường."
+    : " Cổng gợi ý AI chưa được bật trên máy chủ — bạn vẫn viết tay, lưu nháp và gửi bình thường. Nút sẽ mở khi máy chủ bật.";
+}
+
+/** Bật/tắt trạng thái loading (C6): KHÔNG khóa textarea/lưu nháp/help. */
+function setAiLoading(ui, loading, state) {
+  if (ui.aiPill) ui.aiPill.disabled = Boolean(loading) || !state.aiEnabled;
+  if (ui.aiCancel) ui.aiCancel.hidden = !loading;
+}
+
+function setAiMsg(ui, text) {
+  if (ui.aiMsg) ui.aiMsg.textContent = text;
+}
+
+/**
+ * Xin gợi ý từ máy chủ (aiRefine; key idempotency + inputRevision do client tạo).
+ * regenerate = nút "Tạo gợi ý mới" từ thẻ stale: bỏ lượt đang chờ (hủy chờ
+ * local) rồi gọi lượt mới — vẫn giữ đúng MỘT refine inflight cho actor (C6).
+ */
+function onAiRefine(ctx, ai, ui, state, stale, { regenerate = false } = {}) {
+  if (ai.busy) {
+    if (!regenerate) return; // double-click / chồng lượt
+    ai.gen += 1; // hủy CHỜ lượt cũ (không tự retry máy chủ)
+    ai.busy = false;
+  }
   const text = currentBodyText(ui).trim();
   if (!text) {
     setAiMsg(ui, "Hãy viết vài dòng trước khi dùng gợi ý AI.");
     return;
   }
-  ui.aiPill.disabled = true;
-  setAiMsg(ui, "Đang xin gợi ý từ máy chủ…");
-  const key = newIdemKey();
+  if (!state.aiEnabled) {
+    // Nút đã disabled khi off/unknown — dòng này chỉ là rào chắn dự phòng;
+    // note phải trung thực theo nguyên nhân (R2A3-04).
+    setAiMsg(ui, aiGateNote(state).trim());
+    return;
+  }
+  // C5: chốt consent `ai_processing` active TRƯỚC lần gọi refine đầu tiên.
+  if (ai.consentChecked && ai.consentActive) {
+    requestAiRefine(ctx, ai, ui, state, stale);
+    return;
+  }
+  // R2A3-02: double-click trong cửa sổ listConsents đang bay → chỉ MỘT lượt
+  // kiểm tra (1 sheet / tối đa 1 POST consents; server append-ledger).
+  if (ai.consentChecking) return;
+  setAiMsg(ui, "Đang kiểm tra thiết lập đồng ý…");
+  ai.consentChecking = true;
   Promise.resolve()
-    .then(() => ctx.adapter.aiRefine({ text, key }))
+    .then(() => ctx.adapter.listConsents())
+    .then((rows) => {
+      if (stale()) return;
+      ai.consentChecking = false;
+      const verdict = evaluateAiConsent(rows);
+      ai.consentChecked = true;
+      ai.consentActive = verdict.active;
+      ai.policyVersion = verdict.policyVersion;
+      if (verdict.active) {
+        requestAiRefine(ctx, ai, ui, state, stale);
+        return;
+      }
+      openAiConsentSheet(ctx, ai, ui, state, stale);
+    })
+    .catch(() => {
+      if (stale()) return;
+      ai.consentChecking = false;
+      // Không đọc được trạng thái đồng ý -> hỏi người dùng; máy chủ vẫn là
+      // cổng chốt cuối (refine không consent sẽ bị 403 consent_required).
+      openAiConsentSheet(ctx, ai, ui, state, stale);
+    });
+}
+
+/** Gọi aiRefine THẬT — chỉ chạy sau khi consent đã active (C5). */
+function requestAiRefine(ctx, ai, ui, state, stale) {
+  const text = currentBodyText(ui).trim();
+  if (!text) {
+    setAiMsg(ui, "Hãy viết vài dòng trước khi dùng gợi ý AI.");
+    return;
+  }
+  ai.busy = true;
+  ai.gen += 1;
+  const myGen = ai.gen;
+  setAiLoading(ui, true, state);
+  setAiMsg(ui, "Đang tạo gợi ý diễn đạt… Bạn vẫn gõ tay, lưu nháp và mở Trợ giúp bình thường.");
+  const key = newIdemKey();
+  const revisionAtRequest = ai.revision;
+  Promise.resolve()
+    .then(() => ctx.adapter.aiRefine({ text, key, inputRevision: revisionAtRequest }))
     .then((suggestion) => {
-      ui.aiPill.disabled = false;
-      if (!suggestion || !suggestion.suggestion_id) {
+      // C7: rời trang / hủy chờ -> bỏ qua kết quả cũ, không render state cũ.
+      if (stale() || myGen !== ai.gen) return;
+      ai.busy = false;
+      setAiLoading(ui, false, state);
+      if (!suggestion
+        || !suggestion.suggestion_id
+        || typeof suggestion.suggested_text !== "string"
+        || !suggestion.suggested_text.trim()) {
+        // Không fallback gợi ý giả (C6) — báo lỗi trung thực.
         throw new Error("invalid_suggestion");
       }
-      state.aiSuggestion = suggestion;
-      renderAiSuggestion(ctx, state, ui);
+      // C4: gợi ý gắn với revision lúc tạo. Ưu tiên echo `input_revision`
+      // của máy chủ; thiếu echo thì dùng revision client gửi kèm request.
+      const echo = Number(suggestion.input_revision);
+      ai.suggestion = {
+        dto: suggestion,
+        key,
+        boundRevision: Number.isFinite(echo) && echo > 0 ? echo : revisionAtRequest,
+      };
+      renderAiSuggestion(ctx, ai, ui, state, stale);
       setAiMsg(ui, "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình.");
     })
     .catch((error) => {
-      ui.aiPill.disabled = false;
-      setAiMsg(ui, describeError(error, "Chưa lấy được gợi ý AI — bản soạn của bạn giữ nguyên."));
+      if (stale() || myGen !== ai.gen) return;
+      ai.busy = false;
+      setAiLoading(ui, false, state);
+      if (error && error.code === "consent_required") {
+        // Consent bị rút/đổi phiên bản giữa phiên -> mở lại sheet (C5).
+        ai.consentChecked = false;
+        ai.consentActive = false;
+        setAiMsg(ui, "Máy chủ yêu cầu đồng ý xử lý AI trước khi tạo gợi ý.");
+        openAiConsentSheet(ctx, ai, ui, state, stale);
+        return;
+      }
+      setAiMsg(ui, describeError(error,
+        "Chưa tạo được gợi ý — hệ thống hỗ trợ diễn đạt đang bận hoặc gián đoạn. "
+        + "Lời nhắn của bạn giữ nguyên: bạn có thể viết tay, lưu nháp hoặc thử lại sau."));
     });
 }
 
-/** Dùng gợi ý: aiAccept rồi điền VÀO TEXTAREA — không lưu nháp, không gửi. */
-function onAiAccept(ctx, state, ui, suggestion) {
+/** Sheet disclosure consent AI (frames zalo_f04_02/03) — C5. */
+function openAiConsentSheet(ctx, ai, ui, state, stale) {
+  const sheetError = h("div", { role: "alert" });
+
+  const agreeBtn = createButton({
+    label: "Đồng ý và tạo gợi ý",
+    variant: "primary",
+    onClick: () => {
+      agreeBtn.disabled = true;
+      Promise.resolve()
+        .then(() => ctx.adapter.recordConsent({
+          purpose: "ai_processing",
+          policyVersion: ai.policyVersion || POLICY_PURPOSES.ai_processing.version,
+          decision: "accepted",
+        }))
+        .then(() => {
+          ai.consentChecked = true;
+          ai.consentActive = true;
+          closeSheet();
+          setAiMsg(ui, "Bạn đã cho phép xử lý để tạo gợi ý — đang tạo…");
+          requestAiRefine(ctx, ai, ui, state, stale);
+        })
+        .catch((error) => {
+          agreeBtn.disabled = false;
+          clear(sheetError);
+          sheetError.appendChild(
+            h("p", { class: "fb-compose__sheet-error", role: "alert" },
+              describeError(error,
+                "Chưa ghi nhận được lựa chọn đồng ý. Bạn vẫn viết tay, lưu nháp và gửi bình thường — thử lại sau."),
+            ),
+          );
+        });
+    },
+  });
+
+  const declineBtn = createButton({
+    label: "Viết tay thôi",
+    variant: "ghost",
+    onClick: () => {
+      closeSheet();
+      setAiMsg(ui, "Bạn chọn không dùng gợi ý AI — bạn vẫn viết tay, lưu nháp, xem trước và gửi bình thường.");
+    },
+  });
+
+  const content = h("div", { class: "fb-ai-consent" },
+    h("p", { class: "fb-page__note" },
+      "Để tạo gợi ý diễn đạt, bạn cần cho phép xử lý nội dung sau. Việc này riêng cho gợi ý AI — không liên quan đến bước gửi thư."),
+    h("div", { class: "fb-ai-consent__block" },
+      h("p", { class: "fb-ai-consent__head" }, "Dữ liệu sẽ được gửi đi:"),
+      h("ul", { class: "fb-ai-consent__list" },
+        h("li", {}, "Câu bạn đang soạn trong ô lời nhắn."),
+        h("li", {}, "Ngữ cảnh bạn tự nguyện thêm (nếu có)."),
+        h("li", {}, "Không gửi lịch sử trò chuyện, nhật ký hay thông tin của người khác."),
+      ),
+    ),
+    h("div", { class: "fb-ai-consent__block" },
+      h("p", { class: "fb-ai-consent__head" }, "Ai xử lý dữ liệu này:"),
+      h("ul", { class: "fb-ai-consent__list" },
+        h("li", {}, "Câu và ngữ cảnh trên được chuyển đến dịch vụ AI (Gemini của Google) — bên xử lý kỹ thuật theo chính sách của ứng dụng — để đề xuất cách diễn đạt."),
+        h("li", {}, "Người thân của bạn không đọc phần này. Người nhận chỉ thấy lời nhắn cuối cùng sau khi bạn xem trước và tự bấm gửi; bản gốc và gợi ý không được gửi kèm."),
+      ),
+    ),
+    h("div", { class: "fb-ai-consent__block" },
+      h("p", { class: "fb-ai-consent__head" }, "Bạn luôn kiểm soát:"),
+      h("ul", { class: "fb-ai-consent__list" },
+        h("li", {}, "Gợi ý chỉ điền vào ô soạn để bạn xem và sửa; không gì được gửi đi khi thiếu bước xác nhận của bạn."),
+        h("li", {}, "Từ chối cũng không sao: bạn vẫn viết tay, lưu nháp, xem trước và gửi bình thường."),
+      ),
+    ),
+    sheetError,
+    agreeBtn,
+    declineBtn,
+  );
+
+  const sheet = createSheet({
+    title: "Trước khi dùng gợi ý AI",
+    content,
+    onClose: () => {
+      if (sheet && sheet.isConnected) sheet.remove();
+    },
+  });
+  // Dời sheet vào trang để destroy() dọn được theo trang (C7).
+  ui.root.appendChild(sheet);
+  function closeSheet() {
+    if (sheet && sheet.isConnected) sheet.remove();
+  }
+}
+
+/**
+ * Dùng gợi ý: aiAccept rồi điền suggested_text VÀO TEXTAREA (value — không
+ * innerHTML). Không lưu nháp, không gửi, không tạo Message. Chốt revision
+ * TẠI THỜI ĐIỂM BẤM (C4) — gợi ý cũ không bao giờ ghi đè nội dung mới.
+ */
+function onAiAccept(ctx, ai, ui, state, stale) {
+  const row = ai.suggestion;
+  if (!row || ai.applying) return;
+  if (row.boundRevision !== ai.revision) {
+    renderAiSuggestion(ctx, ai, ui, state, stale);
+    setAiMsg(ui, "Gợi ý đã cũ sau khi bạn sửa nội dung — hãy tạo gợi ý mới hoặc viết tay.");
+    return;
+  }
+  const revisionAtClick = ai.revision;
+  ai.applying = true;
+  renderAiSuggestion(ctx, ai, ui, state, stale); // khóa nút theo ai.applying
   Promise.resolve()
-    .then(() => ctx.adapter.aiAccept(suggestion.suggestion_id))
+    .then(() => ctx.adapter.aiAccept(row.dto.suggestion_id))
     .then(() => {
-      ui.textarea.value = String(suggestion.refined_text || ui.textarea.value);
+      if (stale()) return;
+      ai.applying = false;
+      if (ai.revision !== revisionAtClick) {
+        // Người dùng sửa nội dung trong lúc chờ máy chủ ghi nhận -> không
+        // điền đè; thẻ gợi ý chuyển thành STALE (C4).
+        renderAiSuggestion(ctx, ai, ui, state, stale);
+        setAiMsg(ui, "Bạn đã sửa nội dung trong lúc ghi nhận — gợi ý không được điền đè. Hãy tạo gợi ý mới cho nội dung hiện tại.");
+        return;
+      }
+      const suggested = String(row.dto.suggested_text || "");
+      ai.suggestion = null;
+      renderAiSuggestion(ctx, ai, ui, state, stale); // ẩn thẻ TRƯỚC khi dispatch input
+      ui.textarea.value = suggested; // textContent/value — CẤM innerHTML
       ui.textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      state.aiSuggestion = null;
-      renderAiSuggestion(ctx, state, ui);
       setAiMsg(ui, "Bạn đã dùng gợi ý — nội dung chỉ nằm trong ô soạn, chưa lưu nháp và chưa gửi.");
     })
     .catch((error) => {
+      if (stale()) return;
+      ai.applying = false;
+      renderAiSuggestion(ctx, ai, ui, state, stale);
       setAiMsg(ui, describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
     });
 }
 
-/** Bỏ gợi ý: aiDiscard rồi xóa thẻ gợi ý (không đụng textarea). */
-function onAiDiscard(ctx, state, ui, suggestion) {
+/** Bỏ gợi ý: aiDiscard (gọi API thật) rồi xóa thẻ — không đụng textarea. */
+function onAiDiscard(ctx, ai, ui, state, stale) {
+  const row = ai.suggestion;
+  if (!row || ai.discarding) return;
+  ai.discarding = true;
+  renderAiSuggestion(ctx, ai, ui, state, stale);
   Promise.resolve()
-    .then(() => ctx.adapter.aiDiscard(suggestion.suggestion_id))
+    .then(() => ctx.adapter.aiDiscard(row.dto.suggestion_id))
     .then(() => {
-      state.aiSuggestion = null;
-      renderAiSuggestion(ctx, state, ui);
+      if (stale()) return;
+      ai.discarding = false;
+      ai.suggestion = null;
+      renderAiSuggestion(ctx, ai, ui, state, stale);
       setAiMsg(ui, "Bạn đã bỏ gợi ý — lời nhắn hiện tại giữ nguyên.");
     })
     .catch((error) => {
+      if (stale()) return;
+      ai.discarding = false;
+      renderAiSuggestion(ctx, ai, ui, state, stale);
       setAiMsg(ui, describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
     });
 }
 
-function renderAiSuggestion(ctx, state, ui) {
-  const suggestion = state.aiSuggestion;
-  clear(ui.aiSuggestion);
-  if (!suggestion) {
-    ui.aiSuggestion.hidden = true;
+/**
+ * Thẻ gợi ý (frames zalo_f04_05/06; stale = frame zalo_f04_07): suggested_text
+ * render qua textContent; khi STALE -> cảnh báo + "Dùng gợi ý" DISABLED, chỉ
+ * còn viết tay / "Tạo gợi ý mới" / "Bỏ".
+ */
+function renderAiSuggestion(ctx, ai, ui, state, stale) {
+  const wrap = ui.aiSuggestion;
+  clear(wrap);
+  const row = ai.suggestion;
+  if (!row) {
+    wrap.hidden = true;
     return;
   }
-  ui.aiSuggestion.hidden = false;
-  ui.aiSuggestion.appendChild(
-    h("p", { class: "fb-compose__ai-suggest-label" }, "Gợi ý của máy chủ:"),
+  wrap.hidden = false;
+  const isStale = row.boundRevision !== ai.revision;
+  wrap.appendChild(
+    h("p", { class: "fb-compose__ai-suggest-label" },
+      isStale ? "Gợi ý của máy chủ (đã cũ):" : "Gợi ý của máy chủ:"),
   );
-  ui.aiSuggestion.appendChild(
-    h("p", { class: "fb-compose__ai-suggest-text" }, String(suggestion.refined_text || "")),
+  wrap.appendChild(
+    h("p", { class: "fb-compose__ai-suggest-text" }, String(row.dto.suggested_text || "")),
   );
-  const row = h("div", { class: "fb-compose__pause-buttons" });
-  row.appendChild(createButton({
+  if (isStale) {
+    wrap.appendChild(
+      h("div", { class: "fb-compose__ai-banner fb-compose__ai-banner--warn", role: "alert" },
+        h("p", { class: "fb-compose__ai-banner-title" }, "Nội dung đã thay đổi kể từ khi tạo gợi ý"),
+        h("p", { class: "fb-compose__ai-banner-text" },
+          "Gợi ý này được tạo từ bản trước và có thể không còn phù hợp. Nút “Dùng gợi ý” tạm khóa để không ghi đè nội dung bạn vừa sửa — bạn vẫn viết tay bình thường."),
+      ),
+    );
+  } else {
+    wrap.appendChild(
+      h("p", { class: "fb-compose__ai-suggest-note" },
+        "Bản gốc và gợi ý này không được gửi cho người nhận — chỉ lời nhắn cuối cùng bạn chủ động gửi."),
+    );
+  }
+  const actions = h("div", { class: "fb-compose__pause-buttons" });
+  const useBtn = createButton({
     label: "Dùng gợi ý",
     variant: "primary",
-    onClick: () => onAiAccept(ctx, state, ui, suggestion),
-  }));
-  row.appendChild(createButton({
+    onClick: () => onAiAccept(ctx, ai, ui, state, stale),
+  });
+  useBtn.disabled = isStale || ai.applying;
+  actions.appendChild(useBtn);
+  if (isStale) {
+    actions.appendChild(createButton({
+      label: "Tạo gợi ý mới",
+      variant: "ghost",
+      onClick: () => onAiRefine(ctx, ai, ui, state, stale, { regenerate: true }),
+    }));
+  }
+  actions.appendChild(createButton({
     label: "Bỏ",
     variant: "ghost",
-    onClick: () => onAiDiscard(ctx, state, ui, suggestion),
+    onClick: () => onAiDiscard(ctx, ai, ui, state, stale),
   }));
-  ui.aiSuggestion.appendChild(row);
-}
-
-function setAiMsg(ui, text) {
-  if (ui.aiMsg) ui.aiMsg.textContent = text;
+  wrap.appendChild(actions);
 }
 
 /* --------------------------- Hành vi: người nhận --------------------------- */
@@ -776,7 +1122,7 @@ function onTogglePause(ctx, state, ui) {
   });
 }
 
-/** Xem trước (chỉ sau khi máy chủ xác nhận hết giờ) + xác nhận gửi cuối. */
+/** Xem trước (pause là TÙY CHỌN theo C8 — máy chủ vẫn là cổng chốt) + xác nhận gửi cuối. */
 function onPreview(ctx, state, ui) {
   if (!state.draftId) {
     ui.statusNote.textContent = "Chưa có bản nháp để xem trước — hãy lưu nháp trước.";
@@ -793,9 +1139,11 @@ function onPreview(ctx, state, ui) {
       const remaining = error.details && Number.isFinite(Number(error.details.remaining_seconds))
         ? Number(error.details.remaining_seconds)
         : null;
+      // R2A3-01: 409 chỉ xảy ra khi ĐANG paused còn deadline — nói đúng trạng
+      // thái "đang tạm dừng" + thời gian còn lại theo máy chủ.
       ui.statusNote.textContent = remaining != null
-        ? `Máy chủ báo còn ${formatRemaining(remaining)} của khoảng dừng. Khi hết giờ, bấm “Xem trước nội dung”.`
-        : "Máy chủ báo khoảng dừng chưa kết thúc.";
+        ? `Bản nháp đang trong khoảng dừng — máy chủ báo còn ${formatRemaining(remaining)}. Khi hết giờ, bấm “Xem trước nội dung”.`
+        : "Bản nháp đang trong khoảng dừng — máy chủ chưa mở xem trước. Khi hết giờ, hãy bấm “Xem trước nội dung” lần nữa.";
       refreshPauseUi(state, ui);
       return;
     }
@@ -941,12 +1289,17 @@ function refreshPauseUi(state, ui) {
     return;
   }
 
-  // Chưa tạm dừng
+  // Chưa tạm dừng (hoặc paused nhưng máy chủ chưa trả remaining — khi đó
+  // guard cooldown_active của máy chủ là cổng chốt, thông báo 409 trung thực).
+  // C8 đã freeze: khoảng dừng là TÙY CHỌN — draft không pause vẫn preview/
+  // confirm hợp lệ ngay, UI KHÔNG tự khóa preview (R2A3-01).
   ui.timerBadge.textContent = formatRemaining(PAUSE_SECONDS);
   ui.timerBadge.title = "Khoảng dừng chuẩn 5 phút — thời gian thật do máy chủ ghi khi bạn bắt đầu.";
   ui.progressFill.style.width = "0%";
-  ui.previewBtn.disabled = true;
-  ui.previewBtn.title = "Cần lưu nháp và hoàn thành khoảng dừng trước khi xem trước.";
+  ui.previewBtn.disabled = !state.draftId;
+  ui.previewBtn.title = state.draftId
+    ? ""
+    : "Chưa có bản nháp để xem trước — hãy lưu nháp trước.";
   ui.pauseBtnIcon.remove();
   ui.pauseBtnIcon = createIcon({ name: "play_arrow", size: 20 });
   ui.pauseBtnLabel.textContent = "Bắt đầu 5 phút nghỉ";
@@ -957,8 +1310,24 @@ function refreshPauseUi(state, ui) {
 }
 
 function describeError(error, fallback) {
+  // R2A3-03: quota thật của backend = 503 temporarily_unavailable +
+  // details.reason="provider_quota_exceeded" (express.py) — đọc
+  // details.reason trước, giữ status/code làm fallback.
+  const quotaReason = error && error.details && error.details.reason;
   if (error && error.code === "preview_stale") {
     return "Bản xem trước đã cũ sau khi bạn sửa nội dung — hãy bấm “Xem trước nội dung” lần nữa.";
+  }
+  if (error && error.code === "consent_required") {
+    return "Cần đồng ý xử lý AI trước khi tạo gợi ý. Bạn vẫn viết tay, lưu nháp và gửi bình thường.";
+  }
+  if (error && (error.status === 429
+    || quotaReason === "provider_quota_exceeded"
+    || error.code === "provider_quota_exceeded"
+    || error.code === "quota_exceeded")) {
+    return "Hết lượt gợi ý AI trong thời gian này. Lời nhắn của bạn giữ nguyên — bạn viết tay bình thường và thử lại sau.";
+  }
+  if (error && (error.status === 503 || error.code === "ai_disabled" || error.code === "provider_disabled")) {
+    return "Tính năng gợi ý AI đang tắt hoặc bảo trì trên máy chủ. Lời nhắn của bạn giữ nguyên — bạn viết tay bình thường.";
   }
   if (error && error.kind === "timeout") {
     return `Kết nối quá thời gian chờ. ${fallback}`;

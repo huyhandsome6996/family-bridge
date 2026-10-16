@@ -195,6 +195,16 @@ function fakeWebAdapter({
     },
     aiStatus: async () => behavior.aiStatusResult || { ai_enabled: false },
     aiRefine: async () => { throw new ApiError("not used", 400, "http"); },
+    // F04 (C5): consent gate đọc GET /consents trước lần refine đầu tiên.
+    listConsents: async () => behavior.consents || [
+      { purpose: "service", decision: "accepted", policy_version: "service-v1", withdrawn: false, current: true },
+      { purpose: "ai_processing", decision: "accepted", policy_version: "ai-v1", withdrawn: false, current: true },
+    ],
+    recordConsent: async (args = {}) => {
+      behavior.consentCalls = behavior.consentCalls || [];
+      behavior.consentCalls.push(args);
+      return { consent_id: "c-1", ...args };
+    },
   };
 }
 
@@ -892,14 +902,84 @@ describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm pho
     resetState();
   });
 
-  it("AI thật: aiRefine với key -> thẻ gợi ý; 'Dùng gợi ý' -> aiAccept + chỉ điền textarea", async () => {
+  it("R2A3-01/C8: draft CHƯA pause -> nút preview MỞ sau khi lưu nháp; bấm -> sheet xác nhận", async () => {
+    const { ctx } = makeCtx({ demo: true, role: "student" });
+    const { host, el } = mount(compose, ctx);
+    await wait(1500);
+
+    // Chưa có nháp: nút vẫn khóa trung thực — khóa vì CHƯA CÓ NHÁP,
+    // không phải vì "phải hoàn thành khoảng dừng" (pause là tùy chọn).
+    const previewBtn = el.querySelector(".fb-btn-hero");
+    assert.equal(previewBtn.disabled, true, "chưa có bản nháp -> chưa xem trước được");
+    assert.ok(
+      previewBtn.title.includes("lưu nháp"),
+      `title phải nói cần lưu nháp (nhận: "${previewBtn.title}")`,
+    );
+    assert.ok(
+      !previewBtn.title.includes("khoảng dừng"),
+      "title KHÔNG được đòi hỏi hoàn thành khoảng dừng (C8 opt-in)",
+    );
+
+    const textarea = el.querySelector("#fb-compose-body");
+    textarea.value = "Con muốn cảm ơn mẹ.";
+    textarea.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+    findButton(el, "Lưu nháp riêng").click();
+    await wait(900);
+
+    // C8: không chọn pause -> preview/confirm hợp lệ ngay, UI không tự khóa.
+    assert.equal(previewBtn.disabled, false, "draft không pause -> preview KHÔNG bị khóa ở UI");
+    previewBtn.click();
+    await wait(900);
+    const sheet = document.body.querySelector(".fb-sheet-root");
+    assert.ok(sheet, "preview OK -> mở sheet xác nhận gửi cuối");
+    assert.ok(textOf(sheet).includes("Xem lại lời nhắn trước khi gửi"), "sheet xác nhận hiện đúng");
+    unmount(host);
+    resetState();
+  });
+
+  it("R2A3-01: 409 cooldown_active từ máy chủ -> note 'đang trong khoảng dừng — còn X' trung thực", async () => {
+    const { ctx, adapter } = makeCtx({ demo: true, role: "student" });
+    const { host, el } = mount(compose, ctx);
+    await wait(1500);
+    const textarea = el.querySelector("#fb-compose-body");
+    textarea.value = "Con vẫn đang trong khoảng dừng.";
+    textarea.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
+    findButton(el, "Lưu nháp riêng").click();
+    await wait(900);
+
+    // Máy chủ vào cooldown NGOÀI màn hình (UI chưa đồng bộ -> nút còn mở):
+    // bấm preview -> server 409 cooldown_active -> UI phải báo đúng trạng thái
+    // "đang tạm dừng" + thời gian còn lại, không nói sai nguyên nhân.
+    const draftsPage = await adapter.listDrafts({ limit: 20 });
+    const draftId = draftsPage.results[0].draft_id;
+    await adapter.pauseDraft(draftId);
+    const previewBtn = el.querySelector(".fb-btn-hero");
+    assert.equal(previewBtn.disabled, false, "UI chưa đồng bộ -> nút còn mở (máy chủ là cổng chốt)");
+    previewBtn.click();
+    await wait(900);
+    const note = textOf(el);
+    assert.ok(note.includes("đang trong khoảng dừng"), "409 phải map 'đang trong khoảng dừng'");
+    assert.ok(note.match(/còn \d{2}:\d{2}/), `ghi rõ thời gian còn lại (nhận: "${note}")`);
+    assert.ok(!note.includes("đang tắt hoặc bảo trì"), "không được nói sai nguyên nhân");
+    unmount(host);
+    resetState();
+  });
+
+  it("AI thật: consent gate -> aiRefine(key+inputRevision) -> thẻ gợi ý suggested_text; 'Dùng gợi ý' -> aiAccept + chỉ điền textarea", async () => {
     const { ctx, adapter } = makeCtx({ demo: true, role: "student" });
     const aiCalls = [];
     const accepted = [];
     const discarded = [];
-    adapter.aiRefine = async ({ text, key }) => {
-      aiCalls.push({ text, key });
-      return { suggestion_id: "sg-1", refined_text: `Bản êm hơn: ${text}`, status: "pending" };
+    adapter.aiRefine = async ({ text, key, inputRevision }) => {
+      aiCalls.push({ text, key, inputRevision });
+      return {
+        suggestion_id: "sg-1",
+        original_text: text,
+        suggested_text: `Bản êm hơn: ${text}`,
+        input_revision: inputRevision,
+        purpose: "refine_expression",
+        status: "pending",
+      };
     };
     adapter.aiAccept = async (id) => { accepted.push(id); return { suggestion_id: id, status: "accepted" }; };
     adapter.aiDiscard = async (id) => { discarded.push(id); return { suggestion_id: id, status: "discarded" }; };
@@ -914,11 +994,24 @@ describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm pho
     assert.ok(aiPill, "phải có nút AI");
     assert.equal(aiPill.disabled, false, "mock báo ai_enabled -> nút phải bật");
     aiPill.click();
-    await wait(400);
+    await wait(300);
 
-    assert.equal(aiCalls.length, 1, "aiRefine phải được gọi 1 lần");
+    // F04 (C5): mock chưa có consent ai_processing active -> sheet disclosure
+    // hiện TRƯỚC refine; đồng ý rồi mới gọi.
+    assert.equal(aiCalls.length, 0, "chưa consent -> chưa gọi aiRefine");
+    const sheet = document.body.querySelector(".fb-sheet-root");
+    assert.ok(sheet, "phải mở sheet disclosure consent AI");
+    assert.ok(textOf(sheet).includes("Gemini"), "sheet nói rõ nhà cung cấp AI");
+    const agreeBtn = Array.from(sheet.querySelectorAll("button")).find(
+      (btn) => textOf(btn) === "Đồng ý và tạo gợi ý",
+    );
+    agreeBtn.click();
+    await wait(500);
+
+    assert.equal(aiCalls.length, 1, "aiRefine phải được gọi 1 lần sau khi đồng ý");
     assert.ok(aiCalls[0].key, "aiRefine PHẢI có key idempotency (X-Idempotency-Key)");
     assert.equal(aiCalls[0].text, "Con tức quá hôm nay.");
+    assert.equal(aiCalls[0].inputRevision, 2, "aiRefine PHẢI gửi inputRevision (C4)");
 
     const suggestionCard = el.querySelector(".fb-compose__ai-suggestion");
     assert.ok(suggestionCard && suggestionCard.hidden === false, "thẻ gợi ý phải hiện");
@@ -947,7 +1040,12 @@ describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm pho
   it("AI: 'Bỏ' -> aiDiscard, textarea giữ nguyên; aiStatus tắt -> nút disabled trung thực", async () => {
     const { ctx, adapter } = makeCtx({ demo: true, role: "student" });
     const discarded = [];
-    adapter.aiRefine = async ({ text, key }) => ({ suggestion_id: "sg-2", refined_text: `Gợi ý ${text}`, status: "pending" });
+    adapter.aiRefine = async ({ text, key, inputRevision }) => ({
+      suggestion_id: "sg-2",
+      suggested_text: `Gợi ý ${text}`,
+      input_revision: inputRevision,
+      status: "pending",
+    });
     adapter.aiDiscard = async (id) => { discarded.push(id); return { suggestion_id: id, status: "discarded" }; };
     const { host, el } = mount(compose, ctx);
     await wait(1500);
@@ -956,7 +1054,14 @@ describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm pho
     textarea.value = "Bản gốc giữ nguyên.";
     textarea.dispatchEvent(new domWindow.Event("input", { bubbles: true }));
     el.querySelector(".fb-compose__ai-btn").click();
-    await wait(400);
+    await wait(300);
+    // F04 (C5): mock chưa consent -> sheet disclosure; đồng ý rồi refine.
+    const sheet = document.body.querySelector(".fb-sheet-root");
+    const agreeBtn2 = Array.from(sheet.querySelectorAll("button")).find(
+      (btn) => textOf(btn) === "Đồng ý và tạo gợi ý",
+    );
+    agreeBtn2.click();
+    await wait(500);
     const suggestionCard = el.querySelector(".fb-compose__ai-suggestion");
     const dropBtn = Array.from(suggestionCard.querySelectorAll("button")).find(
       (btn) => textOf(btn) === "Bỏ",
@@ -1077,13 +1182,13 @@ function mailAdapter({ rows = MAIL_MESSAGES, connections = [MAIL_CONNECTION], be
       behavior.lookupCalls.push(key);
       return behavior.lookupResult || { status: "sent", key };
     },
-    aiStatus: async () => behavior.aiStatusResult || { enabled: false },
+    aiStatus: async () => behavior.aiStatusResult || { ai_enabled: false }, // R2A3-05: shape C1
     aiRefine: async (args = {}) => {
       behavior.aiRefineCalls = behavior.aiRefineCalls || [];
       behavior.aiRefineCalls.push(args);
       if (behavior.aiRefineError) throw behavior.aiRefineError;
       return behavior.aiRefineResult
-        || { suggestion_id: "s-1", refined_text: "Bản diễn đạt êm hơn do máy chủ đề xuất." };
+        || { suggestion_id: "s-1", suggested_text: "Bản diễn đạt êm hơn do máy chủ đề xuất.", input_revision: args.inputRevision };
     },
     aiAccept: async (id) => {
       behavior.aiAcceptCalls = behavior.aiAcceptCalls || [];
@@ -1094,6 +1199,17 @@ function mailAdapter({ rows = MAIL_MESSAGES, connections = [MAIL_CONNECTION], be
       behavior.aiDiscardCalls = behavior.aiDiscardCalls || [];
       behavior.aiDiscardCalls.push(id);
       return { discarded: true };
+    },
+    // F04 (C5): consent gate — mặc định đã active để test luồng refine thẳng;
+    // test consent riêng sẽ đè behavior.consents.
+    listConsents: async () => behavior.consents || [
+      { purpose: "service", decision: "accepted", policy_version: "service-v1", withdrawn: false, current: true },
+      { purpose: "ai_processing", decision: "accepted", policy_version: "ai-v1", withdrawn: false, current: true },
+    ],
+    recordConsent: async (args = {}) => {
+      behavior.consentCalls = behavior.consentCalls || [];
+      behavior.consentCalls.push(args);
+      return { consent_id: "c-1", ...args };
     },
   };
 }
@@ -1433,7 +1549,7 @@ describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", 
   it("AI chỉ khi aiStatus bật; 'Dùng gợi ý' -> aiAccept + chỉ điền textarea; 'Bỏ' giữ nguyên", async () => {
     withSession();
     const behavior = {
-      aiStatusResult: { enabled: true },
+      aiStatusResult: { ai_enabled: true }, // R2A3-05: shape C1 {ai_enabled}
       quickRepliesResult: { results: [], note: "library_not_configured" },
     };
     const { ctx } = makeCtx({
@@ -1452,8 +1568,10 @@ describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", 
     assert.ok(suggestionCard && !suggestionCard.hidden, "gợi ý phải hiện trong thẻ");
     assert.ok(
       textOf(suggestionCard).includes("Bản diễn đạt êm hơn do máy chủ đề xuất."),
-      "nội dung gợi ý từ máy chủ",
+      "nội dung gợi ý từ máy chủ (suggested_text)",
     );
+    assert.equal(behavior.aiRefineCalls.length, 1, "refine đúng 1 lần (consent đã active)");
+    assert.ok(behavior.aiRefineCalls[0].inputRevision >= 1, "refine phải gửi inputRevision (C4)");
     const before = textarea.value;
     findButton(suggestionCard, "Dùng gợi ý").click();
     await wait(30);

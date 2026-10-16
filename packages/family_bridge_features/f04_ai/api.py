@@ -18,7 +18,7 @@ from family_bridge_core.validation import (
 
 from .auth import FBSDSessionAuthentication
 from .models import PURPOSES
-from .services.express import AiExpressService
+from .services.express import AiExpressService, validate_input_revision
 
 
 def _json_body(request) -> dict:
@@ -47,15 +47,19 @@ class AiStatusView(APIView):
 class AiRefineView(APIView):
     """POST /api/v1/ai/refine — author asks for a rewrite of ONE chosen
     sentence. X-Idempotency-Key required: replay returns the SAME suggestion
-    without a second provider call; same key different text -> 409.
-    Provider outage/quota/off -> 503 with reason; the client keeps the draft."""
+    without a second provider call; same key different payload (text OR
+    input_revision) -> 409. Consent `ai_processing` (current policy version)
+    is enforced server-side BEFORE the provider call: 403 consent_required,
+    provider_calls=0. Provider outage/quota/off -> 503 with reason; the
+    client keeps the draft."""
     authentication_classes = [FBSDSessionAuthentication]
     permission_classes = [IsAuthenticated]
     throttle_scope = "ai_refine"
 
     def post(self, request):
         payload = _json_body(request)
-        reject_unknown_fields(payload, allowed={"original_text", "purpose"})
+        reject_unknown_fields(payload, allowed={"original_text", "purpose",
+                                               "input_revision"})
         key = request.META.get("HTTP_X_IDEMPOTENCY_KEY")
         if not key:
             raise InputInvalid({"field": "X-Idempotency-Key",
@@ -65,9 +69,11 @@ class AiRefineView(APIView):
                              min_len=1, max_len=4000)
         purpose = validate_text(payload.get("purpose", "refine_expression"),
                                 field="purpose", min_len=1, max_len=32)
+        input_revision = validate_input_revision(payload.get("input_revision"))
         suggestion = AiExpressService().refine(
             author_id=str(request.user.pk), original_text=text,
-            purpose=purpose, idempotency_key=key)
+            purpose=purpose, idempotency_key=key,
+            input_revision=input_revision)
         return Response(suggestion.view(), status=201)
 
 

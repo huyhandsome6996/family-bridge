@@ -5,13 +5,18 @@ Guards summary:
   revision, invalidates previews, NEVER moves an existing pause deadline.
 - pause: 300s fixed from server now; re-pause returns the SAME deadline
   (no reset/extension); pause allowed only while editing/paused.
-- preview: requires status paused AND now >= deadline (299 blocks, 300
-  passes — controlled-clock tests); binds (revision, recipient, payload
-  hash); does not send, does not create jobs.
+- preview: the 300s gate applies ONLY to a draft the author actually
+  paused (C8): currently paused -> now >= deadline required (299 blocks,
+  300 passes — controlled-clock tests); NOT paused (never paused, or back
+  to editing) -> previews immediately, no forced wait. Binds (revision,
+  recipient, payload hash); does not send, does not create jobs.
 - confirm-send: requires an unused preview matching CURRENT revision and
-  recipient; re-checks pause deadline; delegates to the kind sender port
-  (connection/idempotency guards live in the sender); consumes the preview;
-  marks the draft sent. Failure -> truthful error, draft unchanged.
+  recipient; re-checks the pause gate with the same C8 semantics (only a
+  currently-paused draft is cooldown-gated; expiry never auto-sends but a
+  manual confirm after the deadline is allowed); delegates to the kind
+  sender port (connection/idempotency guards live in the sender); consumes
+  the preview; marks the draft sent. Failure -> truthful error, draft
+  unchanged.
 - cancel-pause: user-initiated back to editing, deadline cleared.
 - discard: author-only; apply_user_deletion hook removes all user drafts.
 """
@@ -66,8 +71,20 @@ def _validate_content(*, kind: str, body: str, title: str,
 
 
 def _deadline_guard(draft: Draft, now: dt.datetime) -> None:
+    """C8 pause contract (server clock only, DEC-03).
+
+    The 300s cooldown is an OPT-IN gate: it applies ONLY while the draft is
+    actually paused (status == paused AND a deadline is recorded). A draft
+    that never paused — or that went back to editing (cancel/edit) — passes
+    straight through: preview/send is a valid path with NO forced wait
+    ("pause_not_started" is no longer an error state).
+
+    When paused: now < deadline -> CooldownActive (t=299 blocks, t=300
+    passes); now >= deadline -> pass. Expiry creates NOTHING (no auto-send,
+    no job) but a manual confirm after the deadline is allowed.
+    """
     if draft.status != STATUS_PAUSED or draft.pause_deadline_at is None:
-        raise InputInvalid({"reason": "pause_not_started"})
+        return  # no pause chosen -> no cooldown (C8: never force the wait)
     if now < draft.pause_deadline_at:
         raise CooldownActive({
             "reason": "pause_in_progress",
@@ -184,9 +201,12 @@ class DraftService:
         preview = DraftPreview.objects.create(
             draft=draft, revision=draft.revision,
             recipient_id=draft.recipient_id, payload_hash_hex=payload_hash)
+        # Shape stability: "deadline" mirrors the paused-state only (None
+        # when no pause is active — same parity as the shared mock adapter).
         return {"preview_id": str(preview.id), "revision": draft.revision,
                 "recipient_id": draft.recipient_id,
-                "deadline": draft.pause_deadline_at.isoformat(),
+                "deadline": (draft.pause_deadline_at.isoformat()
+                             if draft.pause_deadline_at else None),
                 "server_time": now.isoformat()}
 
     @transaction.atomic

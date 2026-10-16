@@ -1502,3 +1502,43 @@
   flex-direction: column;
   gap: var(--fb-space-2);
 }
+
+/* ================= F04 — chuẩn hóa palette composer (A4 parity) =================
+   Bảng màu bắt buộc handoff F04 + brand-identity: nền #FFF4E8, chữ #713D32,
+   brand #C65B43, accent #E4AB56, action accessible #A84733, surface trắng.
+   Scope CHỈ trang soạn (data-page="f06-compose") — không đổi token toàn cục;
+   sheet gắn document.body tự mang màu qua class riêng (components.css F04). */
+[data-page="f06-compose"] {
+  --fb-bg: #FFF4E8;
+  --fb-text: #713D32;
+  --fb-primary: #C65B43;   /* brand: icon/viền trang trí, không dùng chữ thường */
+  --fb-cta: #A84733;       /* action accessible: CTA chữ trắng 5.8:1 */
+  --fb-focus: #A84733;
+  --fb-surface-low: #FAF0E4;
+  --fb-surface-container: #F7EADB;
+  --fb-surface-high: #F3E2CF;
+  --fb-border: #E8D9C8;
+  --fb-outline-variant: #E8D9C8;
+}
+
+/* Nút chính/hero trong composer dùng action accessible (chữ trắng >= 4.5:1) */
+[data-page="f06-compose"] .fb-btn--primary,
+[data-page="f06-compose"] .fb-btn-hero {
+  background: var(--fb-cta);
+}
+
+[data-page="f06-compose"] .fb-btn-hero {
+  box-shadow: 0 4px 12px rgba(168, 71, 51, 0.28);
+}
+
+/* Liên kết/pill phụ trong composer dùng action accessible, đủ 4.5:1 trên nền */
+[data-page="f06-compose"] .fb-compose__change-btn,
+[data-page="f06-compose"] .fb-compose__cards-link,
+[data-page="f06-compose"] .fb-help-bar__action {
+  color: #A84733;
+}
+
+/* Bảng kết quả gửi nằm trong cột soạn — giữ nhịp với các thẻ khác */
+.fb-compose-grid__main .fb-compose__receipt {
+  box-shadow: var(--fb-shadow-sm, none);
+}
