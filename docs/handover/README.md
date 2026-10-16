@@ -12,6 +12,7 @@ thái vì docs tồn tại).
 | [blueprint-deployment-guide.md](blueprint-deployment-guide.md) | Hướng dẫn triển khai backend Render bằng Blueprint (Docker, MySQL, migration tay trên Free) |
 | [web-render/](web-render/web-render-deployment.md) | Task 2 web Render: static service `family-bridge-web`, bàn giao Stitch web, teacher quick start, verification |
 | [web-miniapp-separation/](web-miniapp-separation/README.md) | Tách web độc lập khỏi Zalo Mini App (2026-10-16): `web/` + `packages/family_bridge_shared/`, boundary, E2E hai actor, ảnh thật, supersede "single codebase" |
+| [hs-ph-connection-part-a/](hs-ph-connection-part-a/report.md) | Phần A kết nối HS/PH (2026-10-16): đường đi home → đề xuất ghép đôi F16, hủy theo API, map lỗi envelope thật; kèm branch-compatibility report |
 
 ## web-render/ (Task 2, nhánh `tinh-nang/web-render-task2`)
 
