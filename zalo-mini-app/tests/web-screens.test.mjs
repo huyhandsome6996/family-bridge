@@ -44,7 +44,7 @@ const { describe, it } = await import("node:test");
 const assert = (await import("node:assert/strict")).default;
 
 const { initStore, setRole, resetState, getState } = await import("../src/app/store.js");
-const { setSession, clearSession } = await import("../src/core/session.js");
+const { setSession, clearSession, getSession } = await import("../src/core/session.js");
 const { ApiError } = await import("../src/core/api/client.mjs");
 const { createMockAdapter } = await import("../src/core/adapter/mock-adapter.js");
 
@@ -1534,6 +1534,9 @@ function settingsAdapter({ behavior = {}, profile = null, capabilities = {} } = 
     logout: async () => {
       behavior.logoutCalls = behavior.logoutCalls || [];
       behavior.logoutCalls.push(true);
+      clearSession(); // real adapter clears synchronously before server revocation
+      if (behavior.logoutWait) await behavior.logoutWait;
+      if (behavior.logoutError) throw behavior.logoutError;
       return true;
     },
   };
@@ -1846,6 +1849,43 @@ describe("Web M5b — settings: đổi mật khẩu / mã đăng nhập / tên h
     await wait(30);
     assert.deepEqual(behavior.logoutCalls, [true]);
     assert.ok(navigateCalls.includes("/login?reason=logged-out"));
+    unmount(host);
+  });
+});
+
+describe("Logout session generation with real adapter timing", () => {
+  it("late logout response does not navigate away from a newly signed-in actor", async () => {
+    withSession();
+    let release;
+    const behavior = { logoutWait: new Promise((resolve) => { release = resolve; }) };
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    findButton(el, "Đăng xuất").click();
+    clickDialogAction("Đăng xuất");
+    setSession({ token: "new-actor-token", userId: "new-actor", expiresAt: Date.now() + 3600_000 });
+    release();
+    await wait(30);
+    assert.deepEqual(navigateCalls, []);
+    assert.equal(getSession().userId, "new-actor");
+    unmount(host);
+  });
+
+  it("revocation network failure still navigates to an honest logged-out-pending state", async () => {
+    withSession();
+    const behavior = { logoutError: new ApiError("network", 0, "network") };
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false, role: "student", adapter: settingsAdapter({ behavior }),
+    });
+    const { host, el } = mount(settings, ctx);
+    await wait(40);
+    findButton(el, "Đăng xuất").click();
+    clickDialogAction("Đăng xuất");
+    await wait(30);
+    assert.ok(navigateCalls.includes("/login?reason=logged-out-pending"));
+    assert.equal(getSession(), null);
     unmount(host);
   });
 });

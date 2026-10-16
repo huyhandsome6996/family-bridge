@@ -131,16 +131,18 @@ export const page = {
       // trang KHÔNG được clearSession() vô điều kiện nữa — nếu logout cũ
       // lỗi mạng sau khi người dùng đã chủ động đăng nhập lại, clear cũ
       // biến mất phiên MỚI. Guard theo generation cho CẢ hai nhánh.
-      const startGeneration = getSessionGeneration();
+      let logoutGeneration = getSessionGeneration();
       let revokeConfirmed = true;
       try {
-        await ctx.adapter.logout();
+        const pending = ctx.adapter.logout();
+        logoutGeneration = getSessionGeneration(); // adapter has cleared the old session
+        await pending;
       } catch (error) {
         revokeConfirmed = false; // client đã đăng xuất; server thu hồi CHƯA XÁC NHẬN
       }
       // Trang chết hoặc PHIÉN MỚI khác actor đã cài -> trang cũ không được
       // điều hướng hay đụng vào phiên mới.
-      if (cancelled || getSessionGeneration() !== startGeneration) return;
+      if (cancelled || getSessionGeneration() !== logoutGeneration || hasLiveSession()) return;
       ctx.navigate(revokeConfirmed
         ? "/login?reason=logged-out"
         : "/login?reason=logged-out-pending");

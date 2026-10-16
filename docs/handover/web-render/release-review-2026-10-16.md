@@ -73,6 +73,27 @@ certification or evidence for all 15 features.
 - Enabled frontend push-to-deploy on main after the successful manual smoke.
   Backend auto-deploy remains off because schema changes require migration.
 
+## Additional real integration defects repaired
+
+Live navigation exposed false session expiry in feature consumers. Production
+F15/F05 fallbacks had incorrect sibling imports, F05 returned a Session where
+its authenticator expects `(user, session)`, and several other feature session
+ports had no production fallback. A shared fallback now validates persisted
+F01 sessions and supplies that exact pair; registered standalone test ports
+retain precedence. It creates no sessions and grants no extra capabilities.
+
+The new real-backend regression reproduced 401 failures on privacy, messages
+and drafts and a missing connection reader before the fix. After repair, 16
+backend integration/wiring tests pass, covering all 13 registry consumers,
+invalid and revoked tokens, and denial of admin access to a classroom user.
+Database migrations remain unchanged.
+
+Logout UI captured the generation before the real adapter synchronously
+cleared the session, mistaking its own logout for a new actor. Settings and
+Profile now capture after invalidation and still protect a newer signed-in
+actor. 132 focused frontend auth/screen regressions pass, including successful
+logout, pending server revocation and a late response after another login.
+
 Scope limits: this proves deployment and the login/session path; it does not
 certify all 15 features, bilateral confirmation on live participant accounts,
 actual delivery/AI configuration, or Zalo device execution. Local full harness

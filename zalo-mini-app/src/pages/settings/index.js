@@ -512,14 +512,18 @@ function renderLogoutCard(ctx, openDialogs) {
   });
 
   async function doLogout() {
-    const startGeneration = getSessionGeneration();
+    let logoutGeneration = getSessionGeneration();
     let revokeConfirmed = true;
     try {
-      await ctx.adapter.logout();
+      const pending = ctx.adapter.logout();
+      // The real adapter clears the session synchronously before awaiting HTTP.
+      // Capture after that intentional generation change, not before it.
+      logoutGeneration = getSessionGeneration();
+      await pending;
     } catch (error) {
       revokeConfirmed = false; // client đã đăng xuất; server thu hồi CHƯA XÁC NHẬN
     }
-    if (getSessionGeneration() !== startGeneration) return; // phiên mới khác actor
+    if (getSessionGeneration() !== logoutGeneration || hasLiveSession()) return;
     ctx.navigate(revokeConfirmed
       ? "/login?reason=logged-out"
       : "/login?reason=logged-out-pending");
