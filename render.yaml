@@ -73,41 +73,50 @@ services:
       #   e.g. f01_identity,f02_program,f15_privacy,admin_core
 
   # ---------------------------------------------------------------------------
-  # Web (Task 2 — Render static service): single codebase zalo-mini-app built
-  # to zalo-mini-app/www and served as a Render static site.
+  # Web (W1-c — web-miniapp-separation, ADR-4): static service cho frontend web
+  # ĐỘC LẬP. Supersede (2026-10-16) ADR cũ "single codebase zalo-mini-app".
   #
   # ADR summary:
-  # - Single codebase: the SAME zalo-mini-app Vite app ships both the Zalo Mini
-  #   App bundle and this static web build (no second frontend to maintain).
-  # - Hash router (#/route) → NO SPA fallback/rewrite rule is needed; deep links
-  #   always hit /index.html which bootstraps the router client-side.
-  # - runtime: static (NOT docker) — no server process, free plan compatible.
-  # - Token/session stays IN MEMORY (SEC-10): nothing is persisted server-side
-  #   for the web origin; the backend serves sessions for both hosts.
-  # - NO Tailwind CDN (and no other CDN assets): all styles/fonts are bundled
-  #   locally — enforced by tests/qa-web-invariants.test.mjs.
+  # - HAI FRONTEND ĐỘC LẬP: web/ (app web riêng — entry index.html, hash router
+  #   riêng, Vite build ra web/dist) và zalo-mini-app/ (Mini App Zalo giữ nguyên
+  #   entry, app-config.json, dynamic chunks — deploy Zalo không đổi).
+  # - Code dùng chung nằm ở packages/family_bridge_shared (headless ESM thuần:
+  #   không DOM, không zmp-sdk, không storage), import trực tiếp bằng relative
+  #   path — không workspaces, không build riêng. Biên giới import được kiểm
+  #   chứng TRANSITIVE bởi scripts/check_import_boundaries.mjs (job `web` trong
+  #   .github/workflows/tests.yml): web không import zalo-mini-app/**, mini
+  #   không import web/**, shared không chạm DOM/SDK/storage.
+  # - Hash router (#/route) → KHÔNG cần SPA fallback/rewrite rule; deep link
+  #   luôn trả index.html rồi router điều hướng client-side.
+  # - runtime: static (KHÔNG docker) — không server process, free plan OK.
+  #   Token/session IN MEMORY (SEC-10) — không persist gì phía web origin.
+  # - KHÔNG Tailwind CDN (và không asset CDN nào khác): bundle local toàn bộ —
+  #   enforced bởi tests/qa-web-invariants.test.mjs.
+  # - ROLLBACK: revert render.yaml về publish zalo-mini-app/www (buildCommand
+  #   `cd zalo-mini-app && npm ci && npm run build`) — mini app vẫn build song
+  #   song nên rollback khả thi ngay; không drop DB, không đụng data.
   #
-  # Owner checklist (see docs/handover/web-render/web-render-deployment.md):
-  # 1. Apply this service in the Render Dashboard ("Apply" from Blueprint).
+  # Owner checklist (web-miniapp-separation):
+  # 1. Apply service này trong Render Dashboard (Blueprint "Apply").
   # 2. Set VITE_API_BASE_URL=https://family-bridge-backend.onrender.com
-  #    (sync:false — never commit it; it is baked into the JS bundle at build).
-  # 3. Backend env CORS_ALLOWED_ORIGINS += https://family-bridge-web.onrender.com
-  #    (comma-separated list, no wildcards).
-  # 4. First live login was verified on 2026-10-16. The static web now deploys
-  #    each main commit; backend schema releases remain explicitly managed.
-  # 5. Verify: open the site, login with a class code, check /api/v1/health/.
+  #    (sync:false — không commit; được bake vào JS bundle lúc build).
+  # 3. Backend env CORS_ALLOWED_ORIGINS += origin web mới
+  #    (https://...onrender.com), comma-separated, KHÔNG wildcard.
+  # 4. Manual deploy lần đầu sau khi web/ đã có package-lock.json (lần đầu tiên
+  #    build từ web/dist); các deploy sau giữ autoDeployTrigger hiện tại.
+  # 5. Verify: mở site, đăng nhập bằng class code, kiểm tra /api/v1/health/.
   #
-  # NOTE: buildCommand deliberately EXCLUDES `npm test` — tests run in CI
-  # (ops/ci/tests.yml, miniapp job) and should never block/gate a static deploy
-  # twice. render.yaml env vars only affect the BUILD environment (VITE_* is
-  # compile-time); runtime needs no server env.
+  # NOTE: buildCommand deliberately EXCLUDES `npm test` — tests chạy trong CI
+  # (job `web` của .github/workflows/tests.yml + boundary check) và không gate
+  # deploy tĩnh hai lần. env vars chỉ tác động BUILD (VITE_* là compile-time);
+  # runtime không cần server env.
   # ---------------------------------------------------------------------------
   - type: web
     name: family-bridge-web
     runtime: static
     branch: main
-    buildCommand: cd zalo-mini-app && npm ci && npm run build
-    staticPublishPath: zalo-mini-app/www
+    buildCommand: cd web && npm ci && npm run build
+    staticPublishPath: web/dist
     autoDeployTrigger: commit
     pullRequestPreviewsEnabled: false
     envVars:
@@ -122,16 +131,17 @@ services:
       - key: VITE_TEST_LABEL
         sync: false
     headers:
-      # The Zalo-compatible entry and CSS filenames are stable, not hashed.
-      # Revalidate assets so a new release never mixes old JS/CSS with new chunks.
+      # Assets revalidate (no-cache) sau mỗi lần deploy — an toàn cho cả hashed
+      # lẫn stable filename: bản release mới không bao giờ trộn JS/CSS cũ với
+      # chunk mới.
       - path: /assets/*
         name: Cache-Control
         value: no-cache
-      # index.html is the hash-router bootstrap — always revalidate.
+      # index.html là bootstrap hash-router — luôn revalidate.
       - path: /index.html
         name: Cache-Control
         value: no-cache
-      # Baseline hardening for every response.
+      # Baseline hardening cho mọi response.
       - path: /*
         name: X-Content-Type-Options
         value: nosniff

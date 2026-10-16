@@ -234,7 +234,11 @@ describe("QA web: cấu hình deploy & env", () => {
     assert.ok(content.includes("name: family-bridge-web"), "thiếu service web");
     assert.match(content, /- type: web\s*\n\s*name: family-bridge-web\s*\n\s*runtime: static/,
       "service web phải là runtime: static");
-    assert.ok(content.includes("staticPublishPath: zalo-mini-app/www"));
+    // W1-c (web-miniapp-separation, ADR-4): build/publish đổi sang web/.
+    assert.ok(content.includes("buildCommand: cd web && npm ci && npm run build"),
+      "buildCommand phải build web/ ra web/dist");
+    assert.ok(content.includes("staticPublishPath: web/dist"),
+      "staticPublishPath phải trỏ web/dist");
     assert.ok(content.includes("pullRequestPreviewsEnabled: false"));
     // VITE_API_BASE_URL sync:false — secret/giá trị thật không commit.
     const envBlock = content.slice(content.indexOf("family-bridge-web"));

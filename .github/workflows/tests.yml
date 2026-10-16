@@ -78,3 +78,52 @@ jobs:
         working-directory: zalo-mini-app
         run: node --test tests/*.test.mjs
 
+  # W1-c (web-miniapp-separation, ADR-4): job web — tests + build của frontend
+  # web độc lập, tests shared package, và kiểm chứng biên giới import
+  # transitive (scripts/check_import_boundaries.mjs). Giữa wave, web/ hoặc
+  # packages/family_bridge_shared/tests có thể chưa tồn tại: các bước tương
+  # ứng được guard (bỏ qua có cảnh báo) thay vì fail đỏ cả nhánh.
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Detect wave readiness (web/ + shared tests có thể chưa có)
+        id: detect
+        run: |
+          if [ -f web/package-lock.json ]; then
+            echo "has_web=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_web=false" >> "$GITHUB_OUTPUT"
+          fi
+          if compgen -G "packages/family_bridge_shared/tests/*.test.mjs" > /dev/null; then
+            echo "has_shared_tests=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_shared_tests=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.has_web == 'true'
+        with:
+          node-version: "22.12.0"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: actions/setup-node@v4
+        if: steps.detect.outputs.has_web != 'true'
+        with:
+          node-version: "22.12.0"
+      - name: Web tests + build (cd web)
+        if: steps.detect.outputs.has_web == 'true'
+        working-directory: web
+        run: |
+          npm ci
+          if [ -d tests ]; then
+            node --test tests/*.test.mjs
+          else
+            echo "web/tests chưa có — bỏ qua (wave sau)"
+          fi
+          npm run build
+      - name: Shared package tests (node --test từ repo root)
+        if: steps.detect.outputs.has_shared_tests == 'true'
+        run: node --test packages/family_bridge_shared/tests/*.test.mjs
+      - name: Import boundary check (transitive web↔mini↔shared)
+        run: node scripts/check_import_boundaries.mjs
+
