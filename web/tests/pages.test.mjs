@@ -1,5 +1,7 @@
-// tests/pages.test.mjs — port web (task 19-a): kiểm tra page contract + render
-// không throw cho 13 trang đã port + 8 stub W2-b. Chạy:
+// tests/pages.test.mjs — port web (task 19-a + W2-b): kiểm tra page contract +
+// render không throw cho 13 trang đã port + 8 trang W2-b (cards/signal/message/
+// mailbox/compose/proposal/settings/privacy — W2-b thay stub bằng trang thật,
+// meta giữ nguyên mini; smoke render ở trạng thái chưa đăng nhập). Chạy:
 //   node --test tests/pages.test.mjs
 // happy-dom globals PHẢI được gắn TRƯỚC khi import động pages.
 //
@@ -7,7 +9,8 @@
 // TRỪ 2 chỗ copy web trung thực (đã port có chủ ý, xem report task 19-a):
 //  - welcome: CTA "Tiếp tục để đăng nhập" (web không có host Zalo).
 //  - how-to-use: bước 1 là đăng nhập mã tài khoản (web).
-// Mailbox ở web là STUB W2-b — smoke trung thực thay vì danh sách dữ liệu.
+// Khối "8 trang W2-b" thay khối stub của 19-a: meta giữ nguyên, phần render
+// đổi sang smoke trang thật (copy gate đăng nhập per-page — KHÔNG giảm assertion).
 
 // ---------------------------------------------------------------- globals
 import { register } from "node:module";
@@ -56,10 +59,11 @@ const pages = {};
 for (const [name, loader] of Object.entries(PAGE_LOADERS)) {
   pages[name] = (await loader()).page;
 }
-const STUB_NAMES = ["cards", "signal", "message", "mailbox", "compose", "proposal", "settings", "privacy"];
-const stubs = {};
-for (const name of STUB_NAMES) {
-  stubs[name] = (await import(`../src/pages/${name}/index.js`)).page;
+// 8 trang W2-b (đã thay stub bằng trang thật — port nguyên văn từ mini).
+const W2B_PAGE_NAMES = ["cards", "signal", "message", "mailbox", "compose", "proposal", "settings", "privacy"];
+const w2bPages = {};
+for (const name of W2B_PAGE_NAMES) {
+  w2bPages[name] = (await import(`../src/pages/${name}/index.js`)).page;
 }
 
 // ---------------------------------------------------------------- helpers
@@ -188,35 +192,40 @@ describe("Page contract (shape) — 13 trang port", () => {
   }
 });
 
-describe("Stub W2-b: 8 trang tạm trỏ — trung thực, giữ meta mini", () => {
-  const STUB_META = {
-    cards: { id: "cards", title: "Thư viện thẻ cảm xúc", requiresAuth: true },
-    signal: { id: "signal", title: "Tín hiệu lắng nghe", requiresAuth: true },
-    message: { id: "message", title: "Chi tiết tin nhắn", requiresAuth: true },
-    mailbox: { id: "mailbox", title: "Hộp thư", requiresAuth: true },
-    compose: { id: "f06-compose", title: "Soạn Thư Cảm Xúc", requiresAuth: false },
-    proposal: { id: "proposal", title: "Xác nhận ghép nối", requiresAuth: true },
-    settings: { id: "settings", title: "Cài đặt", requiresAuth: true },
-    privacy: { id: "privacy", title: "Riêng tư & đồng ý", requiresAuth: true },
+describe("8 trang W2-b: meta khớp mini + render smoke trang thật (chưa đăng nhập)", () => {
+  const W2B_META = {
+    cards: { id: "cards", title: "Thư viện thẻ cảm xúc", requiresAuth: true, gate: "Cần đăng nhập để mở thư viện thẻ", action: "Đăng nhập" },
+    signal: { id: "signal", title: "Tín hiệu lắng nghe", requiresAuth: true, gate: "Cần đăng nhập để phát tín hiệu", action: "Đăng nhập" },
+    // message không có :id trong params của smoke này → rẽ nhánh "Không có thư được chọn" TRƯỚC gate phiên (giữ nguyên hành vi mini).
+    message: { id: "message", title: "Chi tiết tin nhắn", requiresAuth: true, gate: "Không có thư được chọn", action: "Quay lại Hộp thư" },
+    mailbox: { id: "mailbox", title: "Hộp thư", requiresAuth: true, gate: "Cần đăng nhập để mở hộp thư", action: "Đăng nhập" },
+    // compose GIỮ NGUYÊN mini: requiresAuth=false — tự kiểm tra phiên trong render.
+    compose: { id: "f06-compose", title: "Soạn Thư Cảm Xúc", requiresAuth: false, gate: "Cần đăng nhập để soạn thư", action: "Đăng nhập" },
+    proposal: { id: "proposal", title: "Xác nhận ghép nối", requiresAuth: true, gate: "Cần đăng nhập để xem đề xuất ghép đôi", action: "Đăng nhập" },
+    settings: { id: "settings", title: "Cài đặt", requiresAuth: true, gate: "Cần đăng nhập để mở cài đặt", action: "Đăng nhập" },
+    privacy: { id: "privacy", title: "Riêng tư & đồng ý", requiresAuth: true, gate: "Cần đăng nhập để mở trang riêng tư", action: "Đăng nhập" },
   };
 
-  for (const [name, meta] of Object.entries(STUB_META)) {
-    it(`${name}: meta khớp mini + render thông báo chuyển đổi trung thực`, () => {
-      const page = stubs[name];
+  for (const [name, meta] of Object.entries(W2B_META)) {
+    it(`${name}: meta khớp mini + gate đăng nhập trung thực khi chưa có phiên`, () => {
+      const page = w2bPages[name];
       assert.equal(page.id, meta.id);
       assert.equal(page.title, meta.title);
-      assert.equal(page.requiresAuth, meta.requiresAuth);
+      // Boolean() theo semantics guard (compose thật của mini không khai báo
+      // requiresAuth — undefined ≡ false với truthiness guard).
+      assert.equal(Boolean(page.requiresAuth), meta.requiresAuth);
       const { ctx } = makeCtx({ demo: false, role: "student" });
       const { host, el } = mount(page, ctx);
       const text = textOf(el);
       assert.ok(
-        text.includes("Màn này đang được chuyển đổi sang web độc lập"),
-        `stub phải nói thật: ${text.slice(0, 120)}`,
+        text.includes(meta.gate),
+        `${name} phải render gate thật: ${text.slice(0, 120)}`,
       );
-      assert.ok(text.includes("W2-b"), "stub phải dẫn theo dõi PR W2-b");
-      assert.ok(findButton(el, "Quay lại trang chủ"), "stub phải có lối quay lại");
+      assert.ok(findButton(el, meta.action), `${name} phải có lối hành động "${meta.action}"`);
       // Không giả dữ liệu: không nhãn demo, không chip "Mới", không số liệu bịa.
       assert.ok(!text.includes("Dữ liệu minh họa"));
+      assert.ok(!text.includes("Màn này đang được chuyển đổi sang web độc lập"),
+        "stub W2-b đã được thay bằng trang thật");
       unmount(host);
     });
   }

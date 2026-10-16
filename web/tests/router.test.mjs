@@ -1,8 +1,9 @@
-// tests/router.test.mjs — port web (task 19-a): bảng route 21 hash path của
-// web GIỮ NGUYÊN mini + pattern ":param" + guard requiresAuth/requiresRole
-// đúng thứ tự. Stub W2-b (cards/signal/message/mailbox/compose/proposal/
-// settings/privacy) giữ NGUYÊN meta trang của mini (requiresAuth 7 trang
-// phiên lớp học + compose tự kiểm tra phiên trong render).
+// tests/router.test.mjs — port web (task 19-a + W2-b): bảng route 21 hash path
+// của web GIỮ NGUYÊN mini + pattern ":param" + guard requiresAuth/requiresRole
+// đúng thứ tự. 8 trang cards/signal/message/mailbox/compose/proposal/
+// settings/privacy đã được W2-b port THÀNH TRANG THẬT (thay stub) — meta giữ
+// NGUYÊN mini (requiresAuth 7 trang phiên lớp học + compose tự kiểm tra phiên
+// trong render), nên mọi assertion meta của 19-a giữ nguyên giá trị.
 //
 // Pattern happy-dom giống pages.test.mjs: gắn globals TRƯỚC khi import động.
 
@@ -45,8 +46,8 @@ const EXPECTED_ROUTES = [
   "/cards", "/signal", "/messages/:id", "/proposal", "/settings", "/privacy",
 ];
 
-// 8 trang phức tạp tạm trỏ stub W2-b — GIỮ NGUYÊN meta mini.
-const STUB_ROUTES = [
+// 8 trang phức tạp (W2-b: trang thật thay stub) — GIỮ NGUYÊN meta mini.
+const W2B_ROUTES = [
   ["/cards", { id: "cards", requiresAuth: true, showBottomNav: true, chrome: "app" }],
   ["/signal", { id: "signal", requiresAuth: true, showBottomNav: true, chrome: "app" }],
   ["/messages/:id", { id: "message", requiresAuth: true, showBottomNav: false, chrome: "app" }],
@@ -92,15 +93,17 @@ describe("Route table: 21 hash path GIỮ NGUYÊN mini", () => {
     }
   });
 
-  it("8 stub W2-b giữ meta mini (requiresAuth + chrome app)", async () => {
-    for (const [path, meta] of STUB_ROUTES) {
+  it("8 trang W2-b giữ meta mini (requiresAuth + chrome app)", async () => {
+    for (const [path, meta] of W2B_ROUTES) {
       const mod = await routes[path]();
       assert.equal(mod.page.id, meta.id, `${path}: id`);
-      assert.equal(mod.page.requiresAuth, meta.requiresAuth, `${path}: requiresAuth`);
+      // Boolean() theo đúng semantics của guard router (compose thật của mini
+      // không khai báo requiresAuth — undefined ≡ false với truthiness guard).
+      assert.equal(Boolean(mod.page.requiresAuth), meta.requiresAuth, `${path}: requiresAuth`);
       assert.equal(mod.page.showBottomNav, meta.showBottomNav, `${path}: showBottomNav`);
       if (meta.chrome) assert.equal(mod.page.chrome, meta.chrome, `${path}: chrome`);
-      // Stub trung thực: nêu rõ đang chuyển đổi, không giả dữ liệu.
-      assert.equal(mod.page.requiresRole, true, `${path}: stub vẫn requiresRole như mini`);
+      // Trang thật giữ đúng meta mini (không phải stub trung gian).
+      assert.equal(mod.page.requiresRole, true, `${path}: vẫn requiresRole như mini`);
     }
   });
 
@@ -220,27 +223,29 @@ describe("Router render (happy-dom)", () => {
     assert.ok(root.querySelector('[data-page="u04-role-select"]'));
   });
 
-  it("requiresAuth TRƯỚC requiresRole: stub /mailbox không phiên -> redirect /login?reason=expired", async () => {
+  it("requiresAuth TRƯỚC requiresRole: trang /mailbox không phiên -> redirect /login?reason=expired", async () => {
     domWindow.location.hash = "#/mailbox";
     const r = freshRouter();
     await r.render();
     assert.equal(domWindow.location.hash, "#/login?reason=expired");
     assert.equal(root.querySelector('[data-page="mailbox"]'), null,
-      "không render stub khi chưa có phiên (guard chạy trước)");
+      "không render trang khi chưa có phiên (guard chạy trước)");
   });
 
-  it("đã có phiên + vai trò -> /mailbox render stub trong app-shell, không giả dữ liệu", async () => {
+  it("đã có phiên + vai trò -> /mailbox render TRANG THẬT trong app-shell, dữ liệu qua adapter", async () => {
     setSession({ token: "t-router", userId: "u-router", expiresAt: Date.now() + 3600_000 });
     setRole("student");
     domWindow.location.hash = "#/mailbox";
     const r = freshRouter();
     r.start();
     const ok = await waitFor(() => root.querySelector('[data-page="mailbox"]'));
-    assert.ok(ok, "stub mailbox phải render sau guard");
+    assert.ok(ok, "trang mailbox phải render sau guard");
     assert.ok(root.querySelector('[data-shell="app"]'), "chrome app -> bọc app-shell");
-    const text = root.textContent || "";
-    assert.ok(text.includes("đang được chuyển đổi sang web độc lập"), "stub phải trung thực");
-    assert.ok(text.includes("theo dõi PR"), "stub phải dẫn theo dõi PR");
+    // Trang thật (W2-b): chờ adapter (mock shared) trả dữ liệu rồi render heading thật.
+    const loaded = await waitFor(
+      () => (root.textContent || "").includes("Hộp thư trao đổi thấu cảm"),
+    );
+    assert.ok(loaded, "mailbox thật phải render heading sau khi tải dữ liệu qua adapter");
     r.stop();
   });
 
