@@ -836,5 +836,132 @@ export function createHttpEndpoints({
         results: data && Array.isArray(data.results) ? data.results : [],
       };
     },
+
+    // -------- F02 chương trình bốn tuần (US-036/US-044, additive) --------
+
+    /** GET /api/v1/program/catalog — chỉ chương trình đã publish (B16). */
+    async programCatalog() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/catalog"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/program/enroll — tham gia tự nguyện, pin revision. */
+    async programEnroll({ programKey, programRevision }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/enroll", {
+        method: "POST",
+        body: { program_key: programKey, program_revision: programRevision },
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/program/opt-out — tự nguyện, không áp lực. */
+    async programOptOut(programKey) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/opt-out", {
+        method: "POST",
+        body: { program_key: programKey },
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/program/progress — tiến độ CỦA MÌNH (done|skipped|reset). */
+    async programProgress({ programKey, weekNo, activityKey, status }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/progress", {
+        method: "POST",
+        body: {
+          program_key: programKey, week_no: weekNo,
+          activity_key: activityKey, status,
+        },
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/program/agreement/accept — chấp nhận cá nhân template. */
+    async programAgreementAccept(programKey) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/program/agreement/accept", {
+          method: "POST",
+          body: { program_key: programKey },
+        }));
+      return data;
+    },
+
+    /** GET /api/v1/program/agreement?program_key= — thỏa ước gia đình của
+     * cặp mình (generation hiện tại) + template đã pin; null khi chưa có. */
+    async programAgreement(programKey) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/agreement", {
+        query: { program_key: programKey },
+      }));
+      return data || { agreement: null };
+    },
+
+    /** POST /api/v1/program/agreement/propose — một bên đề xuất. */
+    async programAgreementPropose(programKey) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/program/agreement/propose", {
+          method: "POST",
+          body: { program_key: programKey },
+        }));
+      return data;
+    },
+
+    /** POST .../confirm — mỗi người tự xác nhận cho mình. */
+    async programAgreementConfirm(agreementId) {
+      requireBaseUrl();
+      const data = await authed(() => request(
+        `/api/v1/program/agreement/${encodeURIComponent(agreementId)}/confirm`,
+        { method: "POST", body: {} }));
+      return data;
+    },
+
+    /** POST .../withdraw — chỉ người đề xuất, khi còn proposed. */
+    async programAgreementWithdraw(agreementId) {
+      requireBaseUrl();
+      const data = await authed(() => request(
+        `/api/v1/program/agreement/${encodeURIComponent(agreementId)}/withdraw`,
+        { method: "POST", body: {} }));
+      return data;
+    },
+
+    // ------------------- F09 lời mời hoạt động chung -------------------
+
+    /** GET /api/v1/activities/invites — lời mời liên quan tới tôi (2 chiều). */
+    async activitiesInvites() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/activities/invites"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/activities/invites — mời người ĐÃ kết nối cùng làm. */
+    async activitiesInvite({ inviteeId, contentKey, contentRevision }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/activities/invites", {
+        method: "POST",
+        body: {
+          invitee_id: inviteeId, content_key: contentKey,
+          content_revision: contentRevision,
+        },
+      }));
+      return data;
+    },
+
+    /** POST .../respond — CHỈ người được mời accept|decline. */
+    async activitiesRespond(inviteId, decision) {
+      requireBaseUrl();
+      const data = await authed(() => request(
+        `/api/v1/activities/invites/${encodeURIComponent(inviteId)}/respond`,
+        { method: "POST", body: { decision } }));
+      return data;
+    },
   };
 }

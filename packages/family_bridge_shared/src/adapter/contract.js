@@ -85,6 +85,18 @@ export const ADAPTER_METHODS = [
   "programMy",            // GET  /api/v1/program/my (kèm opted-out)
   "programWeeks",         // GET  /api/v1/program/weeks/{program_key}
   "activitiesCatalog",    // GET  /api/v1/activities/catalog
+  "programCatalog",       // GET  /api/v1/program/catalog (published only)
+  "programEnroll",        // POST /api/v1/program/enroll (pins revision)
+  "programOptOut",        // POST /api/v1/program/opt-out (voluntary)
+  "programProgress",      // POST /api/v1/program/progress (own-only)
+  "programAgreementAccept",// POST /api/v1/program/agreement/accept (per-person)
+  "programAgreement",     // GET  /api/v1/program/agreement?program_key=
+  "programAgreementPropose",   // POST /api/v1/program/agreement/propose
+  "programAgreementConfirm",   // POST /api/v1/program/agreement/{id}/confirm
+  "programAgreementWithdraw",  // POST /api/v1/program/agreement/{id}/withdraw
+  "activitiesInvites",    // GET  /api/v1/activities/invites (2 chiều)
+  "activitiesInvite",     // POST /api/v1/activities/invites (F09 two-sided)
+  "activitiesRespond",    // POST /api/v1/activities/invites/{id}/respond (invitee-only)
 ];
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".

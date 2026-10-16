@@ -310,9 +310,9 @@ describe("shared http-endpoints — hợp đồng boundary", () => {
     }
   });
 
-  it("surface phủ ADAPTER_METHODS: 69 tên hợp đồng, mọi method endpoint đều là hàm", () => {
+  it("surface phủ ADAPTER_METHODS: 81 tên hợp đồng, mọi method endpoint đều là hàm", () => {
     const endpoints = makeEndpoints();
-    assert.equal(ADAPTER_METHODS.length, 69);
+    assert.equal(ADAPTER_METHODS.length, 81);
     for (const name of ADAPTER_METHODS) {
       // loginWithZaloToken/trySilentLogin/logout là glue SDK của host (mini: zmp-sdk).
       if (name === "loginWithZaloToken" || name === "trySilentLogin" || name === "logout") continue;
