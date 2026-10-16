@@ -103,19 +103,16 @@ export const page = {
 
     // CTA chính + hành động phụ
     const actions = h("div", { class: "fb-welcome__actions" });
-    // CTA với glyph Zalo 20px như reference U01 (code.html lines 82-85).
-    // Class giữ đúng contract design-system (fb-btn fb-btn--cta fb-btn--lg);
-    // size 48px đặt qua class riêng của màn welcome.
-    const zaloCta = h("button", {
+    const loginCta = h("button", {
       class: "fb-btn fb-btn--cta fb-btn--lg fb-welcome__cta",
       type: "button",
       onclick: () => ctx.navigate("/login"),
     });
-    zaloCta.appendChild(
-      createIcon({ name: "zalo_chat", size: 20, className: "fb-welcome__cta-icon" }),
+    loginCta.appendChild(
+      createIcon({ name: "arrow_forward", size: 20, className: "fb-welcome__cta-icon" }),
     );
-    zaloCta.appendChild(h("span", {}, "Tiếp tục với Zalo"));
-    actions.appendChild(zaloCta);
+    loginCta.appendChild(h("span", {}, "Tiếp tục để đăng nhập"));
+    actions.appendChild(loginCta);
     actions.appendChild(
       h("div", { class: "fb-welcome__links" },
         h("button", {

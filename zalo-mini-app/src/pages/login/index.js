@@ -15,6 +15,9 @@ import {
 import {
   createCredentialForm, createLocalClassDisabledCard,
 } from "./credential-form.js";
+import {
+  renderLegacyZaloLogin, LEGACY_ZALO_LOGIN_ENABLED,
+} from "./legacy-zalo-login.js";
 
 // destroy() chặn các cập nhật async của lần render gần nhất (đăng nhập chậm).
 let markRenderCancelled = () => {};
@@ -174,66 +177,13 @@ export const page = {
       return root;
     }
 
-    // ---- Zalo thật: giữ nguyên luồng SDK (không đổi) ----
-    if (isZaloHost()) {
-      body.appendChild(h("h2", { class: "fb-page__heading" }, "Đăng nhập bằng Zalo"));
-
-      body.appendChild(
-        createCard({
-          title: "Chúng tôi xác minh bạn như thế nào",
-          description:
-            "Family Bridge dùng tài khoản Zalo của bạn để tạo phiên đăng nhập riêng. " +
-            "Chúng tôi chỉ nhận mã định danh Zalo của bạn — không yêu cầu số điện thoại, " +
-            "không xin quyền đọc thông tin cá nhân. Máy chủ của chúng tôi xác minh phiên " +
-            "với Zalo trước khi cho bạn sử dụng.",
-        }),
-      );
-
-      let busy = false;
-      const statusLine = h("p", { class: "fb-page__note", role: "status" });
-
-      const zaloButton = createButton({
-        label: "Đăng nhập bằng Zalo",
-        variant: "cta",
-        size: "lg",
-        onClick: async () => {
-          if (busy) return;
-          busy = true;
-          zaloButton.disabled = true;
-          statusLine.textContent = "Đang đăng nhập…";
-          try {
-            await ctx.adapter.loginWithZaloToken();
-            if (cancelled) return;
-            statusLine.textContent = "Đăng nhập thành công.";
-            await proceedAfterLogin();
-          } catch (error) {
-            busy = false;
-            zaloButton.disabled = false;
-            statusLine.textContent = loginErrorMessage(error);
-          }
-        },
-      });
-
-      body.appendChild(zaloButton);
-      body.appendChild(statusLine);
-
-      body.appendChild(
-        h("p", { class: "fb-page__note" },
-          "Đăng nhập không đồng nghĩa với đồng ý nghiên cứu hay chia sẻ dữ liệu. " +
-          "Nội dung riêng tư của bạn luôn theo quyền chia sẻ từng mục.",
-        ),
-      );
-
-      body.appendChild(
-        h("p", { class: "fb-page__aside" },
-          h("a", { href: "#/help" }, "Tìm trợ giúp"),
-        ),
-      );
-
+    // ---- Zalo legacy (giữ nguyên implementation, mặc định tắt theo lệnh Huy 16/10/2026) ----
+    if (LEGACY_ZALO_LOGIN_ENABLED) {
+      body.appendChild(renderLegacyZaloLogin({ ctx, proceedAfterLogin, cancelled: () => cancelled }));
       return root;
     }
 
-    // ---- WEB (Task 2 Render): form mã tài khoản + mật khẩu (w02) ----
+    // ---- Form đăng nhập HS/PH (mã tài khoản + mật khẩu) — active cho cả Zalo Mini App và Web ----
     body.appendChild(renderCredentialLogin({ ctx, proceedAfterLogin, cancelled: () => cancelled }));
     return root;
   },

@@ -4,9 +4,9 @@ import { createButton, createCard, createTopBar } from "../../components/index.j
 
 const STEPS = [
   {
-    title: "Bước 1. Đăng nhập bằng Zalo",
+    title: "Bước 1. Đăng nhập bằng mã tài khoản",
     description:
-      "Mở Family Bridge trong Zalo và đăng nhập. Chúng tôi chỉ nhận mã định danh Zalo của bạn để tạo phiên riêng — không xin số điện thoại hay quyền đọc thông tin cá nhân.",
+      "Mở Family Bridge và đăng nhập bằng mã tài khoản + mật khẩu do người phụ trách lớp bàn giao. Mật khẩu chỉ giữ trong bộ nhớ và gửi thẳng qua HTTPS đến máy chủ.",
   },
   {
     title: "Bước 2. Kết nối hai bên bằng mã mời",

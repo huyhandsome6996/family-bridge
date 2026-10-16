@@ -180,15 +180,15 @@ describe("Page contract (shape)", () => {
 });
 
 describe("Render không throw + copy bắt buộc", () => {
-  it("U01 welcome (Stitch): CTA 'Tiếp tục với Zalo' + liên kết Trợ giúp luôn hiển thị", () => {
+  it("U01 welcome (Stitch): CTA 'Tiếp tục để đăng nhập' + liên kết Trợ giúp luôn hiển thị", () => {
     const { ctx, navigateCalls } = makeCtx({});
     const { host, el } = mount(pages.welcome, ctx);
     const text = textOf(el);
     assert.ok(text.includes("Family Bridge"));
     assert.ok(text.includes("Mở lời nhẹ nhàng, gần nhau hơn"), "headline Stitch phải có");
     assert.ok(text.includes("Cam kết bảo mật & ranh giới"), "thẻ cam kết phải có");
-    // CTA chính dẫn đúng luồng thật: /login (đăng nhập Zalo ở đó, không tự dựng)
-    const cta = findButton(el, "Tiếp tục với Zalo");
+    // CTA chính dẫn đúng luồng thật: /login (đăng nhập ở đó, không tự dựng)
+    const cta = findButton(el, "Tiếp tục để đăng nhập");
     assert.ok(cta, "CTA đăng nhập phải tồn tại");
     cta.click();
     assert.ok(navigateCalls.includes("/login"), "CTA phải dẫn sang /login");
@@ -202,7 +202,7 @@ describe("Render không throw + copy bắt buộc", () => {
     const { ctx, navigateCalls } = makeCtx({});
     const { host, el } = mount(pages.howToUse, ctx);
     const text = textOf(el);
-    for (const step of ["Đăng nhập bằng Zalo", "mã mời", "thẻ cảm xúc và hộp thư", "Đồng hành 4 tuần tự nguyện"]) {
+    for (const step of ["Đăng nhập bằng mã tài khoản", "mã mời", "thẻ cảm xúc và hộp thư", "Đồng hành 4 tuần tự nguyện"]) {
       assert.ok(text.includes(step), `thiếu bước/copy: ${step}`);
     }
     assert.ok(text.includes("Cả hai bên đều phải đồng ý thì kết nối mới được tạo"));

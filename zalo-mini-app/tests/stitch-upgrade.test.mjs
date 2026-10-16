@@ -174,9 +174,9 @@ describe("Stitch: app header (U08/U10)", () => {
     domWindow.document.body.appendChild(host);
     const el = welcome.render(ctx);
     host.appendChild(el);
-    assert.ok(textOf(el).includes("Tiếp tục với Zalo"));
+    assert.ok(textOf(el).includes("Tiếp tục để đăng nhập"));
     assert.ok(el.querySelector('a[href="#/help"]'), "help phải luôn truy cập được");
-    const cta = findButton(el, "Tiếp tục với Zalo");
+    const cta = findButton(el, "Tiếp tục để đăng nhập");
     cta.click();
     assert.ok(navigateCalls.includes("/login"), "CTA phải dẫn sang /login");
     // Không được tự dựng đăng nhập ngay trên welcome (không SDK, không form token)
