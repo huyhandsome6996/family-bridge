@@ -4,6 +4,12 @@ Nhánh: `tinh-nang/web-render-task2`. Tài liệu này bàn giao phần **triể
 Render** của Task 2: một static service Render phục vụ build Vite của
 `zalo-mini-app` (một codebase duy nhất, không dựng frontend thứ hai).
 
+**Cập nhật vận hành 16/10/2026:** PR #36 đã merge; website Render đã Live và
+đăng nhập HS001 qua API thật tới màn consent. Frontend tự deploy mỗi commit
+main sau lần kiểm chứng này; backend vẫn deploy có kiểm soát khi đổi schema.
+Xem [biên bản phát hành](release-review-2026-10-16.md) để lấy bằng chứng thực.
+Các mục NOT_RUN/checklist bên dưới là bàn giao lịch sử trước lần triển khai.
+
 > [!IMPORTANT]
 > **Điều kiện chưa có (NOT_RUN)**: chưa apply Blueprint lần nào cho service web,
 > chưa set `VITE_API_BASE_URL` trên Dashboard, chưa sửa CORS backend, chưa verify
