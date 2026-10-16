@@ -20,6 +20,13 @@ import {
   createSkeleton,
   createTopBar,
 } from "../../components/index.js";
+// ADR-1 (task 18-a): errorKind/messageOf/failureFor chuyển về shared —
+// mapping lỗi GIỐNG HỆT cho mini app và web (nguồn duy nhất).
+import {
+  errorKind,
+  failureFor,
+  messageOf,
+} from "../../../../packages/family_bridge_shared/src/connection-check.js";
 
 const SCENARIOS = [
   { key: "ok", label: "Giả lập: thành công" },
@@ -30,55 +37,6 @@ const SCENARIOS = [
 function readState(store) {
   if (store && typeof store.getState === "function") return store.getState();
   return store || {};
-}
-
-function errorKind(error) {
-  // Fallback an toàn: lỗi không có `kind` (ApiError cũ, Error thường) là
-  // "unknown" — rơi vào nhánh lỗi chung, KHÔNG BAO GIỜ nhánh timeout.
-  return error && typeof error.kind === "string" ? error.kind : "unknown";
-}
-
-function messageOf(error, fallback) {
-  if (error && typeof error.message === "string" && error.message.trim()) {
-    return error.message;
-  }
-  return fallback;
-}
-
-/** Chọn nội dung ErrorState theo `kind` của lỗi — không suy loại từ status/message. */
-function failureFor(error) {
-  switch (errorKind(error)) {
-    case "timeout":
-      return {
-        title: "Kết nối quá thời gian chờ",
-        description: "Máy chủ không phản hồi trong thời gian cho phép. Vui lòng thử lại.",
-      };
-    case "configuration":
-      // Màn kiểm tra kỹ thuật: được phép nêu tên biến cấu hình.
-      return {
-        title: "Chưa cấu hình địa chỉ máy chủ",
-        description: messageOf(
-          error,
-          "Ứng dụng chưa biết địa chỉ máy chủ. Cần cấu hình địa chỉ backend khi build trước khi kiểm tra kết nối.",
-        ),
-      };
-    case "network":
-      return {
-        title: "Chưa kết nối được máy chủ",
-        description: messageOf(error, "Không tiếp cận được máy chủ. Kiểm tra mạng rồi thử lại."),
-      };
-    case "invalid_response":
-      return {
-        title: "Không kiểm tra được kết nối",
-        description: messageOf(error, "Máy chủ trả về dữ liệu không hợp lệ. Vui lòng thử lại sau."),
-      };
-    default:
-      // "http", "unknown" (ApiError cũ không kind, Error thường) — lỗi chung.
-      return {
-        title: "Không kiểm tra được kết nối",
-        description: messageOf(error, "Không thể hoàn tất yêu cầu. Vui lòng thử lại sau."),
-      };
-  }
 }
 
 export const page = {

@@ -8,96 +8,21 @@
 //   1. Không có cơ chế gặp lỗi API thì âm thầm chuyển sang mock thành công.
 //   2. Lỗi/timeout phải ném lỗi ra để UI hiển thị trạng thái lỗi thật.
 //   3. API nghiệp vụ tương lai KHÔNG giả implement — ghi boundary cho US-004.
+//
+// ADR-2 (task 18-a): danh sách ADAPTER_METHODS chuyển về shared contract làm
+// NGUỒN DUY NHẤT (69 tên copy nguyên văn) — file này re-export lại để giữ
+// nguyên export surface cho mọi importer cũ.
 
-import { createMockAdapter } from "./mock-adapter.js";
-import { createZaloAdapter } from "./zalo-adapter.js";
-import { getApiBaseUrl } from "../config.js";
-
-export const ADAPTER_METHODS = [
-  "getBackendHealth",   // GET /api/v1/health/ -> 'ok' | throws ApiError
-  "getBackendReady",    // GET /api/v1/ready/  -> 'ok' | 'unavailable' | throws
-  "getConnectionStatus",// trạng thái kết nối gia đình (fixture ở mock; boundary ở zalo)
-  // ---- F01: đăng nhập + đồng ý + kết nối hai phía ----
-  "loginWithZaloToken", // getAccessToken (SDK) -> POST /api/v1/auth/session
-  "trySilentLogin",     // đăng nhập lại im lặng một lần khi mở app
-  "logout",             // POST /api/v1/auth/logout (token cũ đã chụp) + vô hiệu hóa phiên NGAY khi gọi
-  "getMyProfile",       // GET /api/v1/auth/me — tên tự khai báo của mình
-  "updateMyProfile",    // PUT  /api/v1/auth/me — đặt tên tự khai báo
-  "listConsents",       // GET  /api/v1/consents
-  "recordConsent",      // POST /api/v1/consents
-  "createInvite",       // POST /api/v1/connections/invites
-  "listInvites",        // GET  /api/v1/connections/invites
-  "previewInvite",      // POST /api/v1/connections/invites/preview (read-only)
-  "claimInvite",        // POST /api/v1/connections/invites/claim
-  "confirmInvite",      // POST /api/v1/connections/invites/{id}/confirm
-  "declineInvite",      // POST /api/v1/connections/invites/{id}/decline
-  "cancelInvite",       // POST /api/v1/connections/invites/{id}/cancel
-  "listConnections",    // GET  /api/v1/connections
-  "revokeConnection",   // POST /api/v1/connections/{id}/revoke
-  // ---- F06: nháp + tạm dừng 300s do MÁY CHỦ quyết + preview + xác nhận gửi ----
-  // Tên endpoint khớp packages/family_bridge_mobile/f06_drafts/api.js và
-  // backend family_bridge_features.f06_drafts (PAUSE_SECONDS = 300, cố định).
-  "listDrafts",         // GET    /api/v1/drafts (keyset { results, nextCursor })
-  "createDraft",        // POST   /api/v1/drafts
-  "getDraft",           // GET    /api/v1/drafts/{id} (kèm server_time)
-  "editDraft",          // POST   /api/v1/drafts/{id} (bump revision, giữ deadline)
-  "discardDraft",       // DELETE /api/v1/drafts/{id}
-  "pauseDraft",         // POST   /api/v1/drafts/{id}/pause (deadline máy chủ)
-  "cancelDraftPause",   // DELETE /api/v1/drafts/{id}/pause
-  "previewDraft",       // POST   /api/v1/drafts/{id}/preview (chỉ sau deadline)
-  "confirmDraftSend",   // POST   /api/v1/drafts/{id}/confirm-send — HÀNH ĐỘNG
-                        //   CUỐI CÙNG của người dùng, KHÔNG tự retry.
-  // ---- Web (Task 2 — Render): đăng nhập lớp học + màn web mới ----
-  // Tất cả thao tác GỬI (sendMessage/sendCard/signalSend/aiRefine) đều BẮT
-  // BUỘC `key` do caller tạo tại nút xác nhận (crypto.randomUUID) — không có
-  // cơ chế client tự gửi; mất response → UI tra cứu /operations/{key}.
-  "loginWithCredentials", // POST /api/v1/auth/class-session {code,password}
-  "getCapabilities",      // GET  /api/v1/auth/class-capabilities (best-effort)
-  "changeClassPassword",  // POST /api/v1/auth/class-password
-  "changeClassCode",      // POST /api/v1/auth/class-code
-  "changeClassDisplayName", // POST /api/v1/auth/class-display-name
-  "listClassProposals",   // GET  /api/v1/classroom/proposals
-  "confirmClassProposal", // POST /api/v1/classroom/proposals/{id}/confirm
-  "declineClassProposal", // POST /api/v1/classroom/proposals/{id}/decline
-  "cancelClassProposal",  // POST /api/v1/classroom/proposals/{id}/cancel
-  "listMessages",         // GET  /api/v1/messages (metadata, KHÔNG body)
-  "getMessage",           // GET  /api/v1/messages/{id} (+ body)
-  "markMessageRead",      // POST /api/v1/messages/{id}/read (recipient-only)
-  "sendMessage",          // POST /api/v1/messages (+X-Idempotency-Key)
-  "quickReplies",         // GET  /api/v1/messages/quick-replies
-  "lookupOperation",      // GET  /api/v1/operations/{key} (tra cứu lost-response)
-  "listCards",            // GET  /api/v1/cards
-  "previewCard",          // POST /api/v1/cards/preview
-  "sendCard",             // POST /api/v1/cards/send (+X-Idempotency-Key)
-  "cardSnapshot",         // GET  /api/v1/cards/{id}
-  "cardReplySuggestions", // GET  /api/v1/cards/{id}/reply-suggestions
-  "signalMeta",           // GET  /api/v1/signals/meta (3 nhu cầu allowlist)
-  "signalPreview",        // POST /api/v1/signals/preview
-  "signalSend",           // POST /api/v1/signals/send (+X-Idempotency-Key)
-  "signalDetail",         // GET  /api/v1/signals/{id}
-  "signalAck",            // POST /api/v1/signals/{id}/ack (recipient-only)
-  "aiStatus",             // GET  /api/v1/ai/status
-  "aiRefine",             // POST /api/v1/ai/refine (+X-Idempotency-Key)
-  "aiAccept",             // POST /api/v1/ai/suggestions/{id}/accept
-  "aiDiscard",            // POST /api/v1/ai/suggestions/{id}/discard
-  "helpDirectory",        // GET  /api/v1/help/directory (public, AllowAny)
-  "privacyOverview",      // GET  /api/v1/privacy/overview
-  "revokeGrant",          // POST /api/v1/privacy/grants/{type}/{id}/revoke
-  "requestDeletion",      // POST /api/v1/privacy/deletion-requests
-  "getDeletionRequest",   // GET  /api/v1/privacy/deletion-requests/{id}
-  "cancelDeletionRequest",// POST /api/v1/privacy/deletion-requests/{id}/cancel
-  "withdrawConsent",      // POST /api/v1/privacy/consents/{purpose}/withdraw
-  "createMoodEntry",      // POST /api/v1/mood/entries (F07 emotion allowlist)
-  "listMoodEntries",      // GET  /api/v1/mood/entries
-  "programMy",            // GET  /api/v1/program/my (kèm opted-out)
-  "programWeeks",         // GET  /api/v1/program/weeks/{program_key}
-  "activitiesCatalog",    // GET  /api/v1/activities/catalog
-];
+export { ADAPTER_METHODS } from "../../../../packages/family_bridge_shared/src/adapter/contract.js";
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".
 // UI PHẢI phân loại theo `kind`, không suy loại từ status 0 hay từ câu thông báo.
 // Riêng ready: ApiError kind "http" + status 503 -> adapter trả 'unavailable'
 // (trạng thái hợp lệ, không phải lỗi) — hợp đồng ready-503 giữ nguyên.
+
+import { createMockAdapter } from "./mock-adapter.js";
+import { createZaloAdapter } from "./zalo-adapter.js";
+import { getApiBaseUrl } from "../config.js";
 
 export function createAdapter({ mode, scenario = null } = {}) {
   if (mode === "mock") {

@@ -363,7 +363,10 @@ describe("Stitch: adapter F06 (nháp + khoảng dừng máy chủ)", () => {
     // việc preview CHƯA hết giờ trả cooldown (đã test ở trên) và shape các
     // trường dự kiến có mặt khi hợp lệ được pin qua source của mock:
     // {preview_id, revision, recipient_id, deadline, server_time} — không body.
-    const mockSource = readFileSync(join(SRC, "core/adapter/mock-adapter.js"), "utf8");
+    // ADR-1 (task 18-a): mock-adapter chuyển về packages/family_bridge_shared
+    // (shim giữ path import). Đọc SOURCE từ file thật trong shared — assertion
+    // KHÔNG đổi.
+    const mockSource = readFileSync(join(ROOT, "..", "packages", "family_bridge_shared", "src", "adapter", "mock-adapter.js"), "utf8");
     const previewFn = mockSource.slice(
       mockSource.indexOf("async previewDraft"),
       mockSource.indexOf("async confirmDraftSend"),
