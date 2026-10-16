@@ -11,20 +11,34 @@
 //   GET  /api/v1/program/weeks/{key}       → {pinned_revision, suggested_week, weeks[4],
 //                                             agreement{...,accepted_by_me}, note_paper_guide}
 //   POST /api/v1/program/progress          → {week_no, activity_key, program_revision, status}
-//   GET  /api/v1/program/agreement?key     → {agreement_template, agreement|null, other_party_id, ...}
+//   GET  /api/v1/program/agreement?key     → {agreement_template, agreement|null,
+//                                             effective_agreement|null (confirmed đang hiệu lực),
+//                                             pending_proposal|null (đang chờ hai bên),
+//                                             other_party_id, ...}
 //   POST /api/v1/program/agreement/propose | /{id}/confirm | /{id}/withdraw
 //   GET/POST /api/v1/activities/invites, POST .../{id}/respond (F09)
+//   GET  /api/v1/activities/catalog        → {results:[{content_key,revision,title,minutes,...}]}
 //
 // Sự thật dữ liệu & an toàn:
 // - 404 program_not_published / catalog rỗng = "chưa có nội dung được phát
 //   hành" (thầy chưa publish) — KHÔNG fake nội dung, KHÔNG 401 bị hiểu là
 //   "chưa có chương trình".
 // - Tiến độ là CỦA RIÊNG MÌNH (server chặn tick hộ); không có family progress.
-// - Thỏa ước tuần 4 chỉ confirmed khi CẢ HAI tự bấm xác nhận cùng revision.
-// - Lời mời hoạt động chung là F09 thật (inviter/invitee riêng, không tự accept hộ).
+// - Thỏa ước tuần 4 chỉ confirmed khi CẢ HAI tự bấm xác nhận cùng revision;
+//   bản confirmed đang hiệu lực không bị đề xuất mới làm mất trạng thái (R2).
+// - Lời mời hoạt động chung là F09 thật (inviter/invitee riêng, không tự accept
+//   hộ). Tuần trả `activities:[{activity_key,status}]` theo contract backend —
+//   revision/tiêu đề/thời lượng lấy từ catalog F09 thật, KHÔNG hardcode (R1).
+// - Mọi mutation hiển thị lỗi thật theo ApiError.kind/reason, chặn bấm lặp khi
+//   đang gửi, KHÔNG tự retry — người dùng chủ động thử lại; phản hồi của phiên
+//   cũ (logout/đổi actor) không cập nhật UI của phiên mới (R4).
 // - Demo mode dùng fixture (catalog rỗng) — hiển thị empty state trung thực.
 import { h, clear } from "../../app/dom.js";
-import { hasLiveSession } from "../../core/session.js";
+import {
+  getSessionGeneration,
+  getUserId,
+  hasLiveSession,
+} from "../../core/session.js";
 import {
   createButton,
   createCard,
@@ -63,7 +77,100 @@ function agreementStatusLabel(status) {
   return map[status] || status;
 }
 
-const AGREEMENT_OPEN = new Set(["proposed", "confirmed"]);
+/* ---------------------- Mutation trung thực (R4) ---------------------- */
+
+function sessionChangedSince(capturedGeneration, capturedUserId) {
+  return getSessionGeneration() !== capturedGeneration
+    || getUserId() !== capturedUserId;
+}
+
+const MUTATION_REASON_TEXT = {
+  not_in_pinned_program:
+    "hoạt động không thuộc phiên bản chương trình bạn đang theo",
+  invalid_status: "trạng thái không hợp lệ",
+  no_active_connection:
+    "cần hai bên đã kết nối trước khi mời hoạt động chung",
+  cannot_invite_self: "không thể tự mời chính mình",
+  content_not_published: "nội dung này chưa được phát hành ở phiên bản đó",
+  program_not_published: "chương trình chưa được phát hành",
+  enrollment_not_found: "bạn chưa tham gia chương trình này",
+  revision_mismatch:
+    "hai bên chưa cùng theo một phiên bản nội dung — cần cùng cập nhật "
+    + "phiên bản trước khi xác nhận",
+  agreement_not_confirmable:
+    "thỏa ước này không thể xác nhận ở trạng thái hiện tại",
+  already_confirmed_by_you: "bạn đã xác nhận thỏa ước này rồi",
+  connection_changed: "kết nối đã thay đổi — hãy tải lại trang",
+  only_proposer_can_withdraw: "chỉ người đề xuất mới rút được đề xuất",
+  agreement_not_open: "đề xuất này không còn mở",
+  agreement_revision_outdated:
+    "phiên bản này đã có bản hiệu lực mới hơn nên không đề xuất lại được",
+  invite_not_accepted: "lời mời chưa được chấp nhận",
+};
+
+/** Thông điệp lỗi trung thực theo ApiError.kind/reason — lỗi là lỗi, không
+ * biến thành trạng thái rỗng hay thành công. Người dùng chủ động thử lại
+ * (không tự retry mutation). */
+function mutationErrorText(error, { subject }) {
+  const reason = error && error.details && error.details.reason;
+  if (reason && MUTATION_REASON_TEXT[reason]) {
+    return `Chưa thực hiện được vì ${MUTATION_REASON_TEXT[reason]}. ` +
+      "Bạn chủ động thử lại nhé.";
+  }
+  const kind = error && error.kind;
+  if (kind === "network") {
+    return `${subject} chưa được ghi vì mất kết nối mạng. ` +
+      "Bạn chủ động thử lại khi mạng ổn định nhé.";
+  }
+  if (kind === "timeout") {
+    return `${subject} chưa được ghi vì máy chủ phản hồi quá lâu. ` +
+      "Bạn chủ động thử lại nhé.";
+  }
+  if (kind === "configuration") {
+    return `${subject} chưa được ghi vì ứng dụng cấu hình chưa đúng ` +
+      "(thiếu địa chỉ máy chủ). Vui lòng báo quản trị viên.";
+  }
+  if (kind === "invalid_response") {
+    return `${subject} chưa được ghi vì phản hồi máy chủ không đọc được. ` +
+      "Bạn chủ động thử lại nhé.";
+  }
+  if (error && error.status) {
+    return `${subject} chưa được ghi vì máy chủ từ chối (mã ${error.status}). ` +
+      "Bạn chủ động thử lại nhé.";
+  }
+  return `${subject} chưa được ghi vì có lỗi không xác định. ` +
+    "Bạn chủ động thử lại nhé.";
+}
+
+/** Chạy một mutation một cách trung thực: chặn bấm lặp khi đang gửi, hiện
+ * trạng thái/lỗi rõ ràng, cho thử lại chủ động, và KHÔNG để phản hồi của
+ * phiên cũ (logout/đổi actor) cập nhật UI/private state của phiên mới. */
+function runMutation(ctx, { request, note, button, pendingText, subject,
+  onSuccess }) {
+  const capturedGeneration = getSessionGeneration();
+  const capturedUserId = getUserId();
+  if (button) button.disabled = true;
+  if (note) note.textContent = pendingText || "Đang thực hiện…";
+  Promise.resolve()
+    .then(request)
+    .then((result) => {
+      if (sessionChangedSince(capturedGeneration, capturedUserId)) return;
+      if (typeof onSuccess === "function") onSuccess(result);
+    })
+    .catch((error) => {
+      if (sessionChangedSince(capturedGeneration, capturedUserId)) return;
+      if (error && error.status === 401) {
+        ctx.navigate("/login?reason=expired");
+        return;
+      }
+      if (note) {
+        note.textContent = mutationErrorText(error, {
+          subject: subject || "Thay đổi",
+        });
+      }
+      if (button) button.disabled = false; // thử lại CHỦ ĐỘNG, không tự retry
+    });
+}
 
 export const page = {
   id: "companion",
@@ -88,7 +195,8 @@ export const page = {
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
-      root.querySelectorAll(".fb-sheet, .fb-overlay, .fb-sheet-root").forEach((el) => el.remove());
+      root.querySelectorAll(".fb-sheet, .fb-overlay, .fb-sheet-root, "
+        + ".fb-dialog-root").forEach((el) => el.remove());
     };
 
     const demo = Boolean(state.demoMode);
@@ -119,8 +227,9 @@ export const page = {
             ? myData.results : []);
           const enrollment = rows.find((row) => row && row.active) || null;
           if (!enrollment) return { enrollment: null };
-          // Đã tham gia: nạp tuần + thỏa ước + lời mời song song; lỗi phần
-          // phụ → null để hiển thị trung thực từng phần, không chặn cả trang.
+          // Đã tham gia: nạp tuần + thỏa ước + lời mời + danh mục hoạt động
+          // song song; lỗi phần phụ → null để hiển thị trung thực từng
+          // phần, không chặn cả trang.
           return Promise.all([
             Promise.resolve()
               .then(() => ctx.adapter.programWeeks(enrollment.program_key))
@@ -131,8 +240,11 @@ export const page = {
             Promise.resolve()
               .then(() => ctx.adapter.activitiesInvites())
               .catch(() => null),
-          ]).then(([weeks, agreement, invites]) => ({
-            enrollment, weeks, agreement, invites,
+            Promise.resolve()
+              .then(() => ctx.adapter.activitiesCatalog({ kind: "activity" }))
+              .catch(() => null),
+          ]).then(([weeks, agreement, invites, catalog]) => ({
+            enrollment, weeks, agreement, invites, catalog,
           }));
         })
         .then((data) => {
@@ -216,23 +328,41 @@ function renderCompanion(body, ctx, { demo, role, data, load }) {
     `Phiên bản nội dung đang theo: rev ${weeks.pinned_revision}.`));
 
   const suggested = weeks.suggested_week;
+  // Danh mục F09 thật: content_key -> {revision,title,minutes,...}. Lời mời
+  // cần revision PUBLISHED từ nguồn này — không hardcode (R1). Catalog lỗi
+  // → nút mời bị khóa với lý do trung thực, phần còn lại vẫn dùng được.
+  const activityMeta = {};
+  const catalogRows = data.catalog && Array.isArray(data.catalog.results)
+    ? data.catalog.results : [];
+  catalogRows.forEach((card) => {
+    if (card && card.content_key) {
+      activityMeta[String(card.content_key)] = card;
+    }
+  });
+
+  const note = h("p", { class: "fb-page__note", role: "status" });
+  note.dataset.companionNote = "1";
+  body.appendChild(note);
+
   weeks.weeks.forEach((week) => {
     body.appendChild(renderWeekCard(ctx, {
-      week, role, suggested, invites: data.invites, agreement: data.agreement,
+      week, role, suggested, invites: data.invites, activityMeta,
       otherPartyId: data.agreement && data.agreement.other_party_id,
-      load,
+      load, note,
     }));
   });
 
   body.appendChild(renderAgreementCard(ctx, {
-    agreement: data.agreement, weeks, load,
+    agreement: data.agreement, weeks, load, note,
   }));
   renderPaperNote(body, weeks.note_paper_guide);
-  body.appendChild(renderOptOutCard(ctx, { enrollment, load }));
+  body.appendChild(renderOptOutCard(ctx, { enrollment, load, note }));
 }
 
 function renderNotEnrolled(body, ctx, { load }) {
   // Chưa tham gia: đọc catalog đã publish — tham gia là thao tác tường minh.
+  const note = h("p", { class: "fb-page__note", role: "status" });
+  note.dataset.companionNote = "1";
   Promise.resolve()
     .then(() => ctx.adapter.programCatalog())
     .then((catalog) => {
@@ -260,6 +390,7 @@ function renderNotEnrolled(body, ctx, { load }) {
           + "nào mà không mất gì.",
         ),
       );
+      body.appendChild(note);
       programs.forEach((program) => {
         const weekTitles = (program.weeks || [])
           .map((week) => `Tuần ${week.week_no}: ${week.title}`)
@@ -271,7 +402,9 @@ function renderNotEnrolled(body, ctx, { load }) {
             footer: createButton({
               label: "Tham gia chương trình",
               variant: "primary",
-              onClick: () => onEnroll(ctx, program, { load }),
+              onClick: (event) => onEnroll(ctx, program,
+                { load, note, button: event && event.currentTarget
+                  ? event.currentTarget : null }),
             }),
           }),
         );
@@ -287,7 +420,7 @@ function renderNotEnrolled(body, ctx, { load }) {
     });
 }
 
-function onEnroll(ctx, program, { load }) {
+function onEnroll(ctx, program, { load, note, button }) {
   const dialog = createDialog({
     title: "Tham gia chương trình này?",
     message:
@@ -299,13 +432,18 @@ function onEnroll(ctx, program, { load }) {
         label: "Tham gia",
         variant: "primary",
         onClick: () => {
-          Promise.resolve()
-            .then(() => ctx.adapter.programEnroll({
+          // Dialog tự đóng sau click; trạng thái/lỗi hiển thị ở note của
+          // trang — không nuốt lỗi enroll (R4).
+          runMutation(ctx, {
+            request: () => ctx.adapter.programEnroll({
               programKey: program.program_key,
               programRevision: program.revision,
-            }))
-            .then(() => load())
-            .catch(() => {});
+            }),
+            note, button,
+            pendingText: "Đang tham gia chương trình…",
+            subject: "Tham gia chương trình",
+            onSuccess: () => load(),
+          });
         },
       },
       { label: "Để sau", variant: "ghost" },
@@ -316,8 +454,8 @@ function onEnroll(ctx, program, { load }) {
 
 /* -------------------------------- Tuần -------------------------------- */
 
-function renderWeekCard(ctx, { week, role, suggested, invites, agreement,
-  otherPartyId, load }) {
+function renderWeekCard(ctx, { week, role, suggested, invites, activityMeta,
+  otherPartyId, load, note }) {
   const isSuggested = suggested === week.week_no;
   const card = h("section", { class: "fb-scard" });
   const head = h("div", { class: "fb-sec__row" });
@@ -350,12 +488,25 @@ function renderWeekCard(ctx, { week, role, suggested, invites, agreement,
     );
   }
 
-  const jointKeys = Array.isArray(week.joint_activity_keys)
-    ? week.joint_activity_keys : [];
+  // Contract thật của backend: mỗi tuần trả `activities:
+  // [{activity_key, status}]` — dựng lời mời + tiến độ từ CÙNG nguồn này
+  // (không còn joint_activity_keys ma trong response — R1).
+  const activities = Array.isArray(week.activities) ? week.activities : [];
   const myInvites = (invites && Array.isArray(invites.results)
     ? invites.results : []);
 
-  jointKeys.forEach((key) => {
+  activities.forEach((activity) => {
+    const key = String(activity.activity_key);
+    const meta = activityMeta && activityMeta[key] ? activityMeta[key] : null;
+    const titleText = meta && meta.title ? String(meta.title) : key;
+    const minutesText = meta && meta.minutes
+      ? ` · khoảng ${meta.minutes} phút` : "";
+
+    card.appendChild(
+      h("span", { class: "fb-chip" },
+        `Hoạt động chung: ${titleText}${minutesText}`),
+    );
+
     const sentPending = myInvites.find((row) => row
       && row.content_key === key && row.direction === "sent"
       && row.status === "pending");
@@ -364,142 +515,164 @@ function renderWeekCard(ctx, { week, role, suggested, invites, agreement,
       && row.status === "pending");
 
     const row = h("div", { class: "fb-compose__pause-buttons" });
-    const statusChip = h("span", { class: "fb-chip" },
-      `Hoạt động chung: ${key}`);
-    card.appendChild(statusChip);
-
     if (receivedPending) {
       row.appendChild(createButton({
         label: "Chấp nhận cùng làm",
         variant: "primary",
-        onClick: () => onRespond(ctx, receivedPending.invite_id, "accept",
-          { load }),
+        onClick: (event) => onRespond(ctx, receivedPending.invite_id,
+          "accept", { load, note, button: eventCurrentTarget(event) }),
       }));
       row.appendChild(createButton({
         label: "Từ chối",
         variant: "ghost",
-        onClick: () => onRespond(ctx, receivedPending.invite_id, "decline",
-          { load }),
+        onClick: (event) => onRespond(ctx, receivedPending.invite_id,
+          "decline", { load, note, button: eventCurrentTarget(event) }),
       }));
     } else if (sentPending) {
       row.appendChild(h("span", { class: "fb-chip" },
         "Đã mời — đang chờ phía kia phản hồi"));
     } else {
+      // Lời mời cần revision PUBLISHED của hoạt động trong catalog F09
+      // thật; thiếu nguồn (chưa phát hành/catalog lỗi) thì khóa nút kèm lý
+      // do trung thực — không gửi revision đoán bừa (R1).
+      const revision = meta ? Number.parseInt(meta.revision, 10) : NaN;
+      const canInvite = Boolean(otherPartyId) && Number.isInteger(revision)
+        && revision >= 1;
       const inviteBtn = createButton({
         label: "Mời cùng làm hoạt động này",
         variant: "ghost",
-        onClick: () => onInvite(ctx, {
-          inviteeId: otherPartyId, contentKey: key, load,
+        onClick: (event) => onInvite(ctx, {
+          inviteeId: otherPartyId, contentKey: key, contentRevision: revision,
+          load, note, button: eventCurrentTarget(event),
         }),
       });
-      if (!otherPartyId) {
+      if (!canInvite) {
         inviteBtn.disabled = true;
-        inviteBtn.title = "Cần kết nối với người đồng hành trước";
+        inviteBtn.title = !otherPartyId
+          ? "Cần kết nối với người đồng hành trước"
+          : (meta
+            ? "Không đọc được phiên bản nội dung của hoạt động này"
+            : "Hoạt động này chưa có trong danh mục đã phát hành nên chưa "
+              + "mời được");
       }
       row.appendChild(inviteBtn);
     }
     card.appendChild(row);
-  });
 
-  // Tiến độ CỦA MÌNH cho từng hoạt động (progress joint keys của F02).
-  const activities = Array.isArray(week.activities) ? week.activities : [];
-  activities.forEach((activity) => {
-    const row = h("div", { class: "fb-compose__pause-buttons" });
-    row.appendChild(
+    // Tiến độ CỦA MÌNH cho từng hoạt động (cùng nguồn activities).
+    const progressRow = h("div", { class: "fb-compose__pause-buttons" });
+    progressRow.appendChild(
       h("span", { class: "fb-sec__sub" },
-        `${activity.activity_key} — ${statusLabel(activity.status)}`),
+        `${titleText} — ${statusLabel(activity.status)}`),
     );
     if (activity.status === "done" || activity.status === "skipped") {
-      row.appendChild(createButton({
+      progressRow.appendChild(createButton({
         label: "Đặt lại",
         variant: "ghost",
-        onClick: () => onProgress(ctx, {
-          programKey: null, weekNo: week.week_no,
-          activityKey: activity.activity_key, status: "reset", load,
+        onClick: (event) => onProgress(ctx, {
+          weekNo: week.week_no, activityKey: key, status: "reset", load,
+          note, button: eventCurrentTarget(event),
         }),
       }));
     } else {
-      row.appendChild(createButton({
+      progressRow.appendChild(createButton({
         label: "Tôi đã làm",
         variant: "ghost",
-        onClick: () => onProgress(ctx, {
-          weekNo: week.week_no, activityKey: activity.activity_key,
+        onClick: (event) => onProgress(ctx, {
+          weekNo: week.week_no, activityKey: key,
           status: "done", load,
+          note, button: eventCurrentTarget(event),
         }),
       }));
-      row.appendChild(createButton({
+      progressRow.appendChild(createButton({
         label: "Bỏ qua tuần này",
         variant: "ghost",
-        onClick: () => onProgress(ctx, {
-          weekNo: week.week_no, activityKey: activity.activity_key,
+        onClick: (event) => onProgress(ctx, {
+          weekNo: week.week_no, activityKey: key,
           status: "skipped", load,
+          note, button: eventCurrentTarget(event),
         }),
       }));
     }
-    card.appendChild(row);
+    card.appendChild(progressRow);
   });
   return card;
 }
 
-function onProgress(ctx, { weekNo, activityKey, status, load }) {
+function eventCurrentTarget(event) {
+  return event && event.currentTarget ? event.currentTarget : null;
+}
+
+function onProgress(ctx, { weekNo, activityKey, status, load, note, button }) {
   // program_key lấy từ tuần đang pin — adapter method đọc từ scope page;
   // đối chiếu weeks payload không mang program_key nên dùng biến trang.
-  Promise.resolve()
-    .then(() => ctx.adapter.programProgress({
+  runMutation(ctx, {
+    request: () => ctx.adapter.programProgress({
       programKey: currentPageProgramKey || "",
       weekNo, activityKey, status,
-    }))
-    .then(() => load())
-    .catch(() => {});
+    }),
+    note, button,
+    pendingText: "Đang ghi tiến độ của bạn…",
+    subject: "Tiến độ",
+    onSuccess: () => load(),
+  });
 }
 
-function onInvite(ctx, { inviteeId, contentKey, load }) {
+function onInvite(ctx, { inviteeId, contentKey, contentRevision, load, note,
+  button }) {
   if (!inviteeId) return;
-  Promise.resolve()
-    .then(() => ctx.adapter.activitiesInvite({
-      inviteeId, contentKey, contentRevision: 1,
-    }))
-    .then(() => load())
-    .catch((error) => {
-      if (error && error.status === 404) {
-        // no_active_connection — chưa kết nối: thông điệp trung thực.
-        const note = document.querySelector("[data-companion-note]");
-        if (note) {
-          note.textContent =
-            "Mời hoạt động chung cần hai bên đã kết nối. Hãy hoàn thành ghép "
-            + "đôi trước (xem Trang chủ).";
-        }
-      }
-    });
+  runMutation(ctx, {
+    request: () => ctx.adapter.activitiesInvite({
+      inviteeId, contentKey, contentRevision,
+    }),
+    note, button,
+    pendingText: "Đang gửi lời mời…",
+    subject: "Lời mời",
+    onSuccess: () => load(),
+  });
 }
 
-function onRespond(ctx, inviteId, decision, { load }) {
-  Promise.resolve()
-    .then(() => ctx.adapter.activitiesRespond(inviteId, decision))
-    .then(() => load())
-    .catch(() => {});
+function onRespond(ctx, inviteId, decision, { load, note, button }) {
+  runMutation(ctx, {
+    request: () => ctx.adapter.activitiesRespond(inviteId, decision),
+    note, button,
+    pendingText: "Đang ghi phản hồi của bạn…",
+    subject: "Phản hồi lời mời",
+    onSuccess: () => load(),
+  });
 }
 
 /* ------------------------------ Thỏa ước ------------------------------ */
 
-function renderAgreementCard(ctx, { agreement, weeks, load }) {
+function renderAgreementCard(ctx, { agreement, weeks, load, note }) {
   const card = h("section", { class: "fb-scard" });
   const template = agreement && agreement.agreement_template
     ? agreement.agreement_template : (weeks.agreement || null);
   const instance = agreement && agreement.agreement ? agreement.agreement : null;
+  // R2: overview mới tách rõ bản CONFIRMED đang hiệu lực khỏi đề xuất đang
+  // chờ; payload cũ (chỉ `agreement`) vẫn hiển thị được nhờ suy fallback.
+  const effective = (agreement && agreement.effective_agreement)
+    || (instance && instance.status === "confirmed" ? instance : null);
+  const pending = (agreement && agreement.pending_proposal)
+    || (instance && instance.status === "proposed" ? instance : null);
+  const currentRow = effective || pending || instance;
 
   card.appendChild(
     h("div", { class: "fb-sec__row" },
       h("h2", { class: "fb-scard__title" }, "Thỏa ước gia đình mới (tuần 4)"),
       h("span", { class: "fb-chip" },
-        instance ? agreementStatusLabel(instance.status) : "Chưa có đề xuất"),
+        currentRow ? agreementStatusLabel(currentRow.status)
+          : "Chưa có đề xuất"),
     ),
   );
-  const commitments = instance && Array.isArray(instance.commitments)
-    && instance.commitments.length
-    ? instance.commitments
-    : ((template && Array.isArray(template.commitments))
-      ? template.commitments : []);
+  const commitments = effective && Array.isArray(effective.commitments)
+    && effective.commitments.length
+    ? effective.commitments
+    : (pending && Array.isArray(pending.commitments)
+      && pending.commitments.length
+      ? pending.commitments
+      : ((template && Array.isArray(template.commitments))
+        ? template.commitments : []));
   if (commitments.length) {
     const list = h("ul", { class: "fb-list" });
     commitments.forEach((item) => {
@@ -515,61 +688,59 @@ function renderAgreementCard(ctx, { agreement, weeks, load }) {
     ),
   );
 
-  const note = h("p", { class: "fb-page__note", role: "status" });
-  note.dataset.companionNote = "1";
+  if (effective) {
+    card.appendChild(
+      h("p", { class: "fb-sec__sub", role: "status" },
+        `Bản đang hiệu lực: rev ${effective.agreement_revision}. `
+        + "Cả hai đã cùng xác nhận thỏa ước này. Hai bên đều đọc được các cam "
+        + "kết trên bất cứ lúc nào."),
+    );
+  }
 
-  if (!instance) {
-    card.appendChild(createButton({
-      label: "Đề xuất thỏa ước cho hai bên",
-      variant: "primary",
-      onClick: () => {
-        note.textContent = "Đang tạo đề xuất thỏa ước…";
-        Promise.resolve()
-          .then(() => ctx.adapter.programAgreementPropose(
-            currentPageProgramKey || ""))
-          .then(() => load())
-          .catch(() => {
-            note.textContent = "Chưa tạo được đề xuất. Vui lòng thử lại.";
-          });
-      },
-    }));
-  } else if (instance.status === "proposed" || instance.status === "confirmed") {
-    if (!instance.my_confirmed && instance.status === "proposed") {
+  if (pending) {
+    if (effective) {
+      card.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          `Có bản đề xuất mới rev ${pending.agreement_revision} đang chờ hai ` +
+          "bên xác nhận — bản trên vẫn còn hiệu lực cho đến khi bản mới đủ " +
+          "hai xác nhận."),
+      );
+    }
+    if (!pending.my_confirmed) {
       card.appendChild(createButton({
         label: "Tôi xác nhận thỏa ước này",
         variant: "primary",
-        onClick: () => openAgreementConfirmDialog(ctx, instance,
-          { load, note }),
+        onClick: (event) => openAgreementConfirmDialog(ctx, pending,
+          { load, note, button: eventCurrentTarget(event) }),
       }));
-    }
-    if (instance.my_confirmed && instance.status === "proposed") {
+    } else {
       card.appendChild(
         h("p", { class: "fb-sec__sub", role: "status" },
           "Bạn đã xác nhận. Đang chờ người kia tự xác nhận cùng phiên bản…"),
       );
     }
-    if (instance.status === "confirmed") {
-      card.appendChild(
-        h("p", { class: "fb-sec__sub", role: "status" },
-          "Cả hai đã cùng xác nhận thỏa ước này. Hai bên đều đọc được các cam "
-          + "kết trên bất cứ lúc nào."),
-      );
-    }
-    if (instance.status === "proposed" && instance.proposed_by_me) {
+    if (pending.proposed_by_me) {
       card.appendChild(createButton({
         label: "Rút đề xuất",
         variant: "ghost",
-        onClick: () => {
-          Promise.resolve()
-            .then(() => ctx.adapter.programAgreementWithdraw(
-              instance.agreement_id))
-            .then(() => load())
-            .catch(() => {});
+        onClick: (event) => {
+          runMutation(ctx, {
+            request: () => ctx.adapter.programAgreementWithdraw(
+              pending.agreement_id),
+            note, button: eventCurrentTarget(event),
+            pendingText: "Đang rút đề xuất…",
+            subject: "Rút đề xuất",
+            onSuccess: () => load(),
+          });
         },
       }));
     }
-  } else {
-    // withdrawn / superseded / ended — nói đúng trạng thái, mở lối đề xuất lại
+  } else if (!effective && instance
+    && (instance.status === "withdrawn"
+      || instance.status === "superseded"
+      || instance.status === "ended")) {
+    // withdrawn / superseded / ended và KHÔNG còn bản hiệu lực — nói đúng
+    // trạng thái, mở lối đề xuất lại.
     card.appendChild(
       h("p", { class: "fb-sec__sub" },
         `Trạng thái hiện tại: ${agreementStatusLabel(instance.status)}.`),
@@ -578,21 +749,35 @@ function renderAgreementCard(ctx, { agreement, weeks, load }) {
       card.appendChild(createButton({
         label: "Đề xuất lại thỏa ước",
         variant: "ghost",
-        onClick: () => {
-          Promise.resolve()
-            .then(() => ctx.adapter.programAgreementPropose(
-              currentPageProgramKey || ""))
-            .then(() => load())
-            .catch(() => {});
-        },
+        onClick: (event) => onProposeAgreement(ctx, {
+          load, note, button: eventCurrentTarget(event),
+        }),
       }));
     }
+  } else if (!effective && !pending) {
+    card.appendChild(createButton({
+      label: "Đề xuất thỏa ước cho hai bên",
+      variant: "primary",
+      onClick: (event) => onProposeAgreement(ctx, {
+        load, note, button: eventCurrentTarget(event),
+      }),
+    }));
   }
-  card.appendChild(note);
   return card;
 }
 
-function openAgreementConfirmDialog(ctx, instance, { load, note }) {
+function onProposeAgreement(ctx, { load, note, button }) {
+  runMutation(ctx, {
+    request: () => ctx.adapter.programAgreementPropose(
+      currentPageProgramKey || ""),
+    note, button,
+    pendingText: "Đang tạo đề xuất thỏa ước…",
+    subject: "Đề xuất thỏa ước",
+    onSuccess: () => load(),
+  });
+}
+
+function openAgreementConfirmDialog(ctx, instance, { load, note, button }) {
   const preview = (Array.isArray(instance.commitments)
     && instance.commitments.length)
     ? instance.commitments.map((c) => `• ${c}`).join("\n")
@@ -608,14 +793,15 @@ function openAgreementConfirmDialog(ctx, instance, { load, note }) {
         label: "Tôi xác nhận",
         variant: "primary",
         onClick: () => {
-          note.textContent = "Đang ghi nhận xác nhận của bạn…";
-          Promise.resolve()
-            .then(() => ctx.adapter.programAgreementConfirm(
-              instance.agreement_id))
-            .then(() => load())
-            .catch(() => {
-              note.textContent = "Chưa ghi được xác nhận. Vui lòng thử lại.";
-            });
+          // Dialog tự đóng sau click; trạng thái/lỗi hiển thị ở note trang.
+          runMutation(ctx, {
+            request: () => ctx.adapter.programAgreementConfirm(
+              instance.agreement_id),
+            note, button,
+            pendingText: "Đang ghi nhận xác nhận của bạn…",
+            subject: "Xác nhận thỏa ước",
+            onSuccess: () => load(),
+          });
         },
       },
       { label: "Để sau", variant: "ghost" },
@@ -636,7 +822,7 @@ function renderPaperNote(body, text) {
   );
 }
 
-function renderOptOutCard(ctx, { enrollment, load }) {
+function renderOptOutCard(ctx, { enrollment, load, note }) {
   const card = h("section", { class: "fb-scard" });
   card.appendChild(
     h("p", { class: "fb-sec__sub" },
@@ -658,10 +844,15 @@ function renderOptOutCard(ctx, { enrollment, load }) {
             label: "Nghỉ chương trình",
             variant: "danger",
             onClick: () => {
-              Promise.resolve()
-                .then(() => ctx.adapter.programOptOut(enrollment.program_key))
-                .then(() => load())
-                .catch(() => {});
+              // Dialog tự đóng; lỗi opt-out hiển thị ở note trang (R4).
+              runMutation(ctx, {
+                request: () => ctx.adapter.programOptOut(
+                  enrollment.program_key),
+                note, button: null,
+                pendingText: "Đang ghi nhận nghỉ chương trình…",
+                subject: "Nghỉ chương trình",
+                onSuccess: () => load(),
+              });
             },
           },
           { label: "Ở lại", variant: "ghost" },

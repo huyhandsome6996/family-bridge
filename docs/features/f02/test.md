@@ -51,3 +51,33 @@ E2E script: `scripts/f02_e2e_flow.mjs` (env `FB_E2E_CLASS_PASSWORD`, không
 hardcode mật khẩu; runner bash ngoài repo: migrate → provision cặp synthetic
 → seed draft → publish mô phỏng admin → runserver → flow → DB inspect:
 FamilyAgreement confirmed 2 timestamp, WeekProgress rev1 hai người độc lập).
+
+## Bổ sung 2026-10-16 (vòng 2): regression cho 4 lỗi audit R1–R4
+
+Port assertion từ probe audit độc lập (2 probe backend + 2 probe DOM, cả 4
+đã PASS lại trên head mới) vào suite repo:
+
+- Backend: `packages/family_bridge_features/f02_program/tests/
+  test_f02_audit_regressions.py` (10 case)
+- Mini App: `zalo-mini-app/tests/companion-audit-fixes.test.mjs` (8 case)
+
+| Lỗi | Case regression | Kết quả |
+| --- | --- | --- |
+| R1 | weeks response CHỈ có `activities`, không field ma `joint_activity_keys` | PASS |
+| R1 | invite cần revision PUBLISHED thật (rev sai → `content_not_published`); hai chiều, invitee-only, không duplicate | PASS |
+| R1 | UI: payload thật (không `joint_activity_keys`) vẫn hiện nút "Mời cùng làm"; revision từ catalog F09 (3), không hardcode 1 | PASS |
+| R1 | UI: hoạt động ngoài catalog → nút mời KHÓA kèm lý do trung thực | PASS |
+| R2 | v1 confirmed → propose v2 chưa ai ký → v1 VẪN confirmed | PASS |
+| R2 | withdraw v2 / v2 chỉ một người ký → v1 vẫn confirmed | PASS |
+| R2 | v2 đủ HAI xác nhận → v1 mới superseded | PASS |
+| R2 | overview tách `effective_agreement` (confirmed) và `pending_proposal`; `agreement` = bản authoritative | PASS |
+| R2 | re-propose revision đã superseded dưới bản confirmed còn hiệu lực → từ chối `agreement_revision_outdated` | PASS |
+| R2 | propose mới chỉ supersede PENDING cũ (state machine Proposed→Superseded) | PASS |
+| R3 | 25 chương trình published, pin rev 1 (tràn cửa sổ catalog 10/provider 20) → weeks vẫn đọc đúng | PASS |
+| R3 | provider list bounded 20, service catalog bounded 10 (không bỏ giới hạn) | PASS |
+| R3 | re-enroll tường minh mới đổi pin; tiến độ rev cũ không kế thừa | PASS |
+| R3 | retired → pin fail-closed `program_not_published` | PASS |
+| R4 | UI: lỗi mạng khi lưu tiến độ → hiện lỗi thật + "thử lại", nút bật lại chủ động | PASS |
+| R4 | UI: đang gửi → nút khóa, bấm lặp chỉ 1 call | PASS |
+| R4 | UI: phản hồi phiên cũ sau logout/đổi actor không cập nhật UI phiên mới | PASS |
+| R4 | UI: propose bị chặn `agreement_revision_outdated` → hiện đúng lý do | PASS |

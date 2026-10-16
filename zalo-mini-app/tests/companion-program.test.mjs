@@ -81,6 +81,14 @@ function makeCtx({ role = "student", adapter } = {}) {
   };
 }
 
+/** Danh mục hoạt động F09 published (revision >1 — lời mời dùng đúng
+ * revision từ nguồn thật, không hardcode). */
+const ACTIVITY_CATALOG = [
+  { content_key: "f09-w1", kind: "activity", revision: 2,
+    title: "Trò chuyện 5 phút", audience: "joint", minutes: 5,
+    status: "published" },
+];
+
 const WEEKS_PAYLOAD = {
   program_key: "dong-hanh-bon-tuan",
   pinned_revision: 3,
@@ -115,13 +123,15 @@ function makeAdapter({
   agreementPayload = { agreement: null, agreement_template: WEEKS_PAYLOAD.agreement,
     other_party_id: "user-peer", connection_generation: 1 },
   invites = [],
+  activityCatalog = ACTIVITY_CATALOG,
   fail = {},
 } = {}) {
   const calls = { enroll: [], progress: [], propose: 0, confirm: [], withdraw: 0,
-    invite: [], respond: [], optOut: 0 };
+    invite: [], respond: [], optOut: 0, myCount: 0 };
   return {
     calls,
     async programMy() {
+      calls.myCount += 1;
       if (fail.my) throw fail.my;
       return { results: myEnrollment ? [myEnrollment] : [] };
     },
@@ -139,6 +149,10 @@ function makeAdapter({
     },
     async activitiesInvites() {
       return { results: invites };
+    },
+    async activitiesCatalog() {
+      if (fail.activityCatalog) throw fail.activityCatalog;
+      return { results: activityCatalog };
     },
     async programEnroll(payload) {
       calls.enroll.push(payload);
@@ -408,7 +422,7 @@ describe("Companion — lời mời hoạt động chung (F09 hai chiều)", () 
     }
   });
 
-  it("chưa có lời mời → nút Mời; mời gọi activitiesInvite với đúng nội dung", async () => {
+  it("chưa có lời mời → nút Mời; mời gọi activitiesInvite với đúng nội dung + revision từ catalog F09", async () => {
     clearSession();
     liveSession();
     const adapter = makeAdapter({ myEnrollment: ENROLLMENT });
@@ -424,6 +438,8 @@ describe("Companion — lời mời hoạt động chung (F09 hai chiều)", () 
       assert.equal(adapter.calls.invite.length, 1);
       assert.equal(adapter.calls.invite[0].contentKey, "f09-w1");
       assert.equal(adapter.calls.invite[0].inviteeId, "user-peer");
+      assert.equal(adapter.calls.invite[0].contentRevision, 2,
+        "revision phải từ catalog F09 thật (2), không hardcode 1");
     } finally {
       unmount(host);
       clearSession();

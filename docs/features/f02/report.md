@@ -136,3 +136,45 @@ unique constraint) — đã chạy test DB sqlite; MySQL/TiDB thật là NOT_RUN
   Draft source: `packages/family_bridge_features/f02_program/management/
   commands/seed_f02_draft_program.py` (WEEKS_BODY) — sửa nội dung tại đây
   hoặc qua admin B16 trước khi publish.
+
+## Vòng 2 (2026-10-16): sửa 4 lỗi audit R1–R4 sau kiểm thử độc lập
+
+Audit kiểm thử lại main A + F02 B tại head `b482c5c` tìm thấy 4 lỗi (báo cáo
+`KET-QUA-KIEM-THU-MAIN-VA-F02-2026-10-16.md`). Đã sửa ĐÚNG nguyên nhân trên
+nhánh F02, mỗi lỗi kèm regression tests dùng data shape thật:
+
+- **R1 (contract backend/UI lời mời)**: response weeks vốn trả
+  `activities:[{activity_key,status}]` nhưng UI đọc field ma
+  `joint_activity_keys` (tests cũ tự thêm field này vào fixture nên che mất).
+  Sửa: UI dựng lời mời + tiến độ từ `week.activities`; revision/tiêu đề/thời
+  lượng lấy từ `GET /api/v1/activities/catalog` (F09, nguồn thật); bỏ
+  hardcode `contentRevision: 1`; hoạt động ngoài catalog → nút khóa kèm lý
+  do. Backend giữ nguyên contract (không thêm field ma).
+- **R2 (thỏa ước confirmed bị supersede sớm)**: `propose_family_agreement`
+  cũ supersede cả `confirmed` ngay khi propose revision mới. Sửa theo
+  `docs/product/four-week-flow.md`: propose mới chỉ supersede PENDING cũ;
+  bản confirmed giữ hiệu lực đến khi revision mới đủ HAI xác nhận
+  (supersede tại `confirm_family_agreement` như cũ); re-propose revision đã
+  superseded dưới một bản confirmed còn hiệu lực bị từ chối
+  (`agreement_revision_outdated`). Overview trả thêm `effective_agreement` +
+  `pending_proposal`; UI hiện CẢ HAI (bản hiệu lực + bản đang chờ).
+- **R3 (pin rev cũ tràn cửa sổ catalog)**: `_published` quét catalog 10 /
+  provider 20 nên pin cũ rơi khỏi cửa sổ → `program_not_published` dù vẫn
+  published. Sửa: thêm `PublishedContentProgramProvider.get_program` — exact
+  lookup `(content_key, revision)` bounded (≤1 row), service ưu tiên exact
+  lookup, catalog list giữ nguyên bounds 20/10 (không quét lịch sử).
+- **R4 (nuốt lỗi mutation tiến độ)**: `onProgress` và các mutation
+  enroll/invite/respond/withdraw/opt-out/propose trước đây `.catch(()=>{})`.
+  Sửa: helper `runMutation` — hiện lỗi thật theo `ApiError.kind`/`reason`,
+  chặn bấm lặp khi đang gửi, KHÔNG tự retry (nút bật lại cho thử lại chủ
+  động), guard phiên: phản hồi của phiên cũ (logout/đổi actor) không cập
+  nhật UI/private state của phiên mới; cleanup dialog khi rời trang.
+
+Bằng chứng trước → sau: 3 probe backend (trước: 2 fail R2/R3) và 2 probe DOM
+(trước: 2 fail R1/R4) của audit chạy lại trên head mới ĐỀU PASS. Suite sau
+sửa: backend full (CI parity) 494 OK skip 9 (SQLite); F02 31/31 (gồm 10 case
+mới); Mini App 313/313 (gồm 8 case mới); shared 34/34; mobile F02 4/4; web
+regression 187/187 (không sửa `web/**`); build + verify manifest Zalo OK;
+import boundary CLEAN; `makemigrations f02_program --check` sạch;
+`check_agent_docs.py` OK. NOT_RUN giữ nguyên: MySQL/TiDB thật (migration/
+concurrency), Zalo Android/iOS device, backend B qua HTTPS trên điện thoại.

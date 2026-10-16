@@ -92,6 +92,36 @@ def _parse_agreement(body: Dict[str, Any]) -> Optional[Dict[str, Any]]:
             "commitments": [str(c)[:200] for c in commitments]}
 
 
+def _row_to_program(item) -> Optional[Dict[str, Any]]:
+    """Parse one admin_core ContentItem row into the provider program dict,
+    or None (fail closed) when the release is malformed/invalid — same
+    validation for both the bounded catalog list and the exact lookup."""
+    try:
+        body = json.loads(item.body or "")
+    except (ValueError, TypeError):
+        return None  # fail closed: malformed release never surfaces
+    if not isinstance(body, dict):
+        return None
+    weeks = _parse_weeks(body)
+    agreement = _parse_agreement(body)
+    if weeks is None or agreement is None:
+        return None
+    content_key = str(item.content_key or "").strip()
+    if not (1 <= len(content_key) <= 64):
+        return None
+    return {
+        "program_key": content_key,
+        "revision": int(item.revision),
+        "title": str(item.title)[:120],
+        # Port contract: chỉ published đi qua đây (caller đã filter status)
+        # — khai báo đúng trạng thái để _safe_program của service
+        # xác thực như với mọi provider khác.
+        "status": "published",
+        "weeks": weeks,
+        "agreement": agreement,
+    }
+
+
 class PublishedContentProgramProvider:
     """Port implementation backed by B16 admin_core ContentItem.
 
@@ -99,6 +129,14 @@ class PublishedContentProgramProvider:
       content_key -> program_key, revision -> ContentItem.revision,
       title -> title, body (JSON) -> {weeks[4], agreement{revision,title,
       commitments[]}}.
+
+    Two bounded read paths:
+    - list_programs(): catalog window, newest first, LIMIT _PROGRAM_LIMIT
+      (the service additionally pages to 10) — for browse/enroll choices.
+    - get_program(): EXACT (content_key, revision) match, at most one
+      candidate row — so an enrollment pinned to an OLD revision stays
+      readable no matter how many newer releases push it out of the
+      catalog window (R3). No unbounded scan, no history download.
     """
 
     def list_programs(self) -> List[Dict[str, Any]]:
@@ -110,31 +148,31 @@ class PublishedContentProgramProvider:
                 .order_by("-published_at", "-id")[:_PROGRAM_LIMIT])
         out: List[Dict[str, Any]] = []
         for item in rows:
-            try:
-                body = json.loads(item.body or "")
-            except (ValueError, TypeError):
-                continue  # fail closed: malformed release never surfaces
-            if not isinstance(body, dict):
-                continue
-            weeks = _parse_weeks(body)
-            agreement = _parse_agreement(body)
-            if weeks is None or agreement is None:
-                continue
-            content_key = str(item.content_key or "").strip()
-            if not (1 <= len(content_key) <= 64):
-                continue
-            out.append({
-                "program_key": content_key,
-                "revision": int(item.revision),
-                "title": str(item.title)[:120],
-                # Port contract: chỉ published đi qua đây (filter phía trên)
-                # — khai báo đúng trạng thái để _safe_program của service
-                # xác thực như với mọi provider khác.
-                "status": "published",
-                "weeks": weeks,
-                "agreement": agreement,
-            })
+            program = _row_to_program(item)
+            if program is not None:
+                out.append(program)
         return out
+
+    def get_program(self, *, program_key: str, revision: int) -> Optional[Dict[str, Any]]:
+        from family_bridge_features.admin_core.models import (
+            CONTENT_PUBLISHED, ContentItem,
+        )
+        key = str(program_key or "").strip()
+        if not (1 <= len(key) <= 64):
+            return None
+        try:
+            rev = int(revision)
+        except (TypeError, ValueError):
+            return None
+        if rev < 1:
+            return None
+        row = (ContentItem.objects
+               .filter(kind=PROGRAM_CONTENT_KIND, status=CONTENT_PUBLISHED,
+                       content_key=key, revision=rev)
+               .order_by("-published_at", "-id").first())
+        if row is None:
+            return None
+        return _row_to_program(row)
 
 
 class F01ConnectionReader:

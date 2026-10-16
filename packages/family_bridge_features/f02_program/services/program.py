@@ -67,6 +67,20 @@ class ProgramService:
 
     def _published(self, program_key: str,
                    revision: Optional[int] = None) -> Dict[str, Any]:
+        # R3: a pinned enrollment must stay readable regardless of how many
+        # newer releases exist. Providers MAY expose an exact
+        # (program_key, revision) getter — one bounded candidate row —
+        # which does not depend on the bounded catalog window. Providers
+        # without it keep the bounded catalog scan (<=10 entries).
+        if revision is not None:
+            getter = getattr(self._provider(), "get_program", None)
+            if callable(getter):
+                program = _safe_program(getter(
+                    program_key=str(program_key), revision=int(revision)))
+                if (program is not None
+                        and program["program_key"] == str(program_key)
+                        and program["revision"] == int(revision)):
+                    return program
         for program in self.catalog():
             if (program["program_key"] == str(program_key)
                     and (revision is None
@@ -249,26 +263,50 @@ class ProgramService:
     @transaction.atomic
     def agreement_overview(self, *, participant_id: str,
                            program_key: str) -> Dict[str, Any]:
-        """Latest agreement instance for MY pair + program; includes the
-        pinned content's template so both sides read the same commitments."""
+        """Agreement instances of MY pair + program for the CURRENT
+        connection generation, with the pinned content's template so both
+        sides read the same commitments.
+
+        R2: `agreement` is the row the UI should treat as authoritative
+        (current CONFIRMED first, else the newest live/proposed one, else
+        the newest row of any status). `effective_agreement` and
+        `pending_proposal` separate the two so a pending revision can
+        never hide the confirmed one still in force."""
         enrollment = self._active_enrollment(
             participant_id=str(participant_id), program_key=str(program_key))
         program = self._published(program_key, enrollment.program_revision)
         connection = self._active_connection(participant_id=participant_id)
         low_id, high_id = self._pair_ids(
             str(participant_id), connection["counterpart_id"])
-        instance = (FamilyAgreement.objects
-                    .filter(program_key=str(program_key),
-                            party_low_id=low_id, party_high_id=high_id,
-                            connection_generation=int(connection["generation"]))
-                    .order_by("-created_at", "-id").first())
+        pair_filter = {
+            "program_key": str(program_key),
+            "party_low_id": low_id, "party_high_id": high_id,
+            "connection_generation": int(connection["generation"]),
+        }
+        confirmed = (FamilyAgreement.objects.filter(
+            **pair_filter, status=AGREEMENT_CONFIRMED)
+            .order_by("-created_at", "-id").first())
+        pending = (FamilyAgreement.objects.filter(
+            **pair_filter, status=AGREEMENT_PROPOSED)
+            .order_by("-created_at", "-id").first())
+        if confirmed is not None:
+            primary = confirmed
+        elif pending is not None:
+            primary = pending
+        else:
+            primary = (FamilyAgreement.objects.filter(**pair_filter)
+                       .order_by("-created_at", "-id").first())
         return {
             "program_revision": enrollment.program_revision,
             "agreement_template": program["agreement"],
             "connection_generation": int(connection["generation"]),
             "other_party_id": connection["counterpart_id"],
-            "agreement": instance.view(viewer_id=str(participant_id))
-            if instance else None,
+            "agreement": primary.view(viewer_id=str(participant_id))
+            if primary else None,
+            "effective_agreement": confirmed.view(viewer_id=str(participant_id))
+            if confirmed else None,
+            "pending_proposal": pending.view(viewer_id=str(participant_id))
+            if pending else None,
         }
 
     @transaction.atomic
@@ -276,8 +314,12 @@ class ProgramService:
                                  program_key: str) -> Dict[str, Any]:
         """Draft -> Proposed (docs four-week-flow): one side proposes the
         agreement of THEIR pinned revision for the CURRENT connection
-        generation. Same revision re-propose is idempotent; proposing a NEW
-        revision supersedes the previous live instance of the pair."""
+        generation. Same revision re-propose is idempotent; proposing a
+        NEW revision supersedes only the pair's PENDING proposals of older
+        revisions. A CONFIRMED agreement stays in force until the new
+        revision is confirmed by BOTH sides (supersede happens in
+        confirm_family_agreement) or is ended upstream (R2).
+        """
         enrollment = self._active_enrollment(
             participant_id=str(participant_id), program_key=str(program_key))
         program = self._published(program_key, enrollment.program_revision)
@@ -287,16 +329,30 @@ class ProgramService:
             str(participant_id), connection["counterpart_id"])
         role = self._role_of(participant_id=str(participant_id),
                              other_id=connection["counterpart_id"])
+        pair_filter = {
+            "program_key": str(program_key),
+            "party_low_id": low_id, "party_high_id": high_id,
+            "connection_generation": int(connection["generation"]),
+        }
         existing = FamilyAgreement.objects.filter(
-            program_key=str(program_key),
             agreement_revision=agreement["revision"],
-            connection_generation=int(connection["generation"]),
-            party_low_id=low_id, party_high_id=high_id).first()
+            **pair_filter).first()
         if existing is not None:
             if existing.status in AGREEMENT_LIVE_STATUSES:
                 return existing.view(viewer_id=str(participant_id))
             # terminal (withdrawn/superseded/ended) -> re-propose reuses the
-            # slot only for the SAME revision by resetting the state honestly.
+            # slot only for the SAME revision AND only while no OTHER live
+            # instance of the pair exists (state machine: a superseded row
+            # gave way to a newer confirmed revision — reviving it under a
+            # live confirmed revision would create two effective agreements).
+            other_live = FamilyAgreement.objects.filter(
+                **pair_filter,
+                status__in=AGREEMENT_LIVE_STATUSES).exclude(
+                pk=existing.pk).exists()
+            if other_live:
+                raise InputInvalid({"reason": "agreement_revision_outdated",
+                                    "agreement_revision":
+                                        agreement["revision"]})
             existing.status = AGREEMENT_PROPOSED
             existing.proposed_by = str(participant_id)
             existing.proposed_by_role = role
@@ -309,14 +365,14 @@ class ProgramService:
                 "proposer_confirmed_at", "counterpart_confirmed_at",
                 "counterpart_role", "updated_at"])
             return existing.view(viewer_id=str(participant_id))
-        # Re-propose on a NEW revision supersedes the pair's live instance
-        # of older revisions (state machine: Proposed -> Superseded when a
-        # replacement proposal is created).
+        # Re-propose on a NEW revision supersedes the pair's PENDING
+        # proposals of older revisions (state machine: Proposed ->
+        # Superseded when a replacement proposal is created). CONFIRMED
+        # instances stay in force — they are superseded only when the new
+        # revision reaches confirmed (R2).
         FamilyAgreement.objects.filter(
-            program_key=str(program_key),
-            party_low_id=low_id, party_high_id=high_id,
-            connection_generation=int(connection["generation"]),
-            status__in=AGREEMENT_LIVE_STATUSES).exclude(
+            **pair_filter,
+            status=AGREEMENT_PROPOSED).exclude(
             agreement_revision=agreement["revision"]).update(
             status="superseded", updated_at=_now())
         instance = FamilyAgreement.objects.create(
