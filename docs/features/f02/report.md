@@ -73,3 +73,66 @@ node 3/3 PASS.
 - B18: wire program provider thật (B16 lifecycle); nối joint activities
   qua F09 invites; nối program page vào navigation; agreement template
   chính thức chờ Thầy duyệt.
+
+---
+
+## Cập nhật 2026-10-16 (Phần B — nhánh `tinh-nang/f02-dong-hanh-bon-tuan-us036-us044`, base main `72930ae`)
+
+Superseed phần "Còn lại / Input cần" ở trên cho các mục đã làm xong trong
+commit `ae837b3` (nội dung cũ giữ nguyên để đối chiếu lịch sử):
+
+- **Provider production đã wire** (bổn cũ: "B18 wire provider"): 
+  `f02_program/apps.py` ready() đăng ký `PublishedContentProgramProvider`
+  đọc B16 ContentItem `kind=f02_program` status=published (fail-closed:
+  draft/malformed không lộ; đúng 4 tuần 1..4; bounded 20) +
+  `F01ConnectionReader` (canonical pair/generation). f09_activities cũng
+  wire content reader + connection reader cùng cơ chế. Harness tests vẫn
+  dùng test double (reset_registries + register đè sau ready()).
+- **Thỏa ước gia đình tuần 4 (instance của đúng cặp)**: model
+  `FamilyAgreement` (pair_low/high, connection_generation,
+  agreement_revision, program_revision; UNIQUE per pair+revision+generation)
+  + API GET `/program/agreement`, POST `propose|{id}/confirm|{id}/withdraw`.
+  State machine theo `docs/product/four-week-flow.md` (draft → proposed →
+  confirmed khi HAI actor khác nhau của cùng cặp tự xác nhận CÙNG revision;
+  superseded/withdrawn/ended). Confirm yêu cầu: member của cặp + active
+  connection cùng generation + enrollment cùng program_revision. Lưu ý:
+  `AgreementAcceptance` cá nhân (template) giữ nguyên để tương thích
+  consumer cũ.
+- **Progress revision pin**: `WeekProgress.program_revision` (migration
+  `0002_familyagreement_and_more`, prod có 0 row tại thời điểm thêm) —
+  activity_key tái dụng ở revision mới không kế thừa status cũ.
+- **Nội dung 4 chủ đề DRAFT**: `seed_f02_draft_program` tạo 4 tuần đúng 4
+  chủ đề Huy nêu + 4 hoạt động chung F09 ở trạng thái DRAFT trong B16.
+  KHÔNG tự publish — chờ người có `content.publish` duyệt (WF-15). Trước
+  khi publish, API trả trung thực "chưa có nội dung phát hành".
+- **UI Mini App thật**: `/companion` đọc programMy/programCatalog/weeks/
+  progress/agreement qua shared adapter (additive 69→81 method); không còn
+  WEEKS hardcode/"Sắp có" theo tiến độ; tham gia/opt-out tường minh; tiến độ
+  riêng; thỏa ước 2 bên; lời mời F09 hai chiều; sổ giấy không ép.
+
+### Bằng chứng kiểm tra (2026-10-16)
+
+| Bộ | Kết quả |
+| --- | --- |
+| Backend feature-lab (đúng lệnh CI) | 482 tests OK (skip 9 như baseline) — gồm 7 case mới wiring/agreement/revision |
+| Mobile module tests (đúng lệnh CI mobile job) | PASS toàn bộ (F02 4/4) |
+| Mini App suite | 305/305 (gồm 8 case mới companion-program + pin test cập nhật) |
+| Shared package tests | 34/34 (ADAPTER_METHODS 81) |
+| E2E backend thật local (sqlite, wiring production) | 44/44 — connect F16 → catalog → enroll 2 người → 4 tuần mở → tiến độ 2 người độc lập (done/skipped, rev1) → F09 invite 2 chiều → thỏa ước confirmed (2 timestamp) → withdraw proposer-only → opt-out 404 trung thực |
+| Web regression (không sửa web) | 187/187 + build OK |
+| Import boundary | CLEAN |
+| Mini App build + verify Zalo manifest | OK |
+
+MySQL thật: migration 0002 là DDL chuẩn Django (add column nullable + đổi
+unique constraint) — đã chạy test DB sqlite; MySQL/TiDB thật là NOT_RUN
+(chạy khi có môi trường; runbook trong handover). Zalo device test: NOT_RUN
+(bàn giao Antigravity deploy Testing + Huy test).
+
+### Blocker phát hành nội dung (trung thực)
+
+- Nội dung 4 chủ đề hiện là **draft** trong thư viện B16 (nếu đã chạy seed).
+  Cần người có capability `content.publish` (thầy/người phụ trách) review +
+  publish từng item; việc này thuộc phê duyệt CHUYÊN MÔN, không phải kỹ thuật.
+  Draft source: `packages/family_bridge_features/f02_program/management/
+  commands/seed_f02_draft_program.py` (WEEKS_BODY) — sửa nội dung tại đây
+  hoặc qua admin B16 trước khi publish.

@@ -1,8 +1,11 @@
 {
   "feature_id": "F02",
-  "branch": "feat/f02-four-week-program",
+  "branch": "tinh-nang/f02-dong-hanh-bon-tuan-us036-us044",
   "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
-  "us": ["US-036", "US-044"],
+  "us": [
+    "US-036",
+    "US-044"
+  ],
   "backend": {
     "app_label": "f02_program",
     "package": "family_bridge_features.f02_program",
@@ -15,11 +18,30 @@
       "POST /api/v1/program/progress (own done/skipped/reset)",
       "POST /api/v1/program/agreement/accept (per-revision UNIQUE, mỗi người tự ký)"
     ],
-    "models": ["Enrollment", "WeekProgress", "AgreementAcceptance"],
-    "ports_provided": ["ProgramService"],
-    "ports_consumed": ["program content provider (B16 — US-009 duyệt; F09 activity keys)", "session resolver"]
+    "models": [
+      "Enrollment",
+      "WeekProgress",
+      "AgreementAcceptance"
+    ],
+    "ports_provided": [
+      "ProgramService"
+    ],
+    "ports_consumed": [
+      "program content provider (B16 — US-009 duyệt; F09 activity keys)",
+      "session resolver"
+    ]
   },
-  "mobile": {"module": "packages/family_bridge_mobile/f02_program", "pages": ["program"]},
-  "tests": {"backend": "12 PASS (SQLite)", "mobile": "3 PASS", "not_run": []},
-  "status": "implemented"
+  "mobile": {
+    "module": "packages/family_bridge_mobile/f02_program",
+    "pages": [
+      "program"
+    ]
+  },
+  "tests": {
+    "backend": "12 PASS (SQLite)",
+    "mobile": "3 PASS",
+    "not_run": []
+  },
+  "status": "implemented",
+  "updated": "2026-10-16: provider production wiring + family agreement 2 ben + progress revision + UI /companion that (draft content cho thay duyet)"
 }
