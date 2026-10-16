@@ -9,8 +9,11 @@ Ngày phát hành: 16/10/2026.
 - **Mini App ID:** `3411096375330044972`
 - **Tên ứng dụng:** Family Bridge
 - **Môi trường backend:** https://family-bridge-backend.onrender.com
-- **Nhánh triển khai:** `main`
+- **Nhánh triển khai:** `main` (commit `ef870ace16eafeba05186d5a60e29b69f10c5d1d`)
 - **Trạng thái phát hành (Version Status):** `Testing` (Target 2 trên Zalo Mini App Platform)
+- **Phiên bản vừa deploy (Version ID):** `2`
+- **Mô tả phiên bản:** `Family Bridge — HS/PH trong Zalo (ef870ac) — 16/10/2026`
+- **Đường dẫn trải nghiệm trực tiếp:** https://zalo.me/s/3411096375330044972/?env=TESTING&version=2
 - **Console quản lý phiên bản:** https://miniapp.zaloplatforms.com/miniapp/3411096375330044972/management/versions
 
 ---
