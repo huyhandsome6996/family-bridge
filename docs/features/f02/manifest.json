@@ -1,8 +1,11 @@
 {
   "feature_id": "F02",
-  "branch": "feat/f02-four-week-program",
+  "branch": "tinh-nang/f02-dong-hanh-bon-tuan-us036-us044",
   "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
-  "us": ["US-036", "US-044"],
+  "us": [
+    "US-036",
+    "US-044"
+  ],
   "backend": {
     "app_label": "f02_program",
     "package": "family_bridge_features.f02_program",
@@ -11,15 +14,41 @@
       "GET /api/v1/program/catalog (published, mọi revision giữ lại)",
       "POST /api/v1/program/enroll (tự nguyện, pin revision)",
       "POST /api/v1/program/opt-out (tự nguyện nghỉ)",
-      "GET /api/v1/program/my | GET /program/weeks/{key} (4 tuần đều xem được, gợi ý không khóa)",
-      "POST /api/v1/program/progress (own done/skipped/reset)",
-      "POST /api/v1/program/agreement/accept (per-revision UNIQUE, mỗi người tự ký)"
+      "GET /api/v1/program/my | GET /program/weeks/{key} (4 tuần đều xem được, gợi ý không khóa; tuần trả activities:[{activity_key,status}])",
+      "POST /api/v1/program/progress (own done/skipped/reset, pin program_revision)",
+      "POST /api/v1/program/agreement/accept (per-revision UNIQUE, mỗi người tự ký)",
+      "GET /api/v1/program/agreement (overview: agreement authoritative + effective_agreement + pending_proposal)",
+      "POST /api/v1/program/agreement/propose | /{id}/confirm | /{id}/withdraw (instance hai bên; confirmed chỉ supersede khi bản mới đủ 2 xác nhận)"
     ],
-    "models": ["Enrollment", "WeekProgress", "AgreementAcceptance"],
-    "ports_provided": ["ProgramService"],
-    "ports_consumed": ["program content provider (B16 — US-009 duyệt; F09 activity keys)", "session resolver"]
+    "models": [
+      "Enrollment",
+      "WeekProgress",
+      "AgreementAcceptance",
+      "FamilyAgreement (instance cặp, state machine four-week-flow)"
+    ],
+    "ports_provided": [
+      "ProgramService"
+    ],
+    "ports_consumed": [
+      "program content provider (B16 — US-009 duyệt; F09 activity keys)",
+      "session resolver"
+    ]
   },
-  "mobile": {"module": "packages/family_bridge_mobile/f02_program", "pages": ["program"]},
-  "tests": {"backend": "12 PASS (SQLite)", "mobile": "3 PASS", "not_run": []},
-  "status": "implemented"
+  "mobile": {
+    "module": "packages/family_bridge_mobile/f02_program",
+    "pages": [
+      "program"
+    ]
+  },
+  "tests": {
+    "backend": "31 PASS (SQLite; gồm 10 regression audit R1–R4)",
+    "mobile": "4 PASS",
+    "miniapp": "313 PASS (gồm 8 case companion-audit-fixes)",
+    "not_run": [
+      "MySQL/TiDB thật (migration 0002/concurrency)",
+      "Zalo device"
+    ]
+  },
+  "status": "implemented",
+  "updated": "2026-10-16 vòng 2: sửa 4 lỗi audit R1–R4 (contract activities, confirmed không supersede sớm, exact lookup pin rev, mutation không nuốt lỗi) + regression tests trong repo; provider production + family agreement + UI /companion giữ từ vòng 1"
 }

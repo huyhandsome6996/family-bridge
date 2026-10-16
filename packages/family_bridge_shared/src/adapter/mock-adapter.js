@@ -904,5 +904,84 @@ export function createMockAdapter({ scenario = null } = {}) {
       await wait(100);
       return { results: [], kind, source: "fixture" };
     },
+
+    // ---- F02/F09 fixtures (demo mode chỉ dùng khi bật rõ ràng) ----
+    // Demo KHÔNG mô phỏng luồng thỏa ước hai bên hay lời mời thật — trả
+    // trạng thái rỗng trung thực để UI hiển thị đúng empty state.
+
+    async programCatalog() {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async programEnroll({ programKey, programRevision }) {
+      await wait(120);
+      return {
+        program_key: programKey, program_revision: programRevision,
+        active: true, source: "fixture",
+      };
+    },
+
+    async programOptOut(programKey) {
+      await wait(120);
+      return { program_key: programKey, active: false, source: "fixture" };
+    },
+
+    async programProgress({ programKey, weekNo, activityKey, status }) {
+      await wait(120);
+      return {
+        program_key: programKey, week_no: weekNo,
+        activity_key: activityKey, status, source: "fixture",
+      };
+    },
+
+    async programAgreementAccept(programKey) {
+      await wait(120);
+      return { accepted: true, program_key: programKey, source: "fixture" };
+    },
+
+    async programAgreement(programKey) {
+      await wait(100);
+      return {
+        agreement: null, program_key: programKey,
+        agreement_template: null, source: "fixture",
+      };
+    },
+
+    async programAgreementPropose(programKey) {
+      await wait(120);
+      return { status: "proposed", program_key: programKey, source: "fixture" };
+    },
+
+    async programAgreementConfirm(agreementId) {
+      await wait(120);
+      return { agreement_id: agreementId, status: "confirmed",
+        source: "fixture" };
+    },
+
+    async programAgreementWithdraw(agreementId) {
+      await wait(120);
+      return { agreement_id: agreementId, status: "withdrawn",
+        source: "fixture" };
+    },
+
+    async activitiesInvites() {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async activitiesInvite({ inviteeId, contentKey, contentRevision }) {
+      await wait(120);
+      return {
+        invite_id: "demo-invite-1", invitee_id: inviteeId,
+        content_key: contentKey, content_revision: contentRevision,
+        status: "pending", direction: "sent", source: "fixture",
+      };
+    },
+
+    async activitiesRespond(inviteId, decision) {
+      await wait(120);
+      return { invite_id: inviteId, status: decision, source: "fixture" };
+    },
   };
 }
