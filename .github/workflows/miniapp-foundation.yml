@@ -6,7 +6,8 @@ name: miniapp-foundation
 on:
   push:
     branches:
-      - "feat/us-003-miniapp-ui-foundation"
+      - main
+      - "tinh-nang/**"
     paths:
       - "zalo-mini-app/**"
       - ".github/workflows/miniapp-foundation.yml"
