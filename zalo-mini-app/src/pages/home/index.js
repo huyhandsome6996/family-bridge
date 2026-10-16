@@ -237,6 +237,15 @@ export const page = {
           .then((data) => (data && Array.isArray(data.results) ? data.results : []))
           .catch(() => null)
       : Promise.resolve(null);
+    // F16: đề xuất ghép đôi từ lớp học — chỉ production (demo dùng fixture
+    // "đã kết nối"). Một request có bound (limit 20); lỗi → null (không chặn
+    // trang chủ, thẻ entry trung thực riêng bên dưới).
+    const proposalsPromise = demo
+      ? Promise.resolve(null)
+      : Promise.resolve()
+          .then(() => ctx.adapter.listClassProposals({ limit: 20 }))
+          .then((data) => (data && Array.isArray(data.results) ? data.results : []))
+          .catch(() => null);
 
     Promise.all([
       demo ? demoStatusPromise : Promise.resolve(null),
@@ -249,8 +258,9 @@ export const page = {
       programPromise,
       moodPromise,
       lessonPromise,
+      proposalsPromise,
     ])
-      .then(([demoStatus, profile, backendStatus, mailbox, program, mood, lessons]) => {
+      .then(([demoStatus, profile, backendStatus, mailbox, program, mood, lessons, proposals]) => {
         if (cancelled || currentRun !== runId) return;
         const connection = backendStatus || demoStatus;
         if (!connection) throw new Error("connection_unavailable");
@@ -266,6 +276,7 @@ export const page = {
             program,
             mood,
             lessons,
+            proposals: Array.isArray(proposals) ? proposals : null,
           });
           return;
         }
@@ -281,6 +292,7 @@ export const page = {
           program,
           mood,
           lessons,
+          proposals: null,
         });
       })
       .catch((error) => {
@@ -317,10 +329,11 @@ function renderHome(body, ctx, data) {
     ? String(data.profile.displayName)
     : ((getSession() && getSession().displayName) || "");
 
-  // Production chưa có kết nối: mời sang /connect — không dựng phần home
-  // đã kết nối (trung thực về trạng thái).
+  // Production chưa có kết nối: hiện đề xuất ghép đôi từ lớp (nếu có) rồi
+  // mời sang /connect — không dựng phần home đã kết nối (trung thực).
   if (!data.connected) {
     renderGreeting(body, { displayName, role: data.role });
+    renderProposalEntry(body, ctx, data.proposals);
     renderNotConnected(body, ctx);
     return;
   }
@@ -1019,6 +1032,100 @@ function renderCaregiverLesson(data) {
   }
   section.appendChild(card);
   return section;
+}
+
+/* ------------------ Đề xuất ghép đôi từ lớp (F16) ------------------ */
+
+// Trạng thái mở của proposal (đồng bộ với backend F16:
+// proposed = chờ hai bên xác nhận; awaiting_confirmation = tôi đã xác nhận,
+// đang chờ phía kia). "pending" là tên cũ trong một số fixture demo.
+const OPEN_PROPOSAL_STATUSES = new Set(["proposed", "pending", "awaiting_confirmation"]);
+
+/**
+ * Đường đi rõ ràng từ home tới đề xuất ghép đôi hiện có (F16).
+ * - Có proposal mở → thẻ nổi bật + CTA sang #/proposal (không tự xác nhận).
+ * - Không có proposal (danh sách rỗng) → không thêm gì, giữ luồng mã mời.
+ * - Không kiểm tra được (null) → ghi chú trung thực + link xem trực tiếp,
+ *   không giả bộ "chưa có đề xuất".
+ */
+function renderProposalEntry(body, ctx, proposals) {
+  if (!Array.isArray(proposals)) {
+    // Lỗi tải danh sách đề xuất: không chặn trang chủ, nói đúng và mở lối
+    // trực tiếp tới #/proposal để người dùng tự kiểm tra.
+    const note = h("div", { class: "fb-scard", role: "status" });
+    note.appendChild(
+      h("p", { class: "fb-sec__sub" },
+        "Chưa kiểm tra được đề xuất ghép đôi từ lớp học (lỗi mạng/máy chủ). ",
+      ),
+    );
+    note.appendChild(
+      h("div", { class: "fb-compose__pause-buttons" },
+        createButton({
+          label: "Mở trang Xác nhận ghép nối",
+          variant: "ghost",
+          onClick: () => ctx.navigate("/proposal"),
+        }),
+      ),
+    );
+    body.appendChild(note);
+    return;
+  }
+
+  const open = proposals.filter(
+    (row) => row && OPEN_PROPOSAL_STATUSES.has(row.status),
+  );
+  if (!open.length) return; // chưa có đề xuất — giữ nguyên luồng mã mời
+
+  const actionable = open.find((row) => row.status === "proposed" || row.status === "pending");
+  const waiting = open.find((row) => row.status === "awaiting_confirmation");
+  const first = actionable || waiting;
+  const peerName = first && first.counterpart && first.counterpart.display_name
+    ? String(first.counterpart.display_name)
+    : "người đồng hành";
+
+  const card = h("section", {
+    class: "fb-scard fb-pairing fb-pairing--emphasized",
+    dataset: { proposalEntry: "1" },
+  });
+  const head = h("div", { class: "fb-sec__row" });
+  const titleWrap = h("div", { style: "display:flex;align-items:flex-start;gap:var(--fb-space-3);min-width:0;" });
+  const circle = h("span", { class: "fb-connect__icon", "aria-hidden": "true" });
+  circle.appendChild(createIcon({ name: "family_restroom", size: 26 }));
+  titleWrap.appendChild(circle);
+  const textWrap = h("div", { style: "display:flex;flex-direction:column;min-width:0;" });
+  textWrap.appendChild(
+    h("h2", { class: "fb-scard__title" }, "Lớp học đã ghép cặp cho bạn"),
+  );
+  textWrap.appendChild(
+    h("span", { class: "fb-sec__sub" },
+      open.length > 1
+        ? `Có ${open.length} đề xuất ghép đôi từ lớp cần bạn xem.`
+        : `Ghép cặp với: ${peerName} (tên tự khai báo).`,
+    ),
+  );
+  titleWrap.appendChild(textWrap);
+  head.appendChild(titleWrap);
+  head.appendChild(
+    h("span", { class: "fb-chip" },
+      actionable ? "Cần bạn xác nhận" : "Đang chờ phía kia",
+    ),
+  );
+  card.appendChild(head);
+  card.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      "Kết nối chỉ mở sau khi CẢ HAI BÊN cùng xác nhận — bạn hoàn toàn chủ ",
+      h("strong", {}, "chủ động xác nhận hoặc từ chối"),
+      ". Việc đăng nhập chưa đồng nghĩa với việc đã ghép đôi.",
+    ),
+  );
+  card.appendChild(
+    createButton({
+      label: "Xem và xác nhận ghép đôi",
+      variant: "primary",
+      onClick: () => ctx.navigate("/proposal"),
+    }),
+  );
+  body.appendChild(card);
 }
 
 /* --------------------------- Chưa kết nối / lỗi --------------------------- */

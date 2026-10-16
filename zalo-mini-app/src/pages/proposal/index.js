@@ -176,7 +176,7 @@ function renderProposals(body, ctx, { demo, proposals, load }) {
     });
   }
   others.forEach((row) => {
-    body.appendChild(renderStatusCard(row));
+    body.appendChild(renderStatusCard(row, { ctx, load }));
   });
 }
 
@@ -314,6 +314,13 @@ function renderProposalCard(ctx, proposal, { load, emphasized }) {
       onClick: () => ctx.navigate("/home"),
     }),
   );
+  actions.appendChild(
+    createButton({
+      label: "Hủy đề xuất này",
+      variant: "ghost",
+      onClick: () => openCancelDialog(ctx, proposal, { load, note }),
+    }),
+  );
   card.appendChild(actions);
   card.appendChild(note);
 
@@ -378,9 +385,52 @@ function openDeclineDialog(ctx, proposal, { load, note }) {
   return dialog;
 }
 
+/** Hủy đề xuất (POST .../cancel) — một trong hai bên có thể hủy; đề xuất
+ * chuyển trạng thái canceled (terminal) và không xác nhận được nữa. */
+function openCancelDialog(ctx, proposal, { load, note }) {
+  const dialog = createDialog({
+    title: "Hủy đề xuất ghép đôi này?",
+    message:
+      "Đề xuất ghép đôi với người này sẽ bị hủy và không thể xác nhận nữa. "
+      + "Nếu vẫn cần kết nối, bạn có thể dùng mã mời thông thường hoặc liên hệ giáo viên "
+      + "phụ trách lớp để được ghép lại. Thao tác này không thể hoàn tác.",
+    actions: [
+      {
+        label: "Hủy đề xuất",
+        variant: "danger",
+        onClick: () => {
+          note.textContent = "Đang hủy đề xuất…";
+          Promise.resolve()
+            .then(() => ctx.adapter.cancelClassProposal(proposal.proposal_id))
+            .then(() => {
+              note.textContent = "Bạn đã hủy đề xuất ghép đôi này.";
+              load();
+            })
+            .catch((error) => applyProposalError(ctx, error, { load, note }));
+        },
+      },
+      { label: "Quay lại", variant: "ghost" },
+    ],
+  });
+  return dialog;
+}
+
+/** Mã nghiệp vụ cụ thể của một lỗi: envelope backend thật đặt reason chi
+ * tiết ở details.reason (InputInvalid/NotAuthorized/NotFound có code chung
+ * input_invalid/not_authorized/not_found), một số lỗi có code riêng
+ * (consent_required, revision_conflict). Reason cụ thể ưu tiên khi có. */
+function proposalErrorCode(error) {
+  if (!error) return "";
+  const direct = typeof error.code === "string" ? error.code : "";
+  const reason = error.details && typeof error.details.reason === "string"
+    ? error.details.reason
+    : "";
+  return reason || direct;
+}
+
 /** Ánh xạ lỗi hợp đồng f16 → copy trung thực + lối xử lý (không fake success). */
 function applyProposalError(ctx, error, { load, note }) {
-  const code = error && error.code;
+  const code = proposalErrorCode(error);
   clear(note);
   if (code === "consent_required") {
     note.appendChild(h("span", {}, "Bạn cần hoàn thành đồng ý sử dụng trước khi xác nhận ghép đôi. "));
@@ -411,6 +461,18 @@ function applyProposalError(ctx, error, { load, note }) {
     load();
     return;
   }
+  if (code === "proposal_not_found") {
+    note.textContent =
+      "Đề xuất này không còn thuộc về tài khoản của bạn (đã bị hủy hoặc không tồn tại). "
+      + "Đã tải lại danh sách mới nhất.";
+    load();
+    return;
+  }
+  if (code === "proposal_not_open") {
+    note.textContent = "Đề xuất này đã đóng (bị từ chối/hủy/hoàn tất) — đã tải lại trạng thái mới nhất.";
+    load();
+    return;
+  }
   if (code === "account_inactive") {
     note.textContent =
       "Tài khoản của bạn hiện không còn hoạt động. Vui lòng liên hệ giáo viên phụ trách lớp để được hỗ trợ.";
@@ -425,7 +487,8 @@ function applyProposalError(ctx, error, { load, note }) {
 
 /* ------------------------- Thẻ trạng thái / kết quả ------------------------- */
 
-function renderStatusCard(proposal) {
+function renderStatusCard(proposal, handlers = {}) {
+  const { ctx = null, load = () => {} } = handlers;
   const card = h("section", { class: "fb-scard" });
   card.appendChild(
     h("div", { class: "fb-sec__row" },
@@ -447,6 +510,17 @@ function renderStatusCard(proposal) {
         h("span", {}, "Đang chờ phía kia xác nhận… Không có giới hạn thời gian — bạn có thể quay lại sau."),
       ),
     );
+    if (ctx) {
+      const statusNote = h("p", { class: "fb-page__note", role: "status" });
+      card.appendChild(
+        createButton({
+          label: "Hủy đề xuất này",
+          variant: "ghost",
+          onClick: () => openCancelDialog(ctx, proposal, { load, note: statusNote }),
+        }),
+      );
+      card.appendChild(statusNote);
+    }
   } else if (proposal.status === "connected") {
     card.appendChild(renderConnectedInner());
   } else if (proposal.status === "declined") {
