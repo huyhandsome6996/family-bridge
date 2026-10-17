@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#FFF8F6" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-tap-highlight" content="no" />
+  <title>Tín hiệu quan tâm - US-032 | Family Bridge</title>
+
+  <style>
+    /* ============================================================
+       Family Bridge F10 Signal Styles
+       Tuân thủ Design Tokens (Stitch UI upgrade / tokens.css)
+       Tone màu ấm áp, nhẹ nhàng, kết nối — tuyệt đối không dùng màu đỏ SOS
+       ============================================================ */
+    :root {
+      --fb-primary: #9D3D27;          /* Terracotta ấm */
+      --fb-primary-hover: #802918;
+      --fb-accent: #E4AB56;           /* Amber dịu */
+      --fb-bg: #FFF8F6;               /* Nền giấy ấm */
+      --fb-text: #360F07;             /* Chữ nâu đậm */
+      --fb-text-secondary: #56423E;   /* Chữ phụ */
+      --fb-surface: #FFFFFF;          /* Thẻ trắng */
+      --fb-surface-low: #FFF0EE;
+      --fb-surface-container: #FFE9E5;
+      --fb-border: #DDC0BA;
+      --fb-success: #166534;
+      --fb-success-bg: #F0FDF4;
+      --fb-success-border: #BBF7D0;
+      --fb-warning: #92400E;
+      --fb-warning-bg: #FFFBEB;
+      --fb-error: #B91C1C;
+      --fb-error-bg: #FEF2F2;
+      --fb-error-border: #FECACA;
+      --fb-radius-lg: 16px;
+      --fb-radius-md: 12px;
+      --fb-radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #F3EAE7;
+      color: var(--fb-text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Khung điện thoại giả lập cho Zalo Mini App */
+    .phone-frame {
+      width: 100%;
+      max-width: 412px;
+      height: 860px;
+      max-height: 94vh;
+      background-color: var(--fb-bg);
+      border-radius: 36px;
+      box-shadow: 0 16px 48px rgba(54, 15, 7, 0.16), 0 0 0 8px #2E1510;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (max-width: 500px) {
+      body {
+        padding: 0;
+        background-color: var(--fb-bg);
+      }
+      .phone-frame {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* Header chuẩn Zalo Mini App */
+    .zalo-header {
+      height: 56px;
+      background: var(--fb-surface);
+      border-bottom: 1px solid var(--fb-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .zalo-header__left,
+    .zalo-header__right {
+      display: flex;
+      align-items: center;
+      min-width: 40px;
+    }
+
+    .zalo-header__btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fb-text);
+      transition: background 0.15s ease;
+      text-decoration: none;
+    }
+
+    .zalo-header__btn:hover {
+      background: var(--fb-surface-low);
+    }
+
+    .zalo-header__title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fb-text);
+      text-align: center;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 8px;
+    }
+
+    /* Vùng nội dung cuộn (app-content) */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Banner giới thiệu dịu dàng, ấm áp */
+    .intro-banner {
+      background-color: var(--fb-surface-container);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-lg);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .intro-banner__icon {
+      font-size: 26px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .intro-banner__text h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fb-primary);
+      margin-bottom: 2px;
+    }
+
+    .intro-banner__text p {
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--fb-text-secondary);
+    }
+
+    /* Form gửi tín hiệu */
+    .signal-form {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-section {
+      background: var(--fb-surface);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-lg);
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(54, 15, 7, 0.03);
+    }
+
+    .form-section__title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--fb-text);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* 1. Nhóm chọn người nhận (Radio Pills) */
+    .recipients-group {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .recipient-card {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .recipient-card input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .recipient-card__content {
+      border: 1.5px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: var(--fb-surface);
+      transition: all 0.2s ease;
+    }
+
+    .recipient-card__avatar {
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .recipient-card__name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fb-text);
+    }
+
+    .recipient-card input[type="radio"]:checked + .recipient-card__content {
+      border-color: var(--fb-primary);
+      background-color: var(--fb-surface-low);
+      box-shadow: 0 0 0 1px var(--fb-primary);
+    }
+
+    /* 2. Nhóm chọn nhu cầu (Need Options) */
+    .needs-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .need-card {
+      position: relative;
+      cursor: pointer;
+    }
+
+    .need-card input[type="radio"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .need-card__content {
+      border: 1.5px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--fb-surface);
+      transition: all 0.2s ease;
+    }
+
+    .need-card__icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .need-card__text {
+      flex: 1;
+    }
+
+    .need-card__title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fb-text);
+    }
+
+    .need-card__desc {
+      font-size: 12px;
+      color: var(--fb-text-secondary);
+      margin-top: 2px;
+    }
+
+    .need-card input[type="radio"]:checked + .need-card__content {
+      border-color: var(--fb-primary);
+      background-color: var(--fb-surface-low);
+      box-shadow: 0 0 0 1px var(--fb-primary);
+    }
+
+    /* 3. Ô nhập tin nhắn ngắn */
+    .note-input-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .note-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1.5px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      font-family: inherit;
+      font-size: 13.5px;
+      color: var(--fb-text);
+      background-color: var(--fb-surface);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .note-input:focus {
+      border-color: var(--fb-primary);
+    }
+
+    .note-input::placeholder {
+      color: #9E8883;
+    }
+
+    .note-hint {
+      font-size: 11.5px;
+      color: var(--fb-text-secondary);
+      text-align: right;
+    }
+
+    /* 4. Nút gửi tín hiệu */
+    .btn-submit-signal {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: var(--fb-primary);
+      color: #FFFFFF;
+      border: none;
+      padding: 14px 20px;
+      border-radius: 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(157, 61, 39, 0.25);
+      transition: all 0.2s ease;
+      margin-top: 4px;
+    }
+
+    .btn-submit-signal:hover {
+      background: var(--fb-primary-hover);
+    }
+
+    .btn-submit-signal:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    /* Hộp thông báo trạng thái Thành công / Lỗi */
+    .status-alert {
+      display: none;
+      padding: 14px 16px;
+      border-radius: var(--fb-radius-md);
+      font-size: 13px;
+      line-height: 1.45;
+      align-items: flex-start;
+      gap: 10px;
+      animation: fadeIn 0.25s ease;
+    }
+
+    .status-alert--success {
+      background-color: var(--fb-success-bg);
+      border: 1px solid var(--fb-success-border);
+      color: var(--fb-success);
+    }
+
+    .status-alert--error {
+      background-color: var(--fb-error-bg);
+      border: 1px solid var(--fb-error-border);
+      color: var(--fb-error);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Modal xác nhận trước khi gửi (Confirmation Modal) */
+    .modal-backdrop {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(46, 21, 16, 0.55);
+      backdrop-filter: blur(2px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-box {
+      background: var(--fb-surface);
+      border-radius: var(--fb-radius-lg);
+      width: 100%;
+      max-width: 320px;
+      padding: 22px 20px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.2);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .modal-box__icon {
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .modal-box__title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--fb-text);
+    }
+
+    .modal-box__message {
+      font-size: 13px;
+      line-height: 1.5;
+      color: var(--fb-text-secondary);
+    }
+
+    .modal-box__actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 6px;
+    }
+
+    .btn-modal-cancel {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      background: var(--fb-surface);
+      color: var(--fb-text-secondary);
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-modal-confirm {
+      flex: 1;
+      padding: 10px 14px;
+      border: none;
+      border-radius: var(--fb-radius-md);
+      background: var(--fb-primary);
+      color: #FFFFFF;
+      font-weight: 600;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .btn-modal-confirm:hover {
+      background: var(--fb-primary-hover);
+    }
+
+    /* Footer an toàn & cam kết riêng tư */
+    .safety-footer {
+      margin-top: auto;
+      padding-top: 12px;
+      font-size: 11.5px;
+      color: #856D67;
+      text-align: center;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <!-- Khung giả lập thiết bị Zalo Mini App -->
+  <div class="phone-frame">
+    <!-- Header chuẩn Zalo Mini App -->
+    <header class="zalo-header">
+      <div class="zalo-header__left">
+        <a href="index.html" class="zalo-header__btn" title="Quay lại" aria-label="Quay lại">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </a>
+      </div>
+      <h1 class="zalo-header__title">Tín hiệu quan tâm</h1>
+      <div class="zalo-header__right">
+        <button class="zalo-header__btn" aria-label="Tùy chọn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="19" cy="12" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Vùng nội dung ứng dụng cuộn (app-content) -->
+    <main class="app-content">
+      <!-- Banner giới thiệu nhẹ nhàng -->
+      <section class="intro-banner" aria-label="Giới thiệu tín hiệu">
+        <span class="intro-banner__icon" aria-hidden="true">🌱</span>
+        <div class="intro-banner__text">
+          <h2>Con cần được lắng nghe</h2>
+          <p>
+            Gửi một tín hiệu nhỏ nhẹ nhàng để người thân biết con đang mong muốn được sẻ chia.
+          </p>
+        </div>
+      </section>
+
+      <!-- Hộp thông báo trạng thái Thành công / Lỗi -->
+      <div id="status-alert-success" class="status-alert status-alert--success" role="status">
+        <span aria-hidden="true">✓</span>
+        <span id="status-success-text">Tín hiệu đã được gửi tới người thân.</span>
+      </div>
+
+      <div id="status-alert-error" class="status-alert status-alert--error" role="alert">
+        <span aria-hidden="true">⚠</span>
+        <span id="status-error-text">Không thể gửi tín hiệu lúc này. Vui lòng thử lại.</span>
+      </div>
+
+      <!-- Form nhập tín hiệu -->
+      <form id="signal-form" class="signal-form">
+        <!-- 1. Chọn người nhận -->
+        <fieldset class="form-section">
+          <legend class="form-section__title">
+            <span>1. Con muốn gửi tới ai?</span>
+          </legend>
+          <div class="recipients-group">
+            <label class="recipient-card">
+              <input type="radio" name="recipient" value="Bố" checked />
+              <div class="recipient-card__content">
+                <span class="recipient-card__avatar" aria-hidden="true">👨</span>
+                <span class="recipient-card__name">Bố</span>
+              </div>
+            </label>
+            <label class="recipient-card">
+              <input type="radio" name="recipient" value="Mẹ" />
+              <div class="recipient-card__content">
+                <span class="recipient-card__avatar" aria-hidden="true">👩</span>
+                <span class="recipient-card__name">Mẹ</span>
+              </div>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- 2. Lựa chọn nhu cầu -->
+        <fieldset class="form-section">
+          <legend class="form-section__title">
+            <span>2. Con đang mong muốn điều gì?</span>
+          </legend>
+          <div class="needs-group">
+            <label class="need-card">
+              <input type="radio" name="need" value="muon_tro_chuyen" checked />
+              <div class="need-card__content">
+                <span class="need-card__icon" aria-hidden="true">💬</span>
+                <div class="need-card__text">
+                  <div class="need-card__title">Muốn trò chuyện</div>
+                  <div class="need-card__desc">Một buổi tâm sự nhỏ, lắng nghe và chia sẻ</div>
+                </div>
+              </div>
+            </label>
+
+            <label class="need-card">
+              <input type="radio" name="need" value="muon_duoc_o_ben" />
+              <div class="need-card__content">
+                <span class="need-card__icon" aria-hidden="true">🫂</span>
+                <div class="need-card__text">
+                  <div class="need-card__title">Muốn được ở bên</div>
+                  <div class="need-card__desc">Chỉ cần cùng ngồi bên cạnh, không cần nói nhiều</div>
+                </div>
+              </div>
+            </label>
+
+            <label class="need-card">
+              <input type="radio" name="need" value="muon_hen_gio" />
+              <div class="need-card__content">
+                <span class="need-card__icon" aria-hidden="true">⏰</span>
+                <div class="need-card__text">
+                  <div class="need-card__title">Muốn hẹn thời gian</div>
+                  <div class="need-card__desc">Cùng sắp xếp một thời điểm thảnh thơi trong tuần</div>
+                </div>
+              </div>
+            </label>
+          </div>
+        </fieldset>
+
+        <!-- 3. Lời nhắn hoặc thời gian hẹn ngắn (Tùy chọn) -->
+        <div class="form-section">
+          <label for="signal-note" class="form-section__title">
+            <span>3. Lời nhắn hoặc thời gian hẹn (không bắt buộc)</span>
+          </label>
+          <div class="note-input-wrapper">
+            <input
+              type="text"
+              id="signal-note"
+              name="note"
+              class="note-input"
+              maxlength="120"
+              placeholder="Ví dụ: Tối nay sau bữa cơm, hoặc lúc con làm bài xong..."
+            />
+            <span class="note-hint">Tối đa 120 ký tự</span>
+          </div>
+        </div>
+
+        <!-- 4. Nút gửi -->
+        <button type="submit" id="btn-submit-signal" class="btn-submit-signal">
+          <span>Gửi tín hiệu</span>
+        </button>
+      </form>
+
+      <!-- Footer bảo mật & an tâm -->
+      <footer class="safety-footer">
+        <p>Tín hiệu chỉ chuyển tới người thân được chọn trong gia đình.</p>
+        <p>Không lưu giữ hay đính kèm bất kỳ nhật ký riêng tư nào.</p>
+      </footer>
+    </main>
+
+    <!-- Modal xác nhận trước khi gửi (Xác nhận chủ động) -->
+    <div id="confirm-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+      <div class="modal-box">
+        <div class="modal-box__icon" aria-hidden="true">💌</div>
+        <h3 id="modal-title" class="modal-box__title">Xác nhận gửi tín hiệu</h3>
+        <p id="modal-message" class="modal-box__message">
+          Bạn có chắc chắn muốn gửi tín hiệu này cho Bố?
+        </p>
+        <div class="modal-box__actions">
+          <button type="button" id="btn-modal-cancel" class="btn-modal-cancel">Xem lại</button>
+          <button type="button" id="btn-modal-confirm" class="btn-modal-confirm">Gửi ngay</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script logic xử lý F10 -->
+  <script type="module" src="./f10_signal.js"></script>
+</body>
+</html>
