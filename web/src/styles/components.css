@@ -2147,22 +2147,6 @@
   word-break: break-word;
 }
 
-/* ---- U01 CTA glyph Zalo (reference: svg fill-current 20px) ---- */
-.fb-welcome__cta-icon {
-  width: 20px;
-  height: 20px;
-  fill: currentColor;
-}
-
-.fb-welcome__cta {
-  min-height: 48px;
-  padding: 8px var(--fb-space-3);
-  font-size: var(--fb-fs-body);
-  line-height: var(--fb-lh-body);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
 /* ---- Admin cấp phát cặp HS/PH (CAP-23, 18/10/2026) — web only ---- */
 .fb-admin-provision {
   max-width: 1240px;
@@ -2268,4 +2252,20 @@
     grid-template-columns: 1fr;
     gap: var(--fb-space-2);
   }
+}
+
+/* ---- U01 CTA glyph Zalo (reference: svg fill-current 20px) ---- */
+.fb-welcome__cta-icon {
+  width: 20px;
+  height: 20px;
+  fill: currentColor;
+}
+
+.fb-welcome__cta {
+  min-height: 48px;
+  padding: 8px var(--fb-space-3);
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 500;
+  white-space: nowrap;
 }
