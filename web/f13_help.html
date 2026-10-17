@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#FFF8F6" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-tap-highlight" content="no" />
+  <title>Tìm trợ giúp - US-039 | Family Bridge</title>
+
+  <style>
+    /* ============================================================
+       Family Bridge F13 Help Page Styles
+       Tuân thủ Design Tokens dự án (Stitch UI upgrade / tokens.css)
+       Không dùng CDN bên ngoài — bảo mật & hoạt động độc lập
+       ============================================================ */
+    :root {
+      --fb-primary: #9D3D27;
+      --fb-primary-hover: #802918;
+      --fb-accent: #E4AB56;
+      --fb-bg: #FFF8F6;
+      --fb-text: #360F07;
+      --fb-text-secondary: #56423E;
+      --fb-surface: #FFFFFF;
+      --fb-surface-low: #FFF0EE;
+      --fb-surface-container: #FFE9E5;
+      --fb-border: #DDC0BA;
+      --fb-success: #166534;
+      --fb-success-bg: #F0FDF4;
+      --fb-success-border: #BBF7D0;
+      --fb-warning: #92400E;
+      --fb-warning-bg: #FFFBEB;
+      --fb-warning-border: #FDE68A;
+      --fb-error: #B91C1C;
+      --fb-error-bg: #FEF2F2;
+      --fb-error-border: #FECACA;
+      --fb-radius-lg: 16px;
+      --fb-radius-md: 12px;
+      --fb-radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #F3EAE7;
+      color: var(--fb-text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Khung giả lập điện thoại (phone-frame) cho Zalo Mini App */
+    .phone-frame {
+      width: 100%;
+      max-width: 412px;
+      height: 860px;
+      max-height: 94vh;
+      background-color: var(--fb-bg);
+      border-radius: 36px;
+      box-shadow: 0 16px 48px rgba(54, 15, 7, 0.16), 0 0 0 8px #2E1510;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (max-width: 500px) {
+      body {
+        padding: 0;
+        background-color: var(--fb-bg);
+      }
+      .phone-frame {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* Zalo Mini App Navigation Header */
+    .zalo-header {
+      height: 56px;
+      background: var(--fb-surface);
+      border-bottom: 1px solid var(--fb-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .zalo-header__left,
+    .zalo-header__right {
+      display: flex;
+      align-items: center;
+      min-width: 40px;
+    }
+
+    .zalo-header__btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fb-text);
+      transition: background 0.15s ease;
+      text-decoration: none;
+    }
+
+    .zalo-header__btn:hover {
+      background: var(--fb-surface-low);
+    }
+
+    .zalo-header__title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fb-text);
+      text-align: center;
+      flex: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      padding: 0 8px;
+    }
+
+    /* Vùng nội dung cuộn (app-content) */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Banner thông báo an toàn & công khai */
+    .emergency-banner {
+      background-color: var(--fb-surface-container);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-lg);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .emergency-banner__icon {
+      font-size: 22px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+
+    .emergency-banner__text h2 {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fb-primary);
+      margin-bottom: 4px;
+    }
+
+    .emergency-banner__text p {
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--fb-text-secondary);
+    }
+
+    /* Khối trạng thái: Loading */
+    .loading-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 16px;
+      gap: 16px;
+      color: var(--fb-text-secondary);
+      text-align: center;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid var(--fb-border);
+      border-top-color: var(--fb-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Khối trạng thái: Error */
+    .error-state {
+      background-color: var(--fb-error-bg);
+      border: 1px solid var(--fb-error-border);
+      border-radius: var(--fb-radius-lg);
+      padding: 20px 16px;
+      text-align: center;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .error-state__icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #FEE2E2;
+      color: var(--fb-error);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      font-weight: bold;
+    }
+
+    .error-state__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fb-error);
+    }
+
+    .error-state__message {
+      font-size: 13px;
+      color: var(--fb-text-secondary);
+      line-height: 1.45;
+    }
+
+    .btn-retry {
+      background: var(--fb-primary);
+      color: #fff;
+      border: none;
+      padding: 10px 20px;
+      border-radius: var(--fb-radius-md);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 4px;
+      transition: background 0.15s ease;
+    }
+
+    .btn-retry:hover {
+      background: var(--fb-primary-hover);
+    }
+
+    /* Danh sách liên hệ */
+    .contacts-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      list-style: none;
+    }
+
+    /* Thẻ liên hệ (Contact Card) */
+    .contact-card {
+      background: var(--fb-surface);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-lg);
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(54, 15, 7, 0.04);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .contact-card:hover {
+      box-shadow: 0 4px 14px rgba(54, 15, 7, 0.08);
+    }
+
+    .contact-card__header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .contact-card__name {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--fb-text);
+      line-height: 1.35;
+    }
+
+    /* Badges xác minh */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge-verified {
+      background-color: var(--fb-success-bg);
+      color: var(--fb-success);
+      border: 1px solid var(--fb-success-border);
+    }
+
+    .badge-unverified {
+      background-color: var(--fb-warning-bg);
+      color: var(--fb-warning);
+      border: 1px solid var(--fb-warning-border);
+    }
+
+    /* Thông tin chi tiết */
+    .contact-card__details {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 13px;
+      color: var(--fb-text-secondary);
+      background-color: var(--fb-surface-low);
+      padding: 10px 12px;
+      border-radius: var(--fb-radius-md);
+    }
+
+    .contact-card__row {
+      display: flex;
+      gap: 8px;
+      align-items: baseline;
+    }
+
+    .contact-card__label {
+      font-weight: 600;
+      color: var(--fb-text);
+      min-width: 90px;
+      flex-shrink: 0;
+    }
+
+    .contact-card__value {
+      flex: 1;
+      word-break: break-word;
+    }
+
+    /* Nút gọi chủ động (Tap to call) */
+    .contact-card__action {
+      margin-top: 4px;
+    }
+
+    .btn-call {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      background: var(--fb-primary);
+      color: #FFFFFF;
+      text-decoration: none;
+      padding: 12px 16px;
+      border-radius: var(--fb-radius-md);
+      font-size: 14px;
+      font-weight: 600;
+      box-shadow: 0 2px 6px rgba(157, 61, 39, 0.25);
+      transition: background 0.15s ease, transform 0.1s ease;
+    }
+
+    .btn-call:hover {
+      background: var(--fb-primary-hover);
+    }
+
+    .btn-call:active {
+      transform: scale(0.98);
+    }
+
+    .btn-call svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    .no-phone-notice {
+      font-size: 12px;
+      color: var(--fb-text-secondary);
+      font-style: italic;
+      text-align: center;
+      padding: 8px;
+      background: var(--fb-surface-low);
+      border-radius: var(--fb-radius-sm);
+    }
+
+    /* Trạng thái danh sách rỗng */
+    .empty-state {
+      text-align: center;
+      padding: 32px 16px;
+      color: var(--fb-text-secondary);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      background: var(--fb-surface);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-lg);
+    }
+
+    .empty-state__icon {
+      font-size: 36px;
+      line-height: 1;
+    }
+
+    .empty-state__title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--fb-text);
+    }
+
+    .empty-state__desc {
+      font-size: 13px;
+      line-height: 1.45;
+      color: var(--fb-text-secondary);
+      max-width: 320px;
+    }
+
+    /* Fallback khẩn cấp cho cả error-state và empty-state */
+    .state-fallback {
+      width: 100%;
+      margin-top: 8px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--fb-border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .state-fallback__hint {
+      font-size: 12px;
+      color: var(--fb-text-secondary);
+      font-weight: 500;
+    }
+
+    /* Footer an toàn & quy định */
+    .safety-footer {
+      margin-top: auto;
+      padding-top: 16px;
+      font-size: 12px;
+      color: #856D67;
+      line-height: 1.5;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Khung giả lập thiết bị Zalo Mini App -->
+  <div class="phone-frame">
+    <!-- Header chuẩn Zalo Mini App -->
+    <header class="zalo-header">
+      <div class="zalo-header__left">
+        <a href="index.html" class="zalo-header__btn" title="Quay lại" aria-label="Quay lại">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"></polyline>
+          </svg>
+        </a>
+      </div>
+      <h1 class="zalo-header__title">Tìm trợ giúp khẩn cấp</h1>
+      <div class="zalo-header__right">
+        <button class="zalo-header__btn" aria-label="Tùy chọn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <circle cx="5" cy="12" r="2"></circle>
+            <circle cx="12" cy="12" r="2"></circle>
+            <circle cx="19" cy="12" r="2"></circle>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Nội dung ứng dụng (Scrollable Content) -->
+    <main class="app-content">
+      <!-- Banner an toàn & hướng dẫn -->
+      <section class="emergency-banner" aria-label="Thông báo hỗ trợ khẩn cấp">
+        <span class="emergency-banner__icon" aria-hidden="true">🛡️</span>
+        <div class="emergency-banner__text">
+          <h2>Đầu mối hỗ trợ & Tư vấn</h2>
+          <p>
+            Trang này mở công khai 24/7, không yêu cầu đăng nhập. Cuộc gọi chỉ thực hiện khi bạn chủ động nhấn nút Gọi. Ứng dụng không tự động gọi hay thu thập lịch sử gọi của bạn.
+          </p>
+        </div>
+      </section>
+
+      <!-- Khối Trạng thái Loading -->
+      <section id="loading-state" class="loading-state" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <p>Đang tải danh bạ đầu mối hỗ trợ...</p>
+      </section>
+
+      <!-- Khối Trạng thái Error -->
+      <section id="error-state" class="error-state" role="alert" aria-live="assertive">
+        <div class="error-state__icon" aria-hidden="true">!</div>
+        <h3 class="error-state__title">Không thể kết nối danh bạ</h3>
+        <p id="error-message" class="error-state__message">
+          Đang có sự cố đường truyền mạng. Vui lòng kiểm tra lại kết nối Wi-Fi/4G và nhấn thử lại.
+        </p>
+        <button id="retry-btn" class="btn-retry" type="button">Thử lại</button>
+
+        <!-- Kênh liên hệ khẩn cấp dự phòng ngay khi lỗi mạng -->
+        <div class="state-fallback">
+          <p class="state-fallback__hint">Cần giúp đỡ khẩn cấp ngay bây giờ?</p>
+          <a href="tel:111" class="btn-call" aria-label="Gọi khẩn cấp Tổng đài 111">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+            </svg>
+            <span>Gọi ngay Tổng đài 111 (Miễn phí 24/7)</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Khối Trạng thái Rỗng -->
+      <section id="empty-state" class="empty-state" role="status">
+        <div class="empty-state__icon" aria-hidden="true">📋</div>
+        <h3 class="empty-state__title">Chưa có đầu mối bổ sung</h3>
+        <p class="empty-state__desc">
+          Hệ thống hiện chưa có thêm đầu mối hỗ trợ nào được kích hoạt. Nếu bạn đang cần hỗ trợ khẩn cấp, hãy gọi ngay đường dây nóng quốc gia bên dưới:
+        </p>
+        <div class="state-fallback">
+          <a href="tel:111" class="btn-call" aria-label="Gọi Tổng đài quốc gia bảo vệ trẻ em 111">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/>
+            </svg>
+            <span>Gọi Tổng đài 111 (Miễn phí 24/7)</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Danh sách các đầu mối hỗ trợ khẩn cấp -->
+      <ul id="contacts-list" class="contacts-list" aria-label="Danh sách các đầu mối hỗ trợ">
+        <!-- Render động từ JavaScript -->
+      </ul>
+
+      <!-- Footer an toàn & minh bạch -->
+      <footer class="safety-footer">
+        <p>Family Bridge cam kết bảo mật & tôn trọng quyền riêng tư.</p>
+        <p>Đường dây khẩn cấp Quốc gia bảo vệ trẻ em: <strong>111</strong> (miễn phí 24/7)</p>
+      </footer>
+    </main>
+  </div>
+
+  <!-- Module logic tính năng F13 -->
+  <script type="module" src="./f13_help.js"></script>
+</body>
+</html>
