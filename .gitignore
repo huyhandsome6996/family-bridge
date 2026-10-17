@@ -104,4 +104,5 @@ ehthumbs.db
 .mcp.json
 .agentsroom/
 .claude/
+.grok/
 .agents/mcp_config.json
