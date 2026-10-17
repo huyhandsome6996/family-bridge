@@ -146,7 +146,7 @@ FEATURES: List[Dict[str, Any]] = [
         "docs": "docs/features/f11",
         "depends_on": ["F01"],
         "content_kinds": [],
-        "deletion_hook": "pending", "status": "planned",
+        "deletion_hook": "pending", "status": "implemented",
     },
     {
         "id": "F12", "title": "Lien he thay/co va lich hen",

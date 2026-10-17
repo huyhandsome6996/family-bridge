@@ -45,5 +45,9 @@ test("no-context wording + help link present; textContent rendering", async () =
   assert.match(source, /không đính kèm thư/);
   assert.match(source, /Chờ người đó tự đồng ý/);
   assert.match(source, /Điểm tựa này chưa nhận lời hoặc đã hết hiệu lực/);
+  assert.match(source, /Dừng đồng hành/);
+  assert.match(source, /sup-contact-cancel/);
+  assert.match(source, /Lời mời làm điểm tựa cho người khác/);
   assert.doesNotMatch(source, /innerHTML\s*=\s*[^`]*\$\{/);
 });
+
