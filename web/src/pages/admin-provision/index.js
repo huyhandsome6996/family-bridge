@@ -364,17 +364,19 @@ export const page = {
     function confirmApply() {
       const rows = readRows();
       if (!rows.length) return;
-      const dialog = createDialog({
+      // createDialog TỰ MỞ (gắn vào body) — không append lần hai.
+      createDialog({
         title: "Cấp tài khoản và kết nối ngay?",
-        description: "Khi lưu, mọi hàng hợp lệ sẽ thành kết nối HOẠT ĐỘNG "
+        message: "Khi lưu, mọi hàng hợp lệ sẽ thành kết nối HOẠT ĐỘNG "
           + "ngay — học sinh và phụ huynh không cần xác nhận ghép đôi. "
           + "Người dùng vẫn tự chọn đồng ý điều khoản và các lựa chọn "
           + "AI/nghiên cứu của riêng mình.",
-        confirmLabel: "Cấp và kết nối",
-        cancelLabel: "Xem lại",
-        onConfirm: () => runApply(rows),
+        actions: [
+          { label: "Xem lại", variant: "ghost" },
+          { label: "Cấp và kết nối", variant: "cta",
+            onClick: () => runApply(rows) },
+        ],
       });
-      document.body.appendChild(dialog);
     }
 
     async function runApply(rows) {
@@ -507,16 +509,17 @@ export const page = {
     }
 
     function confirmBackfill() {
-      const dialog = createDialog({
+      createDialog({
         title: "Chuyển các cặp đang chờ thành kết nối?",
-        description: "Mọi cặp đủ điều kiện trong phạm vi sẽ thành kết nối "
+        message: "Mọi cặp đủ điều kiện trong phạm vi sẽ thành kết nối "
           + "hoạt động ngay — không cần hai bên xác nhận lại. Hành động "
           + "được ghi nguồn admin và mã đợt để theo dõi.",
-        confirmLabel: "Chuyển ngay",
-        cancelLabel: "Để sau",
-        onConfirm: () => runBackfill(),
+        actions: [
+          { label: "Để sau", variant: "ghost" },
+          { label: "Chuyển ngay", variant: "primary",
+            onClick: () => runBackfill() },
+        ],
       });
-      document.body.appendChild(dialog);
     }
 
     async function runBackfill() {
