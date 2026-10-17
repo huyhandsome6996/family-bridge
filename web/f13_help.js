@@ -292,3 +292,102 @@ function initHelpPage() {
   // Tự động tải dữ liệu ban đầu
   loadHelpContacts();
 }
+
+// ============================================================================
+// [QA TEST TOOLBAR] 3 Nút bấm kiểm thử trực tiếp trên giao diện
+// ============================================================================
+if (typeof window !== "undefined" && typeof document !== "undefined") {
+  const setupMockToolbar = () => {
+    if (document.getElementById("qa-mock-toolbar")) return;
+
+    const bar = document.createElement("div");
+    bar.id = "qa-mock-toolbar";
+    bar.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 15, 10, 0.95);
+      border: 2px solid #E4AB56;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 30px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.35);
+      z-index: 999999;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 13px;
+      white-space: nowrap;
+    `;
+
+    bar.innerHTML = `
+      <span style="font-weight: 700; color: #E4AB56; display: flex; align-items: center; gap: 4px;">
+        🧪 <span>QA Test:</span>
+      </span>
+      <button id="qa-btn-success" type="button" style="cursor: pointer; padding: 6px 12px; border: none; border-radius: 16px; background: #166534; color: #fff; font-weight: 600; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+        🟢 1. Thành công (1 Tích Xanh)
+      </button>
+      <button id="qa-btn-empty" type="button" style="cursor: pointer; padding: 6px 12px; border: none; border-radius: 16px; background: #92400E; color: #fff; font-weight: 600; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+        🟠 2. Danh bạ rỗng []
+      </button>
+      <button id="qa-btn-error" type="button" style="cursor: pointer; padding: 6px 12px; border: none; border-radius: 16px; background: #B91C1C; color: #fff; font-weight: 600; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);">
+        🔴 3. Lỗi mất mạng
+      </button>
+    `;
+
+    document.body.appendChild(bar);
+
+    // Kịch bản 1: Thành công (1 Đã xác minh + 1 Chờ xác minh)
+    document.getElementById("qa-btn-success")?.addEventListener("click", () => {
+      window.fetch = async () => ({
+        ok: true,
+        status: 200,
+        json: async () => [
+          {
+            contact_id: "qa-01",
+            name: "Tổng đài Quốc gia 111 (Bảo vệ trẻ em)",
+            scope: "Tư vấn tâm lý, can thiệp khẩn cấp bạo lực & xâm hại học đường",
+            hours: { always: true },
+            phone: "111",
+            is_verified: true
+          },
+          {
+            contact_id: "qa-02",
+            name: "CLB Tham vấn Tâm lý Học đường Tình nguyện",
+            scope: "Lắng nghe tâm sự học sinh (Đang thẩm định hồ sơ)",
+            hours: "18:00 - 21:00",
+            phone: "0912345678",
+            is_verified: false
+          }
+        ]
+      });
+      loadHelpContacts();
+    });
+
+    // Kịch bản 2: Danh bạ rỗng []
+    document.getElementById("qa-btn-empty")?.addEventListener("click", () => {
+      window.fetch = async () => ({
+        ok: true,
+        status: 200,
+        json: async () => []
+      });
+      loadHelpContacts();
+    });
+
+    // Kịch bản 3: Lỗi mất mạng
+    document.getElementById("qa-btn-error")?.addEventListener("click", () => {
+      window.fetch = async () => {
+        throw new TypeError("Failed to fetch");
+      };
+      loadHelpContacts();
+    });
+  };
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", setupMockToolbar);
+  } else {
+    setupMockToolbar();
+  }
+}
