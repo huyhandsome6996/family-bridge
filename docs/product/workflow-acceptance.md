@@ -322,6 +322,7 @@ Mỗi CAP chạy với có quyền, thiếu quyền, hết TTL và sai scope; Sy
 | CAP-20 | AT-06-03 | Không client flag/role cũ mở quyền; backend current cap+scope+TTL, audit action không body |
 | CAP-21 | AT-06-01 | Không client flag/role cũ mở quyền; backend current cap+scope+TTL, audit action không body |
 | CAP-22 | AT-06-02 | Không client flag/role cũ mở quyền; backend current cap+scope+TTL, audit action không body |
+| CAP-23 | AT-04-02 | classroom.provision: scope lọc thật (school chỉ khớp class_ref), thiếu grant 404, audit batch refs, idempotency batch_ref; không tự sinh grant/consent (f16 test_admin_provision A01–A12) |
 
 ## Checklist đủ luồng, chưa đủ implementation
 

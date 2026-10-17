@@ -31,6 +31,20 @@ Triển khai trên main (`packages/family_bridge_features/f16_classroom`), tái 
 
 Lỗi riêng của F16 (trong envelope chuẩn): `proposal_blocked_by_open_invite` (400 — người xác nhận 2 còn lời mời classic primary đang mở, KHÔNG bị hủy hộ), `already_connected` (400 — cặp đã có Connection active), `proposal_not_found` (404 — không thuộc proposal, không leak), `proposal_not_confirmable`/`proposal_not_open` (400), `reauth_failed` (403), `weak_password`/`same_password`/`same_code`/`duplicate_code` (400), `too_many_attempts` (429 — guard DB). Khi `FB_ZALO_LOGIN_ENABLED=false`, `POST /api/v1/auth/session` (Zalo của F01) bị middleware trả 503 `module_unavailable/zalo_login_disabled` — không sửa f01.
 
+## Endpoint F16-A — cấp phát cặp HS/PH do quản trị (bổ sung 18/10/2026 — DEC-24/CAP-23)
+
+Tất cả endpoint yêu cầu Bearer + grant `classroom.provision` CÒN HIỆU LỰC với scope lọc THẬT: grant `global` mở mọi lớp, grant `school` chỉ khớp `class_ref` chính xác. Thiếu grant → 404 như bề mặt admin_core (`not_found`, không phân biệt). Mọi thao tác ghi kèm `batch_ref` (UUID do client tạo) — gửi lại cùng `batch_ref` trả kết quả ĐÃ LƯU (idempotent, không nhân đôi).
+
+| Method | Path | Quyền | Response chính |
+| --- | --- | --- | --- |
+| GET | `/api/v1/classroom/admin/classes` | Bearer + CAP-23 | 200 `{results:[{class_ref, students, caregivers, pending_proposals}]}` trong phạm vi scope |
+| POST | `/api/v1/classroom/admin/pairs-preview` | Bearer + CAP-23 | 200 `{ok, dry_run:true, summary, rows:[{row, caregiver_code, student_code, status, problems}]}` — CHỈ ĐỌC, không ghi kể cả khi thiếu mật khẩu khởi tạo |
+| POST | `/api/v1/classroom/admin/pairs-apply` | Bearer + CAP-23 | 200 `{ok, wrote, batch_id, connected, already_active, reconnected, errors, rows}` — Connection ACTIVE ngay với `source=admin_provisioned`, `source_admin`, `source_batch`; validate toàn bộ trước, lỗi → không ghi gì |
+| GET | `/api/v1/classroom/admin/backfill-inventory` | Bearer + CAP-23 | 200 `{accounts, proposals:{eligible_pending, blocked}, already_active_pairs, eligible_pairs, blocked_pairs}` |
+| POST | `/api/v1/classroom/admin/backfill-apply` | Bearer + CAP-23 | 200 `{ok, activated, already_active, blocked, errors, rows}` — chuyển cặp đang chờ (proposal mở, cả hai tài khoản active) thành Connection ACTIVE; cặp revoked KHÔNG tự hồi sinh |
+
+Lỗi riêng (envelope chuẩn): `class_out_of_scope` (403 — grant school không khớp class_ref), `invalid_batch_ref`/`invalid_class_ref` (400), `too_many_rows` (400 — tối đa 50 hàng/lần), `initial_password_required_for_new_accounts` (per-row preview/apply — chỉ cần khi tạo tài khoản mới), `pair_revoked_reconnect_requires_allow_reconnect` (per-row — kết nối lại cần tick chủ ý, tạo generation mới). Trạng thái hàng: `will_connect`, `will_create_accounts_and_connect`, `pair_already_active`, `pending_proposal_will_close_and_connect`, `pair_revoked`, `pair_revoked_reconnectable`, `error` (preview) / `connected`, `already_active`, `reconnected`, `error` (apply). Mật khẩu khởi tạo không bao giờ xuất hiện trong response/summary/audit.
+
 ## Quy tắc chung
 
 1. HTTPS; JSON; route version `/api/v1/`; UUID định danh tài khoản và đối tượng nội bộ. Zalo IDs giữ kiểu chuỗi, không chuyển sang Number ở JavaScript.

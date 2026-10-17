@@ -32,6 +32,7 @@
 - Không gửi SMS/email/token qua kênh số nào cả — phát mật khẩu là quy trình
   ngoài hệ thống (runbook).
 - Không auto-confirm đề xuất; hai bên tự xác nhận.
+- **Cập nhật 18/10/2026 (DEC-24):** NGOẠI LỆ cho chế độ cấp phát của quản trị — admin có CAP-23 `classroom.provision` (scope lọc thật) tạo Connection ACTIVE ngay qua `services/admin_provision.py` + 5 endpoint `classroom/admin/*` + lệnh `backfill_class_pairs`; provenance `source=admin_provisioned`/`source_admin`/`source_batch` (f01 Connection 0003). Mệnh đề "không auto-confirm" ở trên tiếp tục ÁP DỤNG cho luồng đề xuất tự nguyện hai bên.
 
 ## Dependencies
 

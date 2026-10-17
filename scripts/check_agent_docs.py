@@ -165,9 +165,9 @@ def validate_workflow(texts):
     specs = (
         ("FL", "docs/product/user-flows.md", r"^## (FL-\d{2}) —", 20),
         ("AF", "docs/product/user-flows.md", r"^## (AF-\d{2}) —", 6),
-        ("CAP", "docs/product/admin-capabilities.md", r"^\| (CAP-\d{2}) \|", 22),
-        ("WF", "docs/engineering/workflow-rules.md", r"^\| (WF-\d{2}) \|", 24),
-        ("DEC", "docs/product/decision-register.md", r"^\| (DEC-\d{2}) \|", 23),
+        ("CAP", "docs/product/admin-capabilities.md", r"^\| (CAP-\d{2}) \|", 23),
+        ("WF", "docs/engineering/workflow-rules.md", r"^\| (WF-\d{2}) \|", 25),
+        ("DEC", "docs/product/decision-register.md", r"^\| (DEC-\d{2}) \|", 24),
     )
     for prefix, rel, pattern, count in specs:
         ids = re.findall(pattern, texts[rel], re.M)
@@ -228,7 +228,7 @@ def validate_workflow(texts):
                 errors.append(f"Missing mapping column for {feature}: {index}")
     cap_tests = re.findall(r"^\| (CAP-\d{2}) \| ([WA]T-\d{2}-\d{2}) \|",
                            acceptance, re.M)
-    if len(cap_tests) != 22 or {cap for cap, _ in cap_tests} != registries["CAP"]:
+    if len(cap_tests) != 23 or {cap for cap, _ in cap_tests} != registries["CAP"]:
         errors.append("Acceptance must map every capability to a test")
     for rel in ("README.md", "docs/engineering/agent-guide.md"):
         if "family-bridge-workflow/SKILL.md" not in texts[rel] or "workflow-rules.md" not in texts[rel]:
@@ -241,5 +241,5 @@ if __name__ == "__main__":
         for problem in problems:
             print(problem, file=sys.stderr)
         raise SystemExit(1)
-    print("Agent documents OK: files/links, 5 skills, wiring, Taste checksums/MIT, SEC register; 20 FL, 6 AF, 22 CAP, 24 WF, 23 DEC, 120 CFG, 78 cases and F01..F15/US mapping.")
+    print("Agent documents OK: files/links, 5 skills, wiring, Taste checksums/MIT, SEC register; 20 FL, 6 AF, 23 CAP, 25 WF, 24 DEC, 120 CFG, 78 cases and F01..F15/US mapping.")
     print("This does not verify runtime, diagram rendering, source URLs, security or agent obedience.")

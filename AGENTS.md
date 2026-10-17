@@ -54,6 +54,14 @@ Use a focused commit and fast-forward update with the expected main SHA; never f
 
 This policy does not authorize merging application code, dependencies, migrations, runtime/deployment configuration or mixed code/documentation PRs. Extract documentation and its minimal checks from mixed PRs; keep application changes in their own reviewed branch/PR. Keep statements about implemented features scoped to the branch/commit containing the code.
 
+## Admin-provisioned classroom pairs (18 October 2026 — F16 CAP-23 + consent screens)
+
+Huy's written decision of 18 October 2026 (delivered in the ANTIGRAVITY-ADMIN-PAIRING-CONSENT bundle) authorizes:
+1. A focused, verified change implementing admin-provisioned parent-student pairs (backend provenance + admin API + web admin screen + backfill tooling + tests + their indispensable docs/registry updates) delivered DIRECTLY to latest main — fast-forward only, no force push, after repo checks (feature suites, wiring, docs checker, client tests/build). This is an explicit exception to the "documentation-only direct-main" rule above; the exception covers exactly this scoped work, not unrelated application changes.
+2. The consent Stitch redesign for web and Zalo Mini App stays on its own reviewable branch/PR (codex/consent-stitch-responsive) because web ownership overlaps other contributors.
+
+Invariant updates recorded as DEC-24/WF-25/CAP-23 (see decision-register, admin-capabilities, workflow-rules and the dated supersede notes in project-scope/state-machines/access-matrix/user-flows): an administrator holding the named capability `classroom.provision` with REAL scope (global, or school matching class_ref exactly) creates an ACTIVE canonical Connection the moment the paired row is saved; end users do not confirm classroom pairing when accounts are provisioned this way. Still true and untouched: bilateral confirmation for voluntary invites/agreements (F02), no consent recorded on behalf of users, no private-data grants, revoke never auto-revives on re-import, F15 deletion hooks keep working, is_staff/superuser never bypass capability checks.
+
 ## Performance and data safety
 
 - Apply the mandatory rules in `docs/engineering/dsa-rules.md`. Prefer bounded, simple solutions; do not add sophisticated algorithms, caches or infrastructure without workload evidence.
