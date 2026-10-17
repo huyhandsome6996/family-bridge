@@ -10,7 +10,11 @@ Phạm vi bàn giao này chứa HAI sản phẩm theo gói yêu cầu ANTIGRAVIT
   dựng lại cho web (desktop 2 cột 5/7) và Mini App (1 cột mobile) — giữ
   nguyên toàn bộ hành vi đồng ý thật (listConsents/recordConsent, không
   precheck, snapshot + stale guard). B nằm trên nhánh riêng
-  `codex/consent-stitch-responsive` (PR riêng vì web đang có người khác làm).
+  `codex/consent-stitch-responsive` — **PR #41**
+  (https://github.com/huyhandsome6996/family-bridge/pull/41), chờ review/merge.
+
+Trạng thái bàn giao A trên main: `12171a6` (feature) + `c838bfc`
+(fix CSV map theo tên cột + import lệnh backfill) — CI ALL SUCCESS.
 
 ## Tài liệu trong mục này
 

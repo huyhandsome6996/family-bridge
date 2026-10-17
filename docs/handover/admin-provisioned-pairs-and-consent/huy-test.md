@@ -6,6 +6,26 @@
   — người có `caps.grant` cấp qua `POST /api/v1/admin/capabilities/grant`).
 - Mật khẩu khởi tạo nếu muốn tạo tài khoản mới trong lúc test.
 
+## Bản preview CỤC BỘ đã chạy thật (agent đã verify HTTP + API + UI)
+
+Môi trường cục bộ (backend Django sqlite + 100 tài khoản mẫu SYNTHETIC-CLASS
++ admin demo) — mật khẩu demo được gửi trong phiên chat, KHÔNG ghi vào repo:
+
+| Vào đâu | URL (đang sống trong phiên làm việc này) |
+| --- | --- |
+| Backend | `http://127.0.0.1:8001/api/v1/ready/` |
+| Web (dev, mã mới nhất) | `http://localhost:5173/#/login` → `#/consent` → `#/admin-provision` → `#/home` |
+| Web (bản build tĩnh) | `http://127.0.0.1:5174/#/login` |
+| Mini App (trình duyệt) | `http://127.0.0.1:3000/#/login` → `#/consent` → `#/home` |
+
+Đã verify thật ngay trước khi bàn giao: login HS001/PH001/ADMIN01 qua HTTP
+thật; admin preview PH001↔HS001 trả `pair_already_active` (50 cặp mẫu đã
+được chuyển bằng chính công cụ này, batch `3c507ca1-b61c-4684-b8af-5faedaee6989`);
+tài khoản KHÔNG có grant gọi `/classroom/admin/classes` nhận **404**.
+
+Sau khi PR #41 (consent) merge: URL Render chính thức
+`https://family-bridge-web.onrender.com/#/...` tự cập nhật theo main.
+
 ## Đường đi trên bản chính thức (Render — sau khi CI xanh)
 
 | Vào đâu | URL |

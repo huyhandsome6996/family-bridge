@@ -31,14 +31,21 @@ inventory/apply/idempotent/blocked; scope school chỉ khớp đúng class_ref.
 
 ## B — Consent theo Stitch (nhánh `codex/consent-stitch-responsive`)
 
-Kết quả chi tiết nằm ở PR của nhánh này (bàn giao A lên main trước; B là
-PR riêng vì web có người khác đang làm). Nội dung đã làm: màn consent mới
-cho web + mini (1 bản port, responsive), giữ contract `f01-consent` +
+Đã làm + ĐÃ KIỂM (nhánh `codex/consent-stitch-responsive`, PR riêng vì web
+có người khác đang làm): màn consent mới cho web + mini (1 bản port
+byte-identical, responsive 5/7 ↔ 1 cột), giữ contract `f01-consent` +
 `#fb-consent-<purpose>` + không-precheck + snapshot/stale-guard; bỏ QA
 panel, alert/setTimeout, Tailwind CDN, "Mã hóa bảo vệ gia đình", breadcrumb
-giả; thêm dialog chi tiết thật; copy trung thực. Kết quả test/build của B
-được ghi trong verification phần PR và sẽ được cập nhật vào file này khi
-merge.
+giả; thêm dialog chi tiết thật; copy trung thực.
+
+| Bộ kiểm | Lệnh | Kết quả |
+| --- | --- | --- |
+| Consent Stitch bất biến (mới) | `node --test tests/consent-stitch.test.mjs` (web + mini) | **6/6 OK cả hai** |
+| Web đầy đủ + build | `npm test` + `npm run build` (web/) | **226/226 OK** + build xanh |
+| Mini đầy đủ + build + manifest | `npm test` + `npm run build` (zalo-mini-app/) | **303/303 OK** + verify manifest (1 sync + 36 async chunk + 1 css) |
+| Suite consent cũ (không precheck/restore/submit/lỗi) | trong `zalo-mini-app/tests/f01-flows.test.mjs` | PASS (thuộc 303) |
+
+Chi tiết chỉnh sửa từng mục: `stitch-deviations.md`.
 
 ## NOT_RUN / BLOCKED (trung thực)
 
