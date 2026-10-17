@@ -19,7 +19,7 @@
  */
 
 // 1. Cấu hình Endpoint API linh hoạt
-const DEFAULT_SIGNAL_API_URL = "https://family-bridge-api.onrender.com/api/v1/signals";
+const DEFAULT_SIGNAL_API_URL = "https://family-bridge-api.onrender.com/api/v1/signals/send";
 
 /**
  * Lấy URL API phù hợp từ cấu hình runtime, biến môi trường Vite hoặc fallback mặc định.
@@ -82,26 +82,28 @@ function clearStatusAlerts() {
 // 3. Hàm gọi API gửi tín hiệu
 /**
  * Gửi dữ liệu tín hiệu lên máy chủ backend.
- * Đảm bảo CHỈ gửi payload người dùng nhập, không đính kèm nhật ký/tâm trạng.
- * 
- * @param {Object} signalData - { recipient: string, need: string, note: string }
+ * Payload tối thiểu: { need, recipient_id }. Không gửi note/recipient chữ thô.
+ *
+ * @param {Object} signalData - { recipient, recipientId/recipient_id, need }
  * @returns {Promise<any>}
  */
 export async function sendSignalApi(signalData) {
   const apiUrl = getSignalApiUrl();
 
-  // BẢO VỆ DỮ LIỆU: Đóng gói chặt chẽ chỉ các trường form cho phép
+  const recipientId = signalData.recipientId || signalData.recipient_id || "";
   const payload = {
-    recipient: String(signalData.recipient || "").trim(),
     need: String(signalData.need || "").trim(),
-    note: String(signalData.note || "").trim(),
+    recipient_id: String(recipientId).trim(),
   };
+
+  const idempotencyKey = `signal-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   const response = await fetch(apiUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
+      "X-Idempotency-Key": idempotencyKey,
     },
     body: JSON.stringify(payload),
   });
@@ -155,13 +157,12 @@ function handleFormSubmit(form) {
 
   const recipientInput = form.querySelector('input[name="recipient"]:checked');
   const needInput = form.querySelector('input[name="need"]:checked');
-  const noteInput = form.querySelector('input[name="note"]');
 
   const recipient = recipientInput ? recipientInput.value : "Người thân";
+  const recipientId = recipientInput ? (recipientInput.dataset.recipientId || "") : "";
   const need = needInput ? needInput.value : "muon_tro_chuyen";
-  const note = noteInput ? noteInput.value.trim() : "";
 
-  const signalData = { recipient, need, note };
+  const signalData = { recipient, recipientId, need };
 
   // BƯỚC XÁC NHẬN: Không gọi API ngay, mở Modal xác nhận
   openConfirmModal(signalData);
@@ -194,10 +195,10 @@ async function executeSignalSend() {
   try {
     await sendSignalApi(dataToSend);
 
-    // Báo thành công
+    // Báo thành công (thông báo trung thực)
     showStatusAlert(
       "success",
-      `Tín hiệu đã được chuyển tới ${dataToSend.recipient}. Người thân sẽ sớm nhận được lời nhắn của con!`
+      "Đã gửi tín hiệu. Người thân sẽ thấy trong Hộp thư — không ai bảo đảm trả lời ngay."
     );
 
     // Reset ô ghi chú sau khi gửi thành công
@@ -277,7 +278,11 @@ if (typeof document !== "undefined") {
 // 1. Case 1 (Success POST): Giả lập delay 1s quan sát spinner loading -> trả về 200
 // 2. Case 2 (Network Error): Giả lập mất kết nối mạng -> quan sát bắt lỗi & phục hồi nút
 // ============================================================================
-if (typeof window !== "undefined" && typeof document !== "undefined") {
+const isF10QaMode = (typeof window !== "undefined")
+  && (new URLSearchParams(window.location.search).get("qa") === "1"
+      || new URLSearchParams(window.location.search).get("demo") === "1");
+
+if (isF10QaMode && typeof window !== "undefined" && typeof document !== "undefined") {
   const setupF10MockToolbar = () => {
     if (document.getElementById("qa-f10-toolbar")) return;
 
