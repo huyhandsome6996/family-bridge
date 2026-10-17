@@ -53,6 +53,14 @@ export const ADAPTER_METHODS = [
   "confirmClassProposal", // POST /api/v1/classroom/proposals/{id}/confirm
   "declineClassProposal", // POST /api/v1/classroom/proposals/{id}/decline
   "cancelClassProposal",  // POST /api/v1/classroom/proposals/{id}/cancel
+  // ---- Admin cấp phát cặp HS/PH (CAP-23 classroom.provision, 18/10/2026) ----
+  // Chỉ admin có grant còn hiệu lực; thiếu grant → backend 404. Mọi thao tác
+  // GHI phải có batchRef do caller tạo (crypto.randomUUID) — idempotent.
+  "adminListClasses",       // GET  /api/v1/classroom/admin/classes
+  "adminPreviewPairs",      // POST /api/v1/classroom/admin/pairs-preview (read-only)
+  "adminApplyPairs",        // POST /api/v1/classroom/admin/pairs-apply (+batch_ref)
+  "adminBackfillInventory", // GET  /api/v1/classroom/admin/backfill-inventory
+  "adminBackfillApply",     // POST /api/v1/classroom/admin/backfill-apply (+batch_ref)
   "listMessages",         // GET  /api/v1/messages (metadata, KHÔNG body)
   "getMessage",           // GET  /api/v1/messages/{id} (+ body)
   "markMessageRead",      // POST /api/v1/messages/{id}/read (recipient-only)

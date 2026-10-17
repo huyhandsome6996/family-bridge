@@ -2162,3 +2162,110 @@
   font-weight: 500;
   white-space: nowrap;
 }
+
+/* ---- Admin cấp phát cặp HS/PH (CAP-23, 18/10/2026) — web only ---- */
+.fb-admin-provision {
+  max-width: 1240px;
+}
+
+.fb-admin-label {
+  display: block;
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  color: var(--fb-text-secondary);
+  margin-bottom: 4px;
+}
+
+.fb-admin-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-admin-grid__head,
+.fb-admin-grid__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: var(--fb-space-3);
+  align-items: end;
+}
+
+.fb-admin-grid__head {
+  align-items: center;
+  font-weight: 600;
+  color: var(--fb-text);
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--fb-border);
+}
+
+.fb-admin-grid__rowmeta {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.fb-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-3);
+  align-items: center;
+  margin-top: var(--fb-space-3);
+}
+
+.fb-admin-results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-admin-result {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px var(--fb-space-3);
+  align-items: baseline;
+  padding: 8px 12px;
+  border-radius: var(--fb-radius-control);
+  border: 1px solid var(--fb-border);
+  background: var(--fb-surface);
+}
+
+.fb-admin-result.is-ok {
+  border-color: var(--fb-success);
+  background: var(--fb-success-bg);
+}
+
+.fb-admin-result.is-warn {
+  border-color: var(--fb-warning);
+  background: var(--fb-warning-bg);
+}
+
+.fb-admin-result.is-error {
+  border-color: var(--fb-error);
+  background: var(--fb-error-bg);
+}
+
+.fb-admin-problems {
+  color: var(--fb-error);
+  font-size: var(--fb-fs-label-sm);
+}
+
+.fb-admin-names {
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-label-sm);
+}
+
+.fb-admin-pairline {
+  padding: 4px 0;
+  font-size: var(--fb-fs-body-sm);
+  color: var(--fb-text-secondary);
+}
+
+@media (max-width: 700px) {
+  .fb-admin-grid__head,
+  .fb-admin-grid__row {
+    grid-template-columns: 1fr;
+    gap: var(--fb-space-2);
+  }
+}

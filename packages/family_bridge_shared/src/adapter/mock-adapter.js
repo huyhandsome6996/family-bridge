@@ -612,6 +612,105 @@ export function createMockAdapter({ scenario = null } = {}) {
       return { proposal_id: proposalId, status: "canceled", source: "fixture" };
     },
 
+    // ---------- Admin cấp phát cặp HS/PH (demo minh họa, 18/10/2026) ----------
+    // Mock chỉ để phát triển UI; dữ liệu thật đến từ backend có grant
+    // "classroom.provision". Không bao giờ chứa mật khẩu thật.
+
+    async adminListClasses() {
+      await wait(200);
+      return [
+        {
+          class_ref: "DEMO-10A1",
+          students: 50,
+          caregivers: 50,
+          pending_proposals: 2,
+          source: "fixture",
+        },
+      ];
+    },
+
+    async adminPreviewPairs({ rows = [] } = {}) {
+      await wait(200);
+      const summary = {
+        rows: rows.length, will_connect: 0,
+        will_create_accounts_and_connect: 0, pair_already_active: 0,
+        pending_proposal_will_close_and_connect: 0, pair_revoked: 0,
+        pair_revoked_reconnectable: 0, error: 0, accounts_to_create: 0,
+        connected: 0, already_active: 0, reconnected: 0, errors: 0,
+      };
+      const rowViews = rows.map((row, index) => {
+        const status = row.allow_reconnect
+          ? "pair_revoked_reconnectable" : "will_connect";
+        summary[status] += 1;
+        return {
+          row: index,
+          caregiver_code: row.caregiver_code,
+          student_code: row.student_code,
+          status,
+          problems: [],
+          caregiver_display_name: row.caregiver_name || null,
+          student_display_name: row.student_name || null,
+        };
+      });
+      return { ok: true, dry_run: true, class_ref: "DEMO-10A1",
+        summary, rows: rowViews, source: "fixture" };
+    },
+
+    async adminApplyPairs({ rows = [], batchRef } = {}) {
+      await simulate({ kind: "admin_apply", fallback: "ok" });
+      const rowViews = rows.map((row, index) => ({
+        row: index,
+        caregiver_code: row.caregiver_code,
+        student_code: row.student_code,
+        status: "connected",
+        connection_id: `demo-connection-${index + 1}`,
+        generation: 1,
+        source: "admin_provisioned",
+      }));
+      return {
+        ok: true, wrote: true, dry_run: false, class_ref: "DEMO-10A1",
+        batch_id: `demo-batch-${batchRef || "1"}`,
+        connected: rows.length, already_active: 0, reconnected: 0, errors: 0,
+        rows: rowViews, source: "fixture",
+      };
+    },
+
+    async adminBackfillInventory() {
+      await wait(200);
+      return {
+        scope: { class_ref: null, classes: ["DEMO-10A1"], is_global: false },
+        accounts: { students: 50, caregivers: 50, total: 100 },
+        proposals: { eligible_pending: 2, blocked: 0 },
+        already_active_pairs: 48,
+        eligible_pairs: [
+          {
+            proposal_id: "demo-proposal-1",
+            student_code: "HS049", caregiver_code: "PH049",
+            student_name: "Học sinh mẫu 049",
+            caregiver_name: "Phụ huynh mẫu 049", status: "proposed",
+          },
+          {
+            proposal_id: "demo-proposal-2",
+            student_code: "HS050", caregiver_code: "PH050",
+            student_name: "Học sinh mẫu 050",
+            caregiver_name: "Phụ huynh mẫu 050", status: "proposed",
+          },
+        ],
+        blocked_pairs: [],
+        source: "fixture",
+      };
+    },
+
+    async adminBackfillApply({ batchRef } = {}) {
+      await simulate({ kind: "admin_backfill", fallback: "ok" });
+      return {
+        ok: true, wrote: true, eligible: 2, activated: 2,
+        already_active: 0, blocked: 0, errors: 0,
+        batch_id: `demo-batch-${batchRef || "1"}`,
+        rows: [], source: "fixture",
+      };
+    },
+
     async listMessages() {
       await wait(150);
       const nowIso = new Date().toISOString();
