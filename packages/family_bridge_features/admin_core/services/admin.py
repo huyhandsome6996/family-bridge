@@ -14,8 +14,8 @@ from family_bridge_core.timeutils import UTC
 
 from ..models import (
     CONTENT_DRAFT, CONTENT_PUBLISHED, CONTENT_RETIRED, IMMUTABLE_SETTINGS,
-    KNOWN_CAPABILITIES, SCOPE_TYPES, AdminCapabilityGrant, AuditEvent,
-    ContentItem, ProductSetting,
+    KNOWN_CAPABILITIES, SCOPE_GLOBAL, SCOPE_SCHOOL, SCOPE_TYPES,
+    AdminCapabilityGrant, AuditEvent, ContentItem, ProductSetting,
 )
 
 
@@ -35,7 +35,15 @@ def audit(*, actor_id: str, action: str, target_ref: str, outcome: str,
 
 class AdminCapabilityService:
     """Implements the B00 AdminCapabilityChecker protocol: the ONLY admin
-    authorization path (is_staff/superuser never consulted)."""
+    authorization path (is_staff/superuser never consulted).
+
+    Scope matching (bổ sung 18/10/2026 — lọc THẬT, không bỏ qua tham số):
+    - Yêu cầu scope "global": CHỈ grant "global" thỏa (grant school không
+      nâng lên toàn cục — không suy scope rộng từ hẹp).
+    - Yêu cầu scope "school" + scope_ref X: grant "global" thỏa; grant
+      "school" chỉ thỏa khi scope_ref khớp CHÍNH XÁC X. Một grant school
+      cho lớp khác KHÔNG thỏa (kiểm thử: f16 admin provision + test_scope).
+    """
 
     def has_capability(self, *, actor_id: str, capability: str,
                        scope_type: str = "global",
@@ -45,8 +53,16 @@ class AdminCapabilityService:
         grants = AdminCapabilityGrant.objects.filter(
             user_id=str(actor_id), capability=capability,
             revoked_at__isnull=True)
+        requested_scope = scope_type if scope_type in SCOPE_TYPES else SCOPE_GLOBAL
+        wanted_ref = str(scope_ref or "")
         for grant in grants:
-            if grant.is_active(now=now):
+            if not grant.is_active(now=now):
+                continue
+            if grant.scope_type == SCOPE_GLOBAL:
+                return True
+            if requested_scope == SCOPE_SCHOOL \
+                    and grant.scope_type == SCOPE_SCHOOL \
+                    and grant.scope_ref == wanted_ref:
                 return True
         return False
 

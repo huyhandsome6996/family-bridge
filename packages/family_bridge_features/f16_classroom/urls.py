@@ -16,4 +16,11 @@ urlpatterns = [
     path("classroom/proposals/<uuid:pk>/confirm", api.ProposalConfirmView.as_view()),
     path("classroom/proposals/<uuid:pk>/decline", api.ProposalDeclineView.as_view()),
     path("classroom/proposals/<uuid:pk>/cancel", api.ProposalCancelView.as_view()),
+    # cap phat/nap cap do admin thuc hien (CAP-23 classroom.provision,
+    # bo sung 18/10/2026) — grant scope THAT: global hoac school=class_ref
+    path("classroom/admin/classes", api.AdminClassListView.as_view()),
+    path("classroom/admin/pairs-preview", api.AdminPairsPreviewView.as_view()),
+    path("classroom/admin/pairs-apply", api.AdminPairsApplyView.as_view()),
+    path("classroom/admin/backfill-inventory", api.AdminBackfillInventoryView.as_view()),
+    path("classroom/admin/backfill-apply", api.AdminBackfillApplyView.as_view()),
 ]

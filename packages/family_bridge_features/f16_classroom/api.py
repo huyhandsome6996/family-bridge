@@ -211,3 +211,113 @@ class ProposalCancelView(APIView):
     def post(self, request, pk):
         result = _get_proposal_service().cancel(request.user, str(pk))
         return Response(result, status=200)
+
+
+# ---------------------------------------------------------------------------
+# Admin provisioning (bo sung 18/10/2026 — admin-provisioned pairs, CAP-23).
+# Moi view KIEM TRA grant "classroom.provision" voi scope THAT (global hoac
+# school dung class_ref); khong co grant → 404 nhu be mat admin_core.
+# ---------------------------------------------------------------------------
+
+from .services import admin_provision  # noqa: E402
+
+
+def _validate_class_ref(raw) -> str:
+    if not isinstance(raw, str) or not raw.strip() or len(raw.strip()) > 64:
+        raise InputInvalid({"field": "class_ref", "reason": "invalid_class_ref"})
+    return raw.strip()
+
+
+def _validate_batch_ref(raw) -> str:
+    from family_bridge_core.validation import validate_uuid
+    return str(validate_uuid(raw, field="batch_ref"))
+
+
+def _validate_password_opt(raw) -> str | None:
+    if raw is None:
+        return None
+    if not isinstance(raw, str):
+        raise InputInvalid({"field": "initial_password", "reason": "must_be_string"})
+    if len(raw) < 8:
+        raise InputInvalid({"field": "initial_password",
+                            "reason": "weak_password"})
+    return raw
+
+
+class AdminClassListView(APIView):
+    """GET /api/v1/classroom/admin/classes — lop trong pham vi grant."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        is_global, refs = admin_provision.admin_scope(request.user.pk)
+        if not is_global and not refs:
+            # Khong grant nao → be mat khong ton tai (404, khong 403).
+            from family_bridge_core.errors import NotFound
+            raise NotFound({"reason": "not_found"})
+        results = admin_provision.list_classes(request.user)
+        return Response({"results": results}, status=200)
+
+
+class AdminPairsPreviewView(APIView):
+    """POST /api/v1/classroom/admin/pairs-preview — doc-only per-row."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        payload = _json_body(request)
+        reject_unknown_fields(payload, allowed={
+            "class_ref", "rows", "initial_password"})
+        class_ref = _validate_class_ref(payload.get("class_ref"))
+        result = admin_provision.preview_pairs(
+            request.user, class_ref=class_ref,
+            rows=payload.get("rows"),
+            initial_password=_validate_password_opt(payload.get("initial_password")))
+        return Response(result, status=200)
+
+
+class AdminPairsApplyView(APIView):
+    """POST /api/v1/classroom/admin/pairs-apply — tao/cap cap → ACTIVE ngay."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        payload = _json_body(request)
+        reject_unknown_fields(payload, allowed={
+            "class_ref", "rows", "initial_password", "batch_ref"})
+        class_ref = _validate_class_ref(payload.get("class_ref"))
+        batch_ref = _validate_batch_ref(payload.get("batch_ref"))
+        result = admin_provision.apply_pairs(
+            request.user, class_ref=class_ref,
+            rows=payload.get("rows"), batch_ref=batch_ref,
+            initial_password=_validate_password_opt(payload.get("initial_password")))
+        return Response(result, status=200)
+
+
+class AdminBackfillInventoryView(APIView):
+    """GET /api/v1/classroom/admin/backfill-inventory?class_ref= — doc-only."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        raw = request.query_params.get("class_ref")
+        class_ref = _validate_class_ref(raw) if raw else None
+        return Response(
+            admin_provision.backfill_inventory(request.user, class_ref=class_ref),
+            status=200)
+
+
+class AdminBackfillApplyView(APIView):
+    """POST /api/v1/classroom/admin/backfill-apply — chuyen cap DANG CHO."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        payload = _json_body(request)
+        reject_unknown_fields(payload, allowed={"class_ref", "batch_ref"})
+        raw = payload.get("class_ref")
+        class_ref = _validate_class_ref(raw) if raw else None
+        batch_ref = _validate_batch_ref(payload.get("batch_ref"))
+        result = admin_provision.backfill_apply(
+            request.user, batch_ref=batch_ref, class_ref=class_ref)
+        return Response(result, status=200)

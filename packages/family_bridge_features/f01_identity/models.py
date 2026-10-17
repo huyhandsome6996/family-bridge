@@ -38,6 +38,14 @@ INVITE_EXPIRED = "expired"
 CONNECTION_ACTIVE = "active"
 CONNECTION_REVOKED = "revoked"
 
+# Nguon goc ket noi (bo sung 18/10/2026 — admin-provisioned pairs):
+# "user_invite" = luong loi moi tu nguyen hai phia (mac dinh, du lieu cu);
+# "admin_provisioned" = quan tri vien co capability classroom.provision tao
+# truc tiep — KHONG coi nhu hai nguoi dung tu xac nhan (khong gia signed_at).
+CONNECTION_SOURCE_USER_INVITE = "user_invite"
+CONNECTION_SOURCE_ADMIN = "admin_provisioned"
+CONNECTION_SOURCES = (CONNECTION_SOURCE_USER_INVITE, CONNECTION_SOURCE_ADMIN)
+
 
 def _utc_now() -> dt.datetime:
     return dt.datetime.now(tz=UTC)
@@ -218,10 +226,20 @@ class Connection(models.Model):
     party_high = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
                                    related_name="connections_high",
                                    db_column="party_high_id")
-    invite = models.ForeignKey(ConnectionInvite, on_delete=models.PROTECT,
+    # nullable tu 18/10/2026: ket noi do admin cap (source="admin_provisioned")
+    # KHONG qua invite cua nguoi dung — khong gia hanh dong xac nhan cua ai.
+    # Ket noi tu luong loi moi van giu invite NOT NULL o tang nghiep vu.
+    invite = models.ForeignKey(ConnectionInvite, null=True, blank=True,
+                               on_delete=models.PROTECT,
                                related_name="connections")
     relationship_kind = models.CharField(max_length=16,
                                          choices=[(k, k) for k in RELATIONSHIP_KINDS])
+    # Provenance doc duoc: nguon + admin actor + batch tham chieu (batch_ref
+    # cua f16_classroom.PairProvisionBatch). Khong thay doi view()/port.
+    source = models.CharField(max_length=24, default=CONNECTION_SOURCE_USER_INVITE,
+                              choices=[(s, s) for s in CONNECTION_SOURCES])
+    source_admin = models.CharField(max_length=64, null=True, blank=True)
+    source_batch = models.CharField(max_length=64, null=True, blank=True)
     status = models.CharField(max_length=16, default=CONNECTION_ACTIVE)
     generation = models.PositiveIntegerField(default=1)
     revision = models.PositiveIntegerField(default=1)
