@@ -25,10 +25,14 @@
 // - w12: SVG vòng đếm pause (stroke --fb-accent, đổi --fb-success khi hết)
 //   TÍNH TỪ remainingFromServer()/deadline máy chủ — KHÔNG timer lặp
 //   (DSA-10); body nháp bị làm mờ (niêm phong) trong lúc paused.
-// - AI (F04) là cổng THẬT: aiStatus() bật/tắt; aiRefine({text,key}) -> thẻ
-//   gợi ý; "Dùng gợi ý" -> aiAccept + chỉ điền VÀO TEXTAREA (không auto-save,
-//   không tự gửi — mọi thao tác ghi chờ người dùng xác nhận); "Bỏ" ->
-//   aiDiscard. Không có key -> không gọi.
+// - AI (F04) là cổng THẬT qua createAiAssist (components/ai-assist.js) dùng
+//   CHUNG với khung phản hồi thư — hợp đồng đóng băng v1: aiRefine({text, key,
+//   inputRevision}) + consent gate "ai_processing" trước lần dùng đầu; field
+//   text duy nhất là suggested_text; stale guard inputRevision (tăng mỗi input
+//   event, response/apply lệch revision -> chặn); apply/discard KHÔNG gửi tin,
+//   KHÔNG tạo Message; lỗi AI -> manual path (viết, lưu nháp, preview, gửi,
+//   help) luôn dùng được; render gợi ý bằng textContent.
+// - Biến thể caregiver: cùng component, copy xưng hô khác theo vai trò.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import {
@@ -41,6 +45,7 @@ import {
   createIcon,
   createSkeleton,
 } from "../../components/index.js";
+import { createAiAssist, AI_COPY } from "../../components/ai-assist.js";
 
 const BODY_MAX = 4000; // ràng buộc backend (f06 _content_fields)
 const PAUSE_SECONDS = 300; // hiển thị khoảng dừng chuẩn (máy chủ quyết thật)
@@ -49,15 +54,6 @@ const DRAFT_KIND = "text"; // backend KINDS chỉ nhận ("text","emotion_card")
 // Vòng đếm pause SVG (w12): stroke chạy theo tỷ lệ remaining/PAUSE_SECONDS.
 const RING_RADIUS = 28;
 const RING_CIRC = 2 * Math.PI * RING_RADIUS;
-
-/** Khóa idempotency cho lượt gọi ghi — client tạo tại nút bấm. */
-function newIdemKey() {
-  const c = typeof crypto !== "undefined" ? crypto : null;
-  if (c && typeof c.randomUUID === "function") return c.randomUUID();
-  return `fb-${Date.now().toString(36)}-`
-    + `${Math.random().toString(36).slice(2, 12)}-`
-    + `${Math.random().toString(36).slice(2, 12)}`;
-}
 
 /** ctx.store có thể là snapshot hoặc module store — đọc state an toàn. */
 function readState(store) {
@@ -130,9 +126,13 @@ export const page = {
 
     let cancelled = false;
     let runId = 0;
+    const destroyHooks = []; // F04: gỡ listener/đóng sheet của component con
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
+      destroyHooks.splice(0).forEach((fn) => {
+        try { fn(); } catch { /* unmount không được chặn nhau */ }
+      });
       root.querySelectorAll(".fb-sheet, .fb-overlay, .fb-sheet-root").forEach((el) => el.remove());
     };
 
@@ -159,11 +159,8 @@ export const page = {
     Promise.all([
       Promise.resolve().then(() => ctx.adapter.listConnections({ limit: 20 })).catch(() => null),
       Promise.resolve().then(() => ctx.adapter.listDrafts({ limit: 20 })).catch(() => null),
-      // F04 AI: trạng thái cổng gợi ý THẬT — lỗi/không bật không chặn trang;
-      // nút AI chỉ mở khi máy chủ báo bật (ai_enabled).
-      Promise.resolve().then(() => ctx.adapter.aiStatus()).catch(() => null),
     ])
-      .then(([connectionsPage, draftsPage, aiStatus]) => {
+      .then(([connectionsPage, draftsPage]) => {
         if (cancelled || currentRun !== runId) return;
         const connections = (connectionsPage && connectionsPage.results) || [];
         const drafts = (draftsPage && draftsPage.results) || [];
@@ -177,9 +174,10 @@ export const page = {
           // còn lại của bản nháp đang paused khi tải lại trang (QA fix 3).
           listServerTimeIso: draftsPage && draftsPage.serverTime ? draftsPage.serverTime : null,
           demo,
-          aiEnabled: Boolean(
-            aiStatus && (aiStatus.ai_enabled === true || aiStatus.enabled === true),
-          ),
+          // F04: trạng thái cổng AI do createAiAssist tự kiểm (aiStatus) —
+          // lỗi/off không chặn trang, manual path luôn hiển thị.
+          role: state.role || "student",
+          destroyHooks,
         });
       })
       .catch(() => {
@@ -212,10 +210,20 @@ function renderLoadError(body) {
 
 /* ------------------------------ Màn soạn chính ------------------------------ */
 
-function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEnabled = false }) {
+function renderCompose(body, ctx, { connections, draft, listServerTimeIso, role = "student", destroyHooks = [] }) {
   clear(body);
 
   const guarded = busyGuard();
+  const isCaregiver = String(role) === "caregiver";
+  const editorCopy = isCaregiver
+    ? {
+        label: "Lời bạn muốn gửi",
+        placeholder: "Chia sẻ điều bạn muốn nhắn gửi một cách nhẹ nhàng…",
+      }
+    : {
+        label: "Lời con muốn gửi",
+        placeholder: "Chia sẻ suy nghĩ chân thật nhất của con lúc này...",
+      };
   const ui = {
     root: body,
     counter: null,
@@ -232,9 +240,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     privacyChipText: null,
     ringProgress: null, // w12: vòng đếm pause SVG (stroke theo remaining)
     sealedNote: null, // w12: ghi chú niêm phong khi paused
-    aiPill: null,
-    aiMsg: null,
-    aiSuggestion: null,
+    mainCol: null,
   };
 
   const state = {
@@ -250,8 +256,6 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     fetchedAtMs: draft || listServerTimeIso ? Date.now() : null,
     recipientId: draft ? draft.recipient_id : null,
     connections,
-    aiEnabled,
-    aiSuggestion: null,
   };
 
   // ---- Bố cục desktop 2 cột (w11): <1024px vẫn 1 cột (CSS) ----
@@ -261,6 +265,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   grid.appendChild(mainCol);
   grid.appendChild(sideCol);
   body.appendChild(grid);
+  ui.mainCol = mainCol;
 
   // ---- Dòng trạng thái riêng tư ----
   const privacyRow = h("div", { class: "fb-compose__privacy-row" });
@@ -333,7 +338,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   const editorHead = h("div", { class: "fb-sec__row" });
   editorHead.appendChild(
     h("label", { class: "fb-compose__label", for: "fb-compose-body" },
-      h("span", {}, "Lời con muốn gửi"),
+      h("span", {}, editorCopy.label),
       h("span", { class: "fb-compose__required", "aria-hidden": "true" }, "*"),
     ),
   );
@@ -346,8 +351,9 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     class: "fb-compose__textarea",
     rows: "5",
     maxlength: String(BODY_MAX),
-    placeholder: "Chia sẻ suy nghĩ chân thật nhất của con lúc này...",
+    placeholder: editorCopy.placeholder,
     "aria-describedby": "fb-compose-counter",
+    "aria-label": editorCopy.label,
   });
   if (draft && draft.body) ui.textarea.value = String(draft.body);
   const syncCounter = () => {
@@ -462,42 +468,21 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   );
   mainCol.appendChild(footer);
 
-  // ---- Khối AI (F04) — panel phải: cổng THẬT qua aiStatus/aiRefine/... ----
+  // ---- Khối AI (F04) — panel phải: cổng THẬT qua createAiAssist ----
+  // Consent gate + loading không chặn gõ + stale guard + lỗi trung thực,
+  // dùng CHUNG semantics với khung phản hồi thư (components/ai-assist.js).
+  const aiAssist = createAiAssist({
+    adapter: ctx.adapter,
+    textarea: ui.textarea,
+    copy: isCaregiver ? AI_COPY.caregiver : AI_COPY.student,
+  });
   const aiCard = h("div", { class: "fb-scard fb-compose__ai-card" });
-  const aiBox = h("div", { class: "fb-compose__ai" });
-  const aiRow = h("div", { class: "fb-sec__row" });
-  ui.aiPill = h("button", {
-    class: "fb-btn fb-btn--primary fb-compose__ai-btn",
-    type: "button",
-    disabled: !state.aiEnabled,
-    title: state.aiEnabled
-      ? "Xin gợi ý diễn đạt êm ái hơn cho lời nhắn hiện tại."
-      : "Tính năng gợi ý AI chưa được bật ở bản này.",
-  },
-    createIcon({ name: "auto_awesome", size: 18 }),
-    h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
-  );
-  ui.aiPill.addEventListener("click", () => guarded("ai", () => onAiRefine(ctx, state, ui)));
-  aiRow.appendChild(ui.aiPill);
-  aiRow.appendChild(
-    h("span", { class: "fb-sec__sub", style: "display:inline-flex;align-items:center;gap:4px;" },
-      createIcon({ name: "shield", size: 14 }),
-      "Riêng tư",
-    ),
-  );
-  aiBox.appendChild(aiRow);
-  ui.aiMsg = h("p", { class: "fb-compose__ai-note", role: "status" },
-    createIcon({ name: "info", size: 16, className: "fb-stitch-tertiary-icon" }),
-    h("span", {},
-      state.aiEnabled
-        ? " Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình."
-        : " Cổng gợi ý AI chưa được bật trên máy chủ — nút sẽ mở khi máy chủ bật."),
-  );
-  aiBox.appendChild(ui.aiMsg);
-  ui.aiSuggestion = h("div", { class: "fb-compose__ai-suggestion", hidden: true });
-  aiBox.appendChild(ui.aiSuggestion);
-  aiCard.appendChild(aiBox);
+  aiCard.appendChild(aiAssist.el);
   sideCol.appendChild(aiCard);
+
+  // Lưu handler để cleanupFn gỡ listener + đóng sheet consent khi unmount.
+  if (typeof destroyHooks.push === "function") destroyHooks.push(aiAssist.destroy);
+  ui.aiAssistDestroy = aiAssist.destroy;
 
   const helpCard = h("div", { class: "fb-scard fb-compose__help-card" });
   helpCard.appendChild(
@@ -524,95 +509,51 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   refreshPauseUi(state, ui);
 }
 
-/* ------------------------ Hành vi: gợi ý AI (F04) ------------------------ */
+/* ------------------ Trạng thái kết quả gửi (F04 frame 12) ------------------ */
 
-/** Xin gợi ý từ máy chủ (aiRefine, key idempotency do client tạo). */
-function onAiRefine(ctx, state, ui) {
-  const text = currentBodyText(ui).trim();
-  if (!text) {
-    setAiMsg(ui, "Hãy viết vài dòng trước khi dùng gợi ý AI.");
+/**
+ * Bảng kết quả gửi: sending/unknown/sent theo response THẬT của
+ * confirmDraftSend — không tự suy thành công, không tự retry (QA cấm copy
+ * "đã gửi" mạo danh; chỉ báo khi máy chủ xác nhận hoặc báo chưa rõ).
+ */
+function renderSendReceipt(mountEl, { outcome, recipientName = "người nhận" }) {
+  const existing = mountEl.querySelector(".fb-compose__receipt");
+  if (existing) existing.remove();
+  if (outcome === "sent") {
+    mountEl.insertBefore(
+      h("div", { class: "fb-compose__receipt fb-compose__receipt--sent", role: "status" },
+        createIcon({ name: "check_circle", size: 22 }),
+        h("div", { class: "fb-compose__receipt-body" },
+          h("p", { class: "fb-compose__receipt-title" },
+            "Máy chủ xác nhận lời nhắn đã được trao gửi"),
+          h("p", { class: "fb-compose__receipt-sub" },
+            `Người nhận: ${recipientName}. Người nhận chỉ thấy lời nhắn cuối cùng `
+            + "— hệ thống không theo dõi việc xem thư."),
+        ),
+      ),
+      mountEl.firstChild,
+    );
     return;
   }
-  ui.aiPill.disabled = true;
-  setAiMsg(ui, "Đang xin gợi ý từ máy chủ…");
-  const key = newIdemKey();
-  Promise.resolve()
-    .then(() => ctx.adapter.aiRefine({ text, key }))
-    .then((suggestion) => {
-      ui.aiPill.disabled = false;
-      if (!suggestion || !suggestion.suggestion_id) {
-        throw new Error("invalid_suggestion");
-      }
-      state.aiSuggestion = suggestion;
-      renderAiSuggestion(ctx, state, ui);
-      setAiMsg(ui, "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời nhắn của mình.");
-    })
-    .catch((error) => {
-      ui.aiPill.disabled = false;
-      setAiMsg(ui, describeError(error, "Chưa lấy được gợi ý AI — bản soạn của bạn giữ nguyên."));
-    });
-}
-
-/** Dùng gợi ý: aiAccept rồi điền VÀO TEXTAREA — không lưu nháp, không gửi. */
-function onAiAccept(ctx, state, ui, suggestion) {
-  Promise.resolve()
-    .then(() => ctx.adapter.aiAccept(suggestion.suggestion_id))
-    .then(() => {
-      ui.textarea.value = String(suggestion.refined_text || ui.textarea.value);
-      ui.textarea.dispatchEvent(new Event("input", { bubbles: true }));
-      state.aiSuggestion = null;
-      renderAiSuggestion(ctx, state, ui);
-      setAiMsg(ui, "Bạn đã dùng gợi ý — nội dung chỉ nằm trong ô soạn, chưa lưu nháp và chưa gửi.");
-    })
-    .catch((error) => {
-      setAiMsg(ui, describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
-    });
-}
-
-/** Bỏ gợi ý: aiDiscard rồi xóa thẻ gợi ý (không đụng textarea). */
-function onAiDiscard(ctx, state, ui, suggestion) {
-  Promise.resolve()
-    .then(() => ctx.adapter.aiDiscard(suggestion.suggestion_id))
-    .then(() => {
-      state.aiSuggestion = null;
-      renderAiSuggestion(ctx, state, ui);
-      setAiMsg(ui, "Bạn đã bỏ gợi ý — lời nhắn hiện tại giữ nguyên.");
-    })
-    .catch((error) => {
-      setAiMsg(ui, describeError(error, "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại."));
-    });
-}
-
-function renderAiSuggestion(ctx, state, ui) {
-  const suggestion = state.aiSuggestion;
-  clear(ui.aiSuggestion);
-  if (!suggestion) {
-    ui.aiSuggestion.hidden = true;
-    return;
+  if (outcome === "unknown") {
+    mountEl.insertBefore(
+      h("div", { class: "fb-compose__receipt fb-compose__receipt--unknown", role: "alert" },
+        createIcon({ name: "cloud_off", size: 22 }),
+        h("div", { class: "fb-compose__receipt-body" },
+          h("p", { class: "fb-compose__receipt-title" }, "KẾT QUẢ CHƯA XÁC ĐỊNH"),
+          h("p", { class: "fb-compose__receipt-sub" },
+            `Máy chủ có thể đã nhận lời nhắn cho ${recipientName}. Để tránh gửi trùng, `
+            + "kiểm tra trạng thái mới nhất trước khi thử lại — không gửi lại ngay."),
+          h("button", {
+            class: "fb-btn fb-btn--ghost fb-compose__receipt-retry",
+            type: "button",
+            onclick: () => window.dispatchEvent(new HashChangeEvent("hashchange")),
+          }, "Kiểm tra trạng thái mới nhất"),
+        ),
+      ),
+      mountEl.firstChild,
+    );
   }
-  ui.aiSuggestion.hidden = false;
-  ui.aiSuggestion.appendChild(
-    h("p", { class: "fb-compose__ai-suggest-label" }, "Gợi ý của máy chủ:"),
-  );
-  ui.aiSuggestion.appendChild(
-    h("p", { class: "fb-compose__ai-suggest-text" }, String(suggestion.refined_text || "")),
-  );
-  const row = h("div", { class: "fb-compose__pause-buttons" });
-  row.appendChild(createButton({
-    label: "Dùng gợi ý",
-    variant: "primary",
-    onClick: () => onAiAccept(ctx, state, ui, suggestion),
-  }));
-  row.appendChild(createButton({
-    label: "Bỏ",
-    variant: "ghost",
-    onClick: () => onAiDiscard(ctx, state, ui, suggestion),
-  }));
-  ui.aiSuggestion.appendChild(row);
-}
-
-function setAiMsg(ui, text) {
-  if (ui.aiMsg) ui.aiMsg.textContent = text;
 }
 
 /* --------------------------- Hành vi: người nhận --------------------------- */
@@ -811,10 +752,13 @@ function openConfirmSheet(ctx, state, ui, preview) {
     label: `Gửi cho ${recipientName}`,
     variant: "primary",
     onClick: () => {
+      // F04 frame 12 — trạng thái "sending": chặn double-click + báo đang gửi.
       confirmBtn.disabled = true;
+      confirmBtn.textContent = "Đang gửi…";
       const run = async () => {
         await ctx.adapter.confirmDraftSend(state.draftId, preview.preview_id);
         sheet.remove();
+        renderSendReceipt(ui.mainCol, { outcome: "sent", recipientName });
         ui.statusNote.textContent =
           "Lời nhắn đã được gửi qua xác nhận của bạn. Bản soạn giờ trống để bạn viết lần tới.";
         // Reset về bản soạn mới sau khi gửi thành công.
@@ -828,7 +772,11 @@ function openConfirmSheet(ctx, state, ui, preview) {
         refreshRecipientUi(state, ui);
       };
       run().catch((error) => {
+        // Không tự retry, không tự suy thành công/thất bại: báo CHƯA XÁC ĐỊNH
+        // trong sheet + bảng "chưa xác định" trên trang (F04 frame 12).
         confirmBtn.disabled = false;
+        confirmBtn.textContent = `Gửi cho ${recipientName}`;
+        renderSendReceipt(ui.mainCol, { outcome: "unknown", recipientName });
         // Thông báo an toàn QUAN TRỌNG NHẤT phải nằm TRONG sheet (nơi người
         // dùng đang nhìn), không chỉ ở statusNote phía sau overlay.
         clear(sheetError);
@@ -941,12 +889,19 @@ function refreshPauseUi(state, ui) {
     return;
   }
 
-  // Chưa tạm dừng
+  // Chưa tạm dừng — C8 (hợp đồng F04 v1, backend đã mở): khoảng dừng là
+  // TUỲ CHỌN — máy chủ cho phép preview/confirm cả khi draft chưa pause
+  // (chỉ 409 cooldown_active khi ĐANG paused còn deadline, onPreview báo
+  // remaining trung thực). Không tự khóa preview ở client nữa.
+  // Chưa lưu nháp thì chưa có gì để xem trước — khóa kèm lý do trung thực.
   ui.timerBadge.textContent = formatRemaining(PAUSE_SECONDS);
   ui.timerBadge.title = "Khoảng dừng chuẩn 5 phút — thời gian thật do máy chủ ghi khi bạn bắt đầu.";
   ui.progressFill.style.width = "0%";
-  ui.previewBtn.disabled = true;
-  ui.previewBtn.title = "Cần lưu nháp và hoàn thành khoảng dừng trước khi xem trước.";
+  const canPreview = Boolean(state.draftId);
+  ui.previewBtn.disabled = !canPreview;
+  ui.previewBtn.title = canPreview
+    ? ""
+    : "Chưa có bản nháp để xem trước — hãy lưu nháp trước.";
   ui.pauseBtnIcon.remove();
   ui.pauseBtnIcon = createIcon({ name: "play_arrow", size: 20 });
   ui.pauseBtnLabel.textContent = "Bắt đầu 5 phút nghỉ";

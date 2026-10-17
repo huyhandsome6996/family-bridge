@@ -39,14 +39,27 @@ def _json_body(request) -> dict:
 
 
 def _content_fields(payload: dict, *, require_all: bool) -> dict:
+    """Validate draft content fields.
+
+    require_all=True (create): kind AND body are required exactly as before.
+    require_all=False (edit, C8): only the fields PRESENT in the payload are
+    validated; `kind` is optional (and ignored — immutable after create).
+    Absent optional fields keep the service-level full-replace defaults."""
     allowed = {"kind", "body", "title", "card_id", "card_version",
                "recipient_id"}
     reject_unknown_fields(payload, allowed=allowed)
+
+    def _present(name: str) -> bool:
+        return name in payload
+
+    def _validated(name: str, **kwargs):
+        return validate_text(payload.get(name), field=name, **kwargs)
+
     fields = {
-        "kind": validate_text(payload.get("kind"), field="kind",
-                              min_len=1, max_len=16),
-        "body": validate_text(payload.get("body"), field="body",
-                              min_len=1, max_len=4000),
+        "kind": (_validated("kind", min_len=1, max_len=16)
+                 if (require_all or _present("kind")) else ""),
+        "body": (_validated("body", min_len=1, max_len=4000)
+                 if _present("body") else ""),
         "title": payload.get("title", ""),
         "card_id": payload.get("card_id", "") or "",
         "recipient_id": payload.get("recipient_id", "") or "",
@@ -113,8 +126,11 @@ class DraftDetailView(APIView):
         # Ownership FIRST: non-owners get 404 before any input validation.
         draft = build_service().get_own(author_id=str(request.user.pk),
                                         draft_id=str(draft_uuid))
-        fields = _content_fields(_json_body(request), require_all=True)
-        fields.pop("kind")  # kind is immutable after create
+        # C8: edit validates only the fields actually present; `kind` is
+        # OPTIONAL on edit (create keeps require_all=True). Kind stays
+        # immutable after create either way.
+        fields = _content_fields(_json_body(request), require_all=False)
+        fields.pop("kind")
         draft = build_service().edit(author_id=str(request.user.pk),
                                     draft_id=str(draft.id), **fields)
         return Response(draft.view(now=build_service()._now()))

@@ -1,58 +1,95 @@
-# F04 — scope/test/manual (tóm tắt trong report.md; chi tiết bổ sung)
+# F04 — Ma trận kiểm thử F04-T01..T20 (phiên A5-FINISH, hợp đồng freeze v1)
 
-## Phạm vi
+- Ngày chốt: 2026-10-16 UTC · Nhánh `tinh-nang/f04-ai-ho-tro-dien-dat-us029-us033` (chưa commit — coordinator làm git).
+- Định nghĩa T01..T20: handoff `01-PROMPT-TRIEN-KHAI-F04.md` mục 7.
+- Ngưỡng bằng chứng: **toàn bộ số test dưới đây là bằng chứng mức SQLite/local** (Node `node:test`, happy-dom, Django SQLite). MySQL race, Render thật, device thật, live Gemini được ghi rõ SKIP/NOT_RUN/BLOCKED, không bịa PASS.
+- Ma trận này REWRITE từ bản cũ (bản 2026-10-14 chỉ là bộ test case thời tiền-triển-khai, không phản ánh kiến trúc 5-agent).
 
-- POST /ai/refine: X-Idempotency-Key bắt buộc; replay cùng key → CÙNG
-  suggestion, KHÔNG gọi provider lần 2; cùng key khác text → 409.
-- Payload tới provider tối thiểu: chỉ (text, purpose) — service assert
-  bằng test; không bao giờ gửi lịch sử/nhật ký/dữ liệu người khác.
-- Provider failure mapping trung thực: outage/timeout/quota → 503 với
-  reason riêng; output malformed/oversized → 503 provider_output_invalid;
-  không có row nào được tạo khi provider fail.
-- Output là text KHÔNG tin cậy: bounded ≤ 4000, lưu như data, render
-  textContent; không execute, không tool call, không auto-send.
-- accept/discard: author-only, một chiều (accepted → không discard lại),
-  idempotent; KHÔNG tạo message.
-- /ai/status: {ai_enabled} trung thực; AI off → refine 503
-  ai_unavailable_or_off; manual flow không bị ảnh hưởng (không gì phụ thuộc AI).
-- Mobile refine.js: notice "Chỉ câu bạn nhập được gửi tới AI"; suggest →
-  editable textarea (author quyết lời cuối) → accept → ctx.onAcceptText
-  (chuỗi preview-recipient-confirm); AI lỗi → hiện notice manual, composer
-  vẫn dùng được.
+## 0. Kết quả chạy thực tế (SNAPSHOT số test — rerun cuối do coordinator thực hiện)
 
-## Test case chính (đã chạy — PASS trên SQLite)
+> **CHỐT CUỐI — rerun đầy đủ bởi coordinator lúc 2026-10-16 ~19:55 UTC sau khi toàn bộ fix round-1 landed** (xem "Rerun cuối" bên dưới). Số trong bảng là snapshot ~19:20 UTC đã xác minh độc lập (A4 rerun 9/11 lệnh ~19:07–19:20 UTC, `peer-review/round1-A4-reviews-A5.md` mục 3; web 204 được A3 tái lập riêng lúc 19:13 UTC, `round1-A3-reviews-A4.md` mục 3). Các fixer round-1 (backend/zalo/web/shared) **đang chạy song song** và sẽ thêm test nữa (R4A5-03 thêm test web, R2A3-07 thêm test zalo hủy chờ, R3A4-01 thêm test web+zalo cho guard accept, S1 thêm test kill-switch backend) → **số có thể tăng khi fix round-1 land; rerun cuối bởi coordinator**. Phiên F04-FIX-DOCS KHÔNG chạy test nào (tránh đua với fixer) — chỉ ghi số đã xác minh + đánh dấu chỗ cần rerun.
 
-| Case | Kỳ vọng | Kết quả |
-| --- | --- | --- |
-| Refine tạo suggestion author-private | 201, metadata revision đầy đủ | PASS |
-| Replay cùng key | cùng suggestion, provider chỉ gọi 1 lần | PASS |
-| Cùng key khác text | 409 duplicate_key_payload_mismatch | PASS |
-| Provider nhận đúng 1 câu đã chọn | calls[0] = {text, purpose, at} | PASS |
-| AI off (chưa wire) | 503 ai_unavailable_or_off | PASS |
-| Outage / timeout / quota | 503 với reason riêng, 0 row | PASS |
-| Output malformed / oversized | 503 provider_output_invalid | PASS |
-| Prompt injection | lưu như text trơ; không tool/action | PASS |
-| purpose ngoài allowlist | 400 | PASS |
-| text > 4000 | 400 | PASS |
-| Unknown fields (history) | 400 | PASS |
-| Thiếu X-Idempotency-Key | 400 | PASS |
-| Unauthenticated | 401 | PASS |
-| Caregiver/admin/stranger đọc suggestion | 404 | PASS |
-| List author-only | đúng | PASS |
-| accept/discard author-only, một chiều, idempotent | đúng | PASS |
-| Accept không gửi gì | 0 message | PASS |
-| /ai/status on/off | {ai_enabled} đúng | PASS |
-
-Mobile (node): wrappers đúng path + idempotency key; page factory;
-suggestion render textContent; notice payload tối thiểu có trong source.
-
-## Manual review checklist (chờ Huy/reviewer + device)
-
-| # | Actor | Thao tác | Kỳ vọng |
+| # | Bộ | Lệnh | Kết quả (snapshot 2026-10-16 ~19:20 UTC) |
 | --- | --- | --- | --- |
-| 1 | Học sinh | Nhập lời khó nói → nhờ AI | Notice rõ chỉ 1 câu được gửi; gợi ý hiện |
-| 2 | Học sinh | Sửa gợi ý → Dùng lời này | Lời cuối là của user; bước gửi tiếp theo vẫn preview + confirm |
-| 3 | Học sinh | Bỏ gợi ý | Lời đang viết không mất |
-| 4 | Mất mạng/AI lỗi | Bấm nhờ AI | Thông báo trung thực; viết tay vẫn gửi được |
-| 5 | Người đồng hành | Thử đọc suggestions của học sinh | 404 — dữ liệu riêng |
-| 6 | Admin | Thử mọi endpoint | 404, không có đường đọc original/suggestion |
+| 1 | Shared — contract test A5 (13 test, 4 suite) | `node --test packages/family_bridge_shared/tests/test_f04_contract_a5.mjs` | **13 PASS / 0 FAIL** (lần chạy đầu tiên — phiên A5 trước chết trước khi chạy) |
+| 2 | Shared — toàn bộ (gồm purity + A1 `f04-contract` 16 test + A5 13 test) | `node --test packages/family_bridge_shared/tests/*.test.mjs` | **50 PASS / 0 FAIL / 0 SKIP** |
+| 3 | Mobile f04 wrapper/page | `node --test packages/family_bridge_mobile/f04_ai/tests/f04.test.mjs` | **5 PASS / 0 FAIL** |
+| 4 | Web (happy-dom) | `cd web && npm test` | **208 PASS / 0 FAIL** (41 suites) — chốt rerun cuối coordinator 19:55 UTC (tăng từ 204: +4 test fix round-1 web — R3A4-01 guard accept, R2A3-01 preview không ép pause ×2, R4A5-03 apply→edit→preview) |
+| 5 | Zalo Mini App (happy-dom) | `cd zalo-mini-app && npm test` | **318 PASS / 0 FAIL** — chốt rerun cuối coordinator 19:55 UTC (tăng từ 311: +7 test fix round-1 zalo — R2A3-01/02/03/04/07/08; `f04-ai-refine.test.mjs` 19 test) |
+| 6 | Harness — E2E độc lập A5 | `cd tests/feature-lab && DJANGO_SETTINGS_MODULE=harness.settings DJANGO_ENV=test FB_FEATURES=f01_identity,f04_ai,f05_inbox,f06_drafts,f15_privacy python3 manage.py test harness.tests.test_f04_e2e_a5 --noinput` | **28 test: 27 PASS, 1 SKIP** (`F04A5ConcurrentKeyTests.test_concurrent_same_key_single_provider_effect` — cần `FB_TEST_DB=mysql`) |
+| 7 | Harness — substrate rerun (không phá hiện trạng) | `... manage.py test harness labgrants family_bridge_features.f04_ai family_bridge_features.f05_inbox family_bridge_features.f06_drafts family_bridge_features.f15_privacy --noinput` | **220 test: 217 PASS, 3 SKIP** (xem mục 2) — +9 so với lần chốt A5-FINISH (200: 197+3): f06 +3 (`NoPauseC8ContractTests` của A2-FINISH) + harness wiring +6 (`test_f06_wiring_a2finish.py`); xác minh độc lập bởi A4 round-1 và A2-FINISH. **F04-FIX-BACKEND rerun 2026-10-16: +11 test backend fix round-1** (5 claim R1A2-01 + 1 kill-switch inflight S1 + 2 race S2 + 1 wired timeout R1A2-02 + 1 xóa claim trong deletion hook + 1 pin shape DTO Python-side F5, trong `family_bridge_features.f04_ai` — 80 test, 2 skip). ✅ rerun cuối coordinator 19:55 UTC: **220 OK (3 skip)** |
+| 8 | Backend full (core+accounts, SQLite) | `cd backend && DB_ENGINE=sqlite DJANGO_ENV=test python3 manage.py test --noinput` | **52 test: 50 PASS, 2 SKIP** (production settings guard — `mysqlclient` không import được local; bằng chứng dương tính thuộc CI). F04-FIX-BACKEND: +2 test CORS preflight `x-idempotency-key` (S3/D-01, `core.tests.test_cors.CorsIdempotencyHeaderTests`). ✅ rerun cuối coordinator 19:55 UTC: 52 OK (2 skip) + makemigrations --check CLEAN |
+| 9 | Build web | `cd web && npm run build` | **PASS** (vite build OK) |
+| 10 | Build + verify Zalo | `cd zalo-mini-app && npm run build` (= `vite build && node scripts/verify-build.mjs`) | **PASS** ("Verified Zalo app-config and all referenced assets") |
+| 11 | Import boundaries | `node scripts/check_import_boundaries.mjs` | **CLEAN** (exit 0, "Không có vi phạm biên giới import") |
+
+Không có FAIL nào trong toàn bộ các lần chạy trên → **không phải cập nhật assertion nào** trong 2 file test của A5 (`test_f04_e2e_a5.py`, `test_f04_contract_a5.mjs`): chúng assert đúng hợp đồng freeze v1 và code đã khớp hợp đồng. Không phát hiện bug code thật (defect log xem `peer-review.md` — chỉ có gap/bằng chứng thiếu, không có defect hành vi).
+
+> ✅ **RERUN CUỐI — coordinator 2026-10-16 ~19:55 UTC sau khi toàn bộ fix round-1 (backend/zalo/web/shared/docs) landed**, kết quả thay thế các dòng ⏳:
+| # | Suite | Kết quả chốt |
+|---|---|---|
+| 1 | shared `node --test packages/family_bridge_shared/tests/*.test.mjs` | **61/61 PASS** (+11 test fix F1–F5) |
+| 2 | backend full (SQLite) | **52 test OK (2 skip)** |
+| 3 | harness substrate (f01+f04+f05+f06+f15) | **220 test OK (3 skip)** |
+| 4 | web `npm test` | **208/208 PASS** (41 suites) |
+| 5 | zalo `npm test` | **318/318 PASS** |
+| 6 | mobile f04 | **5/5 PASS** |
+| 7 | `makemigrations --check --dry-run` | No changes detected (migration 0003_airefineoperation đã sinh) |
+| 8 | `check_import_boundaries.mjs` | CLEAN exit 0 |
+| 9 | `check_agent_docs.py` | PASS |
+| 10 | web `npm run build` | PASS |
+| 11 | zalo `npm run build` (+ verify assets) | PASS |
+SKIP có chủ đích giữ nguyên: MySQL race (T07 — cần FB_TEST_DB=mysql), Live Gemini (T20 — key chưa rotate), 2 CI-guard backend (#8).
+
+## 1. Ma trận F04-T01..T20
+
+Ký hiệu file:
+- **E2E-A5** = `tests/feature-lab/harness/tests/test_f04_e2e_a5.py` (chạy bằng lệnh #6)
+- **SH-A5** = `packages/family_bridge_shared/tests/test_f04_contract_a5.mjs`; **SH-A1** = `packages/family_bridge_shared/tests/f04-contract.test.mjs` (cả hai chạy bằng lệnh #1/#2)
+- **F04-BE** = test backend feature, chạy trong substrate #7 với nhãn `family_bridge_features.f04_ai` (80 test, 2 skip sau F04-FIX-BACKEND — gồm `test_f04.py`, `test_f04_transaction.py`, `test_f04_deletion.py`, `test_gemini_transport.py`, `test_wiring.py`)
+- **F06-BE** = `family_bridge_features.f06_drafts.tests.test_f06` (trong substrate #7)
+- **WEB-P** = `web/tests/f04-ai-parity.test.mjs` · **WEB-S** = `web/tests/web-screens.test.mjs` · **ZALO-R** = `zalo-mini-app/tests/f04-ai-refine.test.mjs` · **ZALO-S** = `zalo-mini-app/tests/web-screens.test.mjs` · **MOB** = `packages/family_bridge_mobile/f04_ai/tests/f04.test.mjs`
+
+| ID | Yêu cầu (rút gọn) | Bằng chứng — ca nằm ở file nào | Expected | Actual | Trạng thái |
+| --- | --- | --- | --- | --- | --- |
+| **T01** | Provider nhận đúng allowlist fields (chỉ câu đã chọn + purpose), cả 2 vai trò | F04-BE `test_f04.py::RefineTests.test_provider_gets_only_the_chosen_sentence` + `test_gemini_transport.py::GeminiTransportUnitTests.test_request_body_is_minimal_and_json`; E2E-A5 fake provider chỉ nhận `{text, purpose}` (`A5FakeAiProvider.refine`) và mọi test đi qua nó; vai trò caregiver: WEB-P "caregiver: CÙNG component/classes" | Provider call chỉ chứa text+purpose, không history/log | `calls[0] = {text, purpose, at}`; request body Gemini minimal JSON; 27/27 e2e đi qua fake provider | **PASS** (bằng chứng fake) |
+| **T02** | Chưa consent/declined/withdrawn/policy cũ → không gọi provider, không lộ suggestion người khác | E2E-A5 `F04A5ConsentGateTests` (6: missing/declined/withdrawn/old-policy/accepted/shape-API) + F04-BE `test_f04.py::ConsentGateTests` (7, gồm withdrawn-during-call + accept/discard không gated) + privacy phần người khác ở T09 | 403 `consent_required`, `provider_calls = 0` | 6/6 + 7/7 đúng: 403 trước provider; fresh-consent-after-withdraw hoạt động | **PASS** |
+| **T03** | DTO serializer → shared HTTP → composer + reply của CẢ HAI client; `suggested_text` render + apply đúng (delegated) | WEB-P 17/17 (frame parity 2 chiều, reply dùng cùng khối assist), WEB-S (F04: consent gate → aiRefine(key+inputRevision) → suggested_text → aiAccept), ZALO-R 14/14 (compose + reply `(a)+(b)`), ZALO-S, SH-A5 13/13 (pass-through DTO NGUYÊN VẸN, không đổi envelope), SH-A1 16/16 (mock↔serializer parity), MOB 5/5 | `suggested_text` duy nhất; DTO không biến đổi; cả 2 client render/apply | Delegated đã chạy lại: 208 web + 318 zalo + 61 shared + 5 mobile đều PASS (chốt rerun cuối 19:55 UTC — xem mục 0) | **PASS** (delegated) |
+| **T04** | Bỏ gợi ý giữ manual text; dùng gợi ý không send; edit final → preview đúng final | E2E-A5 `F04A5NoAutoSendTests.test_discard_keeps_manual_text_accept_has_no_send_authority` + `test_only_explicit_confirm_send_delivers`; F04-BE `NoSendProofTests`; WEB-P "apply/discard không gọi confirmDraftSend/sendMessage"; ZALO-R `(b)`; WEB-S/ZALO-S flow | Manual text giữ nguyên; 0 message/0 draft-send từ apply | Đúng; chỉ preview+confirm của user mới gửi | **PASS** |
+| **T05** | Off/503/timeout/429/quota/bad JSON/oversized/network error → manual vẫn dùng được | E2E-A5 `F04A5ProviderFailureMappingTests` (7 failure modes → 503 reason riêng, 0 row rác) + `test_503_body_never_carries_suggestion_payload`; F04-BE `RefineTests.test_provider_outage_timeout_quota_mapped_truthfully`, `test_malformed_and_oversized_output_rejected`, `test_ai_off_fails_closed_503`; WEB-P C5 (503/timeout/aiStatus lỗi mạng + Lưu nháp vẫn chạy); ZALO-R `(e)/(e2)` | 503 trung thực + manual path sống | Đúng cả 3 lớp (BE/WEB/ZALO) | **PASS** |
+| **T06** | Đổi text khi inflight → late result không ghi đè; revoke/kill-switch/unmount không apply/render stale | WEB-P C4 3 test (deferred + sửa-trước-apply + keystroke revision); ZALO-R `(c1)/(c2)/(f)` + reply `(c)`; MOB `page implements inputRevision stale guard`; E2E-A5 `test_finalize_rechecks_consent_withdrawn_inflight`; F04-BE `test_consent_withdrawn_during_provider_call_is_not_stored`; E2E-A5 kill-switch `F04A5AiOffFailClosedTests`; WEB-P unmount test | Stale banner + apply khóa; revoke giữa chặng không lưu/apply | Đúng UI (web+zalo+mobile) và BE (finalize recheck) | **PASS** |
+| **T07** | Concurrent cùng actor+key: 1 hiệu ứng; khác payload conflict; retry giữ key | E2E-A5 `F04A5IdempotencyTests` 6/6 (replay, khác text 409, khác revision 409, DTO echo, field-set, unique constraint IntegrityError SQLite-safe) + `F04A5ConcurrentKeyTests.test_concurrent_same_key_single_provider_effect` **SKIP trên SQLite**; F04-BE `RaceIntegrityTests` 2/2 (`test_integrity_error_race_returns_winner_without_second_row`:415 + `test_integrity_error_with_different_payload_conflicts`:445) + 2 test replay/conflict revision trong `RefineTests` (`test_replay_same_key_same_revision_no_provider_call`:367 + `test_same_key_different_revision_conflicts_409`:377) — winner-row simulation | 1 row/1 provider call; 409 conflict | 6/6 + 2/2 PASS; **race thật cần `FB_TEST_DB=mysql` — chưa chạy (không có MySQL trong môi trường này)** | **PASS** (ca race = **SKIP**) |
+| **T08** | Provider I/O ngoài atomic; finalize recheck; accept/discard cạnh tranh nhất quán | E2E-A5 `F04A5ProviderOutsideTransactionTests` (2: `in_atomic_block=False` tại thời điểm gọi + finalize recheck) + F04-BE `test_f04_transaction.py::ProviderOutsideTransactionProbeTests.test_provider_call_runs_outside_atomic_block` | Provider chạy ngoài atomic block | 2/2 + 1/1 PASS — probe ghi snapshot `connection.in_atomic_block` lúc provider chạy = False | **PASS** |
+| **T09** | Recipient/stranger/teacher/staff/admin không đọc original/suggestion; không mass assign | E2E-A5 `F04A5SuggestionPrivacyTests` 3/3 (404 cả 4 vai trò + mass-assign author/status rejected + `test_message_detail_carries_final_body_only`) + F04-BE `AuthorPrivacyTests` 4/4 | 404; final-only DTO | Đúng; message detail không chứa original/suggested | **PASS** |
+| **T10** | XSS/prompt injection như dữ liệu; quality evaluation riêng | Injection: F04-BE `test_prompt_injection_stored_as_plain_text_only`; E2E-A5 503-body-no-payload; WEB-P "suggestion chứa HTML → render textContent thuần"; ZALO-R regression F04-02. **Quality corpus thật: KHÔNG có test nào** (code/comment tự tuyên bố "NOT a quality claim") | Injection trơ; có eval chất lượng | Injection **PASS**; quality eval **chưa triển khai/đánh giá** | **PASS** (bảo mật) + **NOT_RUN** (quality eval) |
+| **T11** | F05 Message/outbox/job/operation không tăng từ refine/accept/retry/resume; recipient DTO final-only | E2E-A5 `F04A5NoAutoSendTests.test_refine_accept_discard_retry_never_send` (đếm row trước/sau) + `test_only_explicit_confirm_send_delivers` + `test_message_detail_carries_final_body_only`; F04-BE `NoSendProofTests.test_refine_and_accept_create_zero_messages` | 0 tăng | 0 tăng mọi đường | **PASS** |
+| **T12** | F06 pause 299/300 server + clock lệch + reload; không auto-send; edit sau AI apply → preview lại | F06-BE `test_f06.py::PauseTimingTests` (5: `test_pause_records_server_deadline_300`, `test_re_pause_does_not_reset_deadline`, `test_preview_api_boundary`, `test_cancel_pause_clears_deadline`, `test_preview_without_pause_allowed`) + `NoPauseC8ContractTests` (7: `test_no_pause_preview_shape_confirm_ok`, `test_paused_t299_confirm_blocked_cooldown`, `test_paused_t301_confirm_ok_after_expiry_no_auto_send`, `test_full_flow_pause_preview_confirm`, `test_confirm_without_preview_rejected`, `test_stale_revision_preview_rejected`, `test_recipient_changed_after_preview_rejected`) + harness `test_core.py::test_cooldown_fixed_300_seconds_server_side` (ControlledClock) | t=299 chặn, t≥300 mở, không auto-send | Đúng với ControlledClock server-side; chạy trong substrate #7 | **PASS** |
+| **T13** | F15 xóa category AI scoped, idempotent, replay không hồi sinh | E2E-A5 `F04A5AiDeletionTests` (2: scoped + idempotent + replay-safe; `test_f04_registers_ai_deletion_hook`) + F04-BE `test_f04_deletion.py` (4: `test_deletes_only_target_users_suggestions`, `test_idempotent_second_run_zero_deleted`, `test_f15_registry_resolves_ai_category_to_f04_hook`, `test_pending_replay_after_deletion_generates_new_suggestion`) | Chỉ xóa của user đích; lặp an toàn | Đúng 2/2 + 4/4 | **PASS** |
+| **T14** | Web ↔ Mini App qua cùng backend Render, 2 vai trò, revoke chặn quyền hiện tại | Không có môi trường Render + account test thật trong phiên này. Bằng chứng thay thế (unit, không thay thế được T14): SH-A5 authed/Bearer/stale-session, WEB-S/ZALO-S production consent_required copy | Cross-client thật qua Render | Không chạy được | **BLOCKED** (cần Render + 2 account test) |
+| **T15** | Same-user draft cross-client/revision conflict; không gắn identity Zalo/class, không chia token | Cross-client thật: không chạy. Unit cục bộ: E2E-A5 idempotency/revision + SH-A5 input_revision echo + per-client stale guard (T06) | Conflict theo hợp đồng trên draft chung | Chưa có ca cross-client thật | **BLOCKED** (unit cục bộ = PASS trong T06/T07) |
+| **T16** | 2 build + import boundary + UI states; Android/iOS thật | Build web **PASS** (#9); build+verify Zalo **PASS** (#10); `check_import_boundaries.mjs` **CLEAN** (#11); responsive/palette smoke: WEB-P "responsive/palette smoke (source-level)"; device thật Android/iOS (SDK/keyboard/safe-area): không có thiết bị | Build + boundary sạch | Build/boundary verified; device thật chưa chạy | **PASS** (build+boundary) + **NOT_RUN** (device) |
+| **T17** | Render HTTPS/CORS exact origin + preflight chấp nhận `X-Idempotency-Key`; bundle không key/endpoint/text riêng | **Không có automated test CORS preflight `X-Idempotency-Key`** (grep: `backend/core/tests/test_cors.py` chỉ có `test_cors_accepts_only_configured_origins`). Cấu hình có: `backend/config/settings.py:192 CORS_ALLOW_HEADERS = ... + ["x-idempotency-key"]` (A2 thêm). Bundle: grep client src = 0 key/endpoint (chữ "Gemini" chỉ là copy disclosure); verify-build PASS; không có test bundle-scan tự động | Preflight OK trên Render | Chỉ bằng chứng cấu hình + static; chưa có test + chưa có Render | **NOT_RUN** (gap: cần test preflight + Render) |
+| **T18** | Gemini runtime đọc đúng env; thiếu/invalid key/model lệch → fail closed, Django/manual sống; init không gọi mạng | F04-BE `test_wiring.py::ProviderWiringTests` (7: kill-switch off/missing key/model ngoài allowlist/timeout unparseable/valid config/register/never-raise) + `KillSwitchRuntimeTests` (3); E2E-A5 `F04A5AiOffFailClosedTests` (3: no provider → 503; `FB_AI_ENABLED=0` kill switch; on → status truthful); `test_gemini_transport.py::GeminiTransportUnitTests` dùng `FakeUrlopen` (không mạng); ca `EnvBindingSettingsTests.test_bounded_int_helper` **SKIP** trong harness env (xem mục 2) | Fail closed mọi cấu hình sai | 7/7 + 3/3 + 3/3 PASS | **PASS** (1 helper SKIP — gap D-02) |
+| **T19** | Transport mapping: empty/safety-block/truncated/malformed/429/timeout/5xx; không raw envelope/secret | F04-BE `test_gemini_transport.py::GeminiTransportUnitTests` 17/17 (`test_empty_candidates`, `test_safety_block_finish_reason`, `test_prompt_feedback_block`, `test_truncated_output_is_not_a_complete_suggestion`, `test_malformed_json`, `test_oversized_response_rejected`, `test_http_status_mapping`, `test_timeout_mapping`, `test_key_canary_never_in_url_response_or_logs`, …) + `GeminiThroughApiTests` 2/2; E2E-A5 `F04A5ProviderFailureMappingTests` mirror cùng bộ mode bằng fake | 503 reason cụ thể, sạch DTO | 17/17 + 2/2 + 2/2 PASS | **PASS** |
+| **T20** | Live Gemini smoke opt-in, key đã rotate, ≤3 generation | F04-BE `test_gemini_transport.py::LiveGeminiSmokeTests.test_single_live_generation` — **SKIP**: chỉ chạy khi `RUN_GEMINI_LIVE_TESTS=1` + key mới + budget duyệt; môi trường này không có key (chưa rotate) | Evidence live hoặc NOT_RUN cụ thể | SKIP đúng thiết kế opt-in | **NOT_RUN/BLOCKED** (key chưa rotate) |
+
+## 2. Các ca SKIP cần biết (trung thực — SQLite/local limits)
+
+Tổng 5 ca SKIP khác nhau trong các lần chạy chốt (1 trong đó xuất hiện ở cả lệnh #6 và #7):
+
+1. `harness.tests.test_f04_e2e_a5.F04A5ConcurrentKeyTests.test_concurrent_same_key_single_provider_effect` — SKIP trên SQLite: SQLite serialize writer, không tái hiện được race ghi; chạy khi `FB_TEST_DB=mysql`. (T07)
+2. `family_bridge_features.f04_ai.tests.test_gemini_transport.LiveGeminiSmokeTests.test_single_live_generation` — opt-in `RUN_GEMINI_LIVE_TESTS=1`, key chưa rotate. (T20)
+3. `family_bridge_features.f04_ai.tests.test_wiring.EnvBindingSettingsTests.test_bounded_int_helper` — SKIP vì `backend config.settings` không import được trong harness env (harness tự dựng settings). Hệ quả: helper bound env (timeout/token) chưa chạy ở môi trường nào — gap D-02 trong `peer-review.md`. (T18)
+4. `core.tests.test_settings_guard.ProductionSettingsGuardTests.test_production_valid_dummy_config_passes_check` — backend suite #8: `mysqlclient` không import được local (không root); bằng chứng dương tính thuộc CI production-guard.
+5. `core.tests.test_settings_guard.ProductionSettingsGuardTests.test_production_check_deploy_passes_with_warnings_only` — như trên.
+
+MySQL race (T07) là ca duy nhất trong số trên thuộc phạm vi hợp đồng F04; 2 ca còn lại của #8 là hạ tầng settings, 1 là opt-in live, 1 là gap import-path (D-02).
+
+## 3. Phạm vi chưa có bằng chứng (tổng hợp cho release gate)
+
+- **Render thật**: T14, T15, T17 (HTTPS/CORS/no-store trên origin thật).
+- **Device thật Android/iOS**: T16 (SDK/keyboard/safe-area).
+- **Live Gemini + key đã rotate + budget**: T20.
+- **Race đồng thời trên MySQL**: T07 ca concurrency.
+- **Quality evaluation corpus**: T10 (không có test/corpus nào tồn tại).
+- Chi tiết defect/gap và câu hỏi phase-2: `docs/features/f04/peer-review.md`.

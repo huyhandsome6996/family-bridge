@@ -186,14 +186,83 @@ class PauseTimingTests(F06ApiBase):
         self.assertIsNone(cancelled.pause_deadline_at)
         self.clock.advance(seconds=400)
         response = self._preview(str(draft.id))
-        self.assertEqual(response.status_code, 400)  # pause_not_started
+        # C8 (A2-FINISH): sau khi HỦY pause, draft không còn bị guard ép
+        # chờ — preview hợp lệ ngay, deadline trả None (baseline 72930ae
+        # trả 400 pause_not_started tại bước này).
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["deadline"])
 
-    def test_pause_not_started_preview_rejected(self):
+    def test_preview_without_pause_allowed(self):
+        # C8 (A2-FINISH): draft không pause → preview hợp lệ ngay, KHÔNG
+        # còn 400 pause_not_started như baseline 72930ae.
         draft = self.service.create(author_id=str(self.student.pk),
                                     kind="text", body="chưa pause",
                                     recipient_id=str(self.caregiver.pk))
         response = self._preview(str(draft.id))
-        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["deadline"])
+
+
+class NoPauseC8ContractTests(F06ApiBase):
+    """C8 (F04-A2-FINISH): "không chọn pause" là đường preview/send HỢP LỆ —
+    `_deadline_guard` chỉ enforce khi draft ĐANG paused. Đã chọn pause →
+    respect deadline 300s server (t=299 chặn CooldownActive); hết giờ
+    KHÔNG auto-send nhưng confirm tay sau deadline được phép."""
+
+    def _created_draft(self):
+        return self.service.create(author_id=str(self.student.pk),
+                                   kind="text",
+                                   body="con muốn nói bố mẹ nghe nhé",
+                                   recipient_id=str(self.caregiver.pk))
+
+    def test_no_pause_preview_shape_confirm_ok(self):
+        # (a)+(d) draft thường không pause: preview OK với shape ổn định
+        # (deadline luôn có mặt, = None khi không pause), confirm OK.
+        draft = self._created_draft()
+        preview = self._preview(str(draft.id))
+        self.assertEqual(preview.status_code, 200)
+        self.assertEqual(
+            set(preview.data.keys()),
+            {"preview_id", "revision", "recipient_id", "deadline",
+             "server_time"})
+        self.assertIsNone(preview.data["deadline"])
+        self.assertEqual(preview.data["revision"], draft.revision)
+        self.assertEqual(preview.data["recipient_id"], str(self.caregiver.pk))
+        confirmed = self._confirm(str(draft.id), preview.data["preview_id"])
+        self.assertEqual(confirmed.status_code, 200, confirmed.data)
+        self.assertEqual(len(self.sender.sent), 1)
+        self.assertEqual(Draft.objects.get(pk=draft.id).status, "sent")
+
+    def test_paused_t299_confirm_blocked_cooldown(self):
+        # (b) đã chọn pause → respect deadline server: t=299 chặn
+        # CooldownActive; preview lập TRƯỚC khi pause vẫn hợp lệ (pause
+        # không bump revision nên không stale).
+        draft = self._created_draft()
+        preview = self._preview(str(draft.id))
+        self.assertEqual(preview.status_code, 200)
+        self._pause(str(draft.id))
+        self.clock.advance(seconds=299)
+        response = self._confirm(str(draft.id), preview.data["preview_id"])
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["error"]["code"], "cooldown_active")
+        self.assertEqual(response.data["error"]["details"]["remaining_seconds"], 1)
+        self.assertEqual(len(self.sender.sent), 0)
+        self.assertEqual(Draft.objects.get(pk=draft.id).status, "paused")
+
+    def test_paused_t301_confirm_ok_after_expiry_no_auto_send(self):
+        # (c) hết giờ: KHÔNG auto-send (không job nào tạo Message, không ai
+        # gọi sender port) nhưng confirm tay sau deadline được phép.
+        from family_bridge_features.f05_inbox.models import Message
+
+        draft = self._created_draft()
+        preview = self._preview(str(draft.id))
+        self._pause(str(draft.id))
+        self.clock.advance(seconds=301)
+        self.assertEqual(len(self.sender.sent), 0)
+        self.assertEqual(Message.objects.count(), 0)
+        confirmed = self._confirm(str(draft.id), preview.data["preview_id"])
+        self.assertEqual(confirmed.status_code, 200, confirmed.data)
+        self.assertEqual(len(self.sender.sent), 1)
 
 
 class ConfirmSendTests(F06ApiBase):
@@ -288,3 +357,50 @@ class ConfirmSendTests(F06ApiBase):
     def test_unauthenticated_401(self):
         response = self.client.get("/api/v1/drafts")
         self.assertEqual(response.status_code, 401)
+
+
+class DraftEditPartialFieldsTests(F06ApiBase):
+    """A2 regression for frozen contract C8: `kind` is OPTIONAL on edit
+    (require_all=True stays create-only); editing validates only the fields
+    actually present in the payload."""
+
+    def test_edit_body_only_succeeds_without_kind(self):
+        created = self._create()  # kind + body + recipient
+        self.assertEqual(created.status_code, 201, created.data)
+        draft_id = created.data["draft_id"]
+        response = self.client.post(f"/api/v1/drafts/{draft_id}",
+                                    {"body": "chỉ sửa nội dung, không gửi kind"},
+                                    format="json",
+                                    **auth_header(self.student_token))
+        self.assertEqual(response.status_code, 200, response.data)
+        detail = self.client.get(f"/api/v1/drafts/{draft_id}", format="json",
+                                 **auth_header(self.student_token))
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.data["body"],
+                         "chỉ sửa nội dung, không gửi kind")
+        self.assertEqual(detail.data["kind"], "text")  # immutable after create
+        self.assertGreater(detail.data["revision"], created.data["revision"])
+
+    def test_create_still_requires_kind(self):
+        response = self.client.post(
+            "/api/v1/drafts", {"body": "thiếu kind phải bị từ chối"},
+            format="json", **auth_header(self.student_token))
+        self.assertEqual(response.status_code, 400)
+
+    def test_edit_with_unknown_field_still_rejected(self):
+        created = self._create()
+        draft_id = created.data["draft_id"]
+        response = self.client.post(
+            f"/api/v1/drafts/{draft_id}",
+            {"body": "nội dung", "suggestion_id": "khong-duoc"},
+            format="json", **auth_header(self.student_token))
+        self.assertEqual(response.status_code, 400)
+
+    def test_edit_with_invalid_kind_present_still_validated(self):
+        created = self._create()
+        draft_id = created.data["draft_id"]
+        response = self.client.post(
+            f"/api/v1/drafts/{draft_id}",
+            {"body": "nội dung", "kind": ""},
+            format="json", **auth_header(self.student_token))
+        self.assertEqual(response.status_code, 400)
