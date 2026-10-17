@@ -1,15 +1,50 @@
 // F01 — Đồng ý theo từng mục đích, từng phiên bản chính sách (WF-17).
-// Không tự precheck lựa chọn nào; chỉ đánh dấu lại những mục người dùng ĐÃ
-// chấp nhận trước đó cho đúng phiên bản hiện hành (khôi phục trạng thái thật).
-// Đăng nhập không bao giờ tự hiểu là đã đồng ý.
+// Thiết kế Stitch "Quyền lựa chọn thuộc về bạn": desktop hai cột 5/7
+// (aside ngữ cảnh + form quyết định), mobile/Mini App một cột đọc dọc.
+//
+// Bất biến giữ nguyên (không đổi khi đổi hình):
+// - KHÔNG tự precheck lựa chọn nào; chỉ khôi phục những mục người dùng ĐÃ
+//   chấp nhận trước đó cho đúng phiên bản hiện hành (trạng thái thật).
+// - Đăng nhập không bao giờ tự hiểu là đã đồng ý; cặp do admin cấp cũng
+//   KHÔNG tạo consent thay người dùng (DEC-24 — consent là chuyện riêng).
+// - Snapshot lựa chọn NGAY LÚC BẤM; kiểm tra stale sau MỖI await (trang
+//   chết / render mới / đổi phiên → dừng, không ghi tiếp sang actor khác).
+// - Kết quả ghi chưa xác định (timeout/network/stale) KHÔNG báo chắc chắn
+//   thất bại và không tự replay; submit lại đối chiếu sổ cái trước khi ghi.
+// - Không QA panel, không alert/setTimeout giả, không Tailwind CDN, không
+//   quảng cáo "mã hóa"/"ẩn danh hoàn toàn" — copy trung thực.
 import { h } from "../../app/dom.js";
 import { getSessionGeneration, hasLiveSession } from "../../core/session.js";
 import { CONSENT_ORDER, POLICY_PURPOSES } from "../../core/policy.js";
 import {
-  createButton, createCard, createErrorState, createSkeleton, createTopBar,
+  createButton, createCard, createDialog, createErrorState, createLogo,
+  createSkeleton,
 } from "../../components/index.js";
+import { createIcon } from "../../components/icon.js";
 
 let markRenderCancelled = () => {};
+
+const INFO_ITEMS = [
+  {
+    icon: "verified_user",
+    title: "Chỉ mục bắt buộc mới cần để tiếp tục",
+    description: "Chỉ riêng Điều khoản sử dụng nhằm xác lập nguyên tắc "
+      + "giao tiếp an toàn.",
+  },
+  {
+    icon: "check_circle",
+    title: "Tùy chọn hoàn toàn tự nguyện",
+    description: "Bạn có thể tắt AI hoặc từ chối nghiên cứu; các tính năng "
+      + "không cần AI vẫn hoạt động bình thường, còn tính năng AI chỉ chạy "
+      + "khi bạn đồng ý cho AI xử lý.",
+  },
+  {
+    icon: "history_edu",
+    title: "Xem lại & thu hồi bất cứ lúc nào",
+    description: "Quản lý hoặc rút từng sự đồng ý trong phần Cài đặt & "
+      + "Quyền riêng tư khi tính năng khả dụng trên bản này.",
+  },
+];
 
 export const page = {
   id: "f01-consent",
@@ -22,18 +57,7 @@ export const page = {
     let runId = 0;
     markRenderCancelled = () => { cancelled = true; runId += 1; };
 
-    const root = h("div", { class: "fb-page", dataset: { page: "f01-consent" } });
-
-    root.appendChild(
-      createTopBar({
-        title: "Đồng ý & quyền riêng tư",
-        showBack: true,
-        onBack: () => ctx.navigate("/login"),
-      }),
-    );
-
-    const body = h("div", { class: "fb-page__body" });
-    root.appendChild(body);
+    const root = h("div", { class: "fb-consent", dataset: { page: "f01-consent" } });
 
     const state = ctx.store.getState();
     const demo = Boolean(state.demoMode);
@@ -41,24 +65,74 @@ export const page = {
     // Chưa đăng nhập (không tính demo): dẫn về đăng nhập, không hiện form.
     if (!demo && !hasLiveSession()) {
       ctx.navigate("/login?reason=expired");
-      const placeholder = h("div", { class: "fb-page__body" });
-      root.appendChild(placeholder);
+      root.appendChild(h("div", { class: "fb-consent__shell" }));
       return root;
     }
 
-    body.appendChild(
-      h("h2", { class: "fb-page__heading" }, "Bạn đồng ý điều gì?"),
-    );
+    const shell = h("div", { class: "fb-consent__shell" });
+    root.appendChild(shell);
 
-    const intro = h(
-      "p", { class: "fb-page__lead" },
-      "Mỗi mục đích sử dụng cần một sự đồng ý riêng. Bạn chỉ chọn những gì bạn muốn; " +
-      "từ chối mục tùy chọn không ảnh hưởng việc dùng ứng dụng.",
-    );
-    body.appendChild(intro);
+    // ------------------------------------------------------------------
+    // Cột trái — ngữ cảnh (aside): brand, các điểm cần biết, trợ giúp.
+    const aside = h("aside", { class: "fb-consent__aside" });
+    shell.appendChild(aside);
 
-    const formArea = h("div", {});
-    body.appendChild(formArea);
+    const brand = h("div", { class: "fb-consent__brand" },
+      createLogo({ size: "md" }),
+      h("div", { class: "fb-consent__brand-text" },
+        h("strong", {}, "Family Bridge"),
+        h("span", {}, "Cầu nối gia đình")),
+    );
+    aside.appendChild(brand);
+
+    aside.appendChild(h("nav", {
+      class: "fb-consent__crumbs", "aria-label": "Vị trí hiện tại",
+    },
+    h("span", {}, "Thiết lập ban đầu"),
+    h("span", { class: "fb-consent__crumb-sep", "aria-hidden": "true" }, "›"),
+    h("strong", {}, "Quyền riêng tư & Cam kết"),
+    ));
+
+    aside.appendChild(h("h1", { class: "fb-consent__title" },
+      "Quyền lựa chọn thuộc về bạn"));
+    aside.appendChild(h("p", { class: "fb-consent__lead" },
+      "Family Bridge tôn trọng sự an tâm của gia đình bạn. Hãy dành chút "
+      + "thời gian xem xét các lựa chọn bên dưới trước khi bắt đầu hành "
+      + "trình đồng hành."));
+
+    const points = h("ul", { class: "fb-consent__points" });
+    for (const item of INFO_ITEMS) {
+      points.appendChild(h("li", { class: "fb-consent__point" },
+        h("span", { class: "fb-consent__point-icon", "aria-hidden": "true" },
+          createIcon({ name: item.icon, size: 20 })),
+        h("span", { class: "fb-consent__point-body" },
+          h("strong", {}, item.title),
+          h("span", {}, item.description)),
+      ));
+    }
+    aside.appendChild(points);
+
+    aside.appendChild(h("div", { class: "fb-consent__help" },
+      h("span", {}, "Cần trợ giúp? Trợ giúp luôn mở kể cả khi chưa chấp "
+        + "nhận điều khoản."),
+      h("a", { class: "fb-consent__help-link", href: "#/help" },
+        "Mở trung tâm hỗ trợ"),
+    ));
+
+    // ------------------------------------------------------------------
+    // Cột phải — form quyết định.
+    const panel = h("section", { class: "fb-consent__panel",
+      "aria-labelledby": "fb-consent-form-title" });
+    shell.appendChild(panel);
+
+    panel.appendChild(h("h2", { class: "fb-consent__form-title",
+      id: "fb-consent-form-title" }, "Xác nhận sự đồng ý của bạn"));
+    panel.appendChild(h("p", { class: "fb-consent__form-sub" },
+      "Các thiết lập này bảo vệ tính minh bạch và sự tin cậy giữa cha mẹ "
+      + "và con cái trong suốt quá trình đồng hành."));
+
+    const formArea = h("div", { class: "fb-consent__form-area" });
+    panel.appendChild(formArea);
 
     const checkboxes = new Map(); // purpose -> input element
     const recordedNotes = new Map(); // purpose -> string|null
@@ -73,6 +147,8 @@ export const page = {
       onClick: () => submit(),
     });
 
+    const submitStatus = h("p", { class: "fb-consent__status", role: "status" });
+
     function syncContinueState() {
       const serviceChecked = checkboxes.get("service")
         ? checkboxes.get("service").checked : false;
@@ -82,38 +158,104 @@ export const page = {
         : "Cần chấp nhận Điều khoản sử dụng để tiếp tục.";
     }
 
+    function openDetails(config) {
+      const noteText = recordedNotes.get(config.purpose);
+      const restored = restoredAccepted.get(config.purpose) === true;
+      createDialog({
+        title: config.title,
+        message: `${config.description}\n\nPhiên bản hiện hành: `
+          + `${config.version}. Quyết định của bạn được ghi vào sổ cái kèm `
+          + `phiên bản; chấp nhận một phiên bản cũ không tự áp dụng cho `
+          + `phiên bản mới.${restored
+            ? ` Hiện tại: bạn đã chấp nhận phiên bản này.`
+            : noteText ? ` Hiện tại: ${noteText}` : ""}`,
+        actions: [{ label: "Đã hiểu", variant: "primary" }],
+      });
+    }
+
+    function optionElement(key) {
+      const config = POLICY_PURPOSES[key];
+      const inputId = `fb-consent-${config.purpose}`;
+      const checkbox = h("input", {
+        type: "checkbox",
+        id: inputId,
+        class: "fb-consent__check-input",
+        onChange: () => syncContinueState(),
+      });
+      checkbox.checked = restoredAccepted.get(config.purpose) === true; // không precheck
+      checkboxes.set(config.purpose, checkbox);
+
+      const noteText = recordedNotes.get(config.purpose);
+      const box = h("span", { class: "fb-consent__box",
+        "aria-hidden": "true" });
+      const text = h("span", { class: "fb-consent__option-text" },
+        h("span", { class: "fb-consent__option-head" },
+          h("strong", {}, config.title),
+          h("span", {
+            class: "fb-consent__chip" + (config.required
+              ? " fb-consent__chip--required" : ""),
+          }, config.required ? "Bắt buộc" : "Tùy chọn"),
+          h("span", { class: "fb-consent__ver" }, config.version),
+        ),
+        h("span", { class: "fb-consent__desc" }, config.description),
+        noteText ? h("span", { class: "fb-consent__note" }, noteText) : null,
+      );
+
+      // Nút chi tiết nằm NGOÀI label — bấm chi tiết không đổi checkbox.
+      return h("div", { class: "fb-consent__option" },
+        checkbox,
+        h("label", { for: inputId, class: "fb-consent__option-main" },
+          box,
+          text,
+        ),
+        h("button", {
+          type: "button",
+          class: "fb-consent__detail",
+          onClick: () => openDetails(config),
+        }, `Xem chi tiết ${config.title}`),
+      );
+    }
+
+    function groupElement(eyebrow, chipText, sub, keys) {
+      return h("div", { class: "fb-consent__group" },
+        h("div", { class: "fb-consent__group-head" },
+          h("span", { class: "fb-consent__eyebrow" }, eyebrow),
+          h("span", { class: "fb-consent__chip" }, chipText),
+        ),
+        sub ? h("p", { class: "fb-consent__group-sub" }, sub) : null,
+        h("div", { class: "fb-consent__group-body" },
+          keys.map((key) => optionElement(key))),
+      );
+    }
+
     function renderForm() {
       formArea.replaceChildren();
-      for (const key of CONSENT_ORDER) {
-        const config = POLICY_PURPOSES[key];
-        const checkbox = h("input", {
-          type: "checkbox",
-          id: `fb-consent-${config.purpose}`,
-          class: "fb-input",
-          style: "width:auto;margin-right:8px;",
-          onChange: () => syncContinueState(),
-        });
-        checkbox.checked = restoredAccepted.get(config.purpose) === true; // không precheck; chỉ khôi phục lựa chọn cũ đúng phiên bản
-        checkboxes.set(config.purpose, checkbox);
-
-        const noteText = recordedNotes.get(config.purpose);
-        const label = h("label", {
-          for: `fb-consent-${config.purpose}`,
-          style: "display:flex;align-items:flex-start;gap:4px;",
-        },
-        checkbox,
-        h("span", {},
-          h("strong", {}, config.title + (config.required ? " (bắt buộc)" : " (tùy chọn)")),
-          h("br"),
-          config.description,
-          noteText ? h("span", { class: "fb-page__note" }, noteText) : null,
-        ),
-        );
-        formArea.appendChild(
-          createCard({ title: null, description: null, children: label }),
-        );
-      }
+      formArea.appendChild(groupElement(
+        "Cần để tiếp tục", "1 mục bắt buộc", null, ["service"]));
+      formArea.appendChild(groupElement(
+        "Các lựa chọn tùy chọn", "2 tùy chọn",
+        "Bạn có thể bật hoặc tắt mà không ảnh hưởng tới việc dùng các tính "
+        + "năng không cần AI.",
+        ["ai_processing", "research"]));
+      formArea.appendChild(h("p", { class: "fb-consent__requirement",
+        "aria-live": "polite" },
+        "Cần chấp nhận Điều khoản sử dụng để tiếp tục."));
+      const actions = h("div", { class: "fb-consent__actions" },
+        continueButton,
+        submitStatus,
+      );
+      formArea.appendChild(actions);
+      formArea.appendChild(h("p", { class: "fb-consent__after-note" },
+        "Bạn có thể thay đổi các lựa chọn này bất cứ lúc nào trong phần "
+        + "Cài đặt & Quyền riêng tư. Rút một sự đồng ý không xóa bản ghi đã "
+        + "ghi trong sổ cái mà đánh dấu không còn hiệu lực."));
       syncContinueState();
+    }
+
+    function setCheckboxesDisabled(disabled) {
+      for (const checkbox of checkboxes.values()) {
+        checkbox.disabled = disabled;
+      }
     }
 
     function load() {
@@ -132,9 +274,11 @@ export const page = {
               restoredAccepted.set(record.purpose, true);
               recordedNotes.set(record.purpose,
                 `Bạn đã chấp nhận phiên bản ${config.version} trước đó.`);
-            } else if (record.policy_version && record.policy_version !== config.version) {
+            } else if (record.policy_version
+              && record.policy_version !== config.version) {
               recordedNotes.set(record.purpose,
-                `Bản ghi cũ theo phiên bản ${record.policy_version} không tự áp dụng cho phiên bản hiện hành.`);
+                `Bản ghi cũ theo phiên bản ${record.policy_version} không tự `
+                + `áp dụng cho phiên bản hiện hành.`);
             }
           }
           renderForm();
@@ -155,14 +299,6 @@ export const page = {
         });
     }
 
-    const submitStatus = h("p", { class: "fb-page__note", role: "status" });
-
-    function setCheckboxesDisabled(disabled) {
-      for (const checkbox of checkboxes.values()) {
-        checkbox.disabled = disabled;
-      }
-    }
-
     async function submit() {
       if (submitting) return;
       submitting = true;
@@ -175,7 +311,8 @@ export const page = {
       const thisRun = runId;
       const decisions = CONSENT_ORDER.map((key) => {
         const config = POLICY_PURPOSES[key];
-        const checked = checkboxes.get(key) ? checkboxes.get(key).checked : false;
+        const checked = checkboxes.get(key)
+          ? checkboxes.get(key).checked : false;
         return {
           purpose: config.purpose,
           version: config.version,
@@ -183,10 +320,12 @@ export const page = {
         };
       });
       setCheckboxesDisabled(true);
+      submitStatus.textContent = "Đang ghi lựa chọn của bạn…";
       /** Kiểm tra sau MỖI await: trang chết / render mới / ĐỔI PHIÊN (actor
        * khác) -> dừng ngay, KHÔNG ghi tiếp mục nào sang actor mới. */
       const isStale = () =>
-        cancelled || thisRun !== runId || getSessionGeneration() !== startGeneration;
+        cancelled || thisRun !== runId
+        || getSessionGeneration() !== startGeneration;
       try {
         const existing = new Map();
         try {
@@ -203,8 +342,10 @@ export const page = {
           setCheckboxesDisabled(false);
           syncContinueState();
           submitStatus.textContent = error && error.kind === "timeout"
-            ? "Không đọc được trạng thái đồng ý (quá thời gian chờ). Chưa ghi gì — vui lòng thử lại."
-            : "Không đọc được trạng thái đồng ý. Chưa ghi gì — vui lòng thử lại.";
+            ? "Không đọc được trạng thái đồng ý (quá thời gian chờ). Chưa "
+              + "ghi gì — vui lòng thử lại."
+            : "Không đọc được trạng thái đồng ý. Chưa ghi gì — vui lòng "
+              + "thử lại.";
           return;
         }
         for (const item of decisions) {
@@ -244,20 +385,23 @@ export const page = {
         submitStatus.textContent =
           error && (error.kind === "timeout" || error.kind === "network"
             || error.kind === "stale_session")
-            ? "Kết quả ghi CHƯA XÁC ĐỊNH (máy chủ có thể đã nhận). Bấm Xác nhận lại sau khi kiểm tra, lựa chọn của bạn sẽ được đối chiếu trước khi ghi."
+            ? "Kết quả ghi CHƯA XÁC ĐỊNH (máy chủ có thể đã nhận). Bấm Xác "
+              + "nhận lại sau khi kiểm tra, lựa chọn của bạn sẽ được đối "
+              + "chiếu trước khi ghi."
             : "Không ghi nhận được đồng ý. Vui lòng thử lại.";
       }
     }
 
-    body.appendChild(continueButton);
-    body.appendChild(submitStatus);
-    body.appendChild(
-      h("p", { class: "fb-page__note" },
-        "Việc thu hồi từng sự đồng ý sẽ nằm trong phần Cá nhân khi tính năng " +
-        "quản lý quyền riêng tư (F15) được kích hoạt trên bản này. Thu hồi khi " +
-        "có sẽ không xóa dữ liệu đã ghi trong sổ cái mà đánh dấu không còn hiệu lực.",
-      ),
+    // Chân trang thương hiệu (thật): logo + tagline + liên kết trợ giúp.
+    const footer = h("footer", { class: "fb-consent__footer" },
+      h("div", { class: "fb-consent__footer-brand" },
+        createLogo({ size: "sm" }),
+        h("span", {}, "Family Bridge — Không gian lắng nghe và thấu hiểu "
+          + "giữa phụ huynh & học sinh")),
+      h("a", { class: "fb-consent__footer-link", href: "#/help" },
+        "Trung tâm hỗ trợ"),
     );
+    panel.appendChild(footer);
 
     load();
 
