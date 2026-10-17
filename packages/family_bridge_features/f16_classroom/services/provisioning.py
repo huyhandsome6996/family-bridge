@@ -49,6 +49,13 @@ def _username_for(external_ref: str) -> str:
 
 
 def _read_rows(path, header, errors, *, label):
+    """Doc CSV; mapping theo TEN COT (khong theo vi tri).
+
+    Brief 18/10/2026: file mau co the co header PH dung truoc HS
+    (`caregiver_login_code,student_login_code`) — vai vai KHONG BAO GIO
+    suy tu vi tri cot. Header phai chua DUNG bo cot yeu cau (du toan bo),
+    thu tu bat ky; thua cot khac → loi.
+    """
     try:
         with open(path, "r", encoding="utf-8-sig", newline="") as handle:
             rows = list(csv.reader(handle))
@@ -58,7 +65,8 @@ def _read_rows(path, header, errors, *, label):
     if not rows:
         errors.append({"reason": f"{label}_file_empty"})
         return None
-    if [cell.strip() for cell in rows[0]] != header:
+    file_header = [cell.strip() for cell in rows[0]]
+    if sorted(file_header) != sorted(header):
         errors.append({"reason": f"{label}_header_invalid",
                        "expected": ",".join(header)})
         return None
@@ -66,11 +74,11 @@ def _read_rows(path, header, errors, *, label):
     for number, fields in enumerate(rows[1:], start=2):
         if not fields or all(not cell.strip() for cell in fields):
             continue  # blank line: skip silently
-        if len(fields) != len(header):
+        if len(fields) != len(file_header):
             errors.append({"row": number,
                            "reason": f"{label}_column_count_invalid"})
             continue
-        data.append((number, dict(zip(header, fields))))
+        data.append((number, dict(zip(file_header, fields))))
     return data
 
 

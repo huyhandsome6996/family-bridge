@@ -83,7 +83,7 @@ class Command(BaseCommand):
 
     def _resolve_admin(self, options):
         from django.contrib.auth import get_user_model
-        from ..models import ClassAccount
+        from family_bridge_features.f16_classroom.models import ClassAccount
         from family_bridge_core.errors import NotFound
 
         User = get_user_model()
