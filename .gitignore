@@ -1,4 +1,4 @@
-﻿# ==========================================
+# ==========================================
 # Dependencies
 # ==========================================
 node_modules/
@@ -101,3 +101,8 @@ ehthumbs.db
 *.njsproj
 *.sln
 *.sw?
+.mcp.json
+.agentsroom/
+.claude/
+.grok/
+.agents/mcp_config.json

@@ -22,7 +22,7 @@
  */
 
 // 1. Cấu hình Endpoint API linh hoạt (hỗ trợ môi trường Dev, Prod và Override runtime)
-const DEFAULT_API_URL = "https://family-bridge-api.onrender.com/api/v1/help-contacts";
+const DEFAULT_API_URL = "https://family-bridge-api.onrender.com/api/v1/help/directory";
 
 /**
  * Lấy URL API phù hợp từ cấu hình runtime, biến môi trường Vite hoặc fallback mặc định.
@@ -86,14 +86,19 @@ export function renderHelpContacts(container, contacts) {
 
   contacts.forEach((contact) => {
     // Trích xuất các trường dữ liệu linh hoạt theo contract API
-    const name = contact.name || contact.public_name || contact.unit_name || contact.title || "Đầu mối hỗ trợ";
+    const name = contact.public_name || contact.name || contact.unit_name || contact.title || "Đầu mối hỗ trợ";
     const scope = contact.scope || contact.support_scope || contact.contact_type || contact.description || "Hỗ trợ học sinh & gia đình";
-    const hours = formatOperatingHours(contact.operating_hours || contact.hours || contact.working_hours);
+    const rawHours = contact.operating_hours || contact.hours || contact.working_hours;
+    const hours = formatOperatingHours(rawHours);
     const rawPhone = contact.phone || contact.phone_number || contact.hotline || "";
     const cleanPhone = sanitizePhone(rawPhone);
 
-    // BẬT CỜ XÁC MINH: Kiểm tra nghiêm ngặt kiểu boolean true
-    const isVerified = contact.is_verified === true;
+    // BẬT CỜ XÁC MINH: Backend trả is_verified hoặc status "verified"/"verification_expired"
+    const isVerified = contact.is_verified === true || contact.status === "verified";
+
+    // Minh bạch giờ trực: cảnh báo "Ngoài giờ phục vụ" khi không trực và không phải always-on
+    const isAlwaysOn = !!(rawHours && typeof rawHours === "object" && rawHours.always === true);
+    const isOutOfHours = contact.open_now === false && !isAlwaysOn;
 
     // Tạo thẻ <li> đại diện cho một đầu mối
     const li = document.createElement("li");
@@ -153,6 +158,12 @@ export function renderHelpContacts(container, contacts) {
     hoursValue.textContent = hours;
     hoursRow.appendChild(hoursLabel);
     hoursRow.appendChild(hoursValue);
+    if (isOutOfHours) {
+      const outOfHoursBadge = document.createElement("span");
+      outOfHoursBadge.className = "badge badge-out-of-hours";
+      outOfHoursBadge.textContent = "Ngoài giờ phục vụ";
+      hoursRow.appendChild(outOfHoursBadge);
+    }
     details.appendChild(hoursRow);
 
     li.appendChild(details);
@@ -295,8 +306,14 @@ function initHelpPage() {
 
 // ============================================================================
 // [QA TEST TOOLBAR] 3 Nút bấm kiểm thử trực tiếp trên giao diện
+// Chỉ kích hoạt khi URL có ?qa=1 hoặc ?demo=1 (manual QA). Tuyệt đối không
+// chạy mặc định trong production.
 // ============================================================================
-if (typeof window !== "undefined" && typeof document !== "undefined") {
+const isQaMode = (typeof window !== "undefined")
+  && (new URLSearchParams(window.location.search).get("qa") === "1"
+      || new URLSearchParams(window.location.search).get("demo") === "1");
+
+if (isQaMode && typeof window !== "undefined" && typeof document !== "undefined") {
   const setupMockToolbar = () => {
     if (document.getElementById("qa-mock-toolbar")) return;
 
