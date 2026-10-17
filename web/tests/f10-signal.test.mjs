@@ -148,6 +148,7 @@ function setupF10DOM() {
         <footer class="safety-footer">
           <p>Tín hiệu chỉ chuyển tới người thân được chọn trong gia đình.</p>
           <p>Không lưu giữ hay đính kèm bất kỳ nhật ký riêng tư nào.</p>
+          <p><a href="f13_help.html" class="help-link">Trang tìm trợ giúp (F13)</a> · <a href="#/help">#/help</a></p>
         </footer>
       </main>
 
@@ -179,6 +180,9 @@ async function importF10Module() {
   const restore = stubFetch(async () => jsonResponse({ status: "sent", message_id: "test-1" }));
   try {
     const mod = await import("../f10_signal.js");
+    if (typeof mod.initSignalPage === "function") {
+      mod.initSignalPage();
+    }
     return { mod, restore };
   } finally {
     restore();

@@ -198,7 +198,7 @@ async function executeSignalSend() {
     // Báo thành công (thông báo trung thực)
     showStatusAlert(
       "success",
-      "Đã gửi tín hiệu. Người thân sẽ thấy trong Hộp thư — không ai bảo đảm trả lời ngay."
+      "Đã gửi tín hiệu. Người thân sẽ thấy trong Hộp thư — không cam kết có phản hồi tức thì."
     );
 
     // Reset ô ghi chú sau khi gửi thành công
@@ -232,39 +232,39 @@ async function executeSignalSend() {
 }
 
 // 6. Khởi tạo sự kiện khi DOM sẵn sàng
+export function initSignalPage() {
+  const form = document.getElementById("signal-form");
+  if (form) {
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      handleFormSubmit(form);
+    });
+  }
+
+  // Nút hủy trong Modal xác nhận
+  const btnCancel = document.getElementById("btn-modal-cancel");
+  if (btnCancel) {
+    btnCancel.addEventListener("click", closeConfirmModal);
+  }
+
+  // Nút xác nhận gửi trong Modal
+  const btnConfirm = document.getElementById("btn-modal-confirm");
+  if (btnConfirm) {
+    btnConfirm.addEventListener("click", executeSignalSend);
+  }
+
+  // Đóng modal khi bấm ra ngoài backdrop
+  const modalBackdrop = document.getElementById("confirm-modal");
+  if (modalBackdrop) {
+    modalBackdrop.addEventListener("click", (e) => {
+      if (e.target === modalBackdrop) {
+        closeConfirmModal();
+      }
+    });
+  }
+}
+
 if (typeof document !== "undefined") {
-  const initSignalPage = () => {
-    const form = document.getElementById("signal-form");
-    if (form) {
-      form.addEventListener("submit", (e) => {
-        e.preventDefault();
-        handleFormSubmit(form);
-      });
-    }
-
-    // Nút hủy trong Modal xác nhận
-    const btnCancel = document.getElementById("btn-modal-cancel");
-    if (btnCancel) {
-      btnCancel.addEventListener("click", closeConfirmModal);
-    }
-
-    // Nút xác nhận gửi trong Modal
-    const btnConfirm = document.getElementById("btn-modal-confirm");
-    if (btnConfirm) {
-      btnConfirm.addEventListener("click", executeSignalSend);
-    }
-
-    // Đóng modal khi bấm ra ngoài backdrop
-    const modalBackdrop = document.getElementById("confirm-modal");
-    if (modalBackdrop) {
-      modalBackdrop.addEventListener("click", (e) => {
-        if (e.target === modalBackdrop) {
-          closeConfirmModal();
-        }
-      });
-    }
-  };
-
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", initSignalPage);
   } else {
