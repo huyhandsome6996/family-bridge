@@ -203,11 +203,67 @@ class PauseTimingTests(F06ApiBase):
         self.assertIsNone(response.data["deadline"])
 
 
+class EditDuringPauseGateTests(F06ApiBase):
+    """R03 (QA F04 18/10): edit khi pause còn hiệu lực KHÔNG được mở gates.
+
+    Guard chốt theo DEADLINE (server clock), không theo status: `edit`
+    cố ý giữ nguyên deadline khi trả draft về editing — nếu guard chỉ
+    nhìn status thì edit -> preview -> confirm đều lọt ở t<300 (đúng
+    lỗ hổng QA probe: pause còn 299s vẫn gửi được). Hành lang hợp lệ để
+    hết chờ sớm: cancel-pause (chủ động, xoá deadline) hoặc hết giờ."""
+
+    def _edit(self, draft):
+        return self.service.edit(
+            author_id=str(self.student.pk), draft_id=str(draft.id),
+            body="con đã sửa trong lúc dừng", title="", card_id="",
+            card_version=None, recipient_id=str(self.caregiver.pk))
+
+    def test_edit_then_preview_before_deadline_still_blocked(self):
+        draft = self._paused_draft()
+        edited = self._edit(draft)
+        self.assertEqual(edited.status, "editing")
+        self.assertIsNotNone(edited.pause_deadline_at)  # giữ nguyên deadline
+        self.clock.advance(seconds=299)
+        response = self._preview(str(draft.id))
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.data["error"]["code"], "cooldown_active")
+        self.assertEqual(
+            response.data["error"]["details"]["remaining_seconds"], 1)
+
+    def test_edit_then_confirm_before_deadline_never_sends(self):
+        draft = self._paused_draft()
+        self._edit(draft)
+        self.clock.advance(seconds=299)
+        # Ở t<300 không preview nào có thể tồn tại (guard 409 trước) ->
+        # confirm với preview (UUID hợp lệ nhưng chưa từng cấp) phải bị
+        # từ chối preview_not_found, KHÔNG gửi.
+        response = self._confirm(str(draft.id),
+                                 "00000000-0000-0000-0000-000000000000")
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(len(self.sender.sent), 0)
+
+    def test_gate_lifts_after_deadline_even_after_edit(self):
+        draft = self._paused_draft()
+        self._edit(draft)
+        self.clock.advance(seconds=300)
+        response = self._preview(str(draft.id))
+        self.assertEqual(response.status_code, 200)
+
+    def test_cancel_pause_still_lifts_gate_explicitly(self):
+        draft = self._paused_draft()
+        self._edit(draft)
+        self.service.cancel_pause(author_id=str(self.student.pk),
+                                  draft_id=str(draft.id))
+        response = self._preview(str(draft.id))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNone(response.data["deadline"])
+
+
 class NoPauseC8ContractTests(F06ApiBase):
-    """C8 (F04-A2-FINISH): "không chọn pause" là đường preview/send HỢP LỆ —
-    `_deadline_guard` chỉ enforce khi draft ĐANG paused. Đã chọn pause →
-    respect deadline 300s server (t=299 chặn CooldownActive); hết giờ
-    KHÔNG auto-send nhưng confirm tay sau deadline được phép."""
+    """C8 (F04-A2-FINISH + R03): "không chọn pause" là đường preview/send
+    HỢP LỆ — `_deadline_guard` enforce theo DEADLINE: draft chưa từng pause
+    (deadline None) hoặc đã hết giờ/hủy pause thì đi ngay; pause còn hiệu
+    lực (deadline tương lai) thì chặn bất kể status có bị edit đổi hay không."""
 
     def _created_draft(self):
         return self.service.create(author_id=str(self.student.pk),

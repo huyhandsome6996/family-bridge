@@ -1278,6 +1278,12 @@
 
 .fb-compose__ai-card { padding: var(--fb-space-3); }
 
+/* R05 (đối xứng mini): hàng AI = pill + nhãn phụ — cho phép wrap để
+   min-content không vượt cột phải 340px của desktop grid. */
+.fb-compose__ai .fb-sec__row {
+  flex-wrap: wrap;
+}
+
 .fb-compose__ai-suggestion {
   display: flex;
   flex-direction: column;

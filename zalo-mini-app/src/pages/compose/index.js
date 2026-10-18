@@ -267,6 +267,9 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     revision: draft ? draft.revision : null,
     status: draft ? draft.status : "editing",
     pause: draft ? draft.pause : null,
+    // R01 (QA F04 18/10): nội dung máy chủ ĐANG GIỮ cho bản nháp này —
+    // preview phải tự đồng bộ nếu textarea (sau AI suggestion) khác bản này.
+    syncedBody: draft && draft.body ? String(draft.body) : "",
     // Ưu tiên dữ liệu máy chủ gắn sẵn trên từng row (remaining_seconds /
     // can_preview); server_time của envelope list dùng khi cần tính lại.
     rowRemainingSeconds: draft && draft.pause ? draft.pause.remaining_seconds : null,
@@ -1073,6 +1076,7 @@ function onSaveDraft(ctx, state, ui) {
       state.pause = created.pause || null;
       state.serverTimeIso = created.server_time || null;
       state.fetchedAtMs = Date.now();
+      state.syncedBody = text; // R01: máy chủ đang giữ đúng text này
     } else {
       const updated = await ctx.adapter.editDraft(state.draftId, {
         body: text,
@@ -1083,6 +1087,7 @@ function onSaveDraft(ctx, state, ui) {
       state.pause = updated.pause || null;
       state.serverTimeIso = updated.server_time || null;
       state.fetchedAtMs = Date.now();
+      state.syncedBody = text; // R01: máy chủ đang giữ đúng text này
     }
     ui.statusNote.textContent = "Bản nháp đã nằm trên máy chủ, chỉ bạn nhìn thấy.";
     refreshPauseUi(state, ui);
@@ -1128,8 +1133,34 @@ function onPreview(ctx, state, ui) {
     ui.statusNote.textContent = "Chưa có bản nháp để xem trước — hãy lưu nháp trước.";
     return;
   }
+  // R01: textarea rỗng phải DỪNG ở đây — nếu không, preview sẽ bind bản
+  // cũ trên máy chủ trong khi sheet hiển thị rỗng (biến thể gửi sai bản).
+  if (!currentBodyText(ui).trim()) {
+    ui.statusNote.textContent = "Lời nhắn chưa có nội dung — hãy viết vài dòng trước khi xem trước.";
+    return;
+  }
   ui.statusNote.textContent = "Đang lấy bản xem trước từ máy chủ…";
   const run = async () => {
+    // R01 (QA F04 18/10 — P1 “gửi sai bản đã duyệt”): AI suggestion chỉ
+    // đổ vào textarea (không tự lưu). Preview phải bám đúng text đang
+    // hiển thị trong sheet xác nhận — khác bản máy chủ giữ thì TỰ ĐỒNG
+    // BỘ (editDraft) trước, nếu không confirm sẽ gửi original cũ.
+    const pendingText = currentBodyText(ui).trim();
+    if (pendingText !== state.syncedBody) {
+      ui.statusNote.textContent = "Đang đồng bộ nội dung mới lên máy chủ…";
+      const updated = await ctx.adapter.editDraft(state.draftId, {
+        body: pendingText,
+        recipientId: state.recipientId || undefined,
+      });
+      state.revision = updated.revision;
+      state.status = updated.status;
+      state.pause = updated.pause || null;
+      state.serverTimeIso = updated.server_time || null;
+      state.fetchedAtMs = Date.now();
+      state.syncedBody = pendingText;
+      refreshPauseUi(state, ui);
+    }
+    ui.statusNote.textContent = "Đang lấy bản xem trước từ máy chủ…";
     const preview = await ctx.adapter.previewDraft(state.draftId);
     ui.statusNote.textContent = "";
     openConfirmSheet(ctx, state, ui, preview);
@@ -1170,6 +1201,7 @@ function openConfirmSheet(ctx, state, ui, preview) {
         state.revision = null;
         state.status = "editing";
         state.pause = null;
+        state.syncedBody = ""; // R01: bản nháp mới — chưa có gì trên máy chủ
         ui.textarea.value = "";
         ui.counter.textContent = "0 ký tự";
         refreshPauseUi(state, ui);

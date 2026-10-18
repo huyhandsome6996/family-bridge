@@ -98,6 +98,10 @@ body:has(.fb-bottom-nav) .fb-page,
   outline-offset: 2px;
 }
 
+/* R05 (đối xứng mini QA F04 18/10): thuộc tính hidden phải LUÔN ẩn phần
+   tử — display rule của author class đè mặc định UA [hidden]. */
+[hidden] { display: none !important; }
+
 /* Ẩn khỏi thị giác nhưng screen reader vẫn đọc được */
 .fb-visually-hidden {
   position: absolute;

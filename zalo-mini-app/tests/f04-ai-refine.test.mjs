@@ -731,3 +731,70 @@ describe("F04 reply (message detail): hợp đồng v1", () => {
     cleanup(host);
   });
 });
+
+/* ================= R01 (QA 18/10): gửi sai bản đã duyệt ================= */
+describe("F04 composer R01 (QA 18/10): preview tự đồng bộ final — không còn gửi original cũ", () => {
+  const SERVER_DRAFT = {
+    draft_id: "d-srv", revision: 2, status: "editing", pause: null,
+    recipient_id: "u-care-1", body: "Nháp original trên máy chủ.",
+  };
+
+  it("(r01-a) Dùng gợi ý KHÔNG lưu nháp -> preview phải editDraft ĐÚNG final trước khi bind; confirm gửi bản đã duyệt", async () => {
+    const { adapter, calls } = createAdapter();
+    // Đúng kịch bản QA: server CÓ draft chứa original + recipient hợp lệ.
+    adapter.listDrafts = async () => ({
+      results: [{ ...SERVER_DRAFT }], serverTime: "2026-10-16T00:00:00Z",
+    });
+    const { ctx } = makeCtx({ adapter });
+    const { host, el } = mount(compose, ctx);
+    await wait(80);
+
+    const textarea = el.querySelector("#fb-compose-body");
+    type(textarea, "Con muốn nói chuyện riêng với mẹ.");
+    el.querySelector(".fb-compose__ai-btn").click();
+    await wait(60);
+    const useBtn = findButtonExact(
+      el.querySelector(".fb-compose__ai-suggestion"), "Dùng gợi ý");
+    useBtn.click();
+    await wait(60);
+    const finalText = textarea.value;
+    assert.equal(finalText, "Bản êm hơn: Con muốn nói chuyện riêng với mẹ.",
+      "(r01-a) textarea giữ final sau khi Dùng gợi ý");
+
+    // Preview TRỰC TIẾP — không Lưu nháp thêm (đúng 5 bước QA R01).
+    findButton(el, "Xem trước nội dung").click();
+    await wait(80);
+    assert.deepEqual(
+      calls.editDraft.map((row) => row.body),
+      [finalText],
+      "(r01-a) preview phải TỰ ĐỒNG BỘ final lên máy chủ (editDraft) trước khi bind",
+    );
+    assert.equal(calls.preview.length, 1, "(r01-a) preview gọi sau khi đồng bộ");
+    const sheet = document.body.querySelector(".fb-sheet-root");
+    assert.ok(sheet, "(r01-a) preview -> sheet xác nhận");
+    findButton(sheet, "Gửi cho").click();
+    await wait(80);
+    assert.equal(calls.confirmSend.length, 1,
+      "(r01-a) confirm gửi đúng bản đã duyệt (đã đồng bộ)");
+    cleanup(host);
+  });
+
+  it("(r01-b) textarea rỗng -> preview DỪNG ở client, không bind nhầm bản cũ trên máy chủ", async () => {
+    const { adapter, calls } = createAdapter();
+    adapter.listDrafts = async () => ({
+      results: [{ ...SERVER_DRAFT }], serverTime: "2026-10-16T00:00:00Z",
+    });
+    const { ctx } = makeCtx({ adapter });
+    const { host, el } = mount(compose, ctx);
+    await wait(80);
+
+    el.querySelector("#fb-compose-body").value = "   ";
+    findButton(el, "Xem trước nội dung").click();
+    await wait(80);
+    assert.equal(calls.preview.length, 0,
+      "(r01-b) không gọi preview khi nội dung rỗng");
+    assert.ok(textOf(el).includes("chưa có nội dung"),
+      "(r01-b) báo trung thực cho user");
+    cleanup(host);
+  });
+});

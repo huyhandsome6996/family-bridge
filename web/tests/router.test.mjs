@@ -55,8 +55,11 @@ const W2B_ROUTES = [
   ["/proposal", { id: "proposal", requiresAuth: true, showBottomNav: true, chrome: "app" }],
   ["/settings", { id: "settings", requiresAuth: true, showBottomNav: true, chrome: "app" }],
   ["/privacy", { id: "privacy", requiresAuth: true, showBottomNav: true, chrome: "app" }],
-  // GIỮ NGUYÊN mini: compose KHÔNG requiresAuth (tự kiểm tra phiên trong render).
-  ["/compose", { id: "f06-compose", requiresAuth: false, showBottomNav: false }],
+  // R04 (QA F04 18/10): compose render trong app-shell desktop như 7 trang
+  // còn lại — trước đây bare + showBottomNav false khiến desktop 1440px mất
+  // shell, .fb-page cap 480px, textarea 52px. requiresAuth vẫn false (tự
+  // kiểm tra phiên trong render, giữ nguyên semantics mini).
+  ["/compose", { id: "f06-compose", requiresAuth: false, showBottomNav: true, chrome: "app" }],
 ];
 
 // 13 trang đã port thật (W2-a) — meta khớp mini.

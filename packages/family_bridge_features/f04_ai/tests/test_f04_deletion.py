@@ -130,3 +130,60 @@ class ReplayAfterDeletionTests(F04ApiBase):
         self.assertNotEqual(again.data["suggestion_id"], old_id)
         self.assertEqual(len(self.provider.calls), 2)  # second generation ran
         self.assertEqual(AiSuggestion.objects.count(), 1)
+
+
+class LateProviderResultAfterDeletionTests(F04ApiBase):
+    """R02 (QA F04 18/10): kết quả của provider call BẮT ĐẦU trước deletion
+    nhưng finalize SAU khi deletion completed phải bị BỎ — không được tái
+    tạo suggestion (assertion: suggestion count phải còn đúng 0)."""
+
+    def test_finalize_after_deletion_completed_stores_nothing(self):
+        from labgrants.f04_fixtures import TestAiProvider
+
+        class DeletionDuringCallProvider(TestAiProvider):
+            """Provider 'chậm': GIỮA lời gọi, quy trình deletion thật chạy
+            (hook F04 thật — xoá suggestion + claim của author). Kết quả
+            trả về SAU deletion — đúng cửa sổ race mà QA probe."""
+
+            def __init__(self, victim_id):
+                super().__init__()
+                self._victim_id = victim_id
+                self.deletion_outcome = None
+
+            def refine(self, *, text, purpose, timeout_seconds=None):
+                self.deletion_outcome = AiSuggestionDeletionHook() \
+                    .apply_user_deletion(user_id=self._victim_id)
+                return super().refine(text=text, purpose=purpose,
+                                      timeout_seconds=timeout_seconds)
+
+        provider = DeletionDuringCallProvider(str(self.student.pk))
+        registry.reset_registries()
+        registry.register_session_resolver(_lab_sessions.resolve_session)
+        registry.register_ai_provider(provider)
+
+        response = self._refine(self.student_token, key="ai-fence-0001-ab")
+
+        # Deletion đã hoàn tất THẬT trước khi finalize chạy.
+        self.assertIsNotNone(provider.deletion_outcome)
+        self.assertTrue(provider.deletion_outcome["ok"])
+        # Assertion cốt lõi của QA: phải còn đúng 0.
+        self.assertEqual(AiSuggestion.objects.filter(
+            author_id=str(self.student.pk)).count(), 0)
+        self.assertEqual(AiRefineOperation.objects.filter(
+            author_id=str(self.student.pk)).count(), 0)
+        # Kết quả bị bỏ một cách trung thực (503, không 500, không im lặng).
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(
+            response.data["error"]["details"]["reason"],
+            "refine_result_discarded_after_deletion")
+
+    def test_fence_does_not_block_normal_refine(self):
+        # Control: không có deletion giữa chừng -> refine vẫn bình thường.
+        response = self._refine(self.student_token, key="ai-fence-0002-cd")
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(AiSuggestion.objects.filter(
+            author_id=str(self.student.pk)).count(), 1)
+        self.assertEqual(AiRefineOperation.objects.filter(
+            author_id=str(self.student.pk),
+            idempotency_key="ai-fence-0002-cd",
+            status="completed").count(), 1)

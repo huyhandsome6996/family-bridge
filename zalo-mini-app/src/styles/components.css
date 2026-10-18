@@ -2028,7 +2028,11 @@
   display: inline-flex;
   align-items: center;
   gap: var(--fb-space-1);
-  white-space: nowrap;
+  /* R05: nowrap đẩy min-content ~306px -> tràn ngang 320/390 (QA F04
+     18/10: document width 406px). Cho phép chữ xuống dòng khi hẹp. */
+  white-space: normal;
+  text-align: left;
+  min-width: 0;
 }
 
 .fb-compose__help-circle {
@@ -2068,9 +2072,18 @@
 
 .fb-compose__pause-buttons {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* R05: 1fr = minmax(auto,1fr) -> min-content của nút nowrap (169px)
+     đẩy rộng lưới -> tràn ngang 320/390. minmax(0,1fr) cho co được. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--fb-space-2);
   padding-top: var(--fb-space-1);
+}
+
+/* R05: dưới 480px xếp DỌC 2 nút — đủ chỗ cho chữ nowrap, không tràn. */
+@media (max-width: 479px) {
+  .fb-compose__pause-buttons {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .fb-btn--neutral {

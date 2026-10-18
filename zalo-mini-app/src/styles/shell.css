@@ -1318,6 +1318,12 @@
 
 /* ---- F04 (US-029/US-033): trạng thái gợi ý AI (stale/error/consent) ---- */
 
+/* R05: hàng AI = pill nowrap + nhãn phụ — cho phép wrap để min-content
+   không vượt 320px (QA F04 18/10: document width 406px). */
+.fb-compose__ai .fb-sec__row {
+  flex-wrap: wrap;
+}
+
 .fb-compose__ai-suggest-note {
   margin: 0;
   font-size: var(--fb-fs-label-sm);

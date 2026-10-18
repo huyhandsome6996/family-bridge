@@ -5,15 +5,21 @@ Guards summary:
   revision, invalidates previews, NEVER moves an existing pause deadline.
 - pause: 300s fixed from server now; re-pause returns the SAME deadline
   (no reset/extension); pause allowed only while editing/paused.
-- preview: the 300s gate applies ONLY to a draft the author actually
-  paused (C8): currently paused -> now >= deadline required (299 blocks,
-  300 passes — controlled-clock tests); NOT paused (never paused, or back
-  to editing) -> previews immediately, no forced wait. Binds (revision,
-  recipient, payload hash); does not send, does not create jobs.
+- preview: the 300s gate applies to a draft the author actually paused
+  (C8) UNTIL the deadline passes — an edit while the pause is still
+  running does NOT lift the gate (R03, QA 18/10: pause còn 299s thì
+  edit -> preview -> confirm đều 200 = lọt cooldown). Guard is keyed on
+  the FUTURE DEADLINE (server clock), not on status: currently paused
+  or edited-back-to-editing while now < deadline -> CooldownActive
+  (299 blocks, 300 passes — controlled-clock tests); never paused
+  (deadline None) or expired / cancel-paused (deadline cleared) ->
+  previews immediately, no forced wait. Binds (revision, recipient,
+  payload hash); does not send, does not create jobs.
 - confirm-send: requires an unused preview matching CURRENT revision and
-  recipient; re-checks the pause gate with the same C8 semantics (only a
-  currently-paused draft is cooldown-gated; expiry never auto-sends but a
-  manual confirm after the deadline is allowed); delegates to the kind
+  recipient; re-checks the pause gate with the same deadline-keyed C8
+  semantics (R03: edit does NOT lift the gate — only deadline expiry or
+  an explicit cancel-pause does; expiry never auto-sends but a manual
+  confirm after the deadline is allowed); delegates to the kind
   sender port (connection/idempotency guards live in the sender); consumes
   the preview; marks the draft sent. Failure -> truthful error, draft
   unchanged.
@@ -71,20 +77,22 @@ def _validate_content(*, kind: str, body: str, title: str,
 
 
 def _deadline_guard(draft: Draft, now: dt.datetime) -> None:
-    """C8 pause contract (server clock only, DEC-03).
+    """C8 pause contract (server clock only, DEC-03) + R03 fence.
 
-    The 300s cooldown is an OPT-IN gate: it applies ONLY while the draft is
-    actually paused (status == paused AND a deadline is recorded). A draft
-    that never paused — or that went back to editing (cancel/edit) — passes
-    straight through: preview/send is a valid path with NO forced wait
-    ("pause_not_started" is no longer an error state).
-
-    When paused: now < deadline -> CooldownActive (t=299 blocks, t=300
-    passes); now >= deadline -> pass. Expiry creates NOTHING (no auto-send,
-    no job) but a manual confirm after the deadline is allowed.
+    The 300s cooldown is an OPT-IN gate that runs until the recorded
+    deadline passes. It is keyed on the FUTURE DEADLINE — not on the
+    paused STATUS — because `edit` flips status back to editing while
+    intentionally KEEPING the deadline; keying on status would let the
+    author bypass the cooldown via edit -> preview -> confirm (QA R03:
+    pause còn 299s vẫn gửi được). Paths that pass while now < deadline:
+    NONE — preview/confirm both raise CooldownActive. Paths that lift
+    the gate: deadline expiry (now >= deadline — manual confirm allowed,
+    nothing auto-sends) and the EXPLICIT cancel-pause (user action that
+    clears the deadline). A draft that never paused has deadline None
+    and never waits ("pause_not_started" is not an error state).
     """
-    if draft.status != STATUS_PAUSED or draft.pause_deadline_at is None:
-        return  # no pause chosen -> no cooldown (C8: never force the wait)
+    if draft.pause_deadline_at is None:
+        return  # no pause chosen (or explicitly cancelled) -> no cooldown
     if now < draft.pause_deadline_at:
         raise CooldownActive({
             "reason": "pause_in_progress",

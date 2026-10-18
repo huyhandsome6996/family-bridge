@@ -902,4 +902,87 @@ describe("F04 web — C8 preview (R2A3-01 web) + preview dùng bản đã sửa 
     );
     unmount(host);
   });
+
+  it("R01 (QA 18/10) — Dùng gợi ý KHÔNG lưu nháp -> preview TỰ ĐỒNG BỘ final lên máy chủ, confirm gửi đúng bản đã duyệt (không còn gửi original cũ)", async () => {
+    withSession();
+    // Đúng 5 bước QA R01: server CÓ draft chứa original + recipient hợp lệ;
+    // UI lấy AI suggestion -> Dùng gợi ý; KHÔNG lưu nháp thêm; preview + confirm.
+    const behavior = { drafts: [{ ...EDITING_DRAFT }] };
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: f04Adapter({ behavior }) });
+    const { host, el } = mount(compose, ctx);
+    await wait(60);
+
+    await openSuggestion(el, null, behavior, "Con muốn nói với mẹ");
+    findButton(el.querySelector(".fb-compose__ai-suggestion"), "Dùng gợi ý").click();
+    await wait(40);
+    const finalText = el.querySelector("#fb-compose-body").value;
+    assert.equal(finalText, "Bản êm hơn: Con muốn nói với mẹ",
+      "textarea + sheet sẽ hiển thị final mới");
+
+    // Preview TRỰC TIẾP (không lưu nháp) — phải tự đồng bộ final trước.
+    el.querySelector(".fb-btn-hero").click();
+    await wait(40);
+    assert.deepEqual(
+      behavior.editDraftBodies,
+      [finalText],
+      "preview phải editDraft ĐÚNG text final đang hiển thị (sync trước khi bind)",
+    );
+    assert.equal(behavior.previewCalls, 1, "preview gọi sau khi đồng bộ");
+    const sheet = document.body.querySelector(".fb-sheet");
+    assert.ok(sheet, "preview -> sheet xác nhận");
+    assert.equal(
+      textOf(sheet.querySelector(".fb-compose__preview-body")), finalText,
+      "sheet hiển thị đúng bản đã duyệt",
+    );
+    findButton(sheet, "Gửi cho Người chăm sóc Test").click();
+    await wait(40);
+    assert.equal(behavior.confirmCalls, 1, "confirm gửi bản đã đồng bộ");
+    unmount(host);
+  });
+
+  it("R01 (QA 18/10) — textarea rỗng -> preview DỪNG ở client, không bind nhầm bản cũ trên máy chủ", async () => {
+    withSession();
+    const behavior = { drafts: [{ ...EDITING_DRAFT }] };
+    const { ctx } = makeCtx({ demo: false, role: "student", adapter: f04Adapter({ behavior }) });
+    const { host, el } = mount(compose, ctx);
+    await wait(60);
+
+    el.querySelector("#fb-compose-body").value = "   ";
+    el.querySelector(".fb-btn-hero").click();
+    await wait(40);
+    assert.equal(behavior.previewCalls, undefined,
+      "không gọi preview khi nội dung rỗng (tránh gửi bản cũ)");
+    assert.ok(textOf(el).includes("chưa có nội dung"), "báo trung thực cho user");
+    unmount(host);
+  });
+});
+
+/* ============ R04/R05 (QA F04 18/10): desktop shell + layout guard ============ */
+describe("R04/R05 (QA F04 18/10): compose web bọc app-shell desktop; CSS chống tràn + hidden guard", () => {
+
+  it("R04 — compose page phải render trong app-shell (chrome 'app') như các trang web desktop khác", () => {
+    assert.equal(compose.chrome, "app",
+      "không có shell -> .fb-page cap 480px, grid co 84px/340px, textarea 52px (QA R04)");
+  });
+
+  it("R04 — root class fb-page--web (nâng cap 480px của mobile contract khi vào shell)", () => {
+    const composeSrc = readFileSync(join(ROOT, "src/pages/compose/index.js"), "utf8");
+    assert.match(composeSrc, /class:\s*"fb-page fb-page--web"/,
+      "root phải dùng fb-page--web (max-width 880px) trong shell");
+  });
+
+  it("R05 — base.css có guard toàn cục [hidden]; CSS compose không còn min-content đẩy ngang", () => {
+    const base = readFileSync(join(ROOT, "src/styles/base.css"), "utf8");
+    assert.match(base, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/);
+    const components = readFileSync(join(ROOT, "src/styles/components.css"), "utf8");
+    const aiBtnIdx = components.indexOf(".fb-compose__ai-btn {");
+    const aiBtnBlock = components.slice(aiBtnIdx, components.indexOf("}", aiBtnIdx));
+    assert.match(aiBtnBlock, /white-space:\s*normal/,
+      "nowrap đẩy min-content trong cột phải 340px + viewport <480px");
+    const gridIdx = components.indexOf(".fb-compose__pause-buttons {");
+    const gridBlock = components.slice(gridIdx, components.indexOf("}", gridIdx));
+    assert.match(gridBlock, /minmax\(0,\s*1fr\)/);
+    const shell = readFileSync(join(ROOT, "src/styles/shell.css"), "utf8");
+    assert.match(shell, /\.fb-compose__ai \.fb-sec__row\s*\{\s*flex-wrap:\s*wrap;/);
+  });
 });

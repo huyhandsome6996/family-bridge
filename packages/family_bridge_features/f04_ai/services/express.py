@@ -77,6 +77,12 @@ class _ProviderFailed(Exception):
         self.reason = reason
 
 
+class _RefineFencedByDeletion(Exception):
+    """R02 (QA 18/10): the F15 deletion committed while the provider call
+    was in flight — the claim row is gone, so the spent provider result
+    must be DROPPED, never persisted as a suggestion."""
+
+
 def validate_input_revision(value: Any) -> Optional[int]:
     """None (legacy payload) or a positive int within the DB-safe range."""
     if value is None:
@@ -283,8 +289,30 @@ class AiExpressService:
         # constraints are the last race guards. Losing a finalize race replays
         # the winner, never 500s and never creates a second stored operation
         # for the same key.
+        #
+        # R02 fence (QA 18/10): the claim row is re-verified UNDER LOCK
+        # inside this same atomic. The F15 deletion hook deletes the
+        # author's AiSuggestion + AiRefineOperation rows atomically
+        # (frozen contract C9); if that deletion committed during the
+        # provider wait (Phase 3 is deliberately OUTSIDE any transaction),
+        # the claim no longer exists and the result is fenced: NOTHING is
+        # stored (deletion completed -> suggestion count stays 0). Locking
+        # the claim row first means a deletion racing THIS finalize blocks
+        # on the row lock and then deletes both rows — the fence cannot be
+        # interleaved into a resurrected row.
         try:
             with transaction.atomic():
+                claim = (AiRefineOperation.objects.select_for_update()
+                         .filter(author_id=str(author_id),
+                                 idempotency_key=idempotency_key,
+                                 status=STATUS_INFLIGHT).first())
+                if claim is None:
+                    # Outcome of the deletion race: the author's data was
+                    # deleted between claim and finalize. The provider call
+                    # is already spent (billed) — exactly why nothing may
+                    # be persisted from it afterwards (C6 analog of the
+                    # consent/kill-switch finalize recheck).
+                    raise _RefineFencedByDeletion()
                 suggestion = AiSuggestion.objects.create(
                     author_id=str(author_id), purpose=purpose,
                     status=STATUS_SUGGESTED,
@@ -297,13 +325,15 @@ class AiExpressService:
                     payload_hash_hex=payload_hash,
                     input_revision=input_revision,
                 )
-                AiRefineOperation.objects.filter(
-                    author_id=str(author_id),
-                    idempotency_key=idempotency_key,
-                    status=STATUS_INFLIGHT).update(
-                    status=STATUS_COMPLETED,
-                    updated_at=dt.datetime.now(tz=UTC))
+                claim.status = STATUS_COMPLETED
+                claim.updated_at = dt.datetime.now(tz=UTC)
+                claim.save(update_fields=["status", "updated_at"])
                 return suggestion
+        except _RefineFencedByDeletion:
+            # Truthful 503: the operation no longer exists — the request
+            # must NOT create a suggestion after deletion completed.
+            raise ModuleUnavailable(
+                {"reason": "refine_result_discarded_after_deletion"}) from None
         except IntegrityError:
             winner = AiSuggestion.objects.filter(
                 author_id=str(author_id),
