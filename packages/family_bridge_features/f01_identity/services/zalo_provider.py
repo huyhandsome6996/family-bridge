@@ -34,6 +34,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 import socket
 import urllib.error
 import urllib.parse
@@ -101,8 +102,13 @@ class ZaloPlatformVerifier:
             # (returned for garbage tokens even with correct request shape).
             if code in {"-100", "-102", "-212", "-213", "452"}:
                 raise NotAuthenticated({"reason": "token_invalid_or_expired"})
-            z_msg = str(data.get("message", "")).strip()
-            raise NotAuthenticated({"reason": f"provider_rejected [code {code}: {z_msg}]"})
+            # Provider free text is untrusted and can echo a credential or
+            # personal data. Keep only a bounded numeric diagnostic code in
+            # the API envelope; clients must never receive the raw message.
+            details = {"reason": "provider_rejected"}
+            if re.fullmatch(r"-?[0-9]{1,8}", code):
+                details["provider_code"] = code
+            raise NotAuthenticated(details)
         subject = data.get("id")
         # A03: validate the provider subject against the schema BEFORE using
         # it — provider_subject column is max_length=128, and bool is an int
