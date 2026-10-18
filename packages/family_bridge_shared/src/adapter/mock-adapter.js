@@ -989,6 +989,57 @@ export function createMockAdapter({ scenario = null } = {}) {
       return { results: [], nextCursor: null, source: "fixture" };
     },
 
+    async getMoodEntry(entryId) {
+      await wait(100);
+      throw new ApiError("Không tìm thấy mục tâm trạng (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "entry_not_found" } });
+    },
+
+    async editMoodEntry(entryId, { emotion = null, note = null } = {}) {
+      await wait(120);
+      throw new ApiError("Không tìm thấy mục tâm trạng (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "entry_not_found" } });
+    },
+
+    async moodSummary(days = null) {
+      await wait(100);
+      return { results: [], emotions: [], source: "fixture" };
+    },
+
+    async listMoodEntryShares(entryId) {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async shareMoodEntry(entryId, { recipientId, expectedRevision = null } = {}) {
+      await wait(140);
+      if (!recipientId) {
+        throw new ApiError("Thiếu người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "recipient_id" } });
+      }
+      return {
+        share_id: `demo-share-${recipientId}`,
+        entry_id: entryId,
+        recipient_id: recipientId,
+        approved_revision: expectedRevision || 1,
+        revoked: false,
+        status: "active",
+        source: "fixture",
+      };
+    },
+
+    async revokeMoodShare(shareId) {
+      await wait(120);
+      return { share_id: shareId, revoked: true, status: "revoked", source: "fixture" };
+    },
+
+    async listSharedMoodEntries() {
+      await wait(100);
+      return { results: [], nextCursor: null, source: "fixture" };
+    },
+
+    async getSharedMoodEntry(shareId) {
+      await wait(120);
+      throw new ApiError("Mục này không còn xem được (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "share_not_found" } });
+    },
+
     async programMy() {
       await wait(100);
       return { results: [], source: "fixture" };

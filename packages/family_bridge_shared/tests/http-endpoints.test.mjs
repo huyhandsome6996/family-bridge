@@ -310,13 +310,87 @@ describe("shared http-endpoints — hợp đồng boundary", () => {
     }
   });
 
-  it("surface phủ ADAPTER_METHODS: 74 tên hợp đồng, mọi method endpoint đều là hàm", () => {
+  it("surface phủ ADAPTER_METHODS: 82 tên hợp đồng, mọi method endpoint đều là hàm", () => {
     const endpoints = makeEndpoints();
-    assert.equal(ADAPTER_METHODS.length, 74);
+    assert.equal(ADAPTER_METHODS.length, 82);
     for (const name of ADAPTER_METHODS) {
       // loginWithZaloToken/trySilentLogin/logout là glue SDK của host (mini: zmp-sdk).
       if (name === "loginWithZaloToken" || name === "trySilentLogin" || name === "logout") continue;
       assert.equal(typeof endpoints[name], "function", `thiếu method ${name}`);
+    }
+  });
+});
+
+describe("shared http-endpoints — F07 mood (US-015/US-026)", () => {
+  function captureFetch() {
+    const calls = [];
+    mock.method(globalThis, "fetch", async (url, options = {}) => {
+      calls.push({ url: String(url), options });
+      return jsonResponse({});
+    });
+    return calls;
+  }
+
+  it("listMoodEntries map `limit` -> query page_size (không còn param bị bỏ qua)", async () => {
+    clearSession();
+    setSession({ token: "tok-f07", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.listMoodEntries({ limit: 20 });
+      assert.ok(calls[0].url.includes("page_size=20"), calls[0].url);
+      assert.ok(!calls[0].url.includes("limit="), "không được gửi query `limit` nữa");
+      await endpoints.listMoodEntries({ cursor: "c1" });
+      assert.ok(calls[1].url.includes("cursor=c1"), calls[1].url);
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("shareMoodEntry gửi recipient_id + expected_revision (stale preview chặn ở server)", async () => {
+    clearSession();
+    setSession({ token: "tok-f07", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.shareMoodEntry("e-1", { recipientId: "r-9", expectedRevision: 2 });
+      const body = JSON.parse(calls[0].options.body);
+      assert.equal(calls[0].url.endsWith("/api/v1/mood/entries/e-1/share"), true, calls[0].url);
+      assert.equal(body.recipient_id, "r-9");
+      assert.equal(body.expected_revision, 2);
+      await endpoints.shareMoodEntry("e-1", { recipientId: "r-9" });
+      const body2 = JSON.parse(calls[1].options.body);
+      assert.equal(body2.expected_revision, undefined);
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("đường dẫn F07 còn lại đúng endpoint thật (detail/edit/summary/shares/revoke/shared)", async () => {
+    clearSession();
+    setSession({ token: "tok-f07", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.getMoodEntry("e-1");
+      await endpoints.editMoodEntry("e-1", { note: "sửa" });
+      await endpoints.moodSummary(90);
+      await endpoints.listMoodEntryShares("e-1");
+      await endpoints.revokeMoodShare("s-1");
+      await endpoints.listSharedMoodEntries({ limit: 10 });
+      await endpoints.getSharedMoodEntry("s-1");
+      assert.ok(calls[0].url.endsWith("/api/v1/mood/entries/e-1"), calls[0].url);
+      assert.equal(calls[1].options.method, "PATCH");
+      assert.ok(calls[2].url.endsWith("/api/v1/mood/entries/summary?days=90"), calls[2].url);
+      assert.ok(calls[3].url.endsWith("/api/v1/mood/entries/e-1/shares"), calls[3].url);
+      assert.ok(calls[4].url.endsWith("/api/v1/mood/shares/s-1/revoke"), calls[4].url);
+      assert.ok(calls[5].url.includes("page_size=10"), calls[5].url);
+      assert.ok(calls[6].url.endsWith("/api/v1/mood/shared/s-1"), calls[6].url);
+    } finally {
+      clearSession();
+      mock.restoreAll();
     }
   });
 });
