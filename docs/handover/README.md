@@ -6,6 +6,7 @@ thái vì docs tồn tại).
 
 | Bộ tài liệu | Phạm vi |
 | --- | --- |
+| [f07-mood-sharing/](f07-mood-sharing/README.md) | F07 tâm trạng/lịch sử/chia sẻ từng mục (US-015/026): sửa 8 lỗi tái hiện được, wiring F15/F01 thật, Mini App /mood + /mood-shared, E2E 21 bước, giới hạn MySQL/Zalo |
 | [backend-foundation/](backend-foundation/README.md) | Nền tảng Django/DRF US-003: scaffold, health/ready, envelope lỗi, CI, cấu hình Render chuẩn bị |
 | [f01-login-connections/](f01-login-connections/README.md) | F01 đăng nhập Zalo + kết nối hai phía (US-011/013), kịch bản hai tài khoản |
 | [miniapp-foundation/](miniapp-foundation/README.md) | Nền tảng Zalo Mini App US-003: router hash, session in-memory, stitch-mapping, zalo-policy-report |
