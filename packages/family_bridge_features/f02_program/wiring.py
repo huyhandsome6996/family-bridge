@@ -181,11 +181,12 @@ class F01ConnectionReader:
 
     def active_connection_between(self, *, user_a: str, user_b: str):
         from family_bridge_features.f01_identity.models import (
-            CONNECTION_ACTIVE, Connection,
+            CONNECTION_ACTIVE, RELATIONSHIP_PRIMARY, Connection,
         )
         low_id, high_id = sorted([str(user_a), str(user_b)])
         row = (Connection.objects
                .filter(party_low_id=low_id, party_high_id=high_id,
+                       relationship_kind=RELATIONSHIP_PRIMARY,
                        status=CONNECTION_ACTIVE)
                .order_by("-id").first())
         if row is None:
@@ -197,10 +198,11 @@ class F01ConnectionReader:
 
     def active_connection_for(self, *, user_id: str):
         from family_bridge_features.f01_identity.models import (
-            CONNECTION_ACTIVE, Connection,
+            CONNECTION_ACTIVE, RELATIONSHIP_PRIMARY, Connection,
         )
         row = (Connection.objects
-               .filter(status=CONNECTION_ACTIVE)
+               .filter(status=CONNECTION_ACTIVE,
+                       relationship_kind=RELATIONSHIP_PRIMARY)
                .filter(models_q_active_for(str(user_id)))
                .order_by("-id").first())
         if row is None:
