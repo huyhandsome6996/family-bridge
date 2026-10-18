@@ -154,3 +154,36 @@ class LoginAttempt(models.Model):
     class Meta:
         app_label = "f16_classroom"
         indexes = [models.Index(fields=["attempt_key", "attempted_at"])]
+
+
+BATCH_MODE_PROVISION = "provision"
+BATCH_MODE_BACKFILL = "backfill"
+BATCH_MODES = (BATCH_MODE_PROVISION, BATCH_MODE_BACKFILL)
+
+
+class PairProvisionBatch(models.Model):
+    """Ghi nhan mot dot cap phat/chuyen doi cap HS-PH do admin thuc hien
+    (bo sung 18/10/2026 — admin-provisioned pairs,DEC-24).
+
+    - batch_ref: idempotency key do client/admin tao (UUID); submit lai
+      cung batch_ref -> tra ve ket qua DA LUU, khong xu ly lai.
+    - admin_id: chuoi UUID cua admin actor (CharField, khong FK — batch la
+      bang ghi nhan lich su, khong chan xoa user).
+    - summary: ket qua tong hop JSON (counts + per-row status, KHONG chua
+      mat khau/secret — SEC-22).
+    - Connection tuong ung gan source="admin_provisioned" + source_batch=
+      batch_ref + source_admin=admin_id (provenance doc duoc).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    batch_ref = models.CharField(max_length=64, unique=True)
+    admin_id = models.CharField(max_length=64)
+    class_ref = models.CharField(max_length=64, blank=True, default="")
+    mode = models.CharField(
+        max_length=16, choices=[(m, m) for m in BATCH_MODES])
+    summary = models.JSONField(default=dict)
+    created_at = models.DateTimeField(default=_utc_now, editable=False)
+
+    class Meta:
+        app_label = "f16_classroom"
+        indexes = [models.Index(fields=["admin_id", "created_at"])]

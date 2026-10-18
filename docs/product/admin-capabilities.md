@@ -8,7 +8,7 @@ Mục lục: [vai trò](#vai-trò), [capabilities](#capabilities), [màn hình](
 
 | ID / vai trò | Nhiệm vụ / cấp quyền rõ | Không được suy ra |
 | --- | --- | --- |
-| R-SYS System Administrator / Quản trị hệ thống | Toàn bộ CAP-01..22 phù hợp scope SYSTEM, có người sở hữu/phê duyệt bootstrap; assignment ghi explicit SYSTEM | Không raw survey, private journal/AI/inbox/mood; CAP-10 vẫn cần được giao request; CAP-22 không tự có secret/console |
+| R-SYS System Administrator / Quản trị hệ thống | Toàn bộ CAP-01..23 phù hợp scope SYSTEM, có người sở hữu/phê duyệt bootstrap; assignment ghi explicit SYSTEM | Không raw survey, private journal/AI/inbox/mood; CAP-10 vẫn cần được giao request; CAP-22 không tự có secret/console |
 | R-CONTENT Biên tập và phát hành nội dung | CAP-01/02/03; có thể tách editor chỉ CAP-01, publisher CAP-02/03; scope SCHOOL hoặc SYSTEM cho thư viện chung | Không phát hành khi thiếu validations/attestation; không sửa dữ liệu gia đình |
 | R-DIRECTORY Quản lý danh bạ hỗ trợ | CAP-07/08/09 đúng school; thư viện global cần SYSTEM | Không mặc định xem request_note hoặc call history riêng |
 | R-STAFF Người tiếp nhận lịch hẹn | CAP-10, scope school và request được phân công, staff nhận vai trò thực | Không xem tất cả request cùng trường, nhật ký hay survey |
@@ -43,6 +43,7 @@ Các CAP-04/05/06/14/15/16/17/18 có thể phân công riêng cho người phụ
 | CAP-20 | privacy.case | Verified deletion/revoke case status + target refs tối thiểu theo phân công | Không mở nội dung để xử lý xóa hoặc xóa thay chưa xác minh; AT-06-01 |
 | CAP-21 | audit.read | Audit actor/time/action/object ref/outcome/reason scoped đã redaction | No secret/raw body, export bounded; AT-06-03 |
 | CAP-22 | recovery.authorize | Approve recovery/restore/change operator request và evidence refs | Console role tách, step-up/recovery verification, ledger replay trước phục vụ; AT-06-02 |
+| CAP-23 | classroom.provision | Cấp phát/nap cap tai khoan lop HS-PH trong pham vi scope (global hoac school=class_ref) thanh ket noi ACTIVE; khong doc journal/mood/inbox/raw survey, khong ghi consent ho, khong tu sinh grant | Scope loc THAT trong AdminCapabilityService (school chi dung class_ref khop); audit theo batch; idempotency batch_ref; AT-04-02 + f16 test_admin_provision |
 
 ## Màn hình và phạm vi
 

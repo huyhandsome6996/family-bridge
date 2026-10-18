@@ -46,6 +46,8 @@ export const routes = {
   "/proposal": () => import("../pages/proposal/index.js"),
   "/settings": () => import("../pages/settings/index.js"),
   "/privacy": () => import("../pages/privacy/index.js"),
+  // ---- Admin cấp phát cặp HS/PH (CAP-23, 18/10/2026) ----
+  "/admin-provision": () => import("../pages/admin-provision/index.js"),
 };
 
 export function parseHash() {

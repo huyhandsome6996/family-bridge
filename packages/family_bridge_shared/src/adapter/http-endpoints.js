@@ -479,6 +479,74 @@ export function createHttpEndpoints({
       return data;
     },
 
+    // ------------- Admin cấp phát cặp HS/PH (CAP-23, 18/10/2026) -------------
+    // Chỉ admin có grant "classroom.provision" dùng được; thiếu grant →
+    // backend 404 (be mặt admin không tồn tại). UI phải phân loại theo kind.
+
+    async adminListClasses(timeoutMs = coldStartTimeoutMs) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/classroom/admin/classes", { timeoutMs }));
+      return data && Array.isArray(data.results) ? data.results : [];
+    },
+
+    /** rows: [{caregiver_code, student_code, caregiver_name?, student_name?,
+     * caregiver_external_ref?, student_external_ref?, allow_reconnect?}] —
+     * preview CHỈ ĐỌC, không ghi gì (kể cả khi thiếu mật khẩu khởi tạo). */
+    async adminPreviewPairs({ classRef, rows, initialPassword = null } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/classroom/admin/pairs-preview", {
+          method: "POST",
+          body: {
+            class_ref: classRef,
+            rows,
+            ...(initialPassword ? { initial_password: initialPassword } : {}),
+          },
+        }));
+      return data;
+    },
+
+    /** batchRef: UUID do caller tạo tại nút xác nhận (crypto.randomUUID) —
+     * gửi lại cùng batchRef → server trả kết quả ĐÃ LƯU (idempotent). */
+    async adminApplyPairs({ classRef, rows, batchRef, initialPassword = null } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/classroom/admin/pairs-apply", {
+          method: "POST",
+          body: {
+            class_ref: classRef,
+            rows,
+            batch_ref: batchRef,
+            ...(initialPassword ? { initial_password: initialPassword } : {}),
+          },
+        }));
+      return data;
+    },
+
+    async adminBackfillInventory({ classRef = null, timeoutMs = coldStartTimeoutMs } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/classroom/admin/backfill-inventory", {
+          query: classRef ? { class_ref: classRef } : {},
+          timeoutMs,
+        }));
+      return data;
+    },
+
+    async adminBackfillApply({ classRef = null, batchRef } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/classroom/admin/backfill-apply", {
+          method: "POST",
+          body: {
+            ...(classRef ? { class_ref: classRef } : {}),
+            batch_ref: batchRef,
+          },
+        }));
+      return data;
+    },
+
     // ---------------------- Web (Task 2): F05 hộp thư ------------------------
     // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Cursor của
     // f05 dùng tên "next" trong envelope → map về nextCursor cho UI.

@@ -36,8 +36,14 @@ CAP_CAPS_GRANT = "caps.grant"
 CAP_SETTINGS_MANAGE = "settings.manage"
 CAP_AUDIT_READ = "audit.read"
 CAP_DASHBOARD_READ = "dashboard.read"
+# CAP-23 (bo sung 18/10/2026 — admin-provisioned pairs): cap phat/nap cap
+# tai khoan lop HS/PH thanh ket noi ACTIVE. Scope "school" cua grant
+# giam scope_ref = class_ref cu the; grant "global" mo rong moi lop.
+# So huu nghiep vu: f16_classroom.services.admin_provision.
+CAP_CLASSROOM_PROVISION = "classroom.provision"
 KNOWN_CAPABILITIES = (CAP_CONTENT_MANAGE, CAP_CONTENT_PUBLISH, CAP_CAPS_GRANT,
-                      CAP_SETTINGS_MANAGE, CAP_AUDIT_READ, CAP_DASHBOARD_READ)
+                      CAP_SETTINGS_MANAGE, CAP_AUDIT_READ, CAP_DASHBOARD_READ,
+                      CAP_CLASSROOM_PROVISION)
 
 CONTENT_DRAFT = "draft"
 CONTENT_PUBLISHED = "published"

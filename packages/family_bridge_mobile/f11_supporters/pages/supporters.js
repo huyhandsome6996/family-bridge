@@ -28,9 +28,21 @@ export async function createPage({ root, params, ctx }) {
       <p id="sup-contact-role" class="fb-status"></p>
       <label for="sup-body">Lời nhắn mới của mình</label>
       <textarea id="sup-body" maxlength="4000" rows="4"></textarea>
+      <p class="fb-status fb-disclaimer">Người hỗ trợ đã đồng ý tiếp nhận, không cam kết trực 24 giờ hay hỗ trợ ngay mọi lúc.</p>
       <button class="fb-button" id="sup-contact-send">Gửi lời nhắn</button>
+      <button class="fb-button fb-button--secondary" id="sup-contact-cancel">Hủy</button>
       <p class="fb-status">Chỉ lời bạn vừa viết được gửi — không đính kèm thư
       hay nhật ký cũ.</p>
+    </section>
+    <section id="sup-suggest" hidden>
+      <h2>Vẫn chưa có phản hồi?</h2>
+      <p class="fb-status">Người hỗ trợ đã đồng ý tiếp nhận, không cam kết trực 24 giờ hay hỗ trợ ngay mọi lúc.</p>
+      <button class="fb-button" id="sup-suggest-another">Chọn điểm tựa khác</button>
+      <button class="fb-button fb-button--secondary" id="sup-suggest-help">Mở Trang tìm trợ giúp</button>
+    </section>
+    <section id="sup-commitments-section" hidden>
+      <h2>Lời mời làm điểm tựa cho người khác</h2>
+      <ul class="fb-list" id="sup-commitments-list"></ul>
     </section>
     <p id="sup-no-supporter" class="fb-status" hidden>Chưa có điểm tựa nào.
       Bạn vẫn mở được Trang tìm trợ giúp bất cứ lúc nào.</p>
@@ -51,36 +63,118 @@ export async function createPage({ root, params, ctx }) {
   function renderRoles(rows) {
     const list = el.querySelector("#sup-list");
     list.textContent = "";
-    el.querySelector("#sup-no-supporter").hidden =
-      rows.some((row) => row.status === "active");
-    if (!rows.length) {
-      const li = document.createElement("li");
-      li.textContent = "Chưa mời ai làm điểm tựa.";
-      list.appendChild(li);
+    // Client filter: chỉ render đối tượng active và còn khả năng liên hệ.
+    // Tuyệt đối không render pending / declined / revoked / expired (không disabled, không placeholder).
+    const activeRows = rows.filter((row) => row.status === "active" && row.can_contact);
+    el.querySelector("#sup-no-supporter").hidden = activeRows.length > 0;
+    if (!activeRows.length) {
+      if (!rows.length) {
+        const li = document.createElement("li");
+        li.textContent = "Chưa mời ai làm điểm tựa.";
+        list.appendChild(li);
+      }
       return;
     }
-    for (const row of rows) {
+    for (const row of activeRows) {
       const li = document.createElement("li");
       const label = document.createElement("span");
-      const stateText = { pending: "Đang chờ đồng ý", active: "Đang đồng hành",
-        declined: "Đã từ chối" }[row.status] || row.status;
-      label.textContent = `${stateText} — ${row.relationship_kind}`;
-      if (row.can_contact) {
-        const btn = document.createElement("button");
-        btn.className = "fb-button fb-button--secondary";
-        btn.textContent = "Nhắn điểm tựa này";
-        btn.addEventListener("click", () => openContact(row));
-        li.appendChild(btn);
-      }
+      label.textContent = `Đang đồng hành — ${row.relationship_kind}`;
       li.appendChild(label);
+      const btn = document.createElement("button");
+      btn.className = "fb-button fb-button--secondary";
+      btn.textContent = "Nhắn điểm tựa này";
+      btn.addEventListener("click", () => openContact(row));
+      li.appendChild(btn);
+      const revokeBtn = document.createElement("button");
+      revokeBtn.className = "fb-button fb-button--secondary";
+      revokeBtn.textContent = "Dừng đồng hành";
+      revokeBtn.addEventListener("click", async () => {
+        try {
+          await api.revoke(row.role_id);
+          setStatus("Đã dừng vai trò điểm tựa.", "info");
+          await loadAll();
+        } catch (err) {
+          setStatus("Không thể dừng vai trò điểm tựa. Thử lại.", "error");
+        }
+      });
+      li.appendChild(revokeBtn);
       list.appendChild(li);
     }
   }
 
-  async function loadRoles() {
+  function renderCommitments(commitments) {
+    const section = el.querySelector("#sup-commitments-section");
+    const list = el.querySelector("#sup-commitments-list");
+    list.textContent = "";
+    if (!commitments.length) {
+      section.hidden = true;
+      return;
+    }
+    section.hidden = false;
+    for (const item of commitments) {
+      const li = document.createElement("li");
+      const label = document.createElement("span");
+      const stateText = {
+        pending: "Lời mời mới",
+        active: "Đang đồng hành",
+        declined: "Đã từ chối",
+      }[item.status] || item.status;
+      label.textContent = `${stateText} — ${item.relationship_kind}`;
+      li.appendChild(label);
+      if (item.status === "pending") {
+        const acceptBtn = document.createElement("button");
+        acceptBtn.className = "fb-button";
+        acceptBtn.textContent = "Nhận lời";
+        acceptBtn.addEventListener("click", async () => {
+          try {
+            await api.respond(item.role_id, "accept");
+            setStatus("Đã đồng ý làm điểm tựa.", "success");
+            await loadAll();
+          } catch (err) {
+            setStatus("Không thể cập nhật. Thử lại.", "error");
+          }
+        });
+        const declineBtn = document.createElement("button");
+        declineBtn.className = "fb-button fb-button--secondary";
+        declineBtn.textContent = "Từ chối";
+        declineBtn.addEventListener("click", async () => {
+          try {
+            await api.respond(item.role_id, "decline");
+            setStatus("Đã từ chối lời mời.", "info");
+            await loadAll();
+          } catch (err) {
+            setStatus("Không thể cập nhật. Thử lại.", "error");
+          }
+        });
+        li.appendChild(acceptBtn);
+        li.appendChild(declineBtn);
+      } else if (item.status === "active") {
+        const revokeBtn = document.createElement("button");
+        revokeBtn.className = "fb-button fb-button--secondary";
+        revokeBtn.textContent = "Dừng đồng hành";
+        revokeBtn.addEventListener("click", async () => {
+          try {
+            await api.revoke(item.role_id);
+            setStatus("Đã dừng vai trò điểm tựa.", "info");
+            await loadAll();
+          } catch (err) {
+            setStatus("Không thể dừng vai trò. Thử lại.", "error");
+          }
+        });
+        li.appendChild(revokeBtn);
+      }
+      list.appendChild(li);
+    }
+  }
+
+  async function loadAll() {
     try {
-      const data = await api.list();
-      renderRoles(data.results || []);
+      const [rolesData, commitmentsData] = await Promise.all([
+        api.list(),
+        api.commitments ? api.commitments().catch(() => ({ results: [] })) : Promise.resolve({ results: [] }),
+      ]);
+      renderRoles(rolesData.results || []);
+      renderCommitments(commitmentsData.results || []);
     } catch (err) {
       setStatus("Không tải được danh sách. Thử lại.", "error");
     }
@@ -92,6 +186,22 @@ export async function createPage({ root, params, ctx }) {
       "Điểm tựa đang đồng hành với bạn.";
     el.querySelector("#sup-contact").hidden = false;
   }
+
+  el.querySelector("#sup-contact-cancel").addEventListener("click", () => {
+    el.querySelector("#sup-body").value = "";
+    el.querySelector("#sup-contact").hidden = true;
+    contactRoleId = null;
+  });
+
+  el.querySelector("#sup-suggest-another").addEventListener("click", () => {
+    el.querySelector("#sup-suggest").hidden = true;
+    el.querySelector("#sup-invite-form").hidden = true;
+    loadAll();
+  });
+
+  el.querySelector("#sup-suggest-help").addEventListener("click", () => {
+    location.hash = "#/help";
+  });
 
   el.querySelector("#sup-invite").addEventListener("click", async () => {
     const form = el.querySelector("#sup-invite-form");
@@ -128,7 +238,7 @@ export async function createPage({ root, params, ctx }) {
         relationshipKind: el.querySelector("#sup-kind").value });
       setStatus("Đã gửi lời mời. Chờ người đó tự đồng ý.", "success");
       el.querySelector("#sup-invite-form").hidden = true;
-      await loadRoles();
+      await loadAll();
     } catch (err) {
       setStatus("Không gửi được lời mời. Thử lại.", "error");
     }
@@ -149,6 +259,7 @@ export async function createPage({ root, params, ctx }) {
       setStatus("Đã gửi lời nhắn mới.", "success");
       el.querySelector("#sup-body").value = "";
       el.querySelector("#sup-contact").hidden = true;
+      el.querySelector("#sup-suggest").hidden = false;
       contactRoleId = null;
     } catch (err) {
       const reason = err && err.details && err.details.reason;
@@ -163,7 +274,7 @@ export async function createPage({ root, params, ctx }) {
     }
   });
 
-  await loadRoles();
+  await loadAll();
 
   return {
     destroy() { el.remove(); },

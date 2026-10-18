@@ -61,6 +61,21 @@ cd tests/feature-lab && FB_TEST_DB=mysql FB_MYSQL_*=<env> \
 | test_deletion | AccountDeletionHook (4), ConnectionsHook, RegistryWiring (2) | Hook xóa proposal/account/acct-attempts, giữ codeh/ip; idempotent; PROTECT được giải trước khi xóa user; registry dotted path resolve; protocol dict `ok` với F15 |
 | test_races_mysql | double_confirm_second_step_single_connection; two_concurrent_imports | MySQL thật: 2 thread confirm bước 2 → 1 Connection; 2 lần provision song song → không trùng, không crash (NOT_RUN khi không có MySQL) |
 
+## Suite `test_admin_provision` (bổ sung 18/10/2026 — CAP-23)
+
+- Chạy: `python manage.py test family_bridge_features.f16_classroom.tests.test_admin_provision -v 1` trong feature-lab (xem Môi trường).
+- Case A01: apply tạo Connection ACTIVE trước khi người dùng đăng nhập; `source=admin_provisioned`, `invite IS NULL`, generation=1.
+- Case A02/A12: round-trip API — admin session + grant → preview/apply 200; cả HS và PH đăng nhập thật thấy nhau qua `GET /api/v1/connections`.
+- Case A03: apply lại cùng hàng → `already_active`, không nhân đôi; cùng `batch_ref` → replay.
+- Case A04: HS/PH không grant → 404 (bề mặt không tồn tại).
+- Case A05: grant `school=10A1` không đọc/không cấp lớp `10B1` (403 `class_out_of_scope`); danh sách lớp chỉ trong scope.
+- Case A06: đảo vai/cùng người/thiếu mã/tài khoản khóa/thiếu mật khẩu tạo mới → lỗi từng hàng, KHÔNG ghi gì (validate trước, ghi sau).
+- Case A08: mật khẩu/ten/mã đã đổi của tài khoản có sẵn giữ nguyên khi nạp lại.
+- Case A09: cặp revoked không tự nối lại; `allow_reconnect:true` → generation 2, bản cũ vẫn revoked.
+- Case A10: provisioning KHÔNG tạo ConsentRecord/MoodShare/JournalShare.
+- Case A11: backfill inventory → apply → idempotent rerun; tài khoản khóa → blocked; proposal được đóng `connected` với `outcome_reason="admin_provisioned"`, `first_confirmed_at` giữ NULL (không giả).
+- Scope service: grant school chỉ khớp đúng class_ref (lọc thật trong `AdminCapabilityService.has_capability`).
+
 ## Wiring kiểm tra ở nơi khác
 
 - `tests/feature-lab/harness/tests/test_core.py`: registry 18 entry (F01..F16 + B16 + B17), validate_registry sạch.

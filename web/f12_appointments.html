@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#FFF8F6" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="msapplication-tap-highlight" content="no" />
+  <title>Thầy cô và lịch hẹn - US-038 & US-046 | Family Bridge</title>
+
+  <style>
+    /* ============================================================
+       Family Bridge F12 School Support & Appointments Styles
+       Tuân thủ Design Tokens (Stitch UI upgrade / tokens.css)
+       Tone màu ấm áp, nhẹ nhàng, kết nối — tuyệt đối không dùng màu đỏ SOS
+       ============================================================ */
+    :root {
+      --fb-primary: #9D3D27;          /* Terracotta ấm */
+      --fb-primary-hover: #802918;
+      --fb-accent: #E4AB56;           /* Amber dịu */
+      --fb-bg: #FFF8F6;               /* Nền giấy ấm */
+      --fb-text: #360F07;             /* Chữ nâu đậm */
+      --fb-text-secondary: #56423E;   /* Chữ phụ */
+      --fb-surface: #FFFFFF;          /* Thẻ trắng */
+      --fb-surface-low: #FFF0EE;
+      --fb-surface-container: #FFE9E5;
+      --fb-border: #DDC0BA;
+      --fb-success: #166534;
+      --fb-success-bg: #F0FDF4;
+      --fb-success-border: #BBF7D0;
+      --fb-warning: #92400E;
+      --fb-warning-bg: #FFFBEB;
+      --fb-error: #B91C1C;
+      --fb-error-bg: #FEF2F2;
+      --fb-error-border: #FECACA;
+      --fb-radius-lg: 16px;
+      --fb-radius-md: 12px;
+      --fb-radius-sm: 8px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Be Vietnam Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: #F3EAE7;
+      color: var(--fb-text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px 0;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Khung điện thoại chuẩn Zalo Mini App */
+    .phone-frame {
+      width: 100%;
+      max-width: 412px;
+      height: 860px;
+      max-height: 94vh;
+      background-color: var(--fb-bg);
+      border-radius: 36px;
+      box-shadow: 0 16px 48px rgba(54, 15, 7, 0.16), 0 0 0 8px #2E1510;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    @media (max-width: 500px) {
+      body {
+        padding: 0;
+        background-color: var(--fb-bg);
+      }
+      .phone-frame {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border-radius: 0;
+        box-shadow: none;
+      }
+    }
+
+    /* Header chuẩn Zalo Mini App */
+    .zalo-header {
+      height: 56px;
+      background: var(--fb-surface);
+      border-bottom: 1px solid var(--fb-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      flex-shrink: 0;
+    }
+
+    .zalo-header__left,
+    .zalo-header__right {
+      display: flex;
+      align-items: center;
+      min-width: 40px;
+    }
+
+    .zalo-header__btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      color: var(--fb-text);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      font-size: 16px;
+    }
+
+    .zalo-header__btn:hover {
+      background-color: var(--fb-surface-low);
+    }
+
+    .zalo-header__title {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--fb-text);
+      text-align: center;
+      flex: 1;
+    }
+
+    /* Nội dung cuộn */
+    .app-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Banner giới thiệu */
+    .intro-banner {
+      background-color: var(--fb-surface-container);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .intro-banner__icon {
+      font-size: 24px;
+      line-height: 1;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .intro-banner__text h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--fb-text);
+      margin-bottom: 4px;
+    }
+
+    .intro-banner__text p {
+      font-size: 13px;
+      color: var(--fb-text-secondary);
+      line-height: 1.45;
+    }
+
+    /* Thông báo trạng thái */
+    .status-alert {
+      display: none;
+      padding: 12px 14px;
+      border-radius: var(--fb-radius-md);
+      font-size: 13.5px;
+      line-height: 1.45;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .status-alert--success {
+      background-color: var(--fb-success-bg);
+      border: 1px solid var(--fb-success-border);
+      color: var(--fb-success);
+    }
+
+    .status-alert--error {
+      background-color: var(--fb-error-bg);
+      border: 1px solid var(--fb-error-border);
+      color: var(--fb-error);
+    }
+
+    /* Các phần thẻ nội dung */
+    .card-section {
+      background: var(--fb-surface);
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-lg);
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(54, 15, 7, 0.04);
+    }
+
+    .card-section__title {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--fb-text);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-section__subtitle {
+      font-size: 12.5px;
+      color: var(--fb-text-secondary);
+      margin-bottom: 14px;
+    }
+
+    /* Danh bạ thầy cô */
+    .contact-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .contact-item {
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 12px 14px;
+      background-color: var(--fb-bg);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .contact-info {
+      flex: 1;
+    }
+
+    .contact-name {
+      font-size: 14.5px;
+      font-weight: 600;
+      color: var(--fb-text);
+      margin-bottom: 3px;
+    }
+
+    .contact-meta {
+      font-size: 12px;
+      color: var(--fb-text-secondary);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    /* Huy hiệu trạng thái */
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge--verified {
+      background-color: var(--fb-success-bg);
+      color: var(--fb-success);
+      border: 1px solid var(--fb-success-border);
+    }
+
+    .badge--expired {
+      background-color: var(--fb-surface-low);
+      color: var(--fb-text-secondary);
+      border: 1px solid var(--fb-border);
+    }
+
+    .badge--status {
+      background-color: var(--fb-surface-container);
+      color: var(--fb-primary);
+      border: 1px solid var(--fb-border);
+    }
+
+    .btn-call {
+      background-color: var(--fb-surface);
+      border: 1.5px solid var(--fb-primary);
+      color: var(--fb-primary);
+      padding: 6px 14px;
+      border-radius: var(--fb-radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+
+    .btn-call:hover {
+      background-color: var(--fb-surface-low);
+    }
+
+    /* Form yêu cầu */
+    .form-group {
+      margin-bottom: 12px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fb-text);
+      margin-bottom: 6px;
+    }
+
+    .form-select,
+    .form-textarea {
+      width: 100%;
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 10px 12px;
+      font-family: inherit;
+      font-size: 14px;
+      color: var(--fb-text);
+      background-color: #FFFFFF;
+      transition: border-color 0.15s ease;
+    }
+
+    .form-select:focus,
+    .form-textarea:focus {
+      outline: none;
+      border-color: var(--fb-primary);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .form-helper {
+      font-size: 11.5px;
+      color: var(--fb-text-secondary);
+      margin-top: 4px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      background-color: var(--fb-primary);
+      color: #FFFFFF;
+      border: none;
+      border-radius: var(--fb-radius-md);
+      padding: 12px 16px;
+      font-size: 14.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-primary:hover {
+      background-color: var(--fb-primary-hover);
+    }
+
+    /* Danh sách yêu cầu đã gửi */
+    .requests-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .request-item {
+      border: 1px solid var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 12px 14px;
+      background-color: var(--fb-bg);
+    }
+
+    .request-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .request-topic {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--fb-text);
+    }
+
+    .request-note {
+      font-size: 13px;
+      color: var(--fb-text-secondary);
+      line-height: 1.4;
+      margin-bottom: 10px;
+    }
+
+    .slot-box {
+      background-color: var(--fb-surface);
+      border: 1px dashed var(--fb-border);
+      border-radius: var(--fb-radius-sm);
+      padding: 10px 12px;
+      margin-top: 8px;
+    }
+
+    .slot-time {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--fb-primary);
+      margin-bottom: 8px;
+    }
+
+    .slot-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn-accept {
+      background-color: var(--fb-success);
+      color: #FFFFFF;
+      border: none;
+      border-radius: var(--fb-radius-sm);
+      padding: 6px 12px;
+      font-size: 12.5px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-decline {
+      background-color: var(--fb-surface);
+      border: 1px solid var(--fb-border);
+      color: var(--fb-text);
+      border-radius: var(--fb-radius-sm);
+      padding: 6px 12px;
+      font-size: 12.5px;
+      cursor: pointer;
+    }
+
+    /* Footer hỗ trợ khẩn cấp */
+    .help-fallback-card {
+      background-color: var(--fb-surface-low);
+      border: 1px dashed var(--fb-border);
+      border-radius: var(--fb-radius-md);
+      padding: 12px 14px;
+      font-size: 12.5px;
+      color: var(--fb-text-secondary);
+      line-height: 1.45;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .help-fallback-card a {
+      color: var(--fb-primary);
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    .empty-state {
+      padding: 16px;
+      text-align: center;
+      color: var(--fb-text-secondary);
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="phone-frame">
+    <!-- Header -->
+    <header class="zalo-header">
+      <div class="zalo-header__left">
+        <a href="index.html" class="zalo-header__btn" title="Quay lại" aria-label="Quay lại">←</a>
+      </div>
+      <h1 class="zalo-header__title">Thầy cô và lịch hẹn</h1>
+      <div class="zalo-header__right"></div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="app-content">
+      <!-- Banner giới thiệu -->
+      <section class="intro-banner" aria-label="Giới thiệu hỗ trợ nhà trường">
+        <span class="intro-banner__icon" aria-hidden="true">🏫</span>
+        <div class="intro-banner__text">
+          <h2>Hỗ trợ từ trường học</h2>
+          <p>Gặp gỡ hoặc gọi điện riêng tư với thầy cô và chuyên viên tham vấn đã đồng ý lắng nghe bạn.</p>
+        </div>
+      </section>
+
+      <!-- Alert thông báo trạng thái -->
+      <div id="status-alert-success" class="status-alert status-alert--success" role="status" aria-live="polite">
+        <span class="status-alert__icon">✓</span>
+        <span id="status-success-text"></span>
+      </div>
+      <div id="status-alert-error" class="status-alert status-alert--error" role="alert" aria-live="assertive">
+        <span class="status-alert__icon">⚠</span>
+        <span id="status-error-text"></span>
+      </div>
+
+      <!-- Phần 1: Danh bạ thầy cô hỗ trợ (US-038) -->
+      <section class="card-section" aria-labelledby="sec-directory-title">
+        <h2 id="sec-directory-title" class="card-section__title">
+          <span>Danh bạ thầy cô tiếp nhận</span>
+        </h2>
+        <p class="card-section__subtitle">Đầu mối tham vấn đã xác minh. Bạn chủ động bấm gọi khi cần.</p>
+        <div id="ap-directory-list" class="contact-list">
+          <div class="empty-state">Đang tải danh bạ...</div>
+        </div>
+      </section>
+
+      <!-- Phần 2: Xin lịch hẹn riêng (US-046) -->
+      <section class="card-section" aria-labelledby="sec-request-title">
+        <h2 id="sec-request-title" class="card-section__title">
+          <span>Xin lịch hẹn riêng</span>
+        </h2>
+        <p class="card-section__subtitle">Thầy cô phụ trách sẽ tiếp nhận và gửi đề xuất thời gian hẹn.</p>
+
+        <form id="appointment-form" onsubmit="return false;">
+          <div class="form-group">
+            <label for="ap-topic" class="form-label">Chủ đề cần trao đổi</label>
+            <select id="ap-topic" class="form-select">
+              <option value="hoc_tap">Học tập & định hướng</option>
+              <option value="tinh_cam">Tình cảm & tâm tư</option>
+              <option value="khac">Chủ đề khác</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="ap-note" class="form-label">Lời nhắn riêng cho thầy cô</label>
+            <textarea id="ap-note" class="form-textarea" maxlength="1000" rows="3" placeholder="Nội dung bạn muốn trao đổi (chỉ bạn và thầy cô phụ trách đọc được)..."></textarea>
+            <div class="form-helper">Tối đa 1.000 ký tự. Riêng tư theo thiết kế.</div>
+          </div>
+
+          <button type="button" id="ap-submit-btn" class="btn-primary">
+            <span>Gửi yêu cầu hẹn gặp</span>
+          </button>
+        </form>
+      </section>
+
+      <!-- Phần 3: Danh sách yêu cầu & Lịch hẹn -->
+      <section class="card-section" aria-labelledby="sec-list-title">
+        <h2 id="sec-list-title" class="card-section__title">
+          <span>Lịch hẹn của mình</span>
+        </h2>
+        <p class="card-section__subtitle">Theo dõi trạng thái tiếp nhận và xác nhận giờ hẹn.</p>
+        <div id="ap-requests-list" class="requests-list">
+          <div class="empty-state">Chưa có yêu cầu nào.</div>
+        </div>
+      </section>
+
+      <!-- Fallback khẩn cấp F13 -->
+      <div class="help-fallback-card">
+        <span aria-hidden="true">🆘</span>
+        <div>
+          Cần trợ giúp khẩn cấp hoặc ngoài giờ học? Hãy mở <a href="f13_help.html" id="link-f13-help">Trang tìm trợ giúp khẩn cấp (F13)</a> — hoạt động công khai và không cần đăng nhập.
+        </div>
+      </div>
+    </main>
+
+    <!-- Khối QA Toolbar (chỉ kích hoạt khi ?qa=1 hoặc ?demo=1) -->
+    <div id="qa-f12-toolbar-container"></div>
+  </div>
+
+  <script type="module" src="f12_appointments.js"></script>
+</body>
+</html>

@@ -37,6 +37,18 @@ Bất đồng bộ trạng thái my/counterpart confirmed: `my_confirmed=true` �
   mount ở `backend/config/settings.py` (harness không mount — gate kiểm thử
   qua backend settings + unit test RequestFactory).
 
+## Cấp phát cặp do quản trị (bổ sung 18/10/2026 — CAP-23 `classroom.provision`)
+
+| Method | Path | Body | 200 | Lỗi |
+| --- | --- | --- | --- | --- |
+| GET | `/classroom/admin/classes` | — | `{results:[{class_ref, students, caregivers, pending_proposals}]}` | 404 khi không có grant |
+| POST | `/classroom/admin/pairs-preview` | `{class_ref, rows[≤50], initial_password?}` | `{ok, dry_run:true, summary, rows:[{row, status, problems, ...}]}` | 403 `class_out_of_scope`; 400 per-row `initial_password_required_for_new_accounts` |
+| POST | `/classroom/admin/pairs-apply` | `{class_ref, rows[≤50], batch_ref, initial_password?}` | `{ok, wrote, batch_id, connected, already_active, reconnected, errors, rows}` | validate toàn bộ trước khi ghi; `batch_ref` trùng → replay kết quả đã lưu |
+| GET | `/classroom/admin/backfill-inventory` | query `class_ref?` | `{accounts, proposals, already_active_pairs, eligible_pairs, blocked_pairs}` | 403 ngoài scope |
+| POST | `/classroom/admin/backfill-apply` | `{class_ref?, batch_ref}` | `{ok, activated, already_active, blocked, errors, rows}` | cặp revoked không hồi sinh |
+
+Trạng thái hàng preview: `will_connect`, `will_create_accounts_and_connect`, `pair_already_active`, `pending_proposal_will_close_and_connect`, `pair_revoked`, `pair_revoked_reconnectable`, `error`. Apply: `connected`, `already_active`, `reconnected`, `error`. Chi tiết hợp đồng: `docs/contracts/api-foundation.md` mục F16-A.
+
 ## Điều hướng throttle
 
 - `class_login` 200/hour (ScopedRateThrottle, định danh IP cho anonymous) —

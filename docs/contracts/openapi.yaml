@@ -274,6 +274,58 @@ paths:
         "200": { $ref: "#/components/responses/ClassProposalClosed" }
         "400": { $ref: "#/components/responses/Error400" }
         "404": { $ref: "#/components/responses/Error404" }
+  /classroom/admin/classes:
+    get:
+      summary: Lớp trong phạm vi grant classroom.provision (bổ sung 18/10/2026 — CAP-23)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { description: "{results:[{class_ref, students, caregivers, pending_proposals}]}" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "404": { $ref: "#/components/responses/Error404" }
+  /classroom/admin/pairs-preview:
+    post:
+      summary: Xem trước cặp HS-PH (CHỈ ĐỌC, per-row status/problems)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { description: "{ok, dry_run:true, summary, rows[]}" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+        "404": { $ref: "#/components/responses/Error404" }
+  /classroom/admin/pairs-apply:
+    post:
+      summary: Lưu cặp → Connection ACTIVE ngay (provenance admin, batch_ref idempotent)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { description: "{ok, wrote, batch_id, connected, already_active, reconnected, errors, rows[]}" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+        "404": { $ref: "#/components/responses/Error404" }
+  /classroom/admin/backfill-inventory:
+    get:
+      summary: Kho cặp đang chờ đủ điều kiện chuyển (doc-only)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { description: "{accounts, proposals, already_active_pairs, eligible_pairs, blocked_pairs}" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+        "404": { $ref: "#/components/responses/Error404" }
+  /classroom/admin/backfill-apply:
+    post:
+      summary: Chuyển cặp đang chờ thành Connection ACTIVE (không hồi sinh revoked)
+      x-owner-feature: F16
+      x-status: implemented
+      responses:
+        "200": { description: "{ok, activated, already_active, blocked, errors, rows[]}" }
+        "400": { $ref: "#/components/responses/Error400" }
+        "401": { $ref: "#/components/responses/Error401" }
+        "403": { $ref: "#/components/responses/Error403" }
+        "404": { $ref: "#/components/responses/Error404" }
 components:
   securitySchemes:
     bearerAuth:

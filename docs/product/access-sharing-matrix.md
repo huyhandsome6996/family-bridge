@@ -23,7 +23,7 @@ Một actor có nhiều vai trò nhưng context admin không 'OR is_superuser' v
 | Entity / nội dung | Read | Create/update/delete | Share/revoke / điều kiện |
 | --- | --- | --- | --- |
 | ProviderIdentity / session | Server auth xử lý; actor chỉ session metadata cần thiết | Bind server verified; logout/revoke theo authority | Không admin impersonation hoặc xuất provider_subject/token |
-| ConnectionInvite / Connection | Hai actor liên quan, metadata nhận biết tối thiểu | Actor claim/confirm/revoke; unique/TTL/khác actor | Active sau hai xác nhận; backup cũng cùng quy tắc; no admin accept |
+| ConnectionInvite / Connection | Hai actor liên quan, metadata nhận biết tối thiểu | Actor claim/confirm/revoke; unique/TTL/khác actor | Active sau hai xác nhận; backup cũng cùng quy tắc; no admin accept (**ngoại lệ 18/10/2026 — DEC-24:** cặp do admin cấp qua CAP-23 tạo Connection ACTIVE ngay với provenance rõ; không mở nội dung riêng, không đồng ý hộ; luồng tự nguyện giữ nguyên) |
 | MoodEntry | Owner; recipient qua MoodShare current | Owner, revision; sửa invalidate grant | Một mood/recipient/revision/generation; revoke chặn read mới |
 | JournalPage | Owner; recipient qua JournalShare current | Owner; prompt admin là template, không page | Một page/recipient/revision; không mặc định cả sổ |
 | PrivateDraft / AIReframe | Owner + dịch vụ kỹ thuật tối thiểu theo policy | Owner request/edit/delete; provider result đúng input_revision | Không share draft/original/suggestion hoặc reverse link từ message |

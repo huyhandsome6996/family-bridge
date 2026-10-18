@@ -34,6 +34,7 @@ Ngày đối chiếu: 10/10/2026. Nguồn chốt: yêu cầu trực tiếp ngư�
 | DEC-21 | Upload logo/ảnh/attachment là mở rộng ngoài MVP; threat model/scan/storage trước | Security + owner US-004/014, quyết định riêng | Chọn asset đã kiểm tra trong build; không upload thực thi/file tùy ý |
 | DEC-22 | Bổ sung schema typed config, lifecycle records và API quản trị sâu | US-004/014/020/024/025; cập nhật Task/ước lượng trước code | Docs không tạo migration/API hoặc thêm US ID giả |
 | DEC-23 | Mức định danh/tuổi, đồng ý tham gia học sinh và quy trình trường | Thầy/đơn vị chuyên môn/privacy US-005/010/052 | Không tuyên bố tự hợp pháp hóa bằng checkbox |
+| DEC-24 | Chế độ ghép cặp do quản trị cấp (admin-provisioned pairs, 18/10/2026): admin có CAP-23 `classroom.provision` cấp cặp tài khoản HS↔PH; LƯU tạo Connection ACTIVE ngay (canonical pair, generation mới, provenance `source=admin_provisioned`), HS/PH KHÔNG cần xác nhận ghép đôi hai phía qua /proposal | Huy (quyết định 18/10/2026); phạm vi: chỉ chế độ cấp phát lớp học F16 | Supersede mệnh đề "hai bên tự xác nhận mới thành kết nối" (project-scope bổ sung 16/10/2026) và WF-08 cho ĐÚNG phạm vi này; luồng invite/proposal tự nguyện giữ nguyên; admin không đọc nội dung riêng, không ghi consent hộ, không tự sinh grant, revoke/unlink vẫn theo FL-20; kết nối lại sau unlink là hành động admin riêng (generation mới, grant cũ không hồi sinh) |
 
 ## Quản lý quyết định
 

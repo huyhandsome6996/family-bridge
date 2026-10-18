@@ -30,6 +30,7 @@ MUST bắt buộc; SHOULD chỉ được bỏ khi có lý do và evidence trong 
 | WF-22 | MUST no code/SQL/JS execution/URL fetch/secrets từ settings UI, asset upload ngoài MVP | AF-01/05; SEC-11/13/19/30 | AT-05-03; malformed config/remote URL denied |
 | WF-23 | MUST docs/status/evidence chính xác; không claim implemented/Done/VERIFIED từ checker | Tất cả; DEC-11/22 | Review diff, metadata và môi trường kiểm tra |
 | WF-24 | SHOULD preview small screen/large text/keyboard/reduced motion và giải thích admin impacts từng flow | UI + FL/AF; SEC-18 | WT-17-01, AT-01-01; Zalo Android/iOS evidence khi có UI |
+| WF-25 | MUST ghép cặp lớp do quản trị cấp CHỈ qua named capability `classroom.provision` + scope lọc thật; tạo Connection ACTIVE trong một transaction (canonical pair, generation mới, provenance source=admin_provisioned); không auto-grant nội dung/consent; audit theo batch | FL-02 provisioned; DEC-24; SEC-04/06/15 | f16 test_admin_provision (A01–A12); AT-04-02 |
 
 ## Quy trình agent
 

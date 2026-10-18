@@ -64,7 +64,7 @@ describe("shared purity contract (ADR-1)", () => {
     assert.equal(typeof barrel.createApiClient, "function");
     assert.equal(typeof barrel.createHttpEndpoints, "function");
     assert.equal(typeof barrel.createMockAdapter, "function");
-    assert.equal(barrel.ADAPTER_METHODS.length, 81);
+    assert.equal(barrel.ADAPTER_METHODS.length, 86);
     assert.equal(typeof barrel.errorKind, "function");
     assert.equal(typeof barrel.failureFor, "function");
     assert.equal(typeof barrel.setSession, "function");

@@ -14,6 +14,7 @@ Mọi row dưới đây kế thừa các guard này. Từ chối/hủy/hết h�
 | --- | --- | --- | --- |
 | FL-01 / session, consent | Anonymous → authenticated qua provider verified; actor tự accepted/declined/withdrawn từng purpose/version; logout revoke session | App ID, principal binding, policy_version chính xác, actor hợp lệ | Login không accepted consent; admin không ký; policy đổi cần xem lại; stale version409 |
 | FL-02 / main connection | Invite created → candidate → awaiting_confirmation → active; từng phía confirm; decline/cancel/expire trước active | Hash/TTL, không self, canonical pair unique; cả hai tự confirm cùng invite, generation hiện tại | Một phía/admin confirm thay không active; revoke race chặn activation; mã hết hạn không hồi sinh |
+| FL-02P / provisioned connection (18/10/2026 — DEC-24/WF-25) | Admin có CAP-23 `classroom.provision` LƯU cặp HS↔PH → Provisioned → ACTIVE ngay (không qua invite/proposal); hoặc backfill chuyển cặp đang chờ sang ACTIVE | Scope lọc thật (global/school=class_ref), canonical pair unique, generation mới, provenance `source=admin_provisioned` + batch_ref, audit batch | Không active lại cặp đã revoke nếu không tick chủ ý; không nhân đôi khi nạp lại; không sinh consent/grant kèm |
 | FL-03 / backup connection | Cùng transitions FL-02; kind backup | Bounds quan hệ, recipient được user chọn ở action gửi | Không timeout→backup/auto-forward; kind change không rộng quyền, reconnect generation mới |
 | FL-04 / MoodEntry | Absent → saved → updated(revision tăng); owner delete theo FL-20 | Unique owner+logical_date, timezone không rewrite ngày cũ | Không saved→shared ngầm; concurrent update409 không overwrite |
 | FL-05 / MoodShare | Private → grant_active → revoked/stale; grant mới qua preview/confirm | Own item + active recipient + approved_revision=current + generation | Stale grant không đọc historical body; sửa mood làm stale, reshare explicit |
@@ -53,6 +54,7 @@ stateDiagram-v2
     [*] --> Pending
     Pending --> Confirming: một phía tự xác nhận
     Confirming --> Active: cả hai và guards hợp lệ
+    Provisioned --> Active: CAP-23 classroom.provision + guards (DEC-24 — admin cấp, provenance rõ)
     Pending --> Closed: hủy hoặc hết hạn
     Confirming --> Closed: từ chối hoặc hết hạn
     Active --> Revoked: unlink
