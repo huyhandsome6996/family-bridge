@@ -525,12 +525,14 @@ function renderMoodCard(body, ctx, { kicker, title, moodResults }) {
           btn.setAttribute("aria-pressed", "false");
           clear(feedback);
           if (error && error.details && error.details.reason === "entry_already_exists_use_edit") {
+            const link = h("a", { href: "#/mood", class: "fb-sec__sub" },
+              "Mở Tâm trạng của mình để sửa mục hôm nay.");
             feedback.appendChild(
               h("span", {},
-                `Hôm nay (${todayIso}) bạn đã ghi nhận cảm xúc rồi — mỗi ngày một ghi nhận. `
-                + "Màn nhật ký sẽ cho phép chỉnh sửa ở bản đầy đủ.",
+                `Hôm nay (${todayIso}) bạn đã ghi nhận cảm xúc rồi — mỗi ngày một ghi nhận. `,
               ),
             );
+            feedback.appendChild(link);
           } else if (error && error.kind === "timeout") {
             feedback.appendChild(
               h("span", {}, "Kết nối quá thời gian chờ. Vui lòng thử lại."),
@@ -565,6 +567,13 @@ function renderMoodCard(body, ctx, { kicker, title, moodResults }) {
     );
   }
   card.appendChild(feedback);
+
+  // Đường đi rõ sang trang F07 đầy đủ (lịch sử/sửa/chia sẻ từng mục) —
+  // quick mood giữ nguyên hành vi, không tạo entry thứ hai cho hôm nay.
+  card.appendChild(
+    h("a", { href: "#/mood", class: "fb-sec__sub" },
+      "Xem lịch sử, sửa và chia sẻ từng mục →"),
+  );
   body.appendChild(card);
 }
 

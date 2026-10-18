@@ -163,6 +163,28 @@ export const page = {
       }),
     );
 
+    // ---- F07: tâm trạng + chia sẻ từng mục ----
+    body.appendChild(
+      createCard({
+        title: "Tâm trạng & chia sẻ",
+        description:
+          "Ghi cảm xúc hôm nay, xem lịch sử và chia sẻ đúng một mục cho đúng "
+          + "người đồng hành. Mặc định riêng tư — chỉ mình bạn.",
+        children: h("div", { class: "fb-profile__actions" },
+          createButton({
+            label: "Tâm trạng của mình",
+            variant: "primary",
+            onClick: () => ctx.navigate("/mood"),
+          }),
+          createButton({
+            label: "Được chia sẻ với bạn",
+            variant: "secondary",
+            onClick: () => ctx.navigate("/mood-shared"),
+          }),
+        ),
+      }),
+    );
+
     body.appendChild(
       createCard({
         title: "Cài đặt",

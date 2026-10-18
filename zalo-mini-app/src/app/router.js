@@ -46,6 +46,9 @@ export const routes = {
   "/proposal": () => import("../pages/proposal/index.js"),
   "/settings": () => import("../pages/settings/index.js"),
   "/privacy": () => import("../pages/privacy/index.js"),
+  // ---- F07: tâm trạng, lịch sử và chia sẻ từng mục (US-015/US-026) ----
+  "/mood": () => import("../pages/mood/index.js"),
+  "/mood-shared": () => import("../pages/mood-shared/index.js"),
 };
 
 export function parseHash() {
