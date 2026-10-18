@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 from family_bridge_core.errors import InputInvalid
 from family_bridge_core.validation import (
     reject_unknown_fields, validate_page_size, validate_text, validate_uuid,
+    validate_revision,
 )
 
 from .auth import FBSDSessionAuthentication
@@ -92,14 +93,15 @@ class MoodEntryDetailView(APIView):
 
 
 class MoodEntrySharesView(APIView):
-    """GET /api/v1/mood/entries/{id}/shares — owner sees active grants of
-    ONE entry (per-entry visibility of recipients/versions)."""
+    """GET /api/v1/mood/entries/{id}/shares — owner sees the grants of ONE
+    entry with their TRUE status (active/stale_revision/revoked/unlinked);
+    stale or revoked rows are never labeled as still readable."""
     authentication_classes = [FBSDSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request, entry_id: str):
         entry_uuid = validate_uuid(entry_id, field="entry_id")
-        entry = MoodEntryService().get_own(author_id=str(request.user.pk),
+        entry = MoodEntryService().get_own(owner_id=str(request.user.pk),
                                            entry_id=str(entry_uuid))
         rows = MoodShareService().list_shared_by_me(
             owner_id=str(request.user.pk), entry_id=str(entry.id))
@@ -107,21 +109,29 @@ class MoodEntrySharesView(APIView):
 
 
 class MoodEntryShareCreateView(APIView):
-    """POST /api/v1/entries/{id}/share — share EXACTLY this entry at its
-    CURRENT revision with ONE connected recipient. Never a history-wide
-    share; requires an active connection (server-verified)."""
+    """POST /api/v1/mood/entries/{id}/share — share EXACTLY this entry at
+    the CONFIRMED revision (expected_revision pins the previewed version; a
+    mismatch is 409 stale — never silently share the current one) with ONE
+    connected recipient. Never a history-wide share; requires an active
+    connection (server-verified)."""
     authentication_classes = [FBSDSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request, entry_id: str):
         entry_uuid = validate_uuid(entry_id, field="entry_id")
         payload = _json_body(request)
-        reject_unknown_fields(payload, allowed={"recipient_id"})
+        reject_unknown_fields(payload, allowed={"recipient_id",
+                                                "expected_revision"})
         recipient_id = validate_uuid(payload.get("recipient_id"),
                                      field="recipient_id")
+        expected_revision = None
+        if payload.get("expected_revision") is not None:
+            expected_revision = validate_revision(
+                payload.get("expected_revision"), field="expected_revision")
         share = MoodShareService().share(
             owner_id=str(request.user.pk), entry_id=str(entry_uuid),
-            recipient_id=str(recipient_id))
+            recipient_id=str(recipient_id),
+            expected_revision=expected_revision)
         return Response(share.grant_view(), status=201)
 
 
@@ -144,15 +154,21 @@ class MoodSummaryView(APIView):
 
 
 class MoodSharedWithMeView(APIView):
-    """GET /api/v1/mood/shared — entries shared WITH me whose grant is
-    active AND whose revision is still current (DB-filtered)."""
+    """GET /api/v1/mood/shared — entries shared WITH me that are still
+    readable: grant active AND revision current AND connection still the
+    one bound at share time (DB-filtered first, connection re-checked on
+    the bounded page). Cursor pagination keeps the response bounded."""
     authentication_classes = [FBSDSessionAuthentication]
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        rows = MoodShareService().list_shared_with_me(
-            recipient_id=str(request.user.pk))
-        return Response({"results": [{
+        page_size = validate_page_size(request.query_params.get("page_size"))
+        cursor = request.query_params.get("cursor") or None
+        rows, next_cursor = MoodShareService().list_shared_with_me(
+            recipient_id=str(request.user.pk), cursor=cursor,
+            page_size=page_size)
+        return Response({"next": next_cursor,
+                         "results": [{
             "share_id": str(row.id),
             "entry_id": str(row.entry_id),
             "owner_id": str(row.owner_id),
