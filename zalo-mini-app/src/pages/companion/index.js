@@ -219,37 +219,55 @@ export const page = {
 
     const load = () => {
       const thisRun = ++runId;
+      const initialGeneration = getSessionGeneration();
+      const initialUserId = getUserId();
       Promise.resolve()
         .then(() => ctx.adapter.programMy())
         .then((myData) => {
           if (cancelled || thisRun !== runId) return null;
+          if (hasLiveSession() && getUserId() !== initialUserId) return null;
           const rows = (myData && Array.isArray(myData.results)
             ? myData.results : []);
           const enrollment = rows.find((row) => row && row.active) || null;
           if (!enrollment) return { enrollment: null };
           // Đã tham gia: nạp tuần + thỏa ước + lời mời + danh mục hoạt động
           // song song; lỗi phần phụ → null để hiển thị trung thực từng
-          // phần, không chặn cả trang.
+          // phần, không chặn cả trang. Lỗi 401 hoặc stale_session được ném ra
+          // để chuyển hướng đăng nhập hoặc bỏ qua phiên cũ.
           return Promise.all([
             Promise.resolve()
               .then(() => ctx.adapter.programWeeks(enrollment.program_key))
-              .catch(() => null),
+              .catch((err) => {
+                if (err && (err.status === 401 || err.kind === "stale_session")) throw err;
+                return null;
+              }),
             Promise.resolve()
               .then(() => ctx.adapter.programAgreement(enrollment.program_key))
-              .catch(() => null),
+              .catch((err) => {
+                if (err && (err.status === 401 || err.kind === "stale_session")) throw err;
+                return null;
+              }),
             Promise.resolve()
               .then(() => ctx.adapter.activitiesInvites())
-              .catch(() => null),
+              .catch((err) => {
+                if (err && (err.status === 401 || err.kind === "stale_session")) throw err;
+                return null;
+              }),
             Promise.resolve()
               .then(() => ctx.adapter.activitiesCatalog({ kind: "activity" }))
-              .catch(() => null),
+              .catch((err) => {
+                if (err && (err.status === 401 || err.kind === "stale_session")) throw err;
+                return null;
+              }),
           ]).then(([weeks, agreement, invites, catalog]) => ({
             enrollment, weeks, agreement, invites, catalog,
           }));
         })
         .then((data) => {
           if (cancelled || thisRun !== runId) return;
-          if (data && data.enrollment && data.weeks === null
+          if (hasLiveSession() && getUserId() !== initialUserId) return;
+          if (!data) return;
+          if (data.enrollment && data.weeks === null
             && data.agreement === null) {
             // Đã tham gia nhưng không đọc được nội dung (mạng/lỗi máy chủ):
             // báo lỗi thật, không dựng trang rỗng giống "không có gì".
@@ -260,6 +278,9 @@ export const page = {
         })
         .catch((error) => {
           if (cancelled || thisRun !== runId) return;
+          if (error && error.kind === "stale_session") return;
+          if (hasLiveSession() && getUserId() !== initialUserId) return;
+          if (!hasLiveSession() && initialUserId && getSessionGeneration() > initialGeneration + 1) return;
           if (error && error.status === 401) {
             ctx.navigate("/login?reason=expired");
             return;

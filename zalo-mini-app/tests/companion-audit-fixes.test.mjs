@@ -36,7 +36,10 @@ if (typeof globalThis.requestAnimationFrame === "undefined") {
 const { describe, it } = await import("node:test");
 const assert = (await import("node:assert/strict")).default;
 
-const { clearSession, setSession } = await import("../src/core/session.js");
+const {
+  clearSession, setSession, getSessionGeneration, clearSessionIfUnchanged,
+  hasLiveSession, getUserId,
+} = await import("../src/core/session.js");
 const { initStore, resetState, setRole, getState } = await import("../src/app/store.js");
 const companionPage = (await import("../src/pages/companion/index.js")).page;
 
@@ -420,3 +423,165 @@ describe("R4 — mutation lỗi trung thực, chặn bấm lặp, phiên cũ kh�
     }
   });
 });
+
+describe("BUG-F02-02: 401 swallowed in parallel GETs & session handling", () => {
+  function makeRuntimeAuthedAdapter(baseMethods) {
+    const wrapped = {};
+    for (const [key, fn] of Object.entries(baseMethods)) {
+      if (typeof fn !== "function") {
+        wrapped[key] = fn;
+        continue;
+      }
+      wrapped[key] = async (...args) => {
+        const capturedGen = getSessionGeneration();
+        let res;
+        try {
+          res = await fn(...args);
+        } catch (err) {
+          if (getSessionGeneration() !== capturedGen) {
+            throw Object.assign(new Error("stale"), { kind: "stale_session", status: 0 });
+          }
+          if (err && err.status === 401) {
+            clearSessionIfUnchanged(capturedGen);
+          }
+          throw err;
+        }
+        if (getSessionGeneration() !== capturedGen) {
+          throw Object.assign(new Error("stale"), { kind: "stale_session", status: 0 });
+        }
+        return res;
+      };
+    }
+    return wrapped;
+  }
+
+  it("một trong 4 request song song bị 401 (activitiesInvites) -> redirect /login?reason=expired", async () => {
+    clearSession();
+    liveSession("user-self");
+    const baseAdapter = makeAdapter();
+    baseAdapter.activitiesInvites = async () => {
+      throw Object.assign(new Error("Unauthorized"), { status: 401, kind: "http" });
+    };
+    const adapter = makeRuntimeAuthedAdapter(baseAdapter);
+    const { ctx, navigateCalls } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(60);
+      assert.ok(navigateCalls.includes("/login?reason=expired"),
+        "khi invites bị 401, trang phải chuyển hướng /login?reason=expired");
+      assert.equal(hasLiveSession(), false, "phiên phải bị xóa khi gặp 401");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("cả 4 request song song đều bị 401 -> redirect /login?reason=expired, không hiện lỗi chung", async () => {
+    clearSession();
+    liveSession("user-self");
+    const baseAdapter = makeAdapter();
+    const make401 = () => async () => {
+      throw Object.assign(new Error("Unauthorized"), { status: 401, kind: "http" });
+    };
+    baseAdapter.programWeeks = make401();
+    baseAdapter.programAgreement = make401();
+    baseAdapter.activitiesInvites = make401();
+    baseAdapter.activitiesCatalog = make401();
+    const adapter = makeRuntimeAuthedAdapter(baseAdapter);
+    const { ctx, navigateCalls } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(60);
+      assert.ok(navigateCalls.includes("/login?reason=expired"),
+        "khi cả 4 đều 401, phải chuyển hướng /login?reason=expired");
+      assert.equal(hasLiveSession(), false, "phiên phải bị xóa khi gặp 401");
+      assert.doesNotMatch(textOf(host), /Không tải được chương trình/,
+        "không được hiện màn hình lỗi chung khi phiên đã hết hạn");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("stale 401 sau khi logout KHÔNG điều hướng /login?reason=expired", async () => {
+    clearSession();
+    liveSession("user-self");
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const baseAdapter = makeAdapter();
+    baseAdapter.programWeeks = async () => {
+      await gate;
+      throw Object.assign(new Error("Unauthorized"), { status: 401, kind: "http" });
+    };
+    const adapter = makeRuntimeAuthedAdapter(baseAdapter);
+    const { ctx, navigateCalls } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(30);
+      // Người dùng đăng xuất chủ động
+      clearSession();
+      release();
+      await wait(60);
+      assert.ok(!navigateCalls.includes("/login?reason=expired"),
+        "401 cũ sau khi logout không được kích hoạt redirect expired");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("stale 401 sau khi đổi actor KHÔNG làm mất phiên của actor mới và không redirect", async () => {
+    clearSession();
+    liveSession("user-self");
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    const baseAdapter = makeAdapter();
+    baseAdapter.programWeeks = async () => {
+      await gate;
+      throw Object.assign(new Error("Unauthorized"), { status: 401, kind: "http" });
+    };
+    const adapter = makeRuntimeAuthedAdapter(baseAdapter);
+    const { ctx, navigateCalls } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(30);
+      // Đổi sang actor khác
+      clearSession();
+      liveSession("user-other");
+      release();
+      await wait(60);
+      assert.ok(!navigateCalls.includes("/login?reason=expired"),
+        "401 của actor cũ không được redirect actor mới sang login expired");
+      assert.equal(hasLiveSession(), true, "phiên của actor mới phải còn nguyên");
+      assert.equal(getUserId(), "user-other");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("lỗi non-401 (500) ở một phần phụ vẫn hiển thị phần dùng được và không redirect", async () => {
+    clearSession();
+    liveSession("user-self");
+    const baseAdapter = makeAdapter();
+    baseAdapter.activitiesInvites = async () => {
+      throw Object.assign(new Error("Server error"), { status: 500, kind: "http" });
+    };
+    baseAdapter.activitiesCatalog = async () => {
+      throw Object.assign(new Error("Server error"), { status: 500, kind: "http" });
+    };
+    const adapter = makeRuntimeAuthedAdapter(baseAdapter);
+    const { ctx, navigateCalls } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(60);
+      assert.equal(navigateCalls.length, 0, "không được điều hướng login khi lỗi non-401");
+      assert.match(textOf(host), /Chương trình Đồng hành bốn tuần/,
+        "vẫn hiển thị nội dung chương trình tuần dùng được");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+});
+
