@@ -171,7 +171,7 @@ class ProgramService:
             "suggested_week": suggested,  # suggestion only, never a lock
             "weeks": weeks,
             "note_paper_guide": "Bạn hoàn toàn có thể dùng sổ giấy — "
-                                "không bắt đầu buộc ghi trong app.",
+                                "không bắt buộc ghi trong app.",
         }
 
     # -- progress ------------------------------------------------------------------

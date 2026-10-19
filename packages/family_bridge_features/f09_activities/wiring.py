@@ -13,10 +13,29 @@ doubles afterwards (reset_registries).
 from __future__ import annotations
 
 import json
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 ACTIVITY_CONTENT_KINDS = ("activity", "micro_lesson", "paper_guide")
 _ACTIVITY_LIMIT = 50
+
+
+def _source_minutes(body: Dict[str, Any]) -> Optional[int]:
+    """QA 19/10 R06 (production-wiring completion): the activity/lesson
+    MINUTES live INSIDE the published body JSON (ContentItem has no
+    minutes column), while the content-reader port contract — and
+    `_safe_content`/`_safe_minutes` on the service side — read minutes at
+    the TOP LEVEL of the raw dict (same shape as the port's test doubles
+    in tests/feature-lab/labgrants/f09_fixtures.py).
+
+    Lift a source-provided integer (non-bool) into that slot so the
+    pass-through works in production too; the service stays the single
+    bounds authority (integer 1..1440 passes, anything else -> None and
+    the UI honestly says "chưa được cung cấp" — never a invented default).
+    """
+    minutes = body.get("minutes")
+    if isinstance(minutes, bool) or not isinstance(minutes, int):
+        return None
+    return minutes
 
 
 class PublishedContentActivityReader:
@@ -42,7 +61,7 @@ class PublishedContentActivityReader:
             content_key = str(item.content_key or "").strip()
             if not (1 <= len(content_key) <= 64):
                 continue
-            out.append({
+            card: Dict[str, Any] = {
                 "content_key": content_key,
                 "kind": str(item.kind)[:32],
                 "title": str(item.title)[:120],
@@ -52,7 +71,11 @@ class PublishedContentActivityReader:
                 "status": str(item.status),
                 "published_at": item.published_at.isoformat()
                 if item.published_at else None,
-            })
+            }
+            minutes = _source_minutes(body)
+            if minutes is not None:
+                card["minutes"] = minutes
+            out.append(card)
         return out
 
 
