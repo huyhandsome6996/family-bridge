@@ -65,9 +65,10 @@
 | `#/login` | Nhập mã `HS01` + mật khẩu `TestBridge2026!`, bấm "Đăng nhập". | Đăng nhập thành công, chuyển hướng sang trang điều khoản `#/consent` hoặc trang chủ `#/home`. |
 | `#/consent` | Bấm chọn đồng ý điều khoản dịch vụ (tùy chọn nghiên cứu có thể từ chối). | Chấp nhận điều khoản thành công, thanh điều hướng dưới đáy hiển thị đầy đủ. |
 | `#/companion` | Mở trang Đồng hành trên tài khoản `HS01`. | Thấy tiêu đề "Chương trình Đồng hành bốn tuần", 4 thẻ tuần (Tuần 1–4) mở khóa, không bị khóa tuần 4, có ghi chú "Bạn hoàn toàn có thể dùng sổ giấy". |
-| `#/companion` | Tại mục "Thỏa ước gia đình mới", bấm "Đề xuất thỏa ước". | Tạo đề xuất thành công với cam kết tuần 4. Trạng thái chuyển sang "Đã đề xuất" (chờ 2 bên xác nhận). |
+| `#/companion` | Tại mục "Thỏa ước gia đình mới", bấm "Đề xuất thỏa ước". | Tạo đề xuất thành công với cam kết tuần 4. Trạng thái chuyển sang "Chờ hai bên xác nhận". LƯU Ý (đính chính theo QA 19/10): propose KHÔNG tính là chữ ký — HS vẫn phải bấm thêm "Tôi xác nhận thỏa ước này". |
+| `#/companion` (vẫn tài khoản `HS01`) | Bấm "Tôi xác nhận thỏa ước này" (chữ ký THỨ NHẤT). | Trạng thái VẪN là "Chờ hai bên xác nhận" (một chữ ký chưa đủ — code đúng, checklist cũ sai); hiển thị "Bạn đã xác nhận. Đang chờ người kia tự xác nhận cùng phiên bản…". |
 | `#/companion` (Cửa sổ ẩn danh / Trình duyệt khác) | Đăng nhập bằng tài khoản `PH01` (Phụ huynh chính) và vào `#/companion`. | Thấy bản đề xuất thỏa ước do `HS01` tạo, có nút "Xác nhận thỏa ước". |
-| `#/companion` (Tài khoản `PH01`) | Bấm "Xác nhận thỏa ước". | Thỏa ước chuyển sang trạng thái "Đã có hiệu lực" (Confirmed) vì cả 2 bên của cặp chính đã xác nhận cùng revision. |
+| `#/companion` (Tài khoản `PH01`) | Bấm "Xác nhận thỏa ước" (chữ ký THỨ HAI, cùng revision). | Thỏa ước chuyển sang "Đã cùng xác nhận" (Confirmed) khi ĐỦ HAI người TỰ xác nhận cùng revision; `confirmed_at` là thời điểm chữ ký thứ hai (QA 19/10 R04). |
 | `#/companion` (Cửa sổ ẩn danh khác) | Đăng nhập bằng `PH02` (Điểm tựa dự phòng) và vào `#/companion`. | Không thấy thỏa ước của cặp HS01-PH01 (không bị gán nhầm hoặc lộ thỏa ước của cặp chính sang backup). |
 | `#/help` | Truy cập trang trợ giúp `#/help`. | Trang mở bình thường, số hotline và hướng dẫn không bị chặn dù có hay chưa có kết nối. |
 
