@@ -1116,9 +1116,30 @@ export function createMockAdapter({ scenario = null } = {}) {
       };
     },
 
-    async privacyOverview() {
+    async privacyOverview({ cursor = null } = {}) {
       await wait(150);
-      return { shared_by_me: privacyGrants.map((grant) => ({ ...grant })), connections: connections.map((c) => ({ ...c })), source: "fixture" };
+      // Fixture cursor v2 (R09) — CHỈ dùng cho demo/test, KHÔNG phải dữ liệu
+      // thật: trang-1 trả các grant minh họa + con trỏ giả + has_more:true;
+      // trang kế (cursor bất kỳ) RỖNG — trang phải dừng CÓ TRẦN (không append
+      // mục nào, không lặp vô hạn). source:"fixture" là quy ước mock-wide.
+      if (cursor) {
+        return {
+          shared_by_me: [],
+          connections: connections.map((c) => ({ ...c })),
+          next_cursor: null,
+          has_more: false,
+          source: "fixture",
+        };
+      }
+      return {
+        shared_by_me: privacyGrants.map((grant) => ({ ...grant })),
+        connections: connections.map((c) => ({ ...c })),
+        next_cursor: privacyGrants.length
+          ? "ov2|2026-01-01T00:00:00+00:00|demo-mood-grant-1"
+          : null,
+        has_more: privacyGrants.length > 0,
+        source: "fixture",
+      };
     },
 
     async revokeGrant({ itemType, itemId, recipientId } = {}) {
@@ -1167,6 +1188,28 @@ export function createMockAdapter({ scenario = null } = {}) {
         deletionRequest.status = "cancelled";
       }
       return { request_id: requestId, status: "cancelled", source: "fixture" };
+    },
+
+    async listDeletionRequests({ cursor = null } = {}) {
+      await wait(120);
+      // Fixture MỘT trang (test-only/demo) — shape ĐÚNG backend list_requests
+      // (f15 services/deletion.py): {results, next_cursor, has_more}, item
+      // {request_id,status,scope_categories,requested_at,revision}. Fixture
+      // không có trang thứ hai → next_cursor:null + has_more:false; cursor
+      // đưa vào (vượt phạm vi fixture) trả rỗng — trung thực, không bịa thêm.
+      if (cursor) {
+        return { results: [], next_cursor: null, has_more: false, source: "fixture" };
+      }
+      const results = deletionRequest
+        ? [{
+          request_id: deletionRequest.request_id,
+          status: deletionRequest.status,
+          scope_categories: (deletionRequest.scope_categories || []).slice(),
+          requested_at: deletionRequest.requested_at,
+          revision: 1,
+        }]
+        : [];
+      return { results, next_cursor: null, has_more: false, source: "fixture" };
     },
 
     async withdrawConsent({ purpose } = {}) {

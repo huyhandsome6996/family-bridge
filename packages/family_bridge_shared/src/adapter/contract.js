@@ -88,6 +88,7 @@ export const ADAPTER_METHODS = [
   "getDeletionRequest",   // GET  /api/v1/privacy/deletion-requests/{id}
   "cancelDeletionRequest",// POST /api/v1/privacy/deletion-requests/{id}/cancel
   "withdrawConsent",      // POST /api/v1/privacy/consents/{purpose}/withdraw
+  "listDeletionRequests", // GET  /api/v1/privacy/deletion-requests/list (owner-only, cursor v2 "v2|<iso>|<id>")
   "createMoodEntry",      // POST /api/v1/mood/entries (F07 emotion allowlist)
   "listMoodEntries",      // GET  /api/v1/mood/entries (page_size mapping đúng)
   "getMoodEntry",         // GET   /api/v1/mood/entries/{id} (owner-only)
