@@ -49,10 +49,12 @@ class AiRefineOperation(models.Model):
 
     Purpose: guarantee at most ONE provider call per (author, key) operation.
     The row is claimed (INFLIGHT) in a short atomic BEFORE the provider call;
-    concurrent requests with the same key fail the unique claim and receive
-    409 slot_unavailable(refine_in_progress) instead of double-charging the
-    provider. The finalize marks the claim COMPLETED together with the
-    suggestion insert (same transaction).
+    concurrent requests with the same key fail the unique claim and never
+    double-charge the provider: a same-payload loser waits (bounded <= 2s,
+    see express.REFINE_CLAIM_WAIT_TOTAL_SECONDS) for the winner to finalize
+    and replays its stored outcome, and only past that bound receives
+    409 slot_unavailable(refine_in_progress). The finalize marks the claim
+    COMPLETED together with the suggestion insert (same transaction).
 
     Outcome-unknown reconciliation: a crash/timeout between claim and finalize
     leaves a stale INFLIGHT row; after the TTL the user's deliberate retry

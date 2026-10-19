@@ -16,9 +16,13 @@ Refine flow (explicit user action only):
    second provider call; same key different payload (including a different
    input_revision) -> 409. Double-charge guard (R1A2-01): a per-(author,key)
    AiRefineOperation claim is inserted INFLIGHT in a short atomic BEFORE the
-   provider call — a concurrent same-key request fails the unique claim and
-   receives 409 slot_unavailable(refine_in_progress) instead of calling the
-   provider a second time. The unique (author, key) suggestion constraint
+   provider call — a concurrent same-key request never calls the provider a
+   second time. A same-payload loser of the claim race does NOT fail hard:
+   it waits a BOUNDED window (<= 2s, no locks held) for the in-flight
+   winner to finalize and then replays the winner's stored outcome; only if
+   the winner does not settle within the bound does it receive
+   409 slot_unavailable(refine_in_progress) (the client retries later and
+   lands on the replay). The unique (author, key) suggestion constraint
    remains the last layer: a finalize race catches IntegrityError and
    returns the winner's row (replay) instead of a second stored operation.
 6. Transaction phases (C6): validate + consent + replay-check -> short
@@ -42,6 +46,7 @@ Refine flow (explicit user action only):
 from __future__ import annotations
 
 import datetime as dt
+import time
 from typing import Any, Dict, Optional
 
 from django.db import IntegrityError, transaction
@@ -72,6 +77,22 @@ from . import registry
 # 409 slot_unavailable and let the user retry — the retry is user-initiative,
 # never an automatic re-send (C6: response-unknown is never auto-retried).
 REFINE_OPERATION_TTL_SECONDS = 60
+
+# F04-T07 (MySQL race evidence, task 2-c): a same-payload request that loses
+# the claim race waits for the in-flight winner to finalize instead of
+# failing hard. DSA bounds (documented for review):
+# - REFINE_CLAIM_WAIT_STEP_SECONDS (0.1s) between settlement polls — each
+#   poll is one cheap indexed SELECT in autocommit; NO row lock is held
+#   while waiting, so the winner's finalize is never blocked by the waiter.
+# - REFINE_CLAIM_WAIT_TOTAL_SECONDS (2.0s) maximum total wait per request —
+#   deliberately ~30x below the 60s reclaim TTL, so the wait can NEVER
+#   reclaim another request's claim and can NEVER cause a second provider
+#   call: the waiter only replays the winner's already-stored outcome (C6
+#   preserved — no automatic resend, no double charge) or, past the bound,
+#   fails with the truthful 409 slot_unavailable(refine_in_progress) that
+#   the compose UI already treats as "busy, try again".
+REFINE_CLAIM_WAIT_STEP_SECONDS = 0.1
+REFINE_CLAIM_WAIT_TOTAL_SECONDS = 2.0
 
 # Frozen contract C2/C3: optional author-client revision tag.
 INPUT_REVISION_MAX = 2147483647
@@ -192,20 +213,35 @@ class AiExpressService:
         fence (N02) validates pk + payload hash under lock so a reused or
         TTL-reclaimed key can never inherit an older request's result.
 
+        Concurrent same-key loser (F04-T07, MySQL evidence): against a
+        FRESH (< TTL) INFLIGHT claim of the SAME payload this request does
+        not fail hard — it polls the claim (bounded, lock-free) until the
+        winner finalizes and then replays the winner's stored outcome.
+        DSA bounds: poll step 0.1s (REFINE_CLAIM_WAIT_STEP_SECONDS), total
+        wait <= 2.0s (REFINE_CLAIM_WAIT_TOTAL_SECONDS), at most 3 claim
+        create attempts. The bound is far below the 60s TTL, so the wait
+        never reclaims another request's claim and never triggers a second
+        provider call — C6 (no automatic resend) and the one-provider-call
+        guarantee stay intact. A different-payload INFLIGHT claim can never
+        replay, so it fails fast (409) without waiting.
+
         Raises:
-        - SlotUnavailable (409): a FRESH (< TTL) INFLIGHT claim exists —
-          another request for the same key is mid-flight; the client retries
+        - SlotUnavailable (409): the same-payload winner did not settle
+          within the bounded wait (still mid-flight), or the claim slot kept
+          changing hands past the create-attempt bound; the client retries
           later and lands on the replay.
         - DuplicateKeyPayloadMismatch (409): the claim/result belongs to a
           different payload, or the claim is COMPLETED while its suggestion
           row is gone (strange state — never silently re-run the key).
         """
-        now = dt.datetime.now(tz=UTC)
+        author_id = str(author_id)
+        wait_deadline = (dt.datetime.now(tz=UTC)
+                         + dt.timedelta(seconds=REFINE_CLAIM_WAIT_TOTAL_SECONDS))
         for _ in range(3):  # bounded: stale reclamation retries at most once
             try:
                 with transaction.atomic():
                     row = AiRefineOperation.objects.create(
-                        author_id=str(author_id),
+                        author_id=author_id,
                         idempotency_key=idempotency_key,
                         payload_hash_hex=payload_hash,
                         status=STATUS_INFLIGHT)
@@ -215,47 +251,87 @@ class AiExpressService:
                         "payload_hash": payload_hash}
             except IntegrityError:
                 op = AiRefineOperation.objects.filter(
-                    author_id=str(author_id),
+                    author_id=author_id,
                     idempotency_key=idempotency_key).first()
                 if op is None:
                     # Insert lost a razor-thin race against a concurrent
-                    # stale-claim delete; re-attempt the claim.
+                    # stale-claim delete (or the winner's INSERT is not
+                    # committed/visible yet); re-attempt the claim.
                     continue
                 if op.status == STATUS_COMPLETED:
-                    winner = AiSuggestion.objects.filter(
-                        author_id=str(author_id),
-                        idempotency_key=idempotency_key).first()
-                    if winner is None:
-                        # Strange state (claim completed but its suggestion
-                        # was deleted out-of-band, e.g. manually): refuse the
-                        # key reuse instead of faking a fresh operation.
-                        raise DuplicateKeyPayloadMismatch(
-                            {"reason": "duplicate_key_state_mismatch"}) \
-                            from None
-                    if winner.payload_hash_hex != payload_hash:
+                    return self._replay_completed(
+                        author_id=author_id, idempotency_key=idempotency_key,
+                        payload_hash=payload_hash)
+                # INFLIGHT claim.
+                age = (dt.datetime.now(tz=UTC)
+                       - op.created_at).total_seconds()
+                if age >= REFINE_OPERATION_TTL_SECONDS:
+                    # Outcome-unknown reconciliation: the owning request died
+                    # between claim and finalize (no suggestion row exists —
+                    # the replay check already missed). The USER deliberately
+                    # retried after the TTL window (never an automatic
+                    # resend), so the stale slot is reclaimed here. Same
+                    # payload proceeds; a different payload must never
+                    # silently overwrite another payload's claim -> 409.
+                    if op.payload_hash_hex != payload_hash:
                         raise DuplicateKeyPayloadMismatch(
                             {"reason": "same_key_different_payload"}) from None
-                    return winner  # replay of the finished operation
-                # INFLIGHT claim.
-                age = (now - op.created_at).total_seconds()
-                if age < REFINE_OPERATION_TTL_SECONDS:
+                    AiRefineOperation.objects.filter(
+                        pk=op.pk, status=STATUS_INFLIGHT).delete()
+                    # Loop re-attempts the create; a concurrent reclaimer
+                    # wins the unique slot and this request sees its fresh
+                    # claim.
+                    continue
+                # FRESH INFLIGHT: another request for the same key is
+                # mid-flight (provider wait + finalize). Same payload ->
+                # bounded wait for its settlement, then replay; different
+                # payload can never replay -> fail fast (409, unchanged).
+                if op.payload_hash_hex != payload_hash:
                     raise SlotUnavailable(
                         {"reason": "refine_in_progress"}) from None
-                # Outcome-unknown reconciliation: the owning request died
-                # between claim and finalize (no suggestion row exists — the
-                # replay check already missed). The USER deliberately retried
-                # after the TTL window (never an automatic resend), so the
-                # stale slot is reclaimed here. Same payload proceeds;
-                # a different payload must never silently overwrite another
-                # payload's claim -> 409.
-                if op.payload_hash_hex != payload_hash:
-                    raise DuplicateKeyPayloadMismatch(
-                        {"reason": "same_key_different_payload"}) from None
-                AiRefineOperation.objects.filter(
-                    pk=op.pk, status=STATUS_INFLIGHT).delete()
-                # Loop re-attempts the create; a concurrent reclaimer wins
-                # the unique slot and this request sees its fresh claim.
+                while dt.datetime.now(tz=UTC) < wait_deadline:
+                    time.sleep(REFINE_CLAIM_WAIT_STEP_SECONDS)
+                    op = AiRefineOperation.objects.filter(
+                        author_id=author_id,
+                        idempotency_key=idempotency_key).first()
+                    if op is None:
+                        # The claim row vanished mid-wait (F15 deletion, or
+                        # the user's deliberate TTL reclaim): re-attempt the
+                        # claim as a new generation (bounded by the outer
+                        # create-attempt loop).
+                        break
+                    if op.status == STATUS_COMPLETED:
+                        return self._replay_completed(
+                            author_id=author_id,
+                            idempotency_key=idempotency_key,
+                            payload_hash=payload_hash)
+                    # Still INFLIGHT — and necessarily far from the TTL (the
+                    # wait bound is ~30x smaller than it): keep polling.
+                else:
+                    # Bound expired while the winner is still mid-flight:
+                    # truthful 409, no reclaim, no second provider call.
+                    raise SlotUnavailable(
+                        {"reason": "refine_in_progress"}) from None
+                # Claim row vanished mid-wait -> re-attempt the claim.
+                continue
         raise SlotUnavailable({"reason": "refine_in_progress"}) from None
+
+    @staticmethod
+    def _replay_completed(*, author_id: str, idempotency_key: str,
+                          payload_hash: str):
+        """Resolve a COMPLETED claim into its replay (or a truthful 409)."""
+        winner = AiSuggestion.objects.filter(
+            author_id=author_id, idempotency_key=idempotency_key).first()
+        if winner is None:
+            # Strange state (claim completed but its suggestion was deleted
+            # out-of-band, e.g. manually): refuse the key reuse instead of
+            # faking a fresh operation.
+            raise DuplicateKeyPayloadMismatch(
+                {"reason": "duplicate_key_state_mismatch"}) from None
+        if winner.payload_hash_hex != payload_hash:
+            raise DuplicateKeyPayloadMismatch(
+                {"reason": "same_key_different_payload"}) from None
+        return winner  # replay of the finished operation
 
     # -- refine (phase-separated: NO atomic around the provider call) -----------
     def refine(self, *, author_id: str, original_text: str, purpose: str,
