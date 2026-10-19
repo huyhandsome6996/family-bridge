@@ -62,6 +62,18 @@ from family_bridge_features.f15_privacy.models import DeletionRequest
 from family_bridge_features.f15_privacy.services import registry as f15_registry
 from family_bridge_features.f15_privacy.services.deletion import DeletionService
 
+
+class _AllowAllAuthorizer:
+    """TEST-ONLY synthetic handler authorization (DEC-14/18 gate mở trong
+    test đúng idiom F15 tự dùng; production vẫn fail-closed khi thiếu
+    capability privacy.case)."""
+
+    def authorize(self, *, actor_id, action, request_id):
+        return True
+
+
+_A5_OPERATOR_ID = "00000000-0000-0000-0000-00000000a5a5"  # handler tổng hợp test-only
+
 AI_POLICY_VERSION = "ai-v1"  # CURRENT_POLICY_VERSIONS["ai_processing"]
 # Snapshot BEFORE any test resets the f15 registry: apps.py ready() đăng ký
 # hook 'ai' của f04_ai lúc Django setup; các test reset registry toàn cục
@@ -829,7 +841,9 @@ class F04A5AiDeletionTests(F04A5BaseMixin, TestCase):
                                              categories=["ai"])
         self.assertFalse(requested.get("duplicate"))
         service.verify_request(request_id=requested["request_id"],
-                               verifier_ref="a5-test-verifier")
+                               verifier_ref="a5-test-verifier",
+                               actor_id=_A5_OPERATOR_ID,
+                               authorizer=_AllowAllAuthorizer())
         done = service.process_request(request_id=requested["request_id"])
         self.assertEqual(done.status, DeletionRequest.STATUS_COMPLETED,
                          f"hook 'ai' ok → completed, thấy {done.failure_detail}")
@@ -841,7 +855,9 @@ class F04A5AiDeletionTests(F04A5BaseMixin, TestCase):
         # Idempotent: yêu cầu xóa lần nữa vẫn completed, không nứt gì thêm.
         again = service.request_deletion(user=self.student, categories=["ai"])
         service.verify_request(request_id=again["request_id"],
-                               verifier_ref="a5-test-verifier")
+                               verifier_ref="a5-test-verifier",
+                               actor_id=_A5_OPERATOR_ID,
+                               authorizer=_AllowAllAuthorizer())
         done2 = service.process_request(request_id=again["request_id"])
         self.assertEqual(done2.status, DeletionRequest.STATUS_COMPLETED)
         self.assertTrue(AiSuggestion.objects.filter(pk=sid_b).exists())
