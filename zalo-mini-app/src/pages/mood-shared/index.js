@@ -32,9 +32,14 @@ export const page = {
 
     let cancelled = false;
     let runId = 0;
+    // R01: lifecycle object dùng chung cho mọi phản hồi muộn của trang —
+    // callback muộn KHÔNG ghi DOM sau khi rời trang / đăng xuất / đổi actor.
+    const lc = { cancelled: false, generation: 0 };
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
+      lc.cancelled = true;
+      lc.generation += 1;
     };
 
     const demo = Boolean(ctx.store.getState().demoMode);
@@ -48,7 +53,7 @@ export const page = {
       return root;
     }
 
-    const state = { nextCursor: null };
+    const state = { nextCursor: null, _lc: lc };
 
     const listCard = h("section", { class: "fb-scard" });
     body.appendChild(listCard);
@@ -66,6 +71,10 @@ function destroy() {
 page.destroy = destroy;
 
 function loadList(ctx, card, state, { reset = false } = {}) {
+  const lc = state._lc;
+  const gen = lc.generation;
+  state._listSeq = (state._listSeq || 0) + 1;
+  const seq = state._listSeq;
   if (reset) {
     clear(card);
     state.nextCursor = null;
@@ -97,6 +106,10 @@ function loadList(ctx, card, state, { reset = false } = {}) {
     limit: PAGE_SIZE,
   })
     .then((data) => {
+      if (lc.cancelled || lc.generation !== gen || seq !== state._listSeq) {
+        loading.remove();
+        return;
+      }
       loading.remove();
       const rows = (data && data.results) || [];
       state.nextCursor = (data && data.nextCursor) || null;
@@ -111,13 +124,17 @@ function loadList(ctx, card, state, { reset = false } = {}) {
         );
         li.appendChild(createButton({
           label: "Mở nội dung", variant: "secondary",
-          onClick: () => openDetail(ctx, card, row.share_id),
+          onClick: () => openDetail(ctx, card, state, row.share_id),
         }));
         list.appendChild(li);
       }
       moreBtn.hidden = !state.nextCursor;
     })
     .catch((error) => {
+      if (lc.cancelled || lc.generation !== gen || seq !== state._listSeq) {
+        loading.remove();
+        return;
+      }
       loading.remove();
       if (error && error.status === 401) {
         ctx.navigate("/login?reason=expired");
@@ -135,7 +152,9 @@ function loadList(ctx, card, state, { reset = false } = {}) {
     });
 }
 
-function openDetail(ctx, card, shareId) {
+function openDetail(ctx, card, state, shareId) {
+  const lc = state._lc;
+  const gen = lc.generation;
   // Mỗi lần mở là một lần kiểm tra quyền MỚI với máy chủ: nội dung lần mở
   // trước bị GỠ khỏi màn trước khi hỏi lại — không dùng snapshot cũ làm
   // bằng chứng quyền còn hiệu lực sau thu hồi/sửa/kết nối kết thúc.
@@ -150,6 +169,7 @@ function openDetail(ctx, card, shareId) {
 
   ctx.adapter.getSharedMoodEntry(shareId)
     .then((data) => {
+      if (lc.cancelled || lc.generation !== gen) return; // phản hồi muộn
       const entry = (data && data.entry) || {};
       clear(detail);
       detail.appendChild(h("h2", { class: "fb-scard__title" },
@@ -170,6 +190,7 @@ function openDetail(ctx, card, shareId) {
       detail.appendChild(closeBtn);
     })
     .catch((error) => {
+      if (lc.cancelled || lc.generation !== gen) return;
       if (error && error.status === 401) {
         ctx.navigate("/login?reason=expired");
         return;

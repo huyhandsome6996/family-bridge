@@ -119,3 +119,12 @@ home/profile có đường đi rõ; không đụng `web/**` (regression 227 PASS
 
 Bằng chứng đầy đủ: `docs/handover/f07-mood-sharing/` (bàn giao) — verification
 report từng nghiệm thu, lệnh chạy, SHA.
+
+## Vòng 19/10/2026 — sửa R01–R07 + web parity
+
+Chi tiết đầy đủ ở `docs/handover/f07-mood-sharing/verification-report.md`
+(mục "Vòng 19/10/2026"). Tóm tắt số runner: F07 module SQLite 53 OK/4 skip;
+MySQL 8.4.6 53 OK/0 skip (row lock thật); race MySQL 4/4; full harness 534
+OK/13 skip; repro độc lập MySQL 3/3 OK; browser R01/R06 9/9; parity smoke
+12/12; E2E HTTP 21/21; E2E chéo UI hai client 20/20; Mini App 313 PASS +
+build; Web 243 PASS + build; shared 37; mobile 53; boundaries SẠCH; docs OK.

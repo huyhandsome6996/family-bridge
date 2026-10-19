@@ -411,3 +411,66 @@ describe("F07 Mini App — trang Được chia sẻ với bạn (recipient)", ()
     unmount(host);
   });
 });
+
+describe("F07 Mini App — R01 lifecycle: rời trang/đổi phiên gỡ dữ liệu riêng", () => {
+  it("destroy (rời trang) gỡ sheet preview khỏi document — không chỉ ẩn CSS", async () => {
+    clearSession();
+    liveSession();
+    const { adapter } = makeAdapter();
+    const { ctx } = makeCtx(adapter);
+    const { host } = mount(moodPage, ctx);
+    await wait(20);
+    findButton(host, "Chia sẻ mục này").click();
+    await wait(20);
+    assert.ok(document.querySelector(".fb-sheet-root"), "sheet đang mở");
+    assert.ok(document.querySelector(".fb-sheet").textContent.includes("lo vì bài kiểm tra"),
+      "preview chứa nội dung riêng tư");
+    moodPage.destroy(); // router gọi khi hashchange sang trang khác
+    await wait(10);
+    assert.equal(document.querySelector(".fb-sheet-root"), null,
+      "overlay sheet phải bị gỡ khỏi body");
+    assert.equal(document.querySelector(".fb-sheet"), null);
+    // Router sau destroy còn clear(root) — mô phỏng đúng: gỡ node trang rồi
+    // toàn bộ nội dung riêng tư phải rời DOM (không chỉ ẩn bằng CSS).
+    host.remove();
+    assert.ok(!document.body.textContent.includes("lo vì bài kiểm tra"),
+      "nội dung riêng tư phải rời DOM, không còn ẩn bằng CSS");
+    return;
+  });
+
+  it("phản hồi muộn sau destroy không ghi DOM mới (late response guard)", async () => {
+    clearSession();
+    liveSession();
+    let resolveList;
+    const { adapter } = makeAdapter({
+      listMoodEntries: () => new Promise((resolve) => { resolveList = resolve; }),
+    });
+    const { ctx } = makeCtx(adapter);
+    const { host } = mount(moodPage, ctx);
+    await wait(20);
+    moodPage.destroy(); // rời trang TRƯỚC khi response về
+    await wait(5);
+    resolveList({ results: [ENTRY_V1], next: null }); // phản hồi muộn
+    await wait(20);
+    assert.ok(!host.textContent.includes("lo vì bài kiểm tra"),
+      "phản hồi muộn không được ghi nội dung vào trang cũ");
+    unmount(host);
+  });
+
+  it("clearSession (đăng xuất/đổi actor) + destroy: sheet bị đóng", async () => {
+    clearSession();
+    liveSession();
+    const { adapter } = makeAdapter();
+    const { ctx } = makeCtx(adapter);
+    const { host } = mount(moodPage, ctx);
+    await wait(20);
+    findButton(host, "Chia sẻ mục này").click();
+    await wait(20);
+    clearSession(); // actor logout thật của phiên hiện tại
+    moodPage.destroy();
+    await wait(10);
+    assert.equal(document.querySelector(".fb-sheet-root"), null,
+      "đổi phiên/rời trang phải gỡ overlay chứa dữ liệu riêng");
+    unmount(host);
+  });
+});

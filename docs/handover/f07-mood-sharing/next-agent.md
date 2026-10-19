@@ -1,5 +1,7 @@
 # next-agent.md — cho agent tiếp tục sau đợt F07 này
 
+> **Cập nhật 19/10/2026 (dated supersede theo quyết định Huy trong PROMPT-COPY-F07):** F07 phải có UI gọi backend thật trên CẢ web và Zalo Mini App. Phần web F07 đã triển khai trên nhánh này (`web/src/pages/mood/`, `web/src/pages/mood-shared/`, router, profile/home, tests). Xem `docs/handover/web-miniapp-separation/route-feature-parity.md` cho 2 route mới.
+
 ## Luồng auth đang dùng (đừng đoán lại)
 
 - Mini App chính thức: login form class-session (`POST /api/v1/auth/class-session`,
@@ -17,7 +19,7 @@
 | `f07_mood/apps.py` wiring | F07 | đăng ký reader/provider/hook; đổi protocol phải cùng F01/F15 owner |
 | `packages/family_bridge_shared/**` | lead phối hợp | 82 methods; mọi thay đổi cần contract test + mock + web regression |
 | `zalo-mini-app/src/app/*`, main.js | lead mini app | route additive; không phá page contract |
-| `web/**` | contributor web | KHÔNG sửa từ nhánh F07 |
+| `web/**` | contributor web | **Supersede 19/10/2026 (Huy, USER-DECISION-WEB-PARITY): web được sửa TRONG PHẠM VI F07** trên nhánh F07 — pages `/mood`, `/mood-shared`, router/profile/home entry points, CSS mood reflow, textarea component, tests; vẫn bảo toàn phần web ngoài F07 và contributor changes. Mệnh đề "KHÔNG sửa web" dưới đây chỉ còn giá trị cho phần ngoài F07. |
 | f01/f15/f02/f16 internals | owner tương ứng | chỉ đăng ký theo protocol công khai |
 
 ## Đang thiếu / ai phụ trách

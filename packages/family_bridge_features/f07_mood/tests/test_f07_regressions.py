@@ -289,3 +289,115 @@ class Finding8CreateRaceBusinessError(RegressionBase):
         self.assertEqual(self._create().status_code, 201)
         duplicate = self._create(emotion="vui")
         self.assertEqual(duplicate.status_code, 400)
+
+
+class ReviewFixR03MultiOwnerListing(RegressionBase):
+    """R03 fix regression: a recipient shared with by TWO owners must see
+    BOTH grants in /mood/shared. The old cache keyed by recipient_id alone
+    reused the first owner's connection verdict for the second owner and
+    silently dropped that owner's grant from the list."""
+
+    def _second_owner(self):
+        from fixtures.actors import make_student as _make_student
+        return _make_student()
+
+    def test_two_owners_same_recipient_both_listed(self):
+        second_owner = self._second_owner()
+        make_test_connection(second_owner, self.caregiver)
+        second_token, _ = make_session(second_owner)
+        first_share = self._share(self._create().data["entry_id"])
+        second_entry = self.client.post(
+            "/api/v1/mood/entries",
+            {"entry_date": (vn_today() - dt.timedelta(days=1)).isoformat(),
+             "emotion": "vui", "note": "mục của owner hai"},
+            format="json", **auth_header(second_token)).data["entry_id"]
+        second_share = self._share(second_entry, token=second_token)
+        self.assertEqual(first_share.status_code, 201)
+        self.assertEqual(second_share.status_code, 201)
+        listed, _ = MoodShareService().list_shared_with_me(
+            recipient_id=str(self.caregiver.pk), page_size=20)
+        self.assertEqual(
+            {str(row.pk) for row in listed},
+            {str(first_share.data["share_id"]),
+             str(second_share.data["share_id"])})
+
+    def test_pagination_covers_both_owners(self):
+        second_owner = self._second_owner()
+        make_test_connection(second_owner, self.caregiver)
+        second_token, _ = make_session(second_owner)
+        first_id = self._share(self._create().data["entry_id"]).data["share_id"]
+        second_entry = self.client.post(
+            "/api/v1/mood/entries",
+            {"entry_date": (vn_today() - dt.timedelta(days=1)).isoformat(),
+             "emotion": "vui", "note": "mục của owner hai"},
+            format="json", **auth_header(second_token)).data["entry_id"]
+        second_id = self._share(second_entry, token=second_token).data["share_id"]
+        page1, cursor = MoodShareService().list_shared_with_me(
+            recipient_id=str(self.caregiver.pk), page_size=1)
+        self.assertEqual(len(page1), 1)
+        page2, next_cursor = MoodShareService().list_shared_with_me(
+            recipient_id=str(self.caregiver.pk), cursor=cursor, page_size=1)
+        self.assertEqual(len(page2), 1)
+        self.assertEqual(
+            {str(page1[0].pk), str(page2[0].pk)}, {str(first_id), str(second_id)})
+        self.assertIsNone(next_cursor)
+
+    def test_unlink_one_owner_keeps_other_grant_listed(self):
+        from labgrants.models import TestConnection
+        second_owner = self._second_owner()
+        second_connection = make_test_connection(second_owner, self.caregiver)
+        second_token, _ = make_session(second_owner)
+        first_id = self._share(self._create().data["entry_id"]).data["share_id"]
+        second_entry = self.client.post(
+            "/api/v1/mood/entries",
+            {"entry_date": (vn_today() - dt.timedelta(days=1)).isoformat(),
+             "emotion": "vui", "note": "mục của owner hai"},
+            format="json", **auth_header(second_token)).data["entry_id"]
+        self._share(second_entry, token=second_token)
+        TestConnection.objects.filter(pk=second_connection.pk).update(
+            status="revoked")
+        listed, _ = MoodShareService().list_shared_with_me(
+            recipient_id=str(self.caregiver.pk), page_size=20)
+        self.assertEqual([str(row.pk) for row in listed], [str(first_id)])
+
+
+class ReviewFixR05FullStringDateValidation(RegressionBase):
+    """R05 fix regression: the WHOLE entry_date string must be a valid
+    ISO "YYYY-MM-DD" — no silent value[:10] truncation."""
+
+    def _post_date(self, raw_date):
+        return self.client.post(
+            "/api/v1/mood/entries",
+            {"entry_date": raw_date, "emotion": "vui"}, format="json",
+            **auth_header(self.student_token))
+
+    def test_suffix_is_rejected(self):
+        day = (vn_today() - dt.timedelta(days=10)).isoformat()
+        response = self._post_date(f"{day}-not-an-ISO-date")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.data["error"]["details"]["reason"],
+                         "must_be_iso_date")
+        self.assertFalse(MoodEntry.objects.filter(owner=self.student).exists())
+
+    def test_timestamp_is_rejected(self):
+        day = (vn_today() - dt.timedelta(days=10)).isoformat()
+        response = self._post_date(f"{day}T15:30:00")
+        self.assertEqual(response.status_code, 400)
+
+    def test_long_garbage_string_is_rejected(self):
+        response = self._post_date("2026-10-19" + "x" * 300)
+        self.assertEqual(response.status_code, 400)
+
+    def test_nonexistent_calendar_date_is_rejected(self):
+        response = self._post_date("2026-02-30")
+        self.assertEqual(response.status_code, 400)
+
+    def test_compact_form_is_rejected(self):
+        response = self._post_date("20261019")
+        self.assertEqual(response.status_code, 400)
+
+    def test_valid_exact_date_still_accepted(self):
+        day = (vn_today() - dt.timedelta(days=10)).isoformat()
+        response = self._post_date(day)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.data["entry_date"], day)

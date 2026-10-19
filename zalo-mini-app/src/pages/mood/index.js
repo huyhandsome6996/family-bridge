@@ -82,9 +82,22 @@ export const page = {
     let cancelled = false;
     let runId = 0;
     const openDialogs = new Set();
+    // R01 fix: một lifecycle duy nhất cho mọi bất đồng bộ của trang.
+    // - Mọi sheet/dialog TỰ ĐĂNG KÝ vào openDialogs (đóng thật khi rời trang:
+    //   close() gỡ overlay khỏi body + gỡ listener Esc — không chỉ ẩn CSS).
+    // - Mọi callback muộn kiểm tra cancelled/generation trước khi đụng DOM
+    //   hoặc điều hướng — không ghi dữ liệu riêng lên trang/phiên khác.
+    const lc = {
+      cancelled: false,
+      generation: 0,
+      register(handle) { openDialogs.add(handle); },
+      unregister(handle) { openDialogs.delete(handle); },
+    };
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
+      lc.cancelled = true;
+      lc.generation += 1;
       const dialogs = Array.from(openDialogs);
       openDialogs.clear();
       for (const dialog of dialogs) {
@@ -108,6 +121,7 @@ export const page = {
       editing: null,          // entry đang sửa trong editor (null = tạo hôm nay)
       selectedEmotion: null,
       historyNextCursor: null,
+      _lc: lc,
     };
 
     const editor = renderEditorCard(ctx, state);
@@ -121,7 +135,7 @@ export const page = {
     state._historyCard = historyCard;
 
     const reloadAll = () => {
-      loadSummary(ctx, summaryCard);
+      loadSummary(ctx, state, summaryCard);
       loadHistory(ctx, historyCard, state, { reset: true });
       syncEditorWithToday(ctx, editor, state);
     };
@@ -183,10 +197,13 @@ function renderEditorCard(ctx, state) {
 }
 
 function renderChips(ctx, chipsEl, state, selectedEmotion) {
+  const lc = state._lc;
+  const gen = lc.generation;
   clear(chipsEl);
   state.selectedEmotion = selectedEmotion || null;
   ctx.adapter.moodSummary(SUMMARY_WINDOW_DAYS)
     .then((data) => {
+      if (lc.cancelled || lc.generation !== gen) return; // phản hồi muộn
       const options = (data && data.emotions) || [];
       if (!options.length) return; // demo/lỗi: không dọa người dùng
       for (const item of options) {
@@ -208,6 +225,7 @@ function renderChips(ctx, chipsEl, state, selectedEmotion) {
       }
     })
     .catch(() => {
+      if (lc.cancelled || lc.generation !== gen) return;
       chipsEl.appendChild(h("p", { class: "fb-sec__sub" },
         "Chưa tải được danh sách cảm xúc — thử tải lại trang nhé."));
     });
@@ -224,10 +242,13 @@ function syncEditorWithToday(ctx, editor, state) {
   // Mở trang: nếu mục mới nhất là của HÔM NAY theo máy chủ -> chuyển sang
   // sửa đúng mục đó (một mục/ngày). Đối chiếu ngày mục với ngày hôm nay
   // (múi giờ VN) chỉ để chọn chế độ — ngày ghi nhận vẫn do backend quyết.
+  const lc = state._lc;
+  const gen = lc.generation;
   renderChips(ctx, editor.chips, state, null);
   editor.feedback.textContent = "";
   ctx.adapter.listMoodEntries({ limit: 1 })
     .then((data) => {
+      if (lc.cancelled || lc.generation !== gen) return;
       const rows = (data && data.results) || [];
       const latest = rows[0] || null;
       if (latest && latest.entry_date === todayVnIso()) {
@@ -263,6 +284,8 @@ function saveEntry(ctx, state, editor) {
     editor.feedback.textContent = "Hãy chọn một cảm xúc trước đã.";
     return;
   }
+  const lc = state._lc;
+  const gen = lc.generation;
   const note = editor.noteField.input.value;
   editor.saveBtn.disabled = true;
   editor.saveBtn.title = "Đang lưu…";
@@ -271,6 +294,7 @@ function saveEntry(ctx, state, editor) {
     : ctx.adapter.createMoodEntry({ emotion, note });
   write
     .then(() => {
+      if (lc.cancelled || lc.generation !== gen) return; // phiên/trang đã đổi
       editor.feedback.textContent = state.editing
         ? "Máy chủ đã ghi nhận phiên bản mới. Bản đang chia sẻ (nếu có) ngừng "
           + "đọc được cho đến khi bạn xem trước và chia sẻ lại."
@@ -278,10 +302,11 @@ function saveEntry(ctx, state, editor) {
       editor.noteField.input.value = "";
       state.editing = null;
       editor.saveBtn.textContent = "Lưu tâm trạng hôm nay";
-      loadSummary(ctx, state._summaryCard);
+      loadSummary(ctx, state, state._summaryCard);
       loadHistory(ctx, state._historyCard, state, { reset: true });
     })
     .catch((error) => {
+      if (lc.cancelled || lc.generation !== gen) return;
       if (error && error.status === 401) {
         ctx.navigate("/login?reason=expired");
         return;
@@ -289,6 +314,7 @@ function saveEntry(ctx, state, editor) {
       editor.feedback.textContent = errorText(error);
     })
     .finally(() => {
+      if (lc.cancelled || lc.generation !== gen) return;
       editor.saveBtn.disabled = false;
       editor.saveBtn.title = "";
     });
@@ -296,7 +322,9 @@ function saveEntry(ctx, state, editor) {
 
 /* ------------------------------- Summary --------------------------------- */
 
-function loadSummary(ctx, card) {
+function loadSummary(ctx, state, card) {
+  const lc = state._lc;
+  const gen = lc.generation;
   clear(card);
   card.appendChild(h("h2", { class: "fb-scard__title" }, "Chút hơn 3 tháng qua"));
   card.appendChild(h("p", { class: "fb-sec__sub" },
@@ -305,6 +333,7 @@ function loadSummary(ctx, card) {
   card.appendChild(list);
   ctx.adapter.moodSummary(SUMMARY_WINDOW_DAYS)
     .then((data) => {
+      if (lc.cancelled || lc.generation !== gen) return;
       const rows = (data && data.results) || [];
       if (!rows.length) {
         list.appendChild(h("li", { class: "fb-list__item" },
@@ -317,6 +346,7 @@ function loadSummary(ctx, card) {
       }
     })
     .catch(() => {
+      if (lc.cancelled || lc.generation !== gen) return;
       clear(list);
       list.appendChild(h("li", { class: "fb-list__item" },
         "Chưa tải được thống kê. Thử tải lại trang nhé."));
@@ -326,6 +356,12 @@ function loadSummary(ctx, card) {
 /* ------------------------------- History --------------------------------- */
 
 function loadHistory(ctx, card, state, { reset = false } = {}) {
+  const lc = state._lc;
+  const gen = lc.generation;
+  // Phản hồi muộn giữa các lần tải CÙNG TRANG: mỗi lần tải một số thứ tự;
+  // chỉ lần mới nhất được ghi vào danh sách.
+  state._histSeq = (state._histSeq || 0) + 1;
+  const seq = state._histSeq;
   if (reset) {
     clear(card);
     state.historyNextCursor = null;
@@ -356,6 +392,10 @@ function loadHistory(ctx, card, state, { reset = false } = {}) {
     limit: HISTORY_PAGE_SIZE,
   })
     .then((data) => {
+      if (lc.cancelled || lc.generation !== gen || seq !== state._histSeq) {
+        loading.remove();
+        return;
+      }
       loading.remove();
       const rows = (data && data.results) || [];
       state.historyNextCursor = (data && data.nextCursor) || null;
@@ -369,6 +409,10 @@ function loadHistory(ctx, card, state, { reset = false } = {}) {
       moreBtn.hidden = !state.historyNextCursor;
     })
     .catch((error) => {
+      if (lc.cancelled || lc.generation !== gen || seq !== state._histSeq) {
+        loading.remove();
+        return;
+      }
       loading.remove();
       if (error && error.status === 401) {
         ctx.navigate("/login?reason=expired");
@@ -414,6 +458,8 @@ function historyRow(ctx, state, entry) {
 /* ------------------------- Share flow (sheet) ---------------------------- */
 
 function openShareSheet(ctx, state, entry) {
+  const lc = state._lc;
+  const gen = lc.generation;
   // Preview dùng đúng dữ liệu MÀ NGƯỜI DÙNG ĐANG THẤY từ lần tải lịch sử;
   // xác nhận gửi expected_revision để máy chủ từ chối nếu bản đã đổi.
   const preview = {
@@ -468,14 +514,18 @@ function openShareSheet(ctx, state, entry) {
     title: "Chia sẻ mục này",
     content,
     actions: [],
-    onClose: () => clear(content), // không giữ preview/note trong DOM
+    // R01: gỡ preview/ghi chú khỏi DOM khi sheet đóng, và bỏ đăng ký khỏi
+    // danh sách overlay của trang.
+    onClose: () => { lc.unregister(sheetHandle); clear(content); },
   });
+  lc.register(sheetHandle); // rời trang/đăng xuất/đổi phiên -> đóng thật
 
   Promise.all([
     ctx.adapter.listConnections({ limit: 50 }).catch(() => null),
     ctx.adapter.listMoodEntryShares(preview.entryId).catch(() => null),
   ])
     .then(([connections, shares]) => {
+      if (lc.cancelled || lc.generation !== gen) return; // phản hồi muộn
       const rows = (connections && connections.results) || [];
       clear(selectWrap);
       if (!rows.length) {
@@ -503,6 +553,8 @@ function openShareSheet(ctx, state, entry) {
 }
 
 function renderGrants(ctx, state, section, shares, preview) {
+  const lc = state._lc;
+  const gen = lc.generation;
   clear(section);
   const rows = (shares && shares.results) || [];
   section.appendChild(h("h3", {}, "Người đã nhận mục này"));
@@ -522,6 +574,7 @@ function renderGrants(ctx, state, section, shares, preview) {
       li.appendChild(createButton({
         label: "Thu hồi quyền này", variant: "ghost",
         onClick: () => {
+          if (lc.cancelled || lc.generation !== gen) return;
           const dialog = createDialog({
             title: "Thu hồi quyền xem?",
             message:
@@ -535,8 +588,12 @@ function renderGrants(ctx, state, section, shares, preview) {
                   dialog.close();
                   ctx.adapter.revokeMoodShare(grant.share_id)
                     .then(() => ctx.adapter.listMoodEntryShares(preview.entryId))
-                    .then((fresh) => renderGrants(ctx, state, section, fresh, preview))
+                    .then((fresh) => {
+                      if (lc.cancelled || lc.generation !== gen) return;
+                      renderGrants(ctx, state, section, fresh, preview);
+                    })
                     .catch((error) => {
+                      if (lc.cancelled || lc.generation !== gen) return;
                       if (error && error.status === 401) {
                         ctx.navigate("/login?reason=expired");
                       }
@@ -546,7 +603,11 @@ function renderGrants(ctx, state, section, shares, preview) {
                 },
               },
             ],
+            // R01: dialog thu hồi cũng là overlay chứa dữ liệu — đăng ký
+            // để rời trang/đăng xuất đóng thật (gỡ khỏi body + listener).
+            onClose: () => lc.unregister(dialog),
           });
+          lc.register(dialog);
         },
       }));
     }
@@ -556,6 +617,8 @@ function renderGrants(ctx, state, section, shares, preview) {
 }
 
 function confirmShare(ctx, state, preview, selectWrap, sheetHandle) {
+  const lc = state._lc;
+  const gen = lc.generation;
   const recipientId = selectWrap.value;
   if (!recipientId) return;
   sheetHandle.setBusy(true);
@@ -564,6 +627,7 @@ function confirmShare(ctx, state, preview, selectWrap, sheetHandle) {
     expectedRevision: preview.revision,
   })
     .then(() => {
+      if (lc.cancelled || lc.generation !== gen) return; // đã rời trang/đổi phiên
       sheetHandle.close();
       if (state._editor) {
         state._editor.feedback.textContent =
@@ -571,6 +635,7 @@ function confirmShare(ctx, state, preview, selectWrap, sheetHandle) {
       }
     })
     .catch((error) => {
+      if (lc.cancelled || lc.generation !== gen) return;
       sheetHandle.setBusy(false);
       if (error && error.status === 401) {
         ctx.navigate("/login?reason=expired");

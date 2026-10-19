@@ -23,7 +23,8 @@ Authorization invariants (fail closed everywhere):
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 from django.db import transaction
 from django.db.utils import IntegrityError
@@ -48,13 +49,23 @@ def _now() -> dt.datetime:
     return dt.datetime.now(tz=UTC)
 
 
+# R05 fix: the API publishes "YYYY-MM-DD" — the WHOLE string must match.
+# No silent truncation (the old value[:10] turned "2026-10-19-not-a-date"
+# and timestamps into a valid day). A separate date/datetime object is
+# still accepted (internal callers), but any JSON string must be exact.
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+
+
 def parse_entry_date(value: Any) -> dt.date:
     if isinstance(value, dt.date) and not isinstance(value, dt.datetime):
         return value
     if not isinstance(value, str):
         raise InputInvalid({"field": "entry_date", "reason": "must_be_iso_date"})
+    if not _ISO_DATE_RE.fullmatch(value):
+        raise InputInvalid({"field": "entry_date",
+                            "reason": "must_be_iso_date"})
     try:
-        parsed = dt.date.fromisoformat(value[:10])
+        parsed = dt.date.fromisoformat(value)
     except ValueError as exc:
         raise InputInvalid({"field": "entry_date",
                             "reason": "must_be_iso_date"}) from exc
@@ -130,7 +141,15 @@ class MoodEntryService:
     @transaction.atomic
     def edit(self, *, owner_id: str, entry_id: str, emotion: Optional[str],
              note: Optional[str]) -> MoodEntry:
+        # R02 fix: two concurrent edits must never reuse one revision.
+        # _require_own_entry stays the (patchable) ownership gate; the row
+        # is then re-read UNDER LOCK inside this transaction so the
+        # read-modify-write of `revision` serializes on MySQL (InnoDB
+        # SELECT ... FOR UPDATE). Both edit and share lock the SAME single
+        # row first -> consistent lock order, no deadlock, no network
+        # calls while the lock is held.
         entry = _require_own_entry(owner_id=owner_id, entry_id=entry_id)
+        entry = MoodEntry.objects.select_for_update().get(pk=entry.pk)
         if emotion is not None:
             if emotion not in EMOTIONS:
                 raise InputInvalid({"field": "emotion",
@@ -178,50 +197,58 @@ class MoodShareService:
         the connection is re-validated NOW and the grant rebinds to the
         current connection identity/generation (revoked grants never
         revive without this explicit call)."""
+        # Existence/ownership fail first (patchable gate, 404 semantics),
+        # but the REVISION the grant pins must be decided under the row
+        # lock — otherwise a concurrent edit could commit a new revision
+        # between the check and the grant write (R02: unapproved content
+        # became readable under a reused revision).
         entry = _require_own_entry(owner_id=owner_id, entry_id=entry_id)
         if str(recipient_id) == str(owner_id):
             raise InputInvalid({"field": "recipient_id",
                                 "reason": "cannot_share_to_self"})
-        if expected_revision is not None:
-            if isinstance(expected_revision, bool) or not isinstance(
-                    expected_revision, int) or expected_revision < 1:
-                raise InputInvalid({"field": "expected_revision",
-                                    "reason": "must_be_positive_int"})
-            if expected_revision != entry.revision:
-                raise PreviewStale({
-                    "reason": "stale_revision",
-                    "field": "expected_revision",
-                    "expected_revision": expected_revision,
-                    "current_revision": entry.revision,
-                })
+        if expected_revision is not None and (
+                isinstance(expected_revision, bool) or not isinstance(
+                    expected_revision, int) or expected_revision < 1):
+            raise InputInvalid({"field": "expected_revision",
+                                "reason": "must_be_positive_int"})
         reader = _require_reader()
-        connection = reader.active_connection_between(
-            user_a=str(owner_id), user_b=str(recipient_id))
-        if connection is None:
-            raise NotFound({"reason": "no_active_connection"})
-        current_conn_id = str(getattr(connection, "connection_id", ""))
-        current_generation = int(getattr(connection, "generation", 0) or 0)
         try:
             with transaction.atomic():
+                locked = MoodEntry.objects.select_for_update().get(pk=entry.pk)
+                if expected_revision is not None and (
+                        expected_revision != locked.revision):
+                    raise PreviewStale({
+                        "reason": "stale_revision",
+                        "field": "expected_revision",
+                        "expected_revision": expected_revision,
+                        "current_revision": locked.revision,
+                    })
+                connection = reader.active_connection_between(
+                    user_a=str(owner_id), user_b=str(recipient_id))
+                if connection is None:
+                    raise NotFound({"reason": "no_active_connection"})
+                current_conn_id = str(getattr(connection, "connection_id", ""))
+                current_generation = int(getattr(connection, "generation", 0) or 0)
                 share, created = MoodShare.objects.get_or_create(
-                    entry=entry, recipient_id=str(recipient_id),
-                    approved_revision=entry.revision,
+                    entry=locked, recipient_id=str(recipient_id),
+                    approved_revision=locked.revision,
                     defaults={"owner_id": str(owner_id),
                               "connection_id": current_conn_id,
                               "connection_generation": current_generation})
+                if not created:
+                    # Explicit re-share of an existing (entry, recipient,
+                    # revision) grant: reactivate a revoked row ONLY here
+                    # (owner action), and always rebind to the CURRENT
+                    # connection identity/generation.
+                    share.revoked_at = None
+                    share.connection_id = current_conn_id
+                    share.connection_generation = current_generation
+                    share.save(update_fields=["revoked_at", "connection_id",
+                                              "connection_generation"])
         except IntegrityError as exc:
             raise InputInvalid({
                 "reason": "share_conflict_retry",
             }) from exc
-        if not created:
-            # Explicit re-share of an existing (entry, recipient, revision)
-            # grant: reactivate a revoked row ONLY here (owner action), and
-            # always rebind to the CURRENT connection identity/generation.
-            share.revoked_at = None
-            share.connection_id = current_conn_id
-            share.connection_generation = current_generation
-            share.save(update_fields=["revoked_at", "connection_id",
-                                      "connection_generation"])
         return share
 
     def revoke(self, *, owner_id: str, share_id: str) -> MoodShare:
@@ -237,15 +264,21 @@ class MoodShareService:
     def _connections_current(reader, shares) -> Dict[str, Dict[str, bool]]:
         """For each share row, decide whether its stored connection binding
         matches the CURRENT active connection for that pair. One reader
-        lookup per distinct recipient (bounded by the page size)."""
+        lookup per distinct (owner, recipient) PAIR (R03 fix: the lookup
+        depends on both sides; caching by recipient_id alone reused the
+        first owner's verdict for every other owner sharing with the same
+        recipient and silently dropped their grants from the list).
+        Bounded by the page size (<= 50 distinct pairs)."""
         verdicts: Dict[str, Dict[str, bool]] = {}
-        cache: Dict[str, Any] = {}
+        cache: Dict[Tuple[str, str], Any] = {}
         for share in shares:
+            owner_key = str(share.owner_id)
             recipient_key = str(share.recipient_id)
-            if recipient_key not in cache:
-                cache[recipient_key] = reader.active_connection_between(
-                    user_a=str(share.owner_id), user_b=recipient_key)
-            connection = cache[recipient_key]
+            pair = (owner_key, recipient_key)
+            if pair not in cache:
+                cache[pair] = reader.active_connection_between(
+                    user_a=owner_key, user_b=recipient_key)
+            connection = cache[pair]
             ok = (
                 connection is not None
                 and str(getattr(connection, "connection_id", ""))

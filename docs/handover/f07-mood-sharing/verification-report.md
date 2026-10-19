@@ -97,3 +97,63 @@ backend thật.
 2. Zalo thiết bị thật (SDK/safe-area/keyboard) chưa chạy.
 3. Render production chưa xác minh lại sau thay đổi (không được phép deploy).
 4. Màn 320/430 + chữ 200%: kiểm bằng CSS tokens sẵn của app, chưa đo thiết bị.
+
+---
+
+# Vòng 19/10/2026 — sửa R01–R07 (web parity theo quyết định Huy)
+
+Số liệu dưới đây lấy TRỰC TIẾP từ runner trong lượt này (không cộng lượt cũ).
+Trạng thái trước sửa tại `bb75b2c`: repro độc lập = MySQL 3/3 FAIL (R02/R03/R05),
+race MySQL 1 FAIL (R04), browser 5 FAIL (R01×3, R06×2), parity smoke 3 FAIL (R07).
+
+## Bản sửa
+
+| Finding | Bản sửa | Regression trong app |
+| --- | --- | --- |
+| R01 | `zalo-mini-app` mood + mood-shared: lifecycle object (cancelled/generation), sheet/dialog tự đăng ký vào openDialogs và close() thật khi rời trang/đổi phiên (gỡ overlay + listener, không ẩn CSS); mọi callback muộn guard trước khi ghi DOM/navigate; web home cleanupFn đóng overlay qua close() | 3 test R01 trong `zalo-mini-app/tests/f07-mood.test.mjs` + 3 test trong `web/tests/f07-mood.test.mjs`; runner browser 3 phép R01 PASS |
+| R02 | `MoodEntryService.edit` + `MoodShareService.share`: re-read `select_for_update()` trong transaction; expected_revision + connection check + get_or_create/rebind nằm trong cùng ranh giới đồng bộ; lock order nhất quán (chỉ entry row), không network trong lock | `ConcurrentEditRevisionTests` ×2 (MySQL): barrier edit/edit rev=3 monotonic + interleaved edit/share không lộ note chưa duyệt |
+| R03 | `MoodShareService._connections_current`: cache key theo cặp (owner_id, recipient_id), không dùng lại verdict giữa hai cặp | `ReviewFixR03MultiOwnerListing` ×3 (2 owner cùng recipient đủ list, pagination phủ cả hai, unlink một owner giữ grant owner kia) |
+| R04 | `test_race_mysql.py`: assertCountEqual thay sorted-vs-unsorted; barrier/join có timeout + assert not alive; close_old_connections() mỗi worker; share-race assert cả 2 worker outcomes | chính các test này (4/4 PASS MySQL); số liệu tài liệu sửa theo runner (mục dưới) |
+| R05 | `parse_entry_date`: fullmatch regex `\d{4}-\d{2}-\d{2}` trên TOÀN chuỗi + `fromisoformat(value)`; bỏ `value[:10]`; giữ bounds VN | `ReviewFixR05FullStringDateValidation` ×6 (suffix, timestamp, chuỗi dài, ngày không tồn tại, dạng compact, ngày hợp lệ vẫn 201) |
+| R06 | `components.css` CẢ HAI client: grid `minmax(0, 1fr)`, chip `min-width: 0`, nhãn + hint `overflow-wrap: anywhere` (không thu chữ, không cắt nhãn) | `tests/f07-r06-reflow.test.mjs` ×3 mỗi client (CSS pin + đo scrollWidth 200% ở 320/390/430); runner browser 2 phép R06 PASS |
+| R07 | Web F07 đầy đủ: `web/src/pages/mood/`, `web/src/pages/mood-shared/`, textarea component, router +2 route, profile card, home (not-connected vẫn ghi riêng tư; duplicate dẫn link sửa; bỏ câu hứa "sẽ chỉnh sửa ở bản đầy đủ"), mock adapter sẵn có | `web/tests/f07-mood.test.mjs` ×13; router pin 24; parity smoke 12/12 PASS |
+
+## Kết quả suite (lượt 19/10, code = commit này)
+
+| Suite | Lệnh | Kết quả |
+| --- | --- | --- |
+| F07 module SQLite | feature-lab, FB_FEATURES=f07_mood | **53 tests OK, 4 skip** (MySQL-gated) |
+| F07 module MySQL 8.4.6 | như trên + FB_TEST_DB=mysql | **53 tests OK, 0 skip** |
+| Race/edit MySQL | `manage.py test ...f07_mood.tests.test_race_mysql` | **4/4 OK** (create-race, share-race, 2 edit-race mới) |
+| Full harness | manage.py test harness labgrants f01..f16 | **534 tests OK, 13 skip** (MySQL-gated) |
+| Repro độc lập (kho f07-docx) | run_review.py sqlite / mysql | sqlite: OK (R02 skip); **mysql: 3/3 OK** (baseline đã ghi 3 FAIL) |
+| Browser runner (R01/R06) | browser_review.mjs, Chromium headless | **9/9 PASS** (baseline 4 PASS + 5 FAIL) |
+| Parity smoke (R07) | client_parity.mjs | **12/12 PASS, exit 0** (baseline 9 PASS + 3 FAIL) |
+| E2E HTTP 21 bước | scripts/f07_local_e2e.py (DB sạch) | **21/21 PASS** |
+| E2E chéo 2 client X01–X09 | scripts/f07_cross_client_e2e.mjs (Playwright, UI thật) | **20/20 PASS, exit 0**; X07 NOT_RUN khi không bật F07_E2E_WITH_UNLINK (phủ bởi Finding3/Finding4 + E2E 21 bước F15); X10 phủ bởi 4 test MySQL |
+| Mini App | `cd zalo-mini-app && npm test` | **313 PASS** (307 cũ + 3 R01 + 3 R06) |
+| Mini App build | `npm run build` | OK + verify-build OK |
+| Web | `cd web && npm test` | **243 PASS** (227 cũ + 13 F07 UI + 3 R06) |
+| Web build | `npm run build` | OK |
+| Shared adapter | node --test packages/family_bridge_shared/tests | 37 PASS |
+| Mobile packages (16) | node --test từng package | 53 PASS tổng, 0 fail |
+| Import boundaries | `node scripts/check_import_boundaries.mjs` | SẠCH exit 0 (web không zmp-sdk, không import mini) |
+| Agent docs | `python scripts/check_agent_docs.py` | OK |
+
+## Môi trường lượt này + NOT_RUN
+
+| Môi trường | Ghi chú |
+| --- | --- |
+| Harness SQLite như CI | Django 5.2.18 |
+| **MySQL 8.4.6 thật** | binary chính thức dạng tarball minimal chạy loopback port 13306 (KHÔNG phải Docker 8.4.11 của reviewer; InnoDB row lock thật); credential random ngoài repo |
+| Browser | Chromium (Playwright 1.57 cache) headless; text scaling 200% là mô phỏng CSS như phương pháp reviewer |
+| Zalo thiết bị thật / native keyboard + OS text scaling | **NOT_RUN** — không có device runtime |
+| URL truy cập từ máy Huy | **BLOCKED** — không tự deploy (Render/Zalo cấm theo phạm vi); chỉ loopback cục bộ, xem HUY-TEST-F07.md |
+
+## Phân biệt bằng chứng
+
+- `final_revision` và `unapproved_readable` sau sửa: repro ghi revision tăng đơn điệu (3) và không đọc được nội dung chưa duyệt — không còn `final_revision=2 unapproved_readable=True`.
+- R03 repro: `listed=2 expected=2`.
+- R05 repro: ngày suffix trả 400 `must_be_iso_date`.
+- Browser: sheet `expected=0 observed=0` cả navigation lẫn clearSession; content width 320/390/430 = đúng viewport, `overflow: []`.
+- Parity: `web-route-mood=["mood"]`, `web-route-mood-shared=["mood-shared"]`, `web-profile-f07-navigation={owner:1,recipient:1}`, `web-home-edit-placeholder=false`.
