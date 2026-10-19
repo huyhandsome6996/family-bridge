@@ -58,6 +58,14 @@ class A02ConsentEffectivenessTests(TestCase):
     def _record(self, purpose="service", version=None, decision="accepted",
                 when=None):
         version = version or CURRENT_POLICY_VERSIONS[purpose]
+        # These cases assert sequential business events; Windows clock
+        # resolution can tie timestamps. The explicit tie-case below still
+        # supplies `when` unchanged and checks the UUID tie-break contract.
+        if when is None:
+            latest = ConsentRecord.objects.filter(user=self.user, purpose=purpose).order_by("-recorded_at").first()
+            when = dt.datetime.now(tz=UTC)
+            if latest is not None and when <= latest.recorded_at:
+                when = latest.recorded_at + dt.timedelta(microseconds=1)
         return ConsentRecord.objects.create(
             user=self.user, purpose=purpose, policy_version=version,
             decision=decision,

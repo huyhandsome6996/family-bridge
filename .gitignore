@@ -107,3 +107,5 @@ ehthumbs.db
 .grok/
 .agents/mcp_config.json
 .grok/config.toml
+.f15-artifact-case/
+www-artifact-test/

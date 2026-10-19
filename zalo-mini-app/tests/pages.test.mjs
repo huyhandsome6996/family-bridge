@@ -468,10 +468,17 @@ describe("Render không throw + copy bắt buộc", () => {
     const { host, el } = mount(pages.profile, ctx);
     const text = textOf(el);
     assert.ok(text.includes("Người chăm sóc"));
-    // M5b: Riêng tư & đồng ý đã là trang thật → hàng "Sắp có" bị thay bằng
-    // dẫn đường thật tới #/settings và #/privacy (không còn disabled mù).
+    // M5b (main): Riêng tư & đồng ý đã là trang thật → hàng "Sắp có" bị thay
+    // bằng dẫn đường thật tới #/settings và #/privacy (không còn disabled mù).
+    // F15 (union): nút phải khả dụng và click phải điều hướng tới /privacy.
     assert.ok(text.includes("Riêng tư & đồng ý"));
     assert.ok(!text.includes("Sắp có"));
+    const privacyBtn = findButton(el, "Riêng tư & đồng ý");
+    assert.ok(privacyBtn, "phải có nút dẫn tới trang quyền riêng tư");
+    assert.ok(!privacyBtn.disabled, "nút phải khả dụng (route đã nối)");
+    privacyBtn.click();
+    assert.ok(navigateCalls.includes("/privacy"),
+      "nhấn nút phải điều hướng tới /privacy");
     assert.ok(text.includes("Phiên bản xem trước US-003"));
 
     const switchBtn = findButton(el, "Đổi vai trò xem trước");

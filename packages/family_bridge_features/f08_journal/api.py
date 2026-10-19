@@ -126,12 +126,14 @@ class JournalPageShareCreateView(APIView):
     def post(self, request, page_id: str):
         page_uuid = validate_uuid(page_id, field="page_id")
         payload = _json_body(request)
-        reject_unknown_fields(payload, allowed={"recipient_id"})
+        reject_unknown_fields(payload, allowed={"recipient_id", "expected_revision"})
         recipient_id = validate_uuid(payload.get("recipient_id"),
                                      field="recipient_id")
         share = JournalShareService().share(
             owner_id=str(request.user.pk), page_id=str(page_uuid),
-            recipient_id=str(recipient_id))
+            recipient_id=str(recipient_id),
+            expected_revision=validate_revision(payload["expected_revision"], field="expected_revision")
+            if "expected_revision" in payload else None)
         return Response(share.grant_view(), status=201)
 
 
