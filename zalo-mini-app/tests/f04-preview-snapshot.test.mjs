@@ -149,8 +149,9 @@ function createAdapter(behavior = {}) {
         return d.promise;
       }
       // Hợp đồng MỚI (A2 backend): response kèm `body` = snapshot máy chủ.
-      // behavior.noBody = true -> shape CŨ (không body) để test fallback
-      // `preview.body ?? snapshotBody`.
+      // behavior.noBody = true -> shape CŨ (không body) — CHỈ dùng cho test
+      // N01 invalidate (response thiếu body giờ là drift fail-closed N03);
+      // test cần sheet mở PHẢI trả shape hợp đồng đầy đủ.
       const payload = {
         preview_id: "pv-1",
         revision: SERVER_DRAFT.revision,
@@ -416,7 +417,9 @@ describe("N01 (US-033): preview chốt snapshot — sheet KHÔNG đọc live tex
   it("(6) previewSeq: bấm 2 lần liên tiếp khi đang bay -> chỉ 1 request (phiên duy nhất = phiên cuối); xong vẫn xem trước lại được", async () => {
     const { adapter, calls, deferredPreviews } = createAdapter({
       deferPreview: true,
-      noBody: true, // phiên hiển thị qua fallback snapshot
+      // N03 contract: preview.body là field bắt buộc (A1 pin 6 field) —
+      // response thiếu body giờ là DRIFT fail-closed, không còn fallback mở
+      // sheet; test này kiểm previewSeq/lock nên dùng shape hợp đồng đầy đủ.
     });
     const { ctx } = makeCtx({ adapter });
     const { host, el } = mount(ctx);
@@ -438,11 +441,12 @@ describe("N01 (US-033): preview chốt snapshot — sheet KHÔNG đọc live tex
       preview_id: "pv-1",
       revision: SERVER_DRAFT.revision,
       recipient_id: SERVER_DRAFT.recipient_id,
+      body: BODY_A, // N03: response thiếu body giờ là drift fail-closed
     });
     await wait(60);
     const sheets = document.body.querySelectorAll(".fb-sheet-root");
     assert.equal(sheets.length, 1, "đúng MỘT sheet của phiên duy nhất");
-    assert.equal(previewBodyOf(sheets[0]), BODY_A, "sheet hiển thị snapshot bản A");
+    assert.equal(previewBodyOf(sheets[0]), BODY_A, "sheet hiển thị bản máy chủ bind (preview.body)");
     assert.equal(calls.confirmSend.length, 0, "chưa gửi gì");
 
     // Đóng sheet ("Giữ lại làm nháp") -> khóa nhả -> xem trước lại được.
@@ -465,6 +469,7 @@ describe("N01 (US-033): preview chốt snapshot — sheet KHÔNG đọc live tex
       preview_id: "pv-2",
       revision: SERVER_DRAFT.revision,
       recipient_id: SERVER_DRAFT.recipient_id,
+      body: BODY_A, // N03: response thiếu body giờ là drift fail-closed
     });
     await wait(60);
     assert.equal(document.body.querySelectorAll(".fb-sheet-root").length, 1, "phiên mới mở đúng 1 sheet");

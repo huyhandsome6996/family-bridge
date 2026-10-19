@@ -16,7 +16,7 @@ from rest_framework.views import APIView
 from family_bridge_core.errors import InputInvalid
 from family_bridge_core.timeutils import UTC
 from family_bridge_core.validation import (
-    reject_unknown_fields, validate_text, validate_uuid,
+    reject_unknown_fields, validate_revision, validate_text, validate_uuid,
 )
 
 from .auth import FBSDSessionAuthentication
@@ -38,15 +38,24 @@ def _json_body(request) -> dict:
     return payload
 
 
-def _content_fields(payload: dict, *, require_all: bool) -> dict:
+def _content_fields(payload: dict, *, require_all: bool,
+                    allow_expected_revision: bool = False) -> dict:
     """Validate draft content fields.
 
     require_all=True (create): kind AND body are required exactly as before.
     require_all=False (edit, C8): only the fields PRESENT in the payload are
     validated; `kind` is optional (and ignored — immutable after create).
-    Absent optional fields keep the service-level full-replace defaults."""
+    Absent optional fields keep the service-level full-replace defaults.
+
+    N06: `expected_revision` is EDIT-ONLY. The edit view passes
+    allow_expected_revision=True; the create path keeps its original allowed
+    set, so reject_unknown_fields REJECTS the field on create (400) instead
+    of ignoring it. Optional on edit: absent -> None (no guard, legacy
+    behavior); present -> positive int (bool/0/negative/non-int -> 400)."""
     allowed = {"kind", "body", "title", "card_id", "card_version",
                "recipient_id"}
+    if allow_expected_revision:  # N06: edit-path opt-in only
+        allowed = allowed | {"expected_revision"}
     reject_unknown_fields(payload, allowed=allowed)
 
     def _present(name: str) -> bool:
@@ -80,6 +89,11 @@ def _content_fields(payload: dict, *, require_all: bool) -> dict:
     if fields["recipient_id"]:
         fields["recipient_id"] = str(validate_uuid(
             fields["recipient_id"], field="recipient_id"))
+    if allow_expected_revision:  # N06: extracted ONLY on the edit path
+        fields["expected_revision"] = (
+            validate_revision(payload["expected_revision"],
+                              field="expected_revision")
+            if "expected_revision" in payload else None)
     return fields
 
 
@@ -129,10 +143,17 @@ class DraftDetailView(APIView):
         # C8: edit validates only the fields actually present; `kind` is
         # OPTIONAL on edit (create keeps require_all=True). Kind stays
         # immutable after create either way.
-        fields = _content_fields(_json_body(request), require_all=False)
+        # N06: the EDIT path alone accepts `expected_revision` (optional
+        # optimistic-concurrency guard); create keeps rejecting it as an
+        # unknown field.
+        fields = _content_fields(_json_body(request), require_all=False,
+                                 allow_expected_revision=True)
         fields.pop("kind")
+        expected_revision = fields.pop("expected_revision")
         draft = build_service().edit(author_id=str(request.user.pk),
-                                    draft_id=str(draft.id), **fields)
+                                    draft_id=str(draft.id),
+                                    expected_revision=expected_revision,
+                                    **fields)
         return Response(draft.view(now=build_service()._now()))
 
     def delete(self, request, draft_id: str):

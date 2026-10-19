@@ -123,6 +123,17 @@ function f04Adapter({ behavior = {} } = {}) {
       ? String(behavior.drafts[0].body)
       : "x";
   }
+  // Fix fixture sai hợp đồng (F04R2-A4): backend make_preview TRẢ ĐÚNG
+  // revision hiện hành của draft (A1 pin 6 field — preview.revision ===
+  // draft.revision máy chủ). Trước đây fixture để `behavior.revision || 1`
+  // nên với draft revision 2/3 preview trả revision 1 — không API thật nào
+  // làm vậy; N03 so server-truth nên lệch này phải được sửa ở FIXTURE chứ
+  // không nới lỏng assert ứng dụng.
+  if (behavior.revision === undefined) {
+    behavior.revision = behavior.drafts && behavior.drafts[0] && behavior.drafts[0].revision != null
+      ? Number(behavior.drafts[0].revision)
+      : 1;
+  }
   return {
     mode: "web",
     listConnections: async () => ({

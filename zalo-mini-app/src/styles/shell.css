@@ -1221,12 +1221,33 @@
 }
 
 @media (min-width: 1024px) {
-  /* 2 cột CHỈ ở desktop: soạn thảo trái, panel ngữ cảnh phải. */
+  /* 2 cột CHỈ ở web desktop: soạn thảo trái, panel ngữ cảnh phải. */
   .fb-compose-grid {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 340px;
     align-items: start;
     gap: var(--fb-space-6);
+  }
+
+  /*
+   * N05 (QA 19/10) — adaptive + stress probe large-text 200%:
+   * Mini App chạy trong webview Zalo — khung nội dung bị giới hạn ~480px
+   * KỂ CẢ khi viewport ≥1024px, không đủ chứa cột phụ 340px + cột chính,
+   * nên 2 cột trên sẽ tràn ngang. Override scoped riêng cho trang mini
+   * (.fb-page): ép XẾP DỌC về 1 cột co giãn. Web desktop (markup không có
+   * .fb-page) giữ nguyên 2 cột w11 — không ảnh hưởng parity bố cục web.
+   *
+   * Tiêu chí duyệt stress probe 200% (cỡ chữ phóng ĐÔI, probe ở 390px):
+   *   1) KHÔNG tràn ngang — document.scrollWidth <= viewport width:
+   *      mọi cột co được (minmax(0, 1fr)), chữ trong nút được wrap
+   *      (.fb-compose__pause-btn white-space: normal), không cắt nội dung.
+   *   2) Nút chính (Lưu nháp riêng / Xem trước nội dung / Gửi) vẫn reachable
+   *      bằng CUỘN DỌC — bố cục 1 cột tăng chiều cao theo nội dung, không
+   *      khóa nút sau fold, không overlay che nút.
+   */
+  .fb-page .fb-compose-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--fb-space-3);
   }
   .fb-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .fb-signal-needs { grid-template-columns: repeat(3, minmax(0, 1fr)); }

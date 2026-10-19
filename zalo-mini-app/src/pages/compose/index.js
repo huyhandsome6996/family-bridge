@@ -61,6 +61,27 @@
 //   6) Gửi: re-verify trước confirmDraftSend; lệch -> lỗi trong sheet, không
 //      gửi, không đóng sheet ép;
 //   7) sync editDraft lỗi -> dừng flow, không preview, mở khóa.
+//
+// N03 (QA 19/10 — P1 "duyệt A gửi B", hai chiều web-review/mini-edit và
+// mini-review/web-edit): N01 chỉ so snapshot với LOCAL; sheet còn lấy tên
+// người nhận từ state cũ. Fix: sau await previewDraft thêm rào cản
+// SERVER-TRUTH — đối chiếu preview.revision/recipient_id/body với snapshot;
+// lệch -> KHÔNG mở sheet, getDraft refresh + note trung thực; sheet resolve
+// tên TỪ preview.recipient_id qua connections, không resolve được -> fail
+// closed (khóa gửi, không fallback tên cũ); re-verify lúc bấm Gửi gồm cả
+// state.revision === preview.revision.
+//
+// N04 (QA 19/10 — P2): copy vùng soạn chọn theo role MÁY CHỦ đã xác minh
+// (store.role — server trả role lúc đăng nhập lớp, login setRole ngay;
+// role-select chỉ là lựa chọn xem trước demo). Parity chuỗi TUYỆT ĐỐI với
+// web/src/pages/compose/index.js: caregiver = "Lời bạn muốn gửi" + placeholder
+// trung tính; student giữ chuỗi cũ. Chỉ là copy UI — quyền vẫn backend.
+//
+// N06 (QA 19/10 — P2): MỌI editDraft (lưu nháp thủ công, auto-sync trước
+// preview) truyền expectedRevision: state.revision. 409 revision_conflict ->
+// panel xung đột: giữ text người dùng, fetch bản server, 2 lựa chọn rõ
+// ("Cập nhật theo bản trên máy chủ" / "Ghi đè bằng bản của tôi" — lần ghi đè
+// gửi expectedRevision = current_revision). Không auto-retry/merge/mất text.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import { POLICY_PURPOSES } from "../../core/policy.js";
@@ -88,6 +109,28 @@ const AI_STATUS_UNREACHABLE = { unreachable: true };
 const PREVIEW_BUSY_NOTE = "Đang lấy bản xem trước từ máy chủ…";
 const PREVIEW_INVALIDATE_NOTE =
   "Nội dung hoặc người nhận đã thay đổi trong khi lấy bản xem trước — hãy bấm “Xem trước nội dung” lại.";
+
+// N03: máy chủ trả bản preview KHÁC snapshot client (revision/recipient/body)
+// -> không mở sheet; refresh từ server + note trung thực cho cả hai kết cục.
+const PREVIEW_SERVER_CHANGED_NOTE =
+  "Bản nháp đã thay đổi ở nơi khác (nội dung/người nhận). Đã tải bản mới — hãy xem lại trước khi gửi.";
+const PREVIEW_SERVER_REFRESH_FAILED_NOTE =
+  "Bản nháp đã thay đổi ở nơi khác nhưng chưa tải được bản mới từ máy chủ — chưa mở xác nhận gửi. Vui lòng thử lại.";
+
+// N04: copy vùng soạn theo vai trò MÁY CHỦ đã xác minh. Chuỗi parity TUYỆT
+// ĐỐI với web/src/pages/compose/index.js (editorCopy) — KHÔNG tự chế xưng hô;
+// role nguồn: store.role (server trả lúc đăng nhập lớp; role-select chỉ là
+// xem trước demo). Thiếu role -> mặc định student như web (state.role || "student").
+const EDITOR_COPY = {
+  caregiver: {
+    label: "Lời bạn muốn gửi",
+    placeholder: "Chia sẻ điều bạn muốn nhắn gửi một cách nhẹ nhàng…",
+  },
+  student: {
+    label: "Lời con muốn gửi",
+    placeholder: "Chia sẻ suy nghĩ chân thật nhất của con lúc này...",
+  },
+};
 
 // Vòng đếm pause SVG (w12): stroke chạy theo tỷ lệ remaining/PAUSE_SECONDS.
 const RING_RADIUS = 28;
@@ -225,6 +268,10 @@ export const page = {
           // đúng shape, không fallback shape lạ (R2A3-05).
           aiEnabled: Boolean(aiStatus && aiStatus.ai_enabled === true),
           aiStatusUnknown: aiStatus === AI_STATUS_UNREACHABLE,
+          // N04: role nguồn = store.role (server trả lúc đăng nhập lớp ->
+          // setRole; role-select chỉ là xem trước demo). Parity web compose:
+          // state.role || "student". Chỉ dùng cho copy UI — quyền vẫn backend.
+          role: state.role || "student",
           // F04 (C7): mọi async AI phải bỏ qua kết quả khi đã rời trang/phiên cũ.
           stale: () => cancelled || currentRun !== runId,
         });
@@ -259,10 +306,12 @@ function renderLoadError(body) {
 
 /* ------------------------------ Màn soạn chính ------------------------------ */
 
-function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEnabled = false, aiStatusUnknown = false, stale = () => false }) {
+function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEnabled = false, aiStatusUnknown = false, role = "student", stale = () => false }) {
   clear(body);
 
   const guarded = busyGuard();
+  // N04: copy theo vai (caregiver = chuỗi web parity; mặc định student).
+  const editorCopy = EDITOR_COPY[String(role) === "caregiver" ? "caregiver" : "student"];
   const ui = {
     root: body,
     counter: null,
@@ -294,6 +343,11 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     // R01 (QA F04 18/10): nội dung máy chủ ĐANG GIỮ cho bản nháp này —
     // preview phải tự đồng bộ nếu textarea (sau AI suggestion) khác bản này.
     syncedBody: draft && draft.body ? String(draft.body) : "",
+    // R1B P1-1 (parity web): người nhận máy chủ ĐANG GIỮ — đổi CHỈ người nhận
+    // (body nguyên) cũng phải tự đồng bộ editDraft trước preview, nếu không
+    // preview bind người cũ -> drift check revert lựa chọn user + note sai
+    // nguyên nhân ("thay đổi ở nơi khác" trong khi thay đổi là của user).
+    syncedRecipientId: draft && draft.recipient_id != null ? String(draft.recipient_id) : null,
     // Ưu tiên dữ liệu máy chủ gắn sẵn trên từng row (remaining_seconds /
     // can_preview); server_time của envelope list dùng khi cần tính lại.
     rowRemainingSeconds: draft && draft.pause ? draft.pause.remaining_seconds : null,
@@ -421,7 +475,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   const editorHead = h("div", { class: "fb-sec__row" });
   editorHead.appendChild(
     h("label", { class: "fb-compose__label", for: "fb-compose-body" },
-      h("span", {}, "Lời con muốn gửi"),
+      h("span", {}, editorCopy.label),
       h("span", { class: "fb-compose__required", "aria-hidden": "true" }, "*"),
     ),
   );
@@ -434,7 +488,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     class: "fb-compose__textarea",
     rows: "5",
     maxlength: String(BODY_MAX),
-    placeholder: "Chia sẻ suy nghĩ chân thật nhất của con lúc này...",
+    placeholder: editorCopy.placeholder,
     "aria-describedby": "fb-compose-counter",
   });
   if (draft && draft.body) ui.textarea.value = String(draft.body);
@@ -1022,17 +1076,71 @@ function recipientLabel(connection) {
   return "Người đồng hành";
 }
 
+/**
+ * N03: resolve tên người nhận TỪ preview.recipient_id (server-truth) qua
+ * connections trong state. Trả null khi id thiếu/không khớp kết nối nào —
+ * caller PHẢI fail closed (không fallback tên cũ từ state).
+ */
+function resolveRecipientLabel(state, recipientId) {
+  const pid = recipientId == null ? null : String(recipientId);
+  if (!pid) return null;
+  const connection = (state.connections || []).find((row) => row && (
+    String(row.other_party_id) === pid || String(row.connection_id) === pid
+  ));
+  return connection ? recipientLabel(connection) : null;
+}
+
+/**
+ * N03: nạp lại bản nháp TỪ MÁY CHỦ (getDraft) sau khi preview phản ánh bản
+ * khác snapshot client — cập nhật state + textarea + counter + người nhận +
+ * UI pause. Ném lỗi cho caller xử lý (không mở sheet khi GET hỏng).
+ */
+async function refreshDraftFromServer(ctx, state, ui) {
+  const fresh = await ctx.adapter.getDraft(state.draftId);
+  if (!fresh) return null;
+  state.revision = fresh.revision;
+  state.status = fresh.status || state.status;
+  state.pause = fresh.pause || null;
+  state.serverTimeIso = fresh.server_time || state.serverTimeIso;
+  state.fetchedAtMs = Date.now();
+  if (typeof fresh.body === "string") {
+    state.syncedBody = fresh.body;
+    if (ui.textarea) ui.textarea.value = fresh.body;
+    if (ui.counter) ui.counter.textContent = `${fresh.body.length} ký tự`;
+  }
+  if (fresh.recipient_id != null) state.recipientId = fresh.recipient_id;
+  // R1B P1-1: syncedRecipientId luôn bám recipientId máy chủ vừa nạp — lượt
+  // preview sau chỉ auto-sync khi user đổi người nhận TIẾP (không sync nhầm).
+  state.syncedRecipientId = state.recipientId != null ? String(state.recipientId) : null;
+  refreshRecipientUi(state, ui);
+  refreshPauseUi(state, ui);
+  return fresh;
+}
+
 function refreshRecipientUi(state, ui) {
   clear(ui.recipientAvatar);
   const active = state.connections.find(
     (connection) => connection && connection.status === "active",
   );
-  const selected = state.connections.find(
-    (connection) => connection
-      && (connection.other_party_id === state.recipientId
-        || connection.connection_id === state.recipientId),
-  ) || active;
+  // R1B P2-1 (fail-closed, parity web): khi recipientId ĐÃ CÓ nhưng không còn
+  // khớp kết nối nào (người nhận bị hủy kết nối/xoá) thì KHÔNG TỰ GÁN sang
+  // kết nối khác (bỏ fallback `|| active` cũ) và KHÔNG đổi recipientId —
+  // hiển thị trung thực; sheet xác nhận gửi vẫn fail-closed (preview
+  // .recipient_id không resolve -> khóa nút gửi). Trường hợp recipientId
+  // chưa có (nháp mới) giữ hành vi cũ: kết nối active đầu tiên.
+  const selected = state.recipientId
+    ? state.connections.find(
+        (connection) => connection
+          && (connection.other_party_id === state.recipientId
+            || connection.connection_id === state.recipientId),
+      )
+    : (active || null);
 
+  if (state.recipientId && !selected) {
+    ui.recipientAvatar.appendChild(createIcon({ name: "person", size: 22 }));
+    ui.recipientName.textContent = "Người nhận không còn trong danh sách kết nối";
+    return; // giữ nguyên recipientId của máy chủ — không fallback tên khác
+  }
   if (!selected) {
     ui.recipientAvatar.appendChild(createIcon({ name: "person", size: 22 }));
     ui.recipientName.textContent = "Chưa chọn người nhận";
@@ -1126,10 +1234,14 @@ function onSaveDraft(ctx, state, ui) {
       state.serverTimeIso = created.server_time || null;
       state.fetchedAtMs = Date.now();
       state.syncedBody = text; // R01: máy chủ đang giữ đúng text này
+      state.syncedRecipientId = state.recipientId != null ? String(state.recipientId) : null;
     } else {
       const updated = await ctx.adapter.editDraft(state.draftId, {
         body: text,
         recipientId: state.recipientId || undefined,
+        // N06: chặn ghi đè im lặng — máy chủ so expected_revision với revision
+        // hiện tại; lệch -> 409 revision_conflict (panel xung đột bên dưới).
+        expectedRevision: state.revision,
       });
       state.revision = updated.revision;
       state.status = updated.status;
@@ -1137,11 +1249,18 @@ function onSaveDraft(ctx, state, ui) {
       state.serverTimeIso = updated.server_time || null;
       state.fetchedAtMs = Date.now();
       state.syncedBody = text; // R01: máy chủ đang giữ đúng text này
+      state.syncedRecipientId = state.recipientId != null ? String(state.recipientId) : null;
     }
     ui.statusNote.textContent = "Bản nháp đã nằm trên máy chủ, chỉ bạn nhìn thấy.";
     refreshPauseUi(state, ui);
   };
   run().catch((error) => {
+    if (error && error.code === "revision_conflict") {
+      // N06: xung đột phiên bản — KHÔNG ghi đè im lặng, KHÔNG auto-retry,
+      // KHÔNG đụng textarea (text người dùng giữ nguyên); mở panel 2 lựa chọn.
+      openRevisionConflictSheet(ctx, state, ui, { userText: text, error });
+      return;
+    }
     ui.statusNote.textContent = describeError(error, "Chưa rõ kết quả lưu nháp — vui lòng kiểm tra lại trước khi thử lần nữa.");
   });
 }
@@ -1203,12 +1322,22 @@ function onPreview(ctx, state, ui) {
     // hiển thị trong sheet xác nhận — khác bản máy chủ giữ thì TỰ ĐỒNG
     // BỘ (editDraft) trước, nếu không confirm sẽ gửi original cũ.
     const pendingText = currentBodyText(ui).trim();
-    if (pendingText && pendingText !== state.syncedBody) {
+    // R1B P1-1 (parity web): dirty theo CẢ body lẫn người nhận — user đổi CHỈ
+    // người nhận (body nguyên) vẫn phải editDraft trước preview, nếu không
+    // máy chủ bind người cũ -> recipientMismatch -> drift path refresh REVERT
+    // lựa chọn user + note sai nguyên nhân -> loop vô hạn.
+    const pendingRecipientId = state.recipientId != null ? String(state.recipientId) : null;
+    const bodyDirty = Boolean(pendingText) && pendingText !== state.syncedBody;
+    const recipientDirty = pendingRecipientId
+      !== (state.syncedRecipientId != null ? String(state.syncedRecipientId) : null);
+    if (bodyDirty || recipientDirty) {
       if (state.previewSeq !== previewSeq) return;
       ui.statusNote.textContent = "Đang đồng bộ nội dung mới lên máy chủ…";
       const updated = await ctx.adapter.editDraft(state.draftId, {
         body: pendingText,
-        recipientId: state.recipientId || undefined,
+        recipientId: pendingRecipientId || undefined,
+        // N06: auto-sync trước preview cũng phải chống stale overwrite.
+        expectedRevision: state.revision,
       });
       // N01: sau MỖI await so lại token — lệch -> abort im lặng.
       if (state.previewSeq !== previewSeq) return;
@@ -1218,6 +1347,7 @@ function onPreview(ctx, state, ui) {
       state.serverTimeIso = updated.server_time || null;
       state.fetchedAtMs = Date.now();
       state.syncedBody = pendingText;
+      state.syncedRecipientId = pendingRecipientId;
       refreshPauseUi(state, ui);
     }
     if (state.previewSeq !== previewSeq) return;
@@ -1247,6 +1377,39 @@ function onPreview(ctx, state, ui) {
       ui.statusNote.textContent = PREVIEW_INVALIDATE_NOTE;
       return;
     }
+    // N03 (QA 19/10 — P1 "duyệt A gửi B"): rào cản SERVER-TRUTH — đối chiếu
+    // response preview với snapshot chốt trước await. Máy chủ bind bản CỦA
+    // HỌ tại thời điểm preview; nếu revision/recipient_id/body lệch snapshot
+    // client nghĩa là bản nháp đã đổi ở nơi khác -> KHÔNG mở sheet, refresh
+    // từ server (getDraft) + cập nhật state/UI + note trung thực.
+    // Tương thích shape cũ thiếu field: field nào không có thì bỏ qua field đó
+    // (fallback N01 như trước); shape hợp đồng mới (A1/A2) luôn đủ 3 field
+    // nên check luôn chạy đầy đủ.
+    const serverRevision = Number(preview.revision);
+    const revisionMismatch = Number.isFinite(serverRevision)
+      && serverRevision !== Number(snapshot.revision);
+    // R2B P2-1 parity web: chuẩn hoá null hai phía — server mất recipient
+    // (null) trong khi snapshot đang giữ id là DRIFT thật (invalidate +
+    // refresh), còn chưa-chọn-cả-hai (null vs null) là đồng nhất; sheet
+    // fail-closed khi không resolve được người nhận từ preview.
+    const recipientMismatch = (preview.recipient_id ?? null)
+      !== (snapshot.recipientId ?? null);
+    const bodyMismatch = typeof preview.body !== "string"
+      || preview.body !== snapshot.body;
+    if (revisionMismatch || recipientMismatch || bodyMismatch) {
+      let refreshed = null;
+      try {
+        refreshed = await refreshDraftFromServer(ctx, state, ui);
+      } catch {
+        refreshed = null; // không tải được bản mới — báo trung thực, không mở sheet
+      }
+      if (state.previewSeq !== previewSeq) return;
+      unlockComposeForPreview(state, ui);
+      ui.statusNote.textContent = refreshed
+        ? PREVIEW_SERVER_CHANGED_NOTE
+        : PREVIEW_SERVER_REFRESH_FAILED_NOTE;
+      return;
+    }
     ui.statusNote.textContent = "";
     unlockComposeForPreview(state, ui);
     openConfirmSheet(ctx, state, ui, preview, snapshot);
@@ -1254,6 +1417,16 @@ function onPreview(ctx, state, ui) {
   run().catch((error) => {
     // N01: request cũ (phiên đã bị thay thế) KHÔNG ghi đè state/UI mới.
     if (state.previewSeq !== previewSeq) return;
+    if (error && error.code === "revision_conflict") {
+      // N06: auto-sync trước preview vấp xung đột -> dừng flow (KHÔNG
+      // preview), mở khóa, mở panel 2 lựa chọn; text người dùng giữ nguyên.
+      unlockComposeForPreview(state, ui);
+      openRevisionConflictSheet(ctx, state, ui, {
+        userText: currentBodyText(ui).trim(),
+        error,
+      });
+      return;
+    }
     unlockComposeForPreview(state, ui);
     if (error && error.code === "cooldown_active") {
       const remaining = error.details && Number.isFinite(Number(error.details.remaining_seconds))
@@ -1313,7 +1486,23 @@ function unlockComposeForPreview(state, ui) {
 }
 
 function openConfirmSheet(ctx, state, ui, preview, snapshot) {
-  const recipientName = ui.recipientName.textContent || "người nhận";
+  // N03: tên người nhận trong sheet bind TỪ preview.recipient_id (server-truth)
+  // qua connections trong state — KHÔNG dùng tên từ state cũ (nguồn lỗi N03
+  // "duyệt A gửi B"). Có id nhưng không resolve được -> FAIL CLOSED: cảnh báo
+  // + khóa nút gửi, KHÔNG fallback tên cũ. Chỉ khi response shape cũ KHÔNG có
+  // recipient_id thì mới fallback tên đang hiển thị (như N01 trước đó).
+  const previewRecipientId = preview && preview.recipient_id != null
+    ? String(preview.recipient_id)
+    : null;
+  const previewRecipientName = previewRecipientId
+    ? resolveRecipientLabel(state, previewRecipientId)
+    : null;
+  const serverRecipientUnknown = Boolean(previewRecipientId) && !previewRecipientName;
+  const confirmLabel = previewRecipientName
+    ? `Gửi cho ${previewRecipientName}`
+    : (serverRecipientUnknown
+      ? "Gửi thư"
+      : `Gửi cho ${ui.recipientName.textContent || "người nhận"}`);
   // N01: sheet hiển thị BẢN MÁY CHỦ BIND — `preview.body` khi response mới có
   // (server-bound snapshot — parity backend A2/mock A1), fallback snapshot đã
   // sync cho response cũ chưa trả body. TUYỆT ĐỐI KHÔNG đọc live textarea
@@ -1335,9 +1524,24 @@ function openConfirmSheet(ctx, state, ui, preview, snapshot) {
   const sheetError = h("div", { role: "alert" });
 
   const confirmBtn = createButton({
-    label: `Gửi cho ${recipientName}`,
+    label: confirmLabel,
     variant: "primary",
     onClick: () => {
+      // N03 mục re-verify: state.revision phải vẫn khớp revision máy chủ bind
+      // trong preview — nếu ai đó/lưu nháp nơi khác đã bump revision sau khi
+      // sheet mở thì bản xem trước này đã cũ -> KHÔNG gửi.
+      const previewRevision = Number(preview.revision);
+      if (Number.isFinite(previewRevision)
+        && Number(state.revision) !== previewRevision) {
+        clear(sheetError);
+        const staleCopy =
+          "Bản xem trước đã cũ (máy chủ đã có phiên bản mới hơn) — hãy bấm “Xem trước nội dung” lại.";
+        sheetError.appendChild(
+          h("p", { class: "fb-compose__sheet-error", role: "alert" }, staleCopy),
+        );
+        ui.statusNote.textContent = `${staleCopy} Bấm “Xem trước nội dung” để lấy bản mới.`;
+        return;
+      }
       // N01 mục 6: re-verify TRƯỚC khi gọi confirmDraftSend — nội dung đang
       // hiển thị phải vẫn là bản snapshot máy chủ + người nhận không đổi;
       // lệch -> lỗi trung thực TRONG sheet, KHÔNG gửi, không đóng sheet ép.
@@ -1386,9 +1590,15 @@ function openConfirmSheet(ctx, state, ui, preview, snapshot) {
     },
   });
 
+  // N03 fail closed: preview.recipient_id có nhưng không resolve được qua
+  // connections -> cảnh báo + khóa nút gửi (KHÔNG fallback tên cũ từ state).
+  if (serverRecipientUnknown) confirmBtn.disabled = true;
+
   const content = h("div", {},
     h("p", {}, "Xem lại lời nhắn trước khi gửi. Đây là bước xác nhận cuối cùng — bạn vẫn có thể giữ lại làm nháp."),
     h("div", { class: "fb-compose__preview-body" }, displayedSnapshot),
+    ...(serverRecipientUnknown ? [h("p", { class: "fb-compose__sheet-error", role: "alert" },
+      "Không xác định được người nhận từ dữ liệu máy chủ cho lần xem trước này. Để tránh gửi nhầm, nút gửi bị khóa — hãy chọn lại người nhận rồi bấm “Xem trước nội dung” lần nữa.")] : []),
     h("p", { class: "fb-page__note" },
       "Bản hiển thị phía trên là bản máy chủ đã chốt cho lần xem trước này — sửa nội dung hoặc đổi người nhận sau bước này sẽ cần xem trước lại."),
     sheetError,
@@ -1408,6 +1618,213 @@ function openConfirmSheet(ctx, state, ui, preview, snapshot) {
     },
   });
   ui.root.appendChild(sheet);
+}
+
+/**
+ * N06 (QA 19/10): panel xung đột revision — editDraft trả 409
+ * revision_conflict {details:{reason:"draft_conflict", current_revision}}.
+ * Nguyên tắc: KHÔNG auto-retry, KHÔNG merge, KHÔNG mất text người dùng
+ * (textarea giữ nguyên; panel hiển thị CẢ HAI bản để đối chiếu). Đúng 2 lựa
+ * chọn rõ ràng:
+ *  - "Cập nhật theo bản trên máy chủ" (adopt): nạp bản server vào ô soạn
+ *    (getDraft mới nhất tại thời điểm bấm — không dùng dữ liệu panel cũ).
+ *  - "Ghi đè bằng bản của tôi" (deliberate): gọi lại editDraft ĐÚNG MỘT lần
+ *    với expectedRevision = current_revision (phiên bản mới nhất đã biết);
+ *    nếu lại 409 thì chỉ cập nhật thông tin trong panel, KHÔNG tự gọi nữa.
+ */
+function openRevisionConflictSheet(ctx, state, ui, { userText = "", error = null } = {}) {
+  if (state.conflictSheetOpen) return; // chặn mở chồng panel
+  state.conflictSheetOpen = true;
+
+  const detail = (error && error.details) || {};
+  // current_revision từ 409 — dùng luôn cho "Ghi đè" khi getDraft hỏng.
+  let currentRevision = Number.isFinite(Number(detail.current_revision))
+    ? Number(detail.current_revision)
+    : null;
+
+  const conflictNote = h("p", { class: "fb-page__note", role: "status" });
+  const mineBlock = h("div", { class: "fb-compose__conflict-block" });
+  mineBlock.appendChild(
+    h("p", { class: "fb-compose__conflict-head" }, "Bản bạn đang soạn (giữ nguyên trong ô soạn):"),
+  );
+  mineBlock.appendChild(
+    h("p", { class: "fb-compose__conflict-body" }, String(userText || "")),
+  );
+  const serverBlock = h("div", { class: "fb-compose__conflict-block", hidden: true });
+  const serverBody = h("p", { class: "fb-compose__conflict-body" });
+  serverBlock.appendChild(
+    h("p", { class: "fb-compose__conflict-head" }, "Bản hiện đang có trên máy chủ:"),
+  );
+  serverBlock.appendChild(serverBody);
+  const sheetError = h("div", { role: "alert" });
+
+  const adoptBtn = createButton({
+    label: "Cập nhật theo bản trên máy chủ",
+    variant: "primary",
+    onClick: () => {
+      adoptBtn.disabled = true;
+      overwriteBtn.disabled = true;
+      Promise.resolve()
+        .then(() => ctx.adapter.getDraft(state.draftId))
+        .then((serverDraft) => {
+          if (!serverDraft) throw new Error("no_draft");
+          // Adopt: nạp TOÀN BỘ trạng thái máy chủ vào state + ô soạn.
+          state.revision = serverDraft.revision;
+          state.status = serverDraft.status || state.status;
+          state.pause = serverDraft.pause || null;
+          state.serverTimeIso = serverDraft.server_time || state.serverTimeIso;
+          state.fetchedAtMs = Date.now();
+          state.syncedBody = serverDraft.body != null ? String(serverDraft.body) : "";
+          if (serverDraft.recipient_id != null) {
+            state.recipientId = serverDraft.recipient_id;
+          }
+          // R1B P1-1: adopt = nhận nguyên bản máy chủ (kèm người nhận) —
+          // syncedRecipientId cập nhật theo để lần preview sau không sync nhầm.
+          state.syncedRecipientId = state.recipientId != null ? String(state.recipientId) : null;
+          ui.textarea.value = state.syncedBody;
+          ui.counter.textContent = `${state.syncedBody.length} ký tự`;
+          refreshRecipientUi(state, ui);
+          refreshPauseUi(state, ui);
+          closeSheet();
+          ui.statusNote.textContent =
+            "Đã cập nhật theo bản trên máy chủ — hãy xem lại nội dung trước khi gửi.";
+        })
+        .catch(() => {
+          if (!sheet.isConnected) return;
+          adoptBtn.disabled = false;
+          overwriteBtn.disabled = currentRevision == null;
+          clear(sheetError);
+          sheetError.appendChild(
+            h("p", { class: "fb-compose__sheet-error", role: "alert" },
+              "Chưa tải được bản mới từ máy chủ. Bạn vẫn giữ nguyên bản của mình — thử lại sau."),
+          );
+        });
+    },
+  });
+
+  const overwriteBtn = createButton({
+    label: "Ghi đè bằng bản của tôi",
+    variant: "ghost",
+    onClick: () => {
+      if (currentRevision == null) return;
+      adoptBtn.disabled = true;
+      overwriteBtn.disabled = true;
+      const text = currentBodyText(ui).trim(); // text người dùng, không đụng textarea
+      Promise.resolve()
+        .then(() => ctx.adapter.editDraft(state.draftId, {
+          body: text,
+          recipientId: state.recipientId || undefined,
+          // Deliberate overwrite: dùng đúng current_revision mới nhất đã biết.
+          expectedRevision: currentRevision,
+        }))
+        .then((updated) => {
+          state.revision = updated.revision;
+          state.status = updated.status;
+          state.pause = updated.pause || null;
+          state.serverTimeIso = updated.server_time || null;
+          state.fetchedAtMs = Date.now();
+          state.syncedBody = text;
+          state.syncedRecipientId = state.recipientId != null ? String(state.recipientId) : null;
+          closeSheet();
+          ui.statusNote.textContent =
+            "Đã ghi đè bản trên máy chủ bằng bản của bạn (một lần, theo lựa chọn của bạn).";
+          refreshPauseUi(state, ui);
+        })
+        .catch((overwriteError) => {
+          if (!sheet.isConnected) return;
+          if (overwriteError && overwriteError.code === "revision_conflict") {
+            // Lần ghi đè chủ động lại 409: chỉ cập nhật thông tin trong panel
+            // + nạp lại bản server để đối chiếu — KHÔNG tự gọi editDraft nữa.
+            const freshDetail = (overwriteError.details || {});
+            if (Number.isFinite(Number(freshDetail.current_revision))) {
+              currentRevision = Number(freshDetail.current_revision);
+            }
+            clear(sheetError);
+            sheetError.appendChild(
+              h("p", { class: "fb-compose__sheet-error", role: "alert" },
+                "Máy chủ vừa lại báo bản nháp đã thay đổi — đã cập nhật phiên bản mới nhất trong khung này. Bấm “Ghi đè bằng bản của tôi” lần nữa nếu bạn vẫn muốn ghi đè."),
+            );
+            Promise.resolve()
+              .then(() => ctx.adapter.getDraft(state.draftId))
+              .then((serverDraft) => {
+                if (!sheet.isConnected || !serverDraft) return;
+                currentRevision = Number(serverDraft.revision);
+                serverBody.textContent = String(serverDraft.body ?? "");
+                serverBlock.hidden = false;
+                adoptBtn.disabled = false;
+                overwriteBtn.disabled = currentRevision == null;
+              })
+              .catch(() => {
+                if (!sheet.isConnected) return;
+                adoptBtn.disabled = false;
+                overwriteBtn.disabled = currentRevision == null;
+              });
+            return;
+          }
+          adoptBtn.disabled = false;
+          overwriteBtn.disabled = false;
+          clear(sheetError);
+          sheetError.appendChild(
+            h("p", { class: "fb-compose__sheet-error", role: "alert" },
+              describeError(overwriteError,
+                "Chưa ghi đè được — không rõ kết quả. Bản của bạn vẫn giữ nguyên trong ô soạn; kiểm tra lại trước khi thử lần nữa.")),
+          );
+        });
+    },
+  });
+
+  const sheet = createSheet({
+    title: "Bản nháp đã thay đổi trên máy chủ",
+    content: h("div", {},
+      conflictNote,
+      mineBlock,
+      serverBlock,
+      sheetError,
+      adoptBtn,
+      overwriteBtn,
+    ),
+    onClose: () => {
+      state.conflictSheetOpen = false;
+      if (sheet && sheet.isConnected) sheet.remove();
+    },
+  });
+  ui.root.appendChild(sheet);
+  // R1B P1-2: đóng CHỈ qua createSheet.close() (parity sheet người nhận,
+  // đường "Chọn người nhận") — sheet.remove() trực tiếp BYPASS onClose làm
+  // state.conflictSheetOpen kẹt TRUE -> MỌI revision_conflict sau đó bị nuốt
+  // im lặng ở openRevisionConflictSheet + leak listener Esc/mất trả focus.
+  function closeSheet() {
+    if (sheet && typeof sheet.close === "function") sheet.close();
+  }
+
+  // Tải bản máy chủ để đối chiếu ngay khi mở panel (một lần, không tự retry).
+  adoptBtn.disabled = true;
+  overwriteBtn.disabled = true;
+  conflictNote.textContent = "Đang tải bản mới nhất trên máy chủ để đối chiếu…";
+  Promise.resolve()
+    .then(() => ctx.adapter.getDraft(state.draftId))
+    .then((serverDraft) => {
+      if (!sheet.isConnected) return;
+      if (!serverDraft) throw new Error("no_draft");
+      currentRevision = Number(serverDraft.revision);
+      serverBody.textContent = String(serverDraft.body ?? "");
+      serverBlock.hidden = false;
+      adoptBtn.disabled = false;
+      overwriteBtn.disabled = currentRevision == null;
+      conflictNote.textContent =
+        `Máy chủ báo bản nháp đang ở phiên bản ${currentRevision} — nội dung của bạn chưa bị ghi đè. Chọn một trong hai cách dưới đây.`;
+    })
+    .catch(() => {
+      if (!sheet.isConnected) return;
+      // Không tải được bản server: "Cập nhật theo máy chủ" khóa (chưa có bản
+      // để nạp); "Ghi đè" vẫn mở khi 409 đã báo current_revision.
+      serverBlock.hidden = false;
+      serverBody.textContent = "(Chưa tải được nội dung bản trên máy chủ.)";
+      conflictNote.textContent =
+        "Chưa tải được bản mới nhất trên máy chủ. Bạn vẫn có thể ghi đè bằng bản của mình vì máy chủ đã báo phiên bản hiện tại.";
+      adoptBtn.disabled = false;
+      overwriteBtn.disabled = currentRevision == null;
+    });
 }
 
 /* --------------------------- Hiển thị trạng thái dừng --------------------------- */

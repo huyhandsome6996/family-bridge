@@ -208,15 +208,17 @@ Response THÊM `body` (server-bound snapshot):
 ```
 
 - Nguồn sự thật backend: `make_preview` (f06_drafts/services/drafts.py:200) —
-  hiện trả 5 field, A2 thêm `"body": draft.body` (đọc một chiều; audit tại
-  SHA e0ee388 chưa có field này).
+  cập nhật 2026-10-19 vòng 2: **ĐÃ trả đủ 6 field** `preview_id, revision,
+  recipient_id, body, deadline, server_time` tại HEAD `ec29abb` (bản audit
+  e0ee388 trước đó chỉ có 5 field, thiếu `body`).
 - `body` là SNAPSHOT chốt lúc preview: sau đó draft đổi (edit lưu) không ảnh
   hưởng giá trị đã trả; confirm_send vẫn validate `used` + `revision` +
   `recipient_id` như hiện tại — `body` chỉ là bản "đã duyệt để hiển thị".
 - Shared HTTP adapter (`http-endpoints.js` `previewDraft`): **pass-through
   NGUYÊN VẸN** — `return data` không thêm/bớt/đổi tên field (đã chứng minh
-  bằng đọc code + test mới "N01 — http previewDraft pass-through"). Khi A2
-  land `body`, cả hai client nhận ngay, không phải đổi adapter.
+  bằng đọc code + test mới "N01 — http previewDraft pass-through"). Backend
+  `body` ĐÃ land tại ec29abb — cả hai client nhận đủ 6 field, không phải đổi
+  adapter (pin thêm trong `test_f06_concurrency_contract.test.mjs` — N03).
 - Shared mock adapter (`mock-adapter.js` `previewDraft`): **ĐÃ trả thêm
   `body: draft.body`** (A1, phiên 2026-10-19) — parity để hai client chạy demo
   `?demo=1` có hành vi giống HTTP thật. Zalo shim
@@ -279,7 +281,7 @@ Trạng thái audit tại SHA e0ee388 (trước fix của A3/A4):
 
 | State (compose) | Web (`#/compose` — `web/src/pages/compose/index.js`) | Zalo Mini (`#/compose` — `zalo-mini-app/src/pages/compose/index.js`) | Route/Component/API | Status contract (A1) | Status code |
 |---|---|---|---|---|---|
-| idle → bấm "Xem trước nội dung" | `onPreview()` dòng 732 (guarded "preview") | `onPreview()` dòng 1131 (guarded "preview") | `POST /api/v1/drafts/{id}/preview` | Shape mới chốt §6.2 | mock DONE (A1); backend `body` CHỜ A2 |
+| idle → bấm "Xem trước nội dung" | `onPreview()` dòng 732 (guarded "preview") | `onPreview()` dòng 1131 (guarded "preview") | `POST /api/v1/drafts/{id}/preview` | Shape mới chốt §6.2 | mock DONE (A1); backend `body` ĐÃ land tại ec29abb (make_preview trả đủ 6 field) |
 | sync dirty trước preview | dòng 745–765: đọc live `pendingText` → `editDraft` (không snapshot, không token) | dòng 1144–1162: y hệt | `POST /api/v1/drafts/{id}` (edit, C8 kind-optional) | (b)(g) chốt §6.3 | BUG N01 → A4 / A3 |
 | preview in-flight | KHÔNG khóa textarea/recipient; không previewSeq | y hệt | preview đang bay | (a)(c) chốt §6.3 | BUG N01 → A4 / A3 |
 | preview về, mở sheet | `openConfirmSheet()` dòng 786; hiển thị `ui.textarea.value` LIVE dòng 836 | `openConfirmSheet()` dòng 1185; hiển thị live dòng 1228 | — | (e): hiển thị `preview.body` (fallback snapshot) | BUG N01 → A4 / A3 |
@@ -303,6 +305,100 @@ N01 mới trong `f04-contract.test.mjs`: key-set preview, snapshot đúng thời
 - Shared (mock + http comment + tests) và docs này: **A1** — ĐÃ sửa phiên
   2026-10-19.
 - Backend thêm `"body": draft.body` vào `make_preview` (+ test Python pin
-  shape): **A2** — CHƯA land tại SHA e0ee388.
-- Web `onPreview/openConfirmSheet` theo §6.3: **A4** — CHỜ.
-- Zalo `onPreview/openConfirmSheet` theo §6.3: **A3** — CHỜ.
+  shape): **A2** — ĐÃ land tại HEAD ec29abb (make_preview trả đủ 6 field,
+  xác minh 2026-10-19 vòng 2).
+- Web `onPreview/openConfirmSheet` theo §6.3: **A4** — ĐÃ land (server-truth 3 chiều + fail-closed; evidence `f04-fix-evidence/a4/`).
+- Zalo `onPreview/openConfirmSheet` theo §6.3: **A3** — ĐÃ land (parity web; evidence `f04-fix-evidence/a3/`).
+
+## 7. Revision concurrency (N06) + preview binding (N03) — QA vòng 2, 2026-10-19
+
+> **Phạm vi hiệu lực**: contract BINDING F04R2-LEAD-1 chốt 2026-10-19 trên
+> nhánh `tinh-nang/f04-ai-ho-tro-dien-dat-us029-us033`, nền HEAD `ec29abb`
+> (N01/N02 đã sửa). Bổ sung cho §6: N06 chống "client stale lưu đè im lặng
+> bản của client khác"; N03 chống "duyệt A nhưng gửi B" khi client khác đổi
+> recipient giữa flow. Shared (A1), backend (A2), web (A4), mini (A3) ĐÃ land
+> toàn bộ tại working tree vòng fix 2026-10-19; review chéo 2 vòng R1/R2 +
+> probes qa-f04 13/13 (evidence `f04-fix-evidence/`).
+
+### 7.1 N06 (P2) — editDraft kèm `expected_revision`
+
+- Lỗi: `POST /api/v1/drafts/{id}` trước đây không có điều kiện revision —
+  client stale lưu đè im lặng bản của client khác (HTTP 200 revision+1,
+  không conflict).
+- Contract server (A2 land trên `DraftDetailView.post`): field body MỚI
+  optional `expected_revision` (int dương 1..2147483647):
+  - Cung cấp và `draft.revision != expected_revision` → **409**
+    `{"error":{"code":"revision_conflict","details":{"reason":
+    "draft_conflict","current_revision":N}}}` — `current_revision` là revision
+    hiện hành để client reconcile bằng GET; details KHÔNG chứa body
+    (FORBIDDEN_DETAIL_KEYS đã chặn "body").
+  - Khớp → 200, revision+1 như cũ. KHÔNG cung cấp → hành vi cũ (backcompat).
+- Contract shared adapter (A1, ĐÃ land phiên 2026-10-19):
+  - `editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId,
+    expectedRevision })` — `expectedRevision` là số nguyên dương hợp lệ →
+    body JSON gửi kèm `expected_revision`; undefined/null → KHÔNG gửi field
+    (cùng convention `=== null || === undefined` của confirmInvite/
+    cancelDeletionRequest).
+  - Sai kiểu (0/âm/lẻ/chuỗi/vượt 2^31-1) → 400 `input_invalid`
+    `{field:"expected_revision", reason:"must_be_positive_int"}` chặn TRƯỚC
+    fetch (parity aiRefine `input_revision` — C2).
+  - HTTP 409 `revision_conflict` nổi lên NGUYÊN qua ApiError (status 409,
+    `code:"revision_conflict"`, `details:{reason, current_revision}`) nhờ
+    envelope reader của `createApiClient` — adapter không nuốt, không tự retry
+    thao tác ghi (parity các lỗi khác).
+  - Mock adapter mirror ĐÚNG server semantics: tự giữ revision hiện tại;
+    lệch → throw 409 `revision_conflict` với `details:{reason:"draft_conflict",
+    current_revision:<rev hiện tại của mock>}`; khớp/undefined → bump như cũ;
+    so revision TRƯỚC khi áp nội dung → draft của client khác còn nguyên vẹn
+    sau một edit stale bị chặn (test pin cả hai chiều).
+- Hành vi client bắt buộc (web A4 / mini A3): luồng edit gửi kèm
+  `expectedRevision` = revision client đang giữ (từ create/get/edit response
+  gần nhất); nhận 409 → KHÔNG retry mù: GET lại bản mới, báo trung thực
+  "bản nháp đã được cập nhật ở nơi khác", để người dùng quyết định trước khi
+  sửa tiếp (không tự ghép nội dung).
+
+### 7.2 N03 (P1) — sheet preview bind TỪ preview response
+
+- Lỗi: UI preview sheet lấy recipient name từ state cũ — không bind/validate
+  `preview.recipient_id` + `preview.revision` → duyệt A nhưng gửi B khi client
+  khác đổi recipient giữa chừng.
+- Contract preview response: ĐỦ 6 field `preview_id, revision, recipient_id,
+  body, deadline, server_time` (backend `make_preview` ĐÃ land tại ec29abb;
+  mock cùng shape + `source:"fixture"` quy ước ở cuối — key set đơn nguồn
+  `DOCUMENTED_PREVIEW_DTO_FIELDS` §6.2).
+- Adapter pin CẢ HAI phía trong `test_f06_concurrency_contract.test.mjs`
+  (N03): mock + http pass-through KHÔNG được strip/đổi tên field; preview
+  phản ánh state máy chủ TẠI THỜI ĐIỂM preview — sau mọi editDraft, gồm edit
+  có `expectedRevision` (luồng N06).
+- Hành vi client bắt buộc (web A4 / mini A3): sheet xác nhận resolve tên
+  người nhận TỪ `preview.recipient_id` (không từ state chọn cũ) + hiển thị
+  `preview.body` (§6.3-e); trước confirm re-verify `preview.revision` +
+  `preview.recipient_id` vẫn là bản mới nhất (§6.3-f); recipient không
+  resolve được → fail-closed (không mở nút Gửi với tên sai/mặc định).
+
+### 7.3 Bằng chứng test + ownership (vòng 2)
+
+- RED-first: `packages/family_bridge_shared/tests/test_f06_concurrency_contract.test.mjs`
+  — 11 test (node:test). Chạy TRƯỚC khi implement: **7 pass / 4 FAIL, exit 1**
+  (evidence `f04-fix-evidence/a1/red-contract.log` — 4 đỏ đúng các assertion
+  `expected_revision` chưa tồn tại ở http + mock).
+- Sau implement: `node --test packages/family_bridge_shared/tests/*.test.mjs
+  packages/family_bridge_shared/tests/test_f04_contract_a5.mjs` → **89/89
+  PASS, 0 fail** (baseline 78 + 11 mới; N01/N02 regression không vỡ —
+  evidence `f04-fix-evidence/a1/green-contract.log`).
+- Shared (http-endpoints `editDraft`, mock `editDraft`, tests, docs này):
+  **A1** — ĐÃ sửa phiên 2026-10-19.
+- Backend `expected_revision` trên edit + 409 revision_conflict: **A2** —
+  **ĐÃ land** (working tree vòng F04R2, uncommitted tại thời điểm review R1A
+  19/10; `packages/family_bridge_features/f06_drafts/` — atomic
+  check+bump dưới row lock, author-only-first, 409 details tối thiểu; test
+  `tests/test_f06_expected_revision.py` 8 test). Evidence:
+  `f04-fix-evidence/a2/green-expected-revision.log` (backend f06+f04:
+  **128 OK, skipped=2**), `a2/red-expected-revision.log` (RED-first),
+  `a2/migration-drift.log` (No changes detected).
+- Giới hạn đã ghi nhận (R1A P2-2): atomicity `select_for_update()` là **no-op
+  trên SQLite harness** (harness chạy `DB_ENGINE=sqlite`); chứng minh
+  concurrency thật cần MySQL (prod) — test concurrency song song: **NOT_RUN**
+  (blocker ghi nhận `f04-fix-evidence/r1a-findings.md`).
+- Web edit flow + preview sheet bind theo §7.1/§7.2: **A4** — ĐÃ land (mọi editDraft gửi `expectedRevision`, conflict panel adopt/deliberate; evidence `f04-fix-evidence/a4/`).
+- Zalo edit flow + preview sheet bind theo §7.1/§7.2: **A3** — ĐÃ land (parity web; evidence `f04-fix-evidence/a3/`).

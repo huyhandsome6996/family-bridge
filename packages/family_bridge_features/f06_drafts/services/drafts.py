@@ -3,6 +3,13 @@
 Guards summary:
 - create/edit: kind allowlist, bounds, no AI-linkage fields; edit bumps
   revision, invalidates previews, NEVER moves an existing pause deadline.
+  N06: edit accepts an OPTIONAL `expected_revision` (positive int) — when
+  provided and != draft.revision -> RevisionConflict 409
+  {reason: draft_conflict, current_revision} WITHOUT writing (never leaks
+  the body; clients reconcile via the author-only GET). The check+bump
+  critical section re-reads the row with select_for_update inside the
+  transaction so a concurrent save cannot slip between check and bump.
+  Absent expected_revision keeps the legacy behavior.
 - pause: 300s fixed from server now; re-pause returns the SAME deadline
   (no reset/extension); pause allowed only while editing/paused.
 - preview: the 300s gate applies to a draft the author actually paused
@@ -35,7 +42,8 @@ from typing import Any, Dict, Optional
 from django.db import transaction
 
 from family_bridge_core.errors import (
-    CooldownActive, InputInvalid, ModuleUnavailable, NotFound, PreviewStale,
+    CooldownActive, InputInvalid, ModuleUnavailable, NotFound,
+    RevisionConflict, PreviewStale,
 )
 from family_bridge_core.idempotency import send_payload_hash
 from family_bridge_core.timeutils import UTC
@@ -50,6 +58,16 @@ from . import registry
 
 def _require_own_draft(*, author_id: str, draft_id: str) -> Draft:
     draft = Draft.objects.filter(pk=draft_id).first()
+    if draft is None or str(draft.author_id) != str(author_id):
+        raise NotFound({"reason": "draft_not_found"})
+    return draft
+
+
+def _require_own_draft_locked(*, author_id: str, draft_id: str) -> Draft:
+    """N06: same author-only 404 semantics as _require_own_draft, but takes
+    a row lock (SELECT ... FOR UPDATE) for edit's check+bump critical
+    section — must run inside a transaction."""
+    draft = Draft.objects.select_for_update().filter(pk=draft_id).first()
     if draft is None or str(draft.author_id) != str(author_id):
         raise NotFound({"reason": "draft_not_found"})
     return draft
@@ -141,8 +159,22 @@ class DraftService:
     def edit(self, *, author_id: str, draft_id: str, body: str,
              title: str = "", card_id: str = "",
              card_version: Optional[int] = None,
-             recipient_id: str = "") -> Draft:
-        draft = _require_own_draft(author_id=author_id, draft_id=draft_id)
+             recipient_id: str = "",
+             expected_revision: Optional[int] = None) -> Draft:
+        # N06: the revision check + bump must be ATOMIC against concurrent
+        # edits — re-read the row under lock inside this transaction instead
+        # of the unlocked _require_own_draft (author-only 404 preserved).
+        draft = _require_own_draft_locked(author_id=author_id,
+                                          draft_id=draft_id)
+        # N06: optional optimistic-concurrency guard. Provided AND stale ->
+        # RevisionConflict 409 {reason: draft_conflict, current_revision} —
+        # nothing written, previews untouched, NO body in details (the
+        # client reconciles via the author-only GET draft endpoint). Absent
+        # (None) keeps the legacy behavior for old callers.
+        if (expected_revision is not None
+                and draft.revision != expected_revision):
+            raise RevisionConflict({"reason": "draft_conflict",
+                                    "current_revision": draft.revision})
         if draft.status in (STATUS_SENT, STATUS_DISCARDED):
             raise InputInvalid({"reason": "draft_not_editable"})
         _validate_content(kind=draft.kind, body=body, title=title,
@@ -217,8 +249,12 @@ class DraftService:
         # đã lưu, không đọc live textarea phía client). Author-only field:
         # preview chỉ trả cho chính tác giả draft của mình (không vi phạm
         # privacy — same scope as the draft GET endpoint).
+        # R1A P3 (review vòng 1, 19/10): parity shape với Draft.view — draft
+        # chưa chọn recipient trả `null` (không phải `""`) để client so
+        # preview.recipient_id với state.recipientId (nguồn Draft.view) không
+        # gặp drift giả null !== "".
         return {"preview_id": str(preview.id), "revision": draft.revision,
-                "recipient_id": draft.recipient_id,
+                "recipient_id": (draft.recipient_id or None),
                 "body": draft.body,
                 "deadline": (draft.pause_deadline_at.isoformat()
                              if draft.pause_deadline_at else None),

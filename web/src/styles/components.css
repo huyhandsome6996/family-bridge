@@ -1865,12 +1865,15 @@
 }
 
 /* ---- U34 Compose (Stitch) ---- */
+/* Large-text 200% (stress probe — KHÔNG phải device cert): chip + safety
+   cho phép wrap khi font nhân đôi phình to, không đẩy ngang document. */
 .fb-compose__privacy-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--fb-space-2);
   padding: 0 var(--fb-space-1);
+  flex-wrap: wrap;
 }
 
 .fb-compose__privacy-row .fb-chip--high {
@@ -2013,8 +2016,13 @@
   color: var(--fb-text-secondary);
 }
 
+/* N05 (QA F04 vòng 2): hit area nút "Đổi" >= 44x44 CSS px THỰC (min-width
+   + min-height — A5 đo boundingBox thật bằng browser); chữ + icon căn giữa
+   khi nút rộng hơn nội dung; spacing nút lân cận đảm bảo bằng gap của row. */
 .fb-compose__change-btn {
-  min-height: 36px;
+  min-height: 44px;
+  min-width: 44px;
+  justify-content: center;
   padding: 0 var(--fb-space-3);
   border-radius: 9999px;
   background: var(--fb-surface-container);
@@ -2032,6 +2040,14 @@
 }
 
 .fb-compose__change-btn:hover {
+  background: var(--fb-surface-high);
+}
+
+/* N05: focus-visible riêng cho nút Đổi (không chỉ dựa rule global) —
+   cùng ngôn ngữ outline --fb-focus của base.css. */
+.fb-compose__change-btn:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: 2px;
   background: var(--fb-surface-high);
 }
 
@@ -2110,6 +2126,8 @@
   background: var(--fb-surface-high);
 }
 
+/* Large-text 200% (stress probe): bỏ nowrap — nút pause/save compose phải
+   được XUỐNG DÒNG khi font nhân đôi, không tràn ngang lưới minmax(0,1fr). */
 .fb-compose__pause-btn {
   width: 100%;
   min-height: 48px;
@@ -2118,7 +2136,6 @@
   align-items: center;
   justify-content: center;
   gap: var(--fb-space-1);
-  white-space: nowrap;
 }
 
 .fb-compose__refresh-row {
@@ -2170,6 +2187,73 @@
   color: var(--fb-text);
   white-space: pre-wrap;
   word-break: break-word;
+}
+
+/* N06 (QA F04 vòng 2): panel xung đột revision — cùng ngôn ngữ fb- hiện có.
+   User phải thấy rõ 2 lựa chọn; bản server là scroll-container để không đẩy
+   trang khi nội dung dài / font nhân đôi. */
+.fb-compose__conflict {
+  border: 1px solid var(--fb-warning);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-warning-bg);
+  padding: var(--fb-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-compose__conflict-title {
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  font-weight: 600;
+  color: var(--fb-warning);
+}
+
+.fb-compose__conflict-sub {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  color: var(--fb-text-secondary);
+}
+
+.fb-compose__conflict-label {
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-compose__conflict-server {
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-outline-variant);
+  border-radius: var(--fb-radius-control);
+  padding: var(--fb-space-2) var(--fb-space-3);
+  font-size: var(--fb-fs-body);
+  line-height: var(--fb-lh-body);
+  color: var(--fb-text);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-y: auto;
+  max-height: 160px;
+}
+
+.fb-compose__conflict-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fb-space-2);
+}
+
+@media (max-width: 479px) {
+  .fb-compose__conflict-actions {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Lỗi/cảnh báo trong sheet xác nhận (N03 fail-closed + N01 re-verify). */
+.fb-compose__sheet-error {
+  font-size: var(--fb-fs-label-lg);
+  line-height: var(--fb-lh-label-lg);
+  font-weight: 500;
+  color: var(--fb-error);
 }
 
 /* ---- U01 CTA glyph Zalo (reference: svg fill-current 20px) ---- */

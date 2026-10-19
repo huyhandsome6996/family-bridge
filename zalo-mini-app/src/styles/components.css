@@ -2001,7 +2001,12 @@
 }
 
 .fb-compose__change-btn {
-  min-height: 36px;
+  /* N05 (QA 19/10): nút "Đổi" người nhận phải có vùng chạm THẬT ≥44x44 CSS px
+     (audit: chỉ cao 36px). min-width giữ pill không bẹp khi chữ ngắn —
+     boundingBox đo được phải đạt cả 2 chiều. focus-visible phủ bởi rule
+     toàn cục :focus-visible (base.css, outline 2px + offset 2px). */
+  min-height: 44px;
+  min-width: 44px;
   padding: 0 var(--fb-space-3);
   border-radius: 9999px;
   background: var(--fb-surface-container);
@@ -2101,12 +2106,17 @@
 .fb-compose__pause-btn {
   width: 100%;
   min-height: 48px;
+  /* N05: min-width chặn vùng chạm ngang tối thiểu 44px cả khi nằm cột hẹp. */
+  min-width: 44px;
   padding: 8px var(--fb-space-3);
   display: flex;
   align-items: center;
   justify-content: center;
   gap: var(--fb-space-1);
-  white-space: nowrap;
+  /* N05 large-text 200%: cho phép chữ wrap (trước là nowrap) — khi cỡ chữ
+     phóng đôi, nowrap bóp nút thành min-content rất rộng gây tràn ngang;
+     wrap giữ mọi chữ đọc được và nút vẫn trong khung (reflow có ý nghĩa). */
+  white-space: normal;
 }
 
 .fb-compose__refresh-row {
@@ -2123,8 +2133,10 @@
   font-size: var(--fb-fs-label-sm);
   font-weight: 600;
   cursor: pointer;
-  padding: 4px 6px;
-  min-height: 32px;
+  padding: 4px 10px;
+  /* N05 (QA 19/10): touch target ≥44px (audit: chỉ 32px). */
+  min-height: 44px;
+  min-width: 44px;
   border-radius: var(--fb-radius-control);
 }
 

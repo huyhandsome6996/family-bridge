@@ -272,19 +272,47 @@ export function createHttpEndpoints({
      * backend f06_drafts tại baseline 72930ae vẫn validate `kind` ở edit
      * (DraftDetailView.post -> _content_fields require_all=True rồi mới pop)
      * — gap backend thuộc A2, không fix bằng cách gửi kind từ client.
+     *
+     * N06 (QA vòng 2 — "client stale lưu đè im lặng bản của client khác",
+     * contract BINDING F04R2-LEAD-1): field MỚI optional `expectedRevision` —
+     *  - KHÔNG truyền / null → KHÔNG gửi `expected_revision` (backcompat hành
+     *    vi cũ, cùng convention expectedRevision === null || === undefined của
+     *    confirmInvite/confirmClassProposal/cancelDeletionRequest).
+     *  - Truyền số nguyên dương ≤ 2147483647 → body kèm `expected_revision`;
+     *    máy chủ so với draft.revision: lệch → 409
+     *    {"error":{"code":"revision_conflict","details":{"reason":
+     *    "draft_conflict","current_revision":N}}} (details KHÔNG chứa body —
+     *    FORBIDDEN_DETAIL_KEYS), khớp → 200 revision+1.
+     *  - 409 revision_conflict nổi lên NGUYÊN status/code/details qua ApiError
+     *    của createApiClient (đọc envelope lỗi thống nhất — cùng parity các
+     *    lỗi khác). Adapter KHÔNG nuốt, KHÔNG tự retry thao tác ghi; phía UI
+     *    phải GET lại bản mới để reconcile rồi mới sửa tiếp.
+     *  - Sai kiểu (0/âm/lẻ/chuỗi/vượt 2^31-1) → chặn TRƯỚC fetch 400
+     *    input_invalid {field:"expected_revision", reason:"must_be_positive_int"}
+     *    (parity aiRefine input_revision — hợp đồng C2).
      */
-    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId }) {
+    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId, expectedRevision } = {}) {
       requireBaseUrl();
+      const payload = {
+        body,
+        title: title || "",
+        ...(cardId ? { card_id: cardId } : {}),
+        ...(cardVersion != null ? { card_version: cardVersion } : {}),
+        ...(recipientId ? { recipient_id: recipientId } : {}),
+      };
+      if (expectedRevision !== undefined && expectedRevision !== null) {
+        if (!Number.isInteger(expectedRevision) || expectedRevision < 1
+          || expectedRevision > 2147483647) {
+          // Chặn trước fetch — 1..2147483647 theo hợp đồng N06 (int dương).
+          throw new ApiError("expectedRevision phải là số nguyên dương.", 400, "http",
+            { code: "input_invalid", details: { field: "expected_revision", reason: "must_be_positive_int" } });
+        }
+        payload.expected_revision = expectedRevision;
+      }
       const data = await authed(() =>
         request(`/api/v1/drafts/${encodeURIComponent(draftId)}`, {
           method: "POST",
-          body: {
-            body,
-            title: title || "",
-            ...(cardId ? { card_id: cardId } : {}),
-            ...(cardVersion != null ? { card_version: cardVersion } : {}),
-            ...(recipientId ? { recipient_id: recipientId } : {}),
-          },
+          body: payload,
         }));
       return data;
     },

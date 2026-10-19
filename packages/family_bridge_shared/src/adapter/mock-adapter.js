@@ -462,7 +462,24 @@ export function createMockAdapter({ scenario = null } = {}) {
       return { ...draft, pause: pauseViewOf(draft, Date.now()), server_time: new Date().toISOString() };
     },
 
-    async editDraft(draftId, { body, title = "", recipientId = null } = {}) {
+    /**
+     * N06 (QA vòng 2 — contract BINDING F04R2-LEAD-1): mirror ĐÚNG semantics
+     * `expected_revision` của server (A2 land trên POST /api/v1/drafts/{id}):
+     *  - KHÔNG truyền / null → hành vi cũ (bump revision, không conflict —
+     *    backcompat, cùng convention `expectedRevision === null || ===
+     *    undefined` của confirmInvite http).
+     *  - expectedRevision là số nguyên dương ≤ 2147483647:
+     *      lệch với revision hiện tại của mock → 409 revision_conflict,
+     *      details {reason:"draft_conflict", current_revision:<rev hiện tại>},
+     *      details KHÔNG chứa body (FORBIDDEN_DETAIL_KEYS) — KHÔNG đè bản của
+     *      client khác im lặng;
+     *      khớp → bump revision như cũ.
+     *  - Sai kiểu → 400 input_invalid {field:"expected_revision",
+     *    reason:"must_be_positive_int"} (parity aiRefine input_revision).
+     * So revision TRƯỚC khi áp dụng nội dung — draft của client khác phải còn
+     * nguyên vẹn sau một edit stale bị chặn.
+     */
+    async editDraft(draftId, { body, title = "", recipientId = null, expectedRevision } = {}) {
       await simulate({ kind: "drafts", fallback: "ok" });
       const draft = drafts.get(draftId);
       if (!draft) {
@@ -471,6 +488,21 @@ export function createMockAdapter({ scenario = null } = {}) {
       const text = String(body || "");
       if (!text.trim() || text.length > 4000) {
         throw new ApiError("Lời nhắn phải 1..4000 ký tự (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "body" } });
+      }
+      if (expectedRevision !== undefined && expectedRevision !== null) {
+        if (!Number.isInteger(expectedRevision) || expectedRevision < 1
+          || expectedRevision > 2147483647) {
+          throw new ApiError("expectedRevision phải là số nguyên dương (dữ liệu minh họa).",
+            400, "http", { code: "input_invalid",
+              details: { field: "expected_revision", reason: "must_be_positive_int" } });
+        }
+        if (draft.revision !== expectedRevision) {
+          // current_revision = revision HIỆN TẠI của mock (đúng response
+          // backend: client dùng giá trị này để reconcile bằng GET).
+          throw new ApiError("Bản nháp đã thay đổi trên máy chủ, cần nạp lại bản mới trước khi sửa (dữ liệu minh họa).",
+            409, "http", { code: "revision_conflict",
+              details: { reason: "draft_conflict", current_revision: draft.revision } });
+        }
       }
       draft.body = text;
       draft.title = String(title || "").slice(0, 200);

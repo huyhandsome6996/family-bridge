@@ -745,6 +745,24 @@ describe("F04 composer R01 (QA 18/10): preview tự đồng bộ final — khôn
     adapter.listDrafts = async () => ({
       results: [{ ...SERVER_DRAFT }], serverTime: "2026-10-16T00:00:00Z",
     });
+    // N03 contract: connections phải chứa recipient của draft để sheet resolve
+    // tên từ preview.recipient_id (server-truth); thiếu -> fail-closed.
+    adapter.listConnections = async () => ({
+      results: [{ connection_id: "u-care-1", other_party_id: "u-care-1",
+        relationship_kind: "parent",
+        counterpart: { display_name: "Bố" } }],
+    });
+    // N03 contract (A1 pin 6 field): previewDraft trả ĐỦ shape — body = bản
+    // editDraft cuối (auto-sync R01) hoặc bản server draft.
+    const previewBody = () => (calls.editDraft.length
+      ? calls.editDraft[calls.editDraft.length - 1].body
+      : SERVER_DRAFT.body);
+    adapter.previewDraft = async (id) => {
+      calls.preview.push(id);
+      return { preview_id: "p-1", revision: 2, recipient_id: "u-care-1",
+        body: previewBody(), deadline: null,
+        server_time: "2026-10-16T00:00:01Z" };
+    };
     const { ctx } = makeCtx({ adapter });
     const { host, el } = mount(compose, ctx);
     await wait(80);
@@ -772,7 +790,10 @@ describe("F04 composer R01 (QA 18/10): preview tự đồng bộ final — khôn
     assert.equal(calls.preview.length, 1, "(r01-a) preview gọi sau khi đồng bộ");
     const sheet = document.body.querySelector(".fb-sheet-root");
     assert.ok(sheet, "(r01-a) preview -> sheet xác nhận");
-    findButton(sheet, "Gửi cho").click();
+    // N03: sheet phải bind tên TỪ preview.recipient_id (không phải tên cũ)
+    assert.ok(findButton(sheet, "Gửi cho Bố"),
+      "(r01-a) sheet bind tên người nhận từ preview response (server-truth)");
+    findButton(sheet, "Gửi cho Bố").click();
     await wait(80);
     assert.equal(calls.confirmSend.length, 1,
       "(r01-a) confirm gửi đúng bản đã duyệt (đã đồng bộ)");
