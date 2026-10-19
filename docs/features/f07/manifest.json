@@ -1,6 +1,6 @@
 {
   "feature_id": "F07",
-  "branch": "feat/f07-mood-history-sharing",
+  "branch": "tinh-nang/f07-tam-trang-va-chia-se-us015-us026",
   "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
   "us": ["US-015", "US-026"],
   "backend": {
@@ -9,20 +9,20 @@
     "routes_prefix": "",
     "endpoints": [
       "GET /api/v1/mood/entries (own history cursor entry_date desc)",
-      "POST /api/v1/mood/entries (create; entry_date mặc định hôm nay VN)",
+      "POST /api/v1/mood/entries (create; entry_date mặc định hôm nay VN; race IntegrityError -> 400 business)",
       "GET|PATCH /api/v1/mood/entries/{id} (owner-only; edit bump revision)",
-      "GET /api/v1/mood/entries/{id}/shares (owner xem grant của mục)",
-      "POST /api/v1/mood/entries/{id}/share (per-entry, 1 recipient, revision hiện hành)",
+      "GET /api/v1/mood/entries/{id}/shares (owner xem grant của mục với status thật: active/stale_revision/revoked/unlinked)",
+      "POST /api/v1/mood/entries/{id}/share (per-entry, 1 recipient; expected_revision optional chặn stale preview -> 409)",
       "GET /api/v1/mood/entries/summary (đếm mô tả, bounded, owner-only)",
-      "GET /api/v1/mood/shared (nhận được, DB-filtered revision current)",
-      "GET /api/v1/mood/shared/{share_id} (đọc: grant+revision+connection re-check)",
+      "GET /api/v1/mood/shared (nhận được; DB-filter revision current + recheck connection; cursor page_size)",
+      "GET /api/v1/mood/shared/{share_id} (đọc: grant+revision+connection ID/generation re-check, fail-closed cả khi thiếu reader)",
       "POST /api/v1/mood/shares/{id}/revoke (owner-only, hiệu lực ngay)"
     ],
     "models": ["MoodEntry", "MoodShare"],
-    "ports_provided": ["MoodShareService (grant provider item_type=mood_entry cho F15 ở B18)"],
-    "ports_consumed": ["ConnectionReader (F01)", "session resolver"]
+    "ports_provided": ["grant provider mood_entry (services/grant_provider.py) đăng ký vào F15 tại apps.py ready()", "deletion hook 'mood' (services/deletion.py) đăng ký vào F15 tại apps.py ready()"],
+    "ports_consumed": ["ConnectionReader (F01 InviteService — đăng ký production tại apps.py ready())", "session resolver (fallback F01 identity session)"]
   },
   "mobile": {"module": "packages/family_bridge_mobile/f07_mood", "pages": ["mood", "mood-shared"]},
-  "tests": {"backend": "19 PASS (SQLite; 47/47 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL race share/edit"]},
-  "status": "implemented"
+  "mini_app": {"routes": ["/mood", "/mood-shared"], "pages": ["zalo-mini-app/src/pages/mood", "zalo-mini-app/src/pages/mood-shared"], "shared_adapter_methods_added": ["getMoodEntry", "editMoodEntry", "moodSummary", "listMoodEntryShares", "shareMoodEntry", "revokeMoodShare", "listSharedMoodEntries", "getSharedMoodEntry"]},
+  "tests": {"backend": "42 PASS SQLite harness (19 cũ + 23 mới; 2 case MySQL-gated NOT_RUN)", "mobile": "3 PASS", "miniapp": "306 PASS (10 test UI F07)", "shared": "37 PASS (8 method mới + map page_size)", "web_consumer": "227 PASS + build (không sửa web)", "e2e_local": "21/21 PASS trên server Django thật (scripts/f07_local_e2e.py)", "not_run": ["MySQL concurrency create/share (FB_TEST_DB=mysql)", "Zalo thiết bị thật"]}
 }

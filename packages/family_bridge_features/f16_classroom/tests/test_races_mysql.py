@@ -20,6 +20,15 @@ SKIP_REASON = ("requires FB_TEST_DB=mysql: SQLite cannot prove row-lock/"
 MD5_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 
+def _close_all_connections():
+    """Dong ket noi DB cua thread hien tai khi thread ket thuc (goi trong
+    finally cua moi thread — khong de ket noi rac cho TransactionTestCase
+    ke tiep)."""
+
+    for alias in connections:
+        connections[alias].close()
+
+
 def _seed_classroom_pair():
     from .helpers import accept_service_consent, make_class_account, make_proposal
 
@@ -138,3 +147,68 @@ class ConcurrentProvisioningRaceTests(TransactionTestCase):
         finally:
             cleanup_csv(accounts)
             cleanup_csv(pairs)
+
+
+@unittest.skipIf(not MYSQL, SKIP_REASON)
+@override_settings(PASSWORD_HASHERS=MD5_HASHERS)
+class ConcurrentAdminProvisionRaceTests(TransactionTestCase):
+    """Hai lenh apply_pairs chay song song TREN CUNG CAP (batch_ref khac
+    nhau, tai khoan co san) → dung MOTT Connection active: mot ben
+    "connected", ben kia "already_active" — idempotent o tang app, khong
+    nhan doi (A03 that su tren MySQL, noi constraint uniq_active_pair khong
+    duoc tao vi la constraint co dieu kien — models.W036)."""
+
+    def test_two_concurrent_applies_same_pair_single_connection(self):
+        import uuid as uuid_lib
+
+        from family_bridge_features.admin_core.models import AdminCapabilityGrant
+        from family_bridge_features.f01_identity.models import (
+            CONNECTION_ACTIVE, Connection,
+        )
+
+        from ..services import admin_provision
+        from .helpers import make_class_account
+
+        _hs, _hs_user = make_class_account("HS001", "student", class_ref="10A1")
+        _ph, _ph_user = make_class_account("PH001", "caregiver", class_ref="10A1")
+        _admin_acct, admin = make_class_account("ADM01", "caregiver",
+                                                class_ref="10A1")
+        AdminCapabilityGrant.objects.create(
+            user=admin, capability="classroom.provision", scope_type="global",
+            granted_by="bootstrap-operator")
+
+        rows = [{"caregiver_code": "PH001", "student_code": "HS001"}]
+        outcomes = []
+        barrier = threading.Barrier(2)
+
+        def apply_batch():
+            barrier.wait()
+            try:
+                outcomes.append(admin_provision.apply_pairs(
+                    admin, class_ref="10A1",
+                    batch_ref=str(uuid_lib.uuid4()), rows=rows))
+            except Exception as exc:  # noqa: BLE001 — luu loi de assert
+                outcomes.append(type(exc).__name__)
+            finally:
+                _close_all_connections()
+
+        threads = [threading.Thread(target=apply_batch) for _ in range(2)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+
+        self.assertEqual(len(outcomes), 2)
+        errors = [o for o in outcomes if not isinstance(o, dict)]
+        self.assertEqual(errors, [], outcomes)
+        summaries = [o for o in outcomes if isinstance(o, dict)]
+        self.assertEqual(len(summaries), 2)
+        # Dung mot ben "connected", ben con lai "already_active" (idempotent,
+        # khong crash, khong 500 — giong hop dong double-confirm).
+        pairs = sorted((s.get("connected", 0), s.get("already_active", 0))
+                       for s in summaries)
+        self.assertEqual(pairs, [(0, 1), (1, 0)], summaries)
+        # Khong bao gio nhan doi: dung 1 connection, dung 1 dong ACTIVE.
+        self.assertEqual(Connection.objects.count(), 1)
+        self.assertEqual(
+            Connection.objects.filter(status=CONNECTION_ACTIVE).count(), 1)

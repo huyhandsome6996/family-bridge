@@ -11,6 +11,10 @@ Invariants:
   are author-only and one-way; text fields are immutable after create.
 - provider_id/model_revision/prompt_revision are versioned metadata for
   audit; the prompt SENTENCE text is never stored.
+- input_revision is the OPTIONAL author-client revision tag (frozen contract
+  C2/C3): echoed int|null, participates in the idempotency payload hash so a
+  replayed key with a different revision conflicts (409) instead of silently
+  returning a suggestion bound to stale input.
 - If the user never accepts, nothing leaves F04 — manual writing always works.
 """
 
@@ -35,6 +39,52 @@ def _utc_now() -> dt.datetime:
     return dt.datetime.now(tz=UTC)
 
 
+STATUS_INFLIGHT = "inflight"
+STATUS_COMPLETED = "completed"
+OPERATION_STATUSES = (STATUS_INFLIGHT, STATUS_COMPLETED)
+
+
+class AiRefineOperation(models.Model):
+    """Per-(author, idempotency_key) refine claim — R1A2-01 inflight marker.
+
+    Purpose: guarantee at most ONE provider call per (author, key) operation.
+    The row is claimed (INFLIGHT) in a short atomic BEFORE the provider call;
+    concurrent requests with the same key fail the unique claim and never
+    double-charge the provider: a same-payload loser waits (bounded <= 2s,
+    see express.REFINE_CLAIM_WAIT_TOTAL_SECONDS) for the winner to finalize
+    and replays its stored outcome, and only past that bound receives
+    409 slot_unavailable(refine_in_progress). The finalize marks the claim
+    COMPLETED together with the suggestion insert (same transaction).
+
+    Outcome-unknown reconciliation: a crash/timeout between claim and finalize
+    leaves a stale INFLIGHT row; after the TTL the user's deliberate retry
+    reclaims it (same payload) — see express.REFINE_OPERATION_TTL_SECONDS.
+
+    Privacy: NO sentence content here — only the opaque idempotency key and
+    the payload hash (same fields AiSuggestion already stores). The F15 "ai"
+    deletion hook clears these rows together with the suggestions.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+                               related_name="f04_refine_operations")
+    idempotency_key = models.CharField(max_length=128)
+    payload_hash_hex = models.CharField(max_length=64)
+    status = models.CharField(max_length=16, default=STATUS_INFLIGHT)
+    created_at = models.DateTimeField(default=_utc_now, editable=False)
+    updated_at = models.DateTimeField(default=_utc_now, editable=False)
+
+    class Meta:
+        app_label = "f04_ai"
+        constraints = [
+            models.UniqueConstraint(fields=["author", "idempotency_key"],
+                                    name="uniq_f04_author_key_operation"),
+        ]
+        indexes = [
+            models.Index(fields=["author", "created_at"]),
+        ]
+
+
 class AiSuggestion(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
@@ -48,6 +98,7 @@ class AiSuggestion(models.Model):
     prompt_revision = models.CharField(max_length=32)
     idempotency_key = models.CharField(max_length=128)
     payload_hash_hex = models.CharField(max_length=64)
+    input_revision = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(default=_utc_now, editable=False)
     decided_at = models.DateTimeField(null=True, blank=True)
 
@@ -71,6 +122,7 @@ class AiSuggestion(models.Model):
             "suggested_text": self.suggested_text,
             "model_revision": self.model_revision,
             "prompt_revision": self.prompt_revision,
+            "input_revision": self.input_revision,
             "created_at": self.created_at.isoformat(),
             "decided_at": self.decided_at.isoformat() if self.decided_at else None,
         }

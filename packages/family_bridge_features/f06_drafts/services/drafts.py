@@ -3,15 +3,33 @@
 Guards summary:
 - create/edit: kind allowlist, bounds, no AI-linkage fields; edit bumps
   revision, invalidates previews, NEVER moves an existing pause deadline.
+  N06: edit accepts an OPTIONAL `expected_revision` (positive int) — when
+  provided and != draft.revision -> RevisionConflict 409
+  {reason: draft_conflict, current_revision} WITHOUT writing (never leaks
+  the body; clients reconcile via the author-only GET). The check+bump
+  critical section re-reads the row with select_for_update inside the
+  transaction so a concurrent save cannot slip between check and bump.
+  Absent expected_revision keeps the legacy behavior.
 - pause: 300s fixed from server now; re-pause returns the SAME deadline
   (no reset/extension); pause allowed only while editing/paused.
-- preview: requires status paused AND now >= deadline (299 blocks, 300
-  passes — controlled-clock tests); binds (revision, recipient, payload
-  hash); does not send, does not create jobs.
+- preview: the 300s gate applies to a draft the author actually paused
+  (C8) UNTIL the deadline passes — an edit while the pause is still
+  running does NOT lift the gate (R03, QA 18/10: pause còn 299s thì
+  edit -> preview -> confirm đều 200 = lọt cooldown). Guard is keyed on
+  the FUTURE DEADLINE (server clock), not on status: currently paused
+  or edited-back-to-editing while now < deadline -> CooldownActive
+  (299 blocks, 300 passes — controlled-clock tests); never paused
+  (deadline None) or expired / cancel-paused (deadline cleared) ->
+  previews immediately, no forced wait. Binds (revision, recipient,
+  payload hash); does not send, does not create jobs.
 - confirm-send: requires an unused preview matching CURRENT revision and
-  recipient; re-checks pause deadline; delegates to the kind sender port
-  (connection/idempotency guards live in the sender); consumes the preview;
-  marks the draft sent. Failure -> truthful error, draft unchanged.
+  recipient; re-checks the pause gate with the same deadline-keyed C8
+  semantics (R03: edit does NOT lift the gate — only deadline expiry or
+  an explicit cancel-pause does; expiry never auto-sends but a manual
+  confirm after the deadline is allowed); delegates to the kind
+  sender port (connection/idempotency guards live in the sender); consumes
+  the preview; marks the draft sent. Failure -> truthful error, draft
+  unchanged.
 - cancel-pause: user-initiated back to editing, deadline cleared.
 - discard: author-only; apply_user_deletion hook removes all user drafts.
 """
@@ -24,7 +42,8 @@ from typing import Any, Dict, Optional
 from django.db import transaction
 
 from family_bridge_core.errors import (
-    CooldownActive, InputInvalid, ModuleUnavailable, NotFound, PreviewStale,
+    CooldownActive, InputInvalid, ModuleUnavailable, NotFound,
+    RevisionConflict, PreviewStale,
 )
 from family_bridge_core.idempotency import send_payload_hash
 from family_bridge_core.timeutils import UTC
@@ -39,6 +58,16 @@ from . import registry
 
 def _require_own_draft(*, author_id: str, draft_id: str) -> Draft:
     draft = Draft.objects.filter(pk=draft_id).first()
+    if draft is None or str(draft.author_id) != str(author_id):
+        raise NotFound({"reason": "draft_not_found"})
+    return draft
+
+
+def _require_own_draft_locked(*, author_id: str, draft_id: str) -> Draft:
+    """N06: same author-only 404 semantics as _require_own_draft, but takes
+    a row lock (SELECT ... FOR UPDATE) for edit's check+bump critical
+    section — must run inside a transaction."""
+    draft = Draft.objects.select_for_update().filter(pk=draft_id).first()
     if draft is None or str(draft.author_id) != str(author_id):
         raise NotFound({"reason": "draft_not_found"})
     return draft
@@ -66,8 +95,22 @@ def _validate_content(*, kind: str, body: str, title: str,
 
 
 def _deadline_guard(draft: Draft, now: dt.datetime) -> None:
-    if draft.status != STATUS_PAUSED or draft.pause_deadline_at is None:
-        raise InputInvalid({"reason": "pause_not_started"})
+    """C8 pause contract (server clock only, DEC-03) + R03 fence.
+
+    The 300s cooldown is an OPT-IN gate that runs until the recorded
+    deadline passes. It is keyed on the FUTURE DEADLINE — not on the
+    paused STATUS — because `edit` flips status back to editing while
+    intentionally KEEPING the deadline; keying on status would let the
+    author bypass the cooldown via edit -> preview -> confirm (QA R03:
+    pause còn 299s vẫn gửi được). Paths that pass while now < deadline:
+    NONE — preview/confirm both raise CooldownActive. Paths that lift
+    the gate: deadline expiry (now >= deadline — manual confirm allowed,
+    nothing auto-sends) and the EXPLICIT cancel-pause (user action that
+    clears the deadline). A draft that never paused has deadline None
+    and never waits ("pause_not_started" is not an error state).
+    """
+    if draft.pause_deadline_at is None:
+        return  # no pause chosen (or explicitly cancelled) -> no cooldown
     if now < draft.pause_deadline_at:
         raise CooldownActive({
             "reason": "pause_in_progress",
@@ -116,8 +159,22 @@ class DraftService:
     def edit(self, *, author_id: str, draft_id: str, body: str,
              title: str = "", card_id: str = "",
              card_version: Optional[int] = None,
-             recipient_id: str = "") -> Draft:
-        draft = _require_own_draft(author_id=author_id, draft_id=draft_id)
+             recipient_id: str = "",
+             expected_revision: Optional[int] = None) -> Draft:
+        # N06: the revision check + bump must be ATOMIC against concurrent
+        # edits — re-read the row under lock inside this transaction instead
+        # of the unlocked _require_own_draft (author-only 404 preserved).
+        draft = _require_own_draft_locked(author_id=author_id,
+                                          draft_id=draft_id)
+        # N06: optional optimistic-concurrency guard. Provided AND stale ->
+        # RevisionConflict 409 {reason: draft_conflict, current_revision} —
+        # nothing written, previews untouched, NO body in details (the
+        # client reconciles via the author-only GET draft endpoint). Absent
+        # (None) keeps the legacy behavior for old callers.
+        if (expected_revision is not None
+                and draft.revision != expected_revision):
+            raise RevisionConflict({"reason": "draft_conflict",
+                                    "current_revision": draft.revision})
         if draft.status in (STATUS_SENT, STATUS_DISCARDED):
             raise InputInvalid({"reason": "draft_not_editable"})
         _validate_content(kind=draft.kind, body=body, title=title,
@@ -184,9 +241,23 @@ class DraftService:
         preview = DraftPreview.objects.create(
             draft=draft, revision=draft.revision,
             recipient_id=draft.recipient_id, payload_hash_hex=payload_hash)
+        # Shape stability: "deadline" mirrors the paused-state only (None
+        # when no pause is active — same parity as the shared mock adapter).
+        # N01 (QA 19/10, P1 "gửi sai bản đã duyệt"): "body" là snapshot
+        # server-bound TẠI THỜI ĐIỂM preview — bản server sẽ thực sự gửi khi
+        # confirm (confirm tự kiểm revision/recipient/payload_hash của bản
+        # đã lưu, không đọc live textarea phía client). Author-only field:
+        # preview chỉ trả cho chính tác giả draft của mình (không vi phạm
+        # privacy — same scope as the draft GET endpoint).
+        # R1A P3 (review vòng 1, 19/10): parity shape với Draft.view — draft
+        # chưa chọn recipient trả `null` (không phải `""`) để client so
+        # preview.recipient_id với state.recipientId (nguồn Draft.view) không
+        # gặp drift giả null !== "".
         return {"preview_id": str(preview.id), "revision": draft.revision,
-                "recipient_id": draft.recipient_id,
-                "deadline": draft.pause_deadline_at.isoformat(),
+                "recipient_id": (draft.recipient_id or None),
+                "body": draft.body,
+                "deadline": (draft.pause_deadline_at.isoformat()
+                             if draft.pause_deadline_at else None),
                 "server_time": now.isoformat()}
 
     @transaction.atomic

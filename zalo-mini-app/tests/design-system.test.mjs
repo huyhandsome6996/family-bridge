@@ -308,3 +308,41 @@ describe("design-system smoke (Task 3-a)", () => {
     assert.equal(retryBtn.textContent, "Thử lại");
   });
 });
+
+/* ============ R04/R05 (QA F04 18/10): layout + hidden guard ============ */
+const fsR0405 = await import("node:fs");
+const pathR0405 = await import("node:path");
+describe("R04/R05 (QA F04 18/10): chống tràn ngang + [hidden] luôn ẩn (source-level)", () => {
+  const readFileSync = fsR0405.readFileSync;
+  const { join, resolve } = pathR0405;
+  const ROOT = resolve(import.meta.dirname, "..");
+  const read = (p) => readFileSync(join(ROOT, p), "utf8");
+
+  it("base.css có guard toàn cục [hidden] -> display:none !important (nút 'Hủy chờ' phải ẩn thật)", () => {
+    const base = read("src/styles/base.css");
+    assert.match(base, /\[hidden\]\s*\{\s*display:\s*none\s*!important;/,
+      "author display rules (.fb-btn...) đè UA [hidden] — cần guard !important");
+  });
+
+  it("components.css: nút AI + lưới pause-buttons không còn đẩy min-content gây tràn 320/390px", () => {
+    const components = read("src/styles/components.css");
+    const aiBtnIdx = components.indexOf(".fb-compose__ai-btn {");
+    assert.ok(aiBtnIdx !== -1);
+    const aiBtnBlock = components.slice(aiBtnIdx, components.indexOf("}", aiBtnIdx));
+    assert.match(aiBtnBlock, /white-space:\s*normal/,
+      "nowrap đẩy min-content ~306px -> tràn 320/390 (QA: document width 406px)");
+    const gridIdx = components.indexOf(".fb-compose__pause-buttons {");
+    const gridBlock = components.slice(gridIdx, components.indexOf("}", gridIdx));
+    assert.match(gridBlock, /minmax\(0,\s*1fr\)/,
+      "1fr = minmax(auto,1fr) giữ min-content nút nowrap -> phải minmax(0,1fr)");
+    assert.doesNotMatch(gridBlock, /grid-template-columns:\s*1fr\s+1fr/,
+      "cấm quay lại cột 1fr 1fr trần");
+  });
+
+  it("shell.css: hàng AI trong compose cho phép wrap (pill + nhãn phụ vừa 320px)", () => {
+    const shell = read("src/styles/shell.css");
+    assert.match(shell,
+      /\.fb-compose__ai \.fb-sec__row\s*\{\s*flex-wrap:\s*wrap;/,
+      "hàng AI phải wrap để min-content không vượt viewport hẹp");
+  });
+});

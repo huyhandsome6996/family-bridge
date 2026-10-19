@@ -47,9 +47,17 @@ export const routes = {
   "/messages/:id": () => import("../pages/message/index.js"),
   "/proposal": () => import("../pages/proposal/index.js"),
   "/settings": () => import("../pages/settings/index.js"),
+  // ---- F15: privacy controls (parity mini; P2-1/QA-3: /privacy-items từng
+  // mồ côi ở mini và thiếu hẳn ở web — giờ cả 2 client đều có route + trang) ----
+  "/privacy-items": () => import("../pages/privacy/items.js"),
   "/privacy": () => import("../pages/privacy/index.js"),
   // ---- Admin cấp phát cặp HS/PH (CAP-23, 18/10/2026) ----
   "/admin-provision": () => import("../pages/admin-provision/index.js"),
+  // ---- F07: tâm trạng, lịch sử và chia sẻ từng mục (US-015/US-026) ----
+  // 19/10/2026: web parity theo quyết định Huy — UI tree web độc lập, cùng
+  // gọi backend thật qua shared headless adapter (route giống Mini App).
+  "/mood": () => import("../pages/mood/index.js"),
+  "/mood-shared": () => import("../pages/mood-shared/index.js"),
 };
 
 export function parseHash() {

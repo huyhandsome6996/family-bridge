@@ -33,6 +33,9 @@ export const routes = {
   "/profile": () => import("../pages/profile/index.js"),
   "/connection-check": () => import("../pages/connection-check/index.js"),
   "/help": () => import("../pages/help/index.js"),
+  // ---- F15: privacy controls ----
+  "/privacy-items": () => import("../pages/privacy/items.js"),
+  "/privacy": () => import("../pages/privacy/index.js"),
   // ---- F01: đăng nhập + đồng ý + kết nối hai phía ----
   "/login": () => import("../pages/login/index.js"),
   "/consent": () => import("../pages/consent/index.js"),
@@ -46,6 +49,9 @@ export const routes = {
   "/proposal": () => import("../pages/proposal/index.js"),
   "/settings": () => import("../pages/settings/index.js"),
   "/privacy": () => import("../pages/privacy/index.js"),
+  // ---- F07: tâm trạng, lịch sử và chia sẻ từng mục (US-015/US-026) ----
+  "/mood": () => import("../pages/mood/index.js"),
+  "/mood-shared": () => import("../pages/mood-shared/index.js"),
 };
 
 export function parseHash() {

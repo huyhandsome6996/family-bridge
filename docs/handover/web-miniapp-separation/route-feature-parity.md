@@ -1,6 +1,6 @@
 # Route & feature parity — web độc lập vs Zalo Mini App
 
-Web giữ nguyên **21 hash path** của router hiện có (không phá link đang dùng). Bảng dưới map từng route → file web → nguồn mini → tính năng. Cột "Khác biệt" ghi rõ mọi lệch có chủ đích; những gì không ghi ở đây thì phải giống mini.
+Web giữ nguyên **21 hash path** của router hiện có (không phá link đang dùng). **Cập nhật 19/10/2026: +1 `/admin-provision` (18/10) và +2 route F07 web parity `/mood`, `/mood-shared` theo quyết định Huy (supersede mệnh đề "21 hash path" cho F07 trong phạm vi được giao) — hiện 24 route.** Bảng dưới map từng route → file web → nguồn mini → tính năng. Cột "Khác biệt" ghi rõ mọi lệch có chủ đích; những gì không ghi ở đây thì phải giống mini.
 
 | # | Route | Web (`web/src/pages/…`) | Nguồn mini (`zalo-mini-app/src/pages/…`) | Tính năng | Khác biệt có chủ đích trên web |
 |---|-------|--------------------------|------------------------------------------|-----------|-------------------------------|
@@ -25,6 +25,8 @@ Web giữ nguyên **21 hash path** của router hiện có (không phá link đa
 | 19 | `/proposal` | `proposal/` | `proposal/` | F16/F01 | Confirm 1 → `awaiting_confirmation`; confirm 2 → `connected` (1 transaction phía backend) |
 | 20 | `/settings` | `settings/` | `settings/` | F16 | Map theo `capabilities.settings` (`change_password/change_code/change_display_name`); false → thẻ disabled từ đầu |
 | 21 | `/privacy` | `privacy/` | `privacy/` | F15 | Deletion request: tạo/thấy/hủy; overview; revoke làm mất truy cập ngay |
+| 22 | `/mood` | `mood/` | `mood/` | F07 | **Mới 19/10/2026** (quyết định Huy: F07 web parity) — copy độc lập của mini (đã kèm fix R01 lifecycle), không import chéo UI tree; cùng shared adapter |
+| 23 | `/mood-shared` | `mood-shared/` | `mood-shared/` | F07 | **Mới 19/10/2026** — như trên; phía nhận list/detail recheck mỗi lần đọc |
 
 Route không khớp nào → `not-found` (không có trong bảng vì không phải path khai báo).
 

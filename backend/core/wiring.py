@@ -1,7 +1,9 @@
 """Production backend port wiring (B18 integration).
 
 Wires real services across feature app registries:
-- F01 InviteService -> ConnectionReader across features (f03, f05, f07, f08, f09, f10).
+- F01 InviteService -> ConnectionReader across features (f03, f05, f07, f08, f10).
+  (f09 no longer wired here: it owns a deterministic F01ConnectionReader of
+  its own, and a core registration would shadow it — T1-a risk #1.)
 - F05 MessageTransportService -> MessageTransport (f03, f10, f11) with F10 viewer adapter.
 - F11 invite connector -> ensures backup supporter reachability.
 - F12 staff directory -> capability-checked operators (preserves scheduling_no_staff gate when empty).
@@ -250,12 +252,15 @@ def wire_backend_ports() -> None:
         except ImportError:
             pass
 
-        # F09 Activities
-        try:
-            import family_bridge_features.f09_activities.services.registry as f09_reg
-            f09_reg.register_connection_reader(invite_service)
-        except ImportError:
-            pass
+        # F09 Activities — NOT wired here anymore (integration F02 2026-10-20):
+        # the F02 branch ships f09's own apps.ready() wiring with a proper
+        # F01ConnectionReader (deterministic order_by("-id"), relationship_kind
+        # exposed, generation normalized). Registering core's InviteService
+        # here first would silently shadow it (core precedes feature apps in
+        # INSTALLED_APPS, and f09's registration is guarded by an empty slot),
+        # degrading the invite generation pin to a nondeterministic reader.
+        # f03/f05/f07/f08 keep the core InviteService wiring — those features
+        # have no reader of their own.
 
         _WIRED = True
         logger.info("Family Bridge backend ports successfully wired.")

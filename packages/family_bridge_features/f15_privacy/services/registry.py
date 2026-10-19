@@ -10,14 +10,22 @@ F08 journal, F05 messages, F04 AI, ...) register:
 
 Registration is validated (importable dotted path, protocol match) and the
 registry is a plain dict — no plugin upload, no eval (WF-22).
+
+Production providers (F07/F08 share tables) are registered at app startup by
+``services.wiring``; tests may register the labgrants fixtures instead.
 """
 
 from __future__ import annotations
 
 import importlib
-from typing import Any, Callable, Dict, List, Optional
+import inspect
+from typing import Any, Dict, List, Optional
 
-from family_bridge_core.errors import ModuleUnavailable, NotFound
+from django.db import transaction
+
+from family_bridge_core.errors import InputInvalid, ModuleUnavailable, NotFound
+
+from . import ports as _ports
 
 _DELETION_HOOKS: Dict[str, str] = {}          # category -> dotted path
 _GRANT_PROVIDERS: Dict[str, str] = {}         # item_type -> dotted path
@@ -81,27 +89,63 @@ def registered_item_types() -> List[str]:
     return sorted(_GRANT_PROVIDERS)
 
 
+def _supports_kwarg(func, name: str) -> bool:
+    try:
+        parameters = inspect.signature(func).parameters
+    except (TypeError, ValueError):
+        return False
+    if name in parameters:
+        return True
+    return any(parameters[p].kind is inspect.Parameter.VAR_KEYWORD
+               for p in parameters)
+
+
+def provider_accepts(provider, method_name: str, kwarg: str) -> bool:
+    """True when ``provider.<method>`` can receive ``kwarg`` (providers from
+    different packages evolve at different speeds; callers degrade"""
+    func = getattr(provider, method_name, None)
+    return callable(func) and _supports_kwarg(func, kwarg)
+
+
 def revoke_grant(*, owner_id: str, item_type: str, item_id: str,
                  recipient_id: Optional[str] = None,
-                 actor_ref: str = "owner") -> Dict[str, Any]:
+                 actor_ref: str = "owner",
+                 expected_revision: Optional[int] = None,
+                 write_ledger: bool = True) -> Dict[str, Any]:
     """Revoke one grant (or all recipients when recipient_id None).
 
-    Returns a truthful outcome dict and appends a ledger event when a row
-    changed. Unknown item_type/module_unavailable must NOT fake success.
+    - Mutation + ledger event happen in ONE transaction: a failed ledger
+      write rolls the grant change back (never a grant ahead of the ledger).
+    - ``expected_revision`` (when provided) is validated against the grant's
+      bound item revision; providers that cannot honour it cause 400.
+    - Unknown item_type / module_unavailable must NOT fake success (503).
     """
     from ..models import DeletionLedgerEvent
+
     provider = get_grant_provider(item_type)
     if provider is None:
         raise ModuleUnavailable({"reason": "grant_provider_not_registered",
                                  "item_type": item_type})
-    outcome = provider.revoke_grant(owner_id=str(owner_id), item_id=str(item_id),
-                                    recipient_id=(str(recipient_id) if recipient_id else None))
-    if outcome.get("revoked"):
-        DeletionLedgerEvent.objects.create(
-            target_user_id=str(owner_id), actor_ref=actor_ref,
-            event_type=DeletionLedgerEvent.EVENT_GRANT_REVOKED,
-            payload={"item_type": item_type, "item_id": str(item_id),
-                     "recipient_id": (str(recipient_id) if recipient_id else None)})
+    kwargs: Dict[str, Any] = {"owner_id": str(owner_id), "item_id": str(item_id),
+                              "recipient_id": (str(recipient_id) if recipient_id else None)}
+    if expected_revision is not None:
+        if isinstance(expected_revision, bool) or not isinstance(expected_revision, int):
+            raise InputInvalid({"field": "expected_revision",
+                                "reason": "must_be_integer"})
+        if _supports_kwarg(provider.revoke_grant, "expected_revision"):
+            kwargs["expected_revision"] = expected_revision
+        else:
+            raise InputInvalid({"field": "expected_revision",
+                                "reason": "provider_cannot_validate_expected_revision"})
+
+    with transaction.atomic():
+        outcome = provider.revoke_grant(**kwargs)
+        if write_ledger and outcome.get("revoked"):
+            DeletionLedgerEvent.objects.create(
+                target_user_id=str(owner_id), actor_ref=actor_ref,
+                event_type=DeletionLedgerEvent.EVENT_GRANT_REVOKED,
+                payload={"item_type": item_type, "item_id": str(item_id),
+                         "recipient_id": (str(recipient_id) if recipient_id else None)})
     return outcome
 
 
@@ -111,8 +155,12 @@ def can_view_item(*, owner_id: str, item_type: str, item_id: str,
     """Deny-by-default item authorization (SEC-03/08, WF-04).
 
     Checks, in order: provider registered -> grant active for EXACT
-    (item, recipient, revision) -> owning connection ACTIVE at the CURRENT
-    generation (stale generation denies even if the grant row survived).
+    (item, recipient, revision) -> grant's recorded connection still the
+    ACTIVE connection at the CURRENT generation (provider-level binding;
+    stale generation denies even if the grant row survived). The
+    connection_reader argument (optional) adds a direct active-pair check
+    for callers that already hold one; when neither reader is available the
+    provider's own binding check decides.
     """
     provider = get_grant_provider(item_type)
     if provider is None:
@@ -126,3 +174,12 @@ def can_view_item(*, owner_id: str, item_type: str, item_id: str,
         if connection is None:
             return False
     return True
+
+
+def assert_can_view(*, owner_id: str, item_type: str, item_id: str,
+                    recipient_id: str, revision: int) -> None:
+    """AccessPolicy.assert_can_view: raise NotFound (404, no existence leak)
+    when the view is not allowed. Domains call this before serving."""
+    if not can_view_item(owner_id=owner_id, item_type=item_type, item_id=item_id,
+                         recipient_id=recipient_id, revision=revision):
+        raise NotFound({"reason": "item_not_accessible"})

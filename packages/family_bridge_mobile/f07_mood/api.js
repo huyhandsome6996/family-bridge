@@ -23,13 +23,24 @@ export function createMoodApi({ api }) {
       api.get("/api/v1/mood/entries/summary",
         { query: days ? { days: String(days) } : {} }),
     entryShares: (id) => api.get(`/api/v1/mood/entries/${id}/shares`, {}),
-    share: (id, recipientId) =>
+    share: (id, recipientId, expectedRevision) =>
       api.post(`/api/v1/mood/entries/${id}/share`, {
-        body: { recipient_id: recipientId },
+        body: {
+          recipient_id: recipientId,
+          // Pin the previewed version: server replies 409 stale when the
+          // entry moved on — the current revision is never shared silently.
+          ...(expectedRevision ? { expected_revision: expectedRevision } : {}),
+        },
       }),
     revoke: (shareId) =>
       api.post(`/api/v1/mood/shares/${shareId}/revoke`, { body: {} }),
-    sharedWithMe: () => api.get("/api/v1/mood/shared", {}),
+    sharedWithMe: (cursor, pageSize) =>
+      api.get("/api/v1/mood/shared", {
+        query: {
+          ...(cursor ? { cursor } : {}),
+          ...(pageSize ? { page_size: String(pageSize) } : {}),
+        },
+      }),
     sharedDetail: (shareId) => api.get(`/api/v1/mood/shared/${shareId}`, {}),
   };
 }

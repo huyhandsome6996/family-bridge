@@ -1,25 +1,67 @@
 {
   "feature_id": "F04",
-  "branch": "feat/f04-ai-expression",
-  "baseline_sha": "cc6ade2f2c1d1760172046f045b3cf8c2d9894d7",
-  "us": ["US-029", "US-033"],
+  "branch": "tinh-nang/f04-ai-ho-tro-dien-dat-us029-us033",
+  "baseline_sha": "72930ae",
+  "us": [
+    "US-029",
+    "US-033"
+  ],
   "backend": {
     "app_label": "f04_ai",
     "package": "family_bridge_features.f04_ai",
     "routes_prefix": "",
     "endpoints": [
-      "GET /api/v1/ai/status (truthful ai_enabled flag)",
-      "POST /api/v1/ai/refine (X-Idempotency-Key; replay không gọi provider lần 2)",
+      "GET /api/v1/ai/status (truthful ai_enabled flag; cần auth)",
+      "POST /api/v1/ai/refine (X-Idempotency-Key bắt buộc; body {original_text 1..4000, purpose=refine_expression, input_revision? int dương <= 2147483647}; consent ai_processing gate server-side TRƯỚC provider call; replay cùng key+payload không gọi provider lần 2; cùng key khác payload -> 409 duplicate_key_payload_mismatch; provider NGOÀI atomic; 201 = AiSuggestion.view() + echo input_revision)",
       "GET /api/v1/ai/suggestions (author-only, latest 20)",
-      "GET /api/v1/ai/suggestions/{id} (author-only)",
-      "POST /api/v1/ai/suggestions/{id}/accept (author-only, không gửi)",
-      "POST /api/v1/ai/suggestions/{id}/discard (author-only)"
+      "GET /api/v1/ai/suggestions/{id} (author-only; người khác -> 404)",
+      "POST /api/v1/ai/suggestions/{id}/accept (author-only, một chiều, KHÔNG gửi)",
+      "POST /api/v1/ai/suggestions/{id}/discard (author-only, một chiều)"
     ],
-    "models": ["AiSuggestion"],
-    "ports_provided": ["AiExpressService (refine/decide/status)"],
-    "ports_consumed": ["AI provider port (B18 wiring — server allowlist + env keys; US-008 duyệt)", "session resolver"]
+    "models": [
+      "AiSuggestion (+ input_revision nullable)"
+    ],
+    "ports_provided": [
+      "AiExpressService (refine/decide/status)",
+      "deletion hook category 'ai' (F15 register_deletion_hook)"
+    ],
+    "ports_consumed": [
+      "AI provider port (Gemini REST qua stdlib, host allowlist generativelanguage.googleapis.com; env GEMINI_API_KEY secret / GEMINI_MODEL pin / FB_AI_ENABLED kill switch mặc định off / GEMINI_TIMEOUT_SECONDS 3..30 default 15 / GEMINI_MAX_OUTPUT_TOKENS 64..4096 default 1024; không network ở import/startup/health; thiếu config -> AI off fail closed)",
+      "consent has_active_consent(user, ai_processing) của F01",
+      "session resolver"
+    ]
   },
-  "mobile": {"module": "packages/family_bridge_mobile/f04_ai", "pages": ["refine"]},
-  "tests": {"backend": "18 PASS (SQLite; 46/46 gồm harness+labgrants)", "mobile": "3 PASS", "not_run": ["MySQL quota race", "provider HTTP thật"]},
-  "status": "implemented"
+  "shared": {
+    "package": "packages/family_bridge_shared",
+    "adapter": [
+      "aiStatus -> GET /api/v1/ai/status (fallback {ai_enabled:false})",
+      "aiRefine({text,purpose,key,inputRevision?}) -> POST /api/v1/ai/refine; DTO pass-through NGUYÊN VẸN (suggested_text, không refined_text)",
+      "aiAccept/aiDiscard -> POST /api/v1/ai/suggestions/{id}/accept|discard",
+      "editDraft KHÔNG gửi kind (C8); listMessages/listMoodEntries dùng page_size + map next; listDrafts map server_time/pause_seconds",
+      "previewDraft pass-through nguyên vẹn; response preview kèm `body` snapshot server-bound (N01, QA 2026-10-19 — mock ĐÃ trả body, backend chờ A2 thêm vào make_preview)",
+      "mock-adapter khớp serializer thật + echo input_revision + replay theo key"
+    ],
+    "regression_tests": "packages/family_bridge_shared/tests/f04-contract.test.mjs (31 test, gồm 4 test N01 preview-snapshot) + tests/test_f04_contract_a5.mjs (13 test — chạy tường minh, không khớp glob)"
+  },
+  "mobile": {
+    "module": "packages/family_bridge_mobile/f04_ai",
+    "pages": [
+      "refine"
+    ]
+  },
+  "ui_owners": {
+    "web": "A4 (web/src/pages/compose|message + components/ai-assist.js)",
+    "zalo": "A3 (zalo-mini-app/src/pages/compose|message)"
+  },
+  "tests": {
+    "shared": "node --test packages/family_bridge_shared/tests/*.test.mjs -> 65/65 PASS (2026-10-19, gồm 31 regression F04-A1 với 4 test N01 preview-snapshot)",
+    "backend": "do A2 duy trì (working tree đang sửa: consent gate, provider ngoài atomic, input_revision, Gemini transport)",
+    "mobile": "3 PASS",
+    "not_run": [
+      "MySQL quota race (SQLite thay thế không được coi là bằng chứng)",
+      "live Gemini smoke (opt-in, key đã rotate)"
+    ]
+  },
+  "status": "in_progress",
+  "status_note": "Trung thực theo lớp sau đợt sửa N01+N02 2026-10-19: shared contract/adapter/mock/tests = implemented (A1; +N01 preview body snapshot parity); backend claim-identity fence N02 + make_preview body = implemented (A2; red-before-fix 2 fail 1!=0 -> green 170/170, MySQL row-lock chưa test); web N01 snapshot/lock/invalidate = implemented (A4; 222/222 + build); zalo mini N01 = implemented (A3; 330/330 + build); QA độc lập A5: đỏ->xanh 3 mức (unit probe 4/4, browser Chromium thật + Django thật finalMatchesPreview=true 2/2 web+mini, probe claim-reuse old_private_rows=0), security review 0 P1/P2. NOT_RUN: MySQL race, Gemini live, Render, Zalo device. Không giữ claim 'implemented' tổng thể cho các phần NOT_RUN."
 }

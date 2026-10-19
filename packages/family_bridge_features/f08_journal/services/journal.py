@@ -134,9 +134,16 @@ class JournalPageService:
 
 
 class JournalShareService:
+    @transaction.atomic
     def share(self, *, owner_id: str, page_id: str,
-              recipient_id: str) -> JournalShare:
-        page = _require_own_page(owner_id=owner_id, page_id=page_id)
+              recipient_id: str, expected_revision=None) -> JournalShare:
+        page = JournalPage.objects.select_for_update().filter(
+            owner_id=str(owner_id), pk=page_id).first()
+        if page is None:
+            raise NotFound({"reason": "page_not_found"})
+        if expected_revision is not None and expected_revision != page.revision:
+            from family_bridge_core.errors import RevisionConflict
+            raise RevisionConflict({"current_revision": page.revision})
         if str(recipient_id) == str(owner_id):
             raise InputInvalid({"field": "recipient_id",
                                 "reason": "cannot_share_to_self"})
@@ -148,12 +155,16 @@ class JournalShareService:
             user_a=str(owner_id), user_b=str(recipient_id))
         if connection is None:
             raise NotFound({"reason": "no_active_connection"})
-        share, _ = JournalShare.objects.get_or_create(
+        share, created = JournalShare.objects.get_or_create(
             page=page, recipient_id=str(recipient_id),
             approved_revision=page.revision,
             defaults={"owner_id": str(owner_id),
                       "connection_id": str(connection.connection_id),
                       "connection_generation": connection.generation})
+        if not created and share.revoked_at is not None:
+            # A revoked grant is TERMINAL for this (page, recipient, revision)
+            # (FL-07): re-sharing the same revision would silently revive it.
+            raise InputInvalid({"reason": "reshare_after_revoke_requires_edit"})
         return share
 
     def revoke(self, *, owner_id: str, share_id: str) -> JournalShare:
@@ -163,6 +174,24 @@ class JournalShareService:
         if share.revoked_at is None:
             share.revoked_at = _now()
             share.save(update_fields=["revoked_at"])
+            # R10 fix: EVERY revoke entry point is durable — the domain path
+            # appends the same ``grant_revoked`` ledger event as the F15 API
+            # so a backup restore replays it. ImportError-guarded: standalone
+            # runs without f15_privacy keep working (coupling documented).
+            try:
+                from family_bridge_features.f15_privacy.models import (
+                    DeletionLedgerEvent,
+                )
+
+                DeletionLedgerEvent.objects.create(
+                    target_user_id=str(owner_id), actor_ref=str(owner_id),
+                    event_type=DeletionLedgerEvent.EVENT_GRANT_REVOKED,
+                    payload={"item_type": "journal_page",
+                             "item_id": str(share.page_id),
+                             "recipient_id": str(share.recipient_id),
+                             "entry_point": "f08_domain_service"})
+            except ImportError:
+                pass
         return share
 
     def list_shared_by_me(self, *, owner_id: str, page_id: str):
@@ -171,12 +200,41 @@ class JournalShareService:
             revoked_at__isnull=True).select_related("page")
 
     def list_shared_with_me(self, *, recipient_id: str):
-        from django.db.models import F
-        return (JournalShare.objects
+        from django.db.models import F, Q
+
+        rows = (JournalShare.objects
                 .filter(recipient_id=str(recipient_id),
                         revoked_at__isnull=True,
                         approved_revision=F("page__revision"))
-                .select_related("page", "owner"))
+                .select_related("page", "owner")
+                .order_by("-created_at", "-id"))
+        reader = registry.get_connection_reader()
+        if reader is None:
+            return []  # fail-closed: cannot verify connection state
+        active = {}
+        bindings = []
+        result = reader.list_active_for_user(user_id=str(recipient_id))
+        connections = result[0] if isinstance(result, tuple) else result
+        for connection in connections:
+            other = connection.party_b if connection.party_a == str(recipient_id) \
+                else connection.party_a
+            active[str(other)] = connection
+            bindings.append(Q(connection_id=str(connection.connection_id),
+                              connection_generation=int(connection.generation)))
+        # R09 fix: the (connection_id, generation) binding filter runs in SQL
+        # BEFORE any bound, so stale rows on old connections can no longer
+        # push valid grants past the list bound. The Python re-check below
+        # remains the authoritative second line of defense.
+        if bindings:
+            pair_q = bindings[0]
+            for q in bindings[1:]:
+                pair_q |= q
+            rows = rows.filter(pair_q)
+        bounded = list(rows[:_LIST_BINDING_BOUND])
+        return [row for row in bounded
+                if _binding_current(row, owner_id=str(row.owner_id),
+                                    recipient_id=str(recipient_id),
+                                    active=active)]
 
     def _valid_share_for_read(self, *, recipient_id: str,
                               share_id: str) -> JournalShare:
@@ -187,11 +245,17 @@ class JournalShareService:
                 or share.approved_revision != share.page.revision):
             raise NotFound({"reason": "share_not_found"})
         reader = registry.get_connection_reader()
-        if reader is not None:
-            connection = reader.active_connection_between(
-                user_a=str(share.owner_id), user_b=str(recipient_id))
-            if connection is None:
-                raise NotFound({"reason": "share_not_found"})
+        if reader is None:
+            raise NotFound({"reason": "share_not_found"})
+        connection = reader.active_connection_between(
+            user_a=str(share.owner_id), user_b=str(recipient_id))
+        if connection is None:
+            raise NotFound({"reason": "share_not_found"})
+        if (str(getattr(connection, "connection_id", ""))
+                != str(share.connection_id)
+                or int(getattr(connection, "generation", -1))
+                != int(share.connection_generation)):
+            raise NotFound({"reason": "share_not_found"})
         return share
 
     def read_shared(self, *, recipient_id: str, share_id: str) -> Dict[str, Any]:
@@ -234,3 +298,19 @@ class JournalShareService:
             responder_id=str(user_id)).delete()
         return {"domain": "f08_journal", "pages_deleted": pages,
                 "replies_deleted": replies}
+
+
+_LIST_BINDING_BOUND = 200  # DSA bound before the binding filter
+
+
+def _binding_current(share, *, owner_id: str, recipient_id: str,
+                     active: dict) -> bool:
+    """True when the grant's recorded connection is STILL the active
+    connection between the pair at the SAME generation (F15/WF-04)."""
+    connection = active.get(str(owner_id))
+    if connection is None:
+        return False
+    return (str(getattr(connection, "connection_id", ""))
+            == str(share.connection_id)
+            and int(getattr(connection, "generation", -1))
+            == int(share.connection_generation))

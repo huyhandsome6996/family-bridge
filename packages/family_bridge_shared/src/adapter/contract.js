@@ -88,8 +88,17 @@ export const ADAPTER_METHODS = [
   "getDeletionRequest",   // GET  /api/v1/privacy/deletion-requests/{id}
   "cancelDeletionRequest",// POST /api/v1/privacy/deletion-requests/{id}/cancel
   "withdrawConsent",      // POST /api/v1/privacy/consents/{purpose}/withdraw
+  "listDeletionRequests", // GET  /api/v1/privacy/deletion-requests/list (owner-only, cursor v2 "v2|<iso>|<id>")
   "createMoodEntry",      // POST /api/v1/mood/entries (F07 emotion allowlist)
-  "listMoodEntries",      // GET  /api/v1/mood/entries
+  "listMoodEntries",      // GET  /api/v1/mood/entries (page_size mapping đúng)
+  "getMoodEntry",         // GET   /api/v1/mood/entries/{id} (owner-only)
+  "editMoodEntry",        // PATCH /api/v1/mood/entries/{id} (revision +1, auto un-share)
+  "moodSummary",          // GET   /api/v1/mood/entries/summary (đếm mô tả)
+  "listMoodEntryShares",  // GET   /api/v1/mood/entries/{id}/shares (trạng thái thật)
+  "shareMoodEntry",       // POST  /api/v1/mood/entries/{id}/share (+expected_revision)
+  "revokeMoodShare",      // POST  /api/v1/mood/shares/{id}/revoke
+  "listSharedMoodEntries",// GET   /api/v1/mood/shared (phía nhận, có cursor)
+  "getSharedMoodEntry",   // GET   /api/v1/mood/shared/{id} (recheck mỗi lần đọc)
   "programMy",            // GET  /api/v1/program/my (kèm opted-out)
   "programWeeks",         // GET  /api/v1/program/weeks/{program_key}
   "activitiesCatalog",    // GET  /api/v1/activities/catalog
@@ -112,6 +121,19 @@ export const ADAPTER_METHODS = [
   "cancelAppointmentRequest",
   "completeAppointmentRequest",
   "getAppointmentQueue",
+
+  "programCatalog",       // GET  /api/v1/program/catalog (published only)
+  "programEnroll",        // POST /api/v1/program/enroll (pins revision)
+  "programOptOut",        // POST /api/v1/program/opt-out (voluntary)
+  "programProgress",      // POST /api/v1/program/progress (own-only)
+  "programAgreementAccept",// POST /api/v1/program/agreement/accept (per-person)
+  "programAgreement",     // GET  /api/v1/program/agreement?program_key=
+  "programAgreementPropose",   // POST /api/v1/program/agreement/propose
+  "programAgreementConfirm",   // POST /api/v1/program/agreement/{id}/confirm
+  "programAgreementWithdraw",  // POST /api/v1/program/agreement/{id}/withdraw
+  "activitiesInvites",    // GET  /api/v1/activities/invites (2 chiều)
+  "activitiesInvite",     // POST /api/v1/activities/invites (F09 two-sided)
+  "activitiesRespond",    // POST /api/v1/activities/invites/{id}/respond (invitee-only)
 ];
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".

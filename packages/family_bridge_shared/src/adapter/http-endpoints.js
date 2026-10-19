@@ -265,18 +265,54 @@ export function createHttpEndpoints({
       return data; // draft.view + server_time (countdown từ MÁY CHỦ)
     },
 
-    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId }) {
+    /**
+     * POST /api/v1/drafts/{id} — edit theo hợp đồng C8: `kind` OPTIONAL khi
+     * edit (bất biến sau create) — adapter KHÔNG BAO GIỜ gửi `kind` trong body
+     * edit; edit chỉ mang field có mặt (body/title/card/recipient). Lưu ý:
+     * backend f06_drafts tại baseline 72930ae vẫn validate `kind` ở edit
+     * (DraftDetailView.post -> _content_fields require_all=True rồi mới pop)
+     * — gap backend thuộc A2, không fix bằng cách gửi kind từ client.
+     *
+     * N06 (QA vòng 2 — "client stale lưu đè im lặng bản của client khác",
+     * contract BINDING F04R2-LEAD-1): field MỚI optional `expectedRevision` —
+     *  - KHÔNG truyền / null → KHÔNG gửi `expected_revision` (backcompat hành
+     *    vi cũ, cùng convention expectedRevision === null || === undefined của
+     *    confirmInvite/confirmClassProposal/cancelDeletionRequest).
+     *  - Truyền số nguyên dương ≤ 2147483647 → body kèm `expected_revision`;
+     *    máy chủ so với draft.revision: lệch → 409
+     *    {"error":{"code":"revision_conflict","details":{"reason":
+     *    "draft_conflict","current_revision":N}}} (details KHÔNG chứa body —
+     *    FORBIDDEN_DETAIL_KEYS), khớp → 200 revision+1.
+     *  - 409 revision_conflict nổi lên NGUYÊN status/code/details qua ApiError
+     *    của createApiClient (đọc envelope lỗi thống nhất — cùng parity các
+     *    lỗi khác). Adapter KHÔNG nuốt, KHÔNG tự retry thao tác ghi; phía UI
+     *    phải GET lại bản mới để reconcile rồi mới sửa tiếp.
+     *  - Sai kiểu (0/âm/lẻ/chuỗi/vượt 2^31-1) → chặn TRƯỚC fetch 400
+     *    input_invalid {field:"expected_revision", reason:"must_be_positive_int"}
+     *    (parity aiRefine input_revision — hợp đồng C2).
+     */
+    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId, expectedRevision } = {}) {
       requireBaseUrl();
+      const payload = {
+        body,
+        title: title || "",
+        ...(cardId ? { card_id: cardId } : {}),
+        ...(cardVersion != null ? { card_version: cardVersion } : {}),
+        ...(recipientId ? { recipient_id: recipientId } : {}),
+      };
+      if (expectedRevision !== undefined && expectedRevision !== null) {
+        if (!Number.isInteger(expectedRevision) || expectedRevision < 1
+          || expectedRevision > 2147483647) {
+          // Chặn trước fetch — 1..2147483647 theo hợp đồng N06 (int dương).
+          throw new ApiError("expectedRevision phải là số nguyên dương.", 400, "http",
+            { code: "input_invalid", details: { field: "expected_revision", reason: "must_be_positive_int" } });
+        }
+        payload.expected_revision = expectedRevision;
+      }
       const data = await authed(() =>
         request(`/api/v1/drafts/${encodeURIComponent(draftId)}`, {
           method: "POST",
-          body: {
-            body,
-            title: title || "",
-            ...(cardId ? { card_id: cardId } : {}),
-            ...(cardVersion != null ? { card_version: cardVersion } : {}),
-            ...(recipientId ? { recipient_id: recipientId } : {}),
-          },
+          body: payload,
         }));
       return data;
     },
@@ -321,7 +357,11 @@ export function createHttpEndpoints({
           method: "POST",
           body: {},
         }));
-      return data; // preview gắn (revision, recipient, hash payload)
+      return data; // pass-through NGUYÊN VẸN (parity mock): {preview_id,
+      // revision, recipient_id, body, deadline, server_time} — `body` là
+      // snapshot server-bound (N01, QA 19/10): client hiển thị preview.body
+      // trong sheet xác nhận, KHÔNG đọc lại live textarea. Adapter KHÔNG được
+      // thêm/bớt field của preview (cùng quy tắc pass-through với aiRefine).
     },
 
     async confirmDraftSend(draftId, previewId) {
@@ -548,15 +588,17 @@ export function createHttpEndpoints({
     },
 
     // ---------------------- Web (Task 2): F05 hộp thư ------------------------
-    // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Cursor của
-    // f05 dùng tên "next" trong envelope → map về nextCursor cho UI.
+    // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Envelope của
+    // f05: param trang là `page_size`, cursor là `next` → map về
+    // { results, nextCursor } cho UI (handoff 02 §4.6: không để tham số trang
+    // bị máy chủ bỏ im lặng).
 
     async listMessages({ cursor = null, limit, timeoutMs } = {}) {
       requireBaseUrl();
       const data = await authed(() => request("/api/v1/messages", {
         query: {
           ...(cursor ? { cursor } : {}),
-          ...(limit ? { limit: String(limit) } : {}),
+          ...(limit ? { page_size: String(limit) } : {}),
         },
         ...(timeoutMs ? { timeoutMs } : {}),
       }));
@@ -743,19 +785,41 @@ export function createHttpEndpoints({
       return data || { ai_enabled: false };
     },
 
-    /** POST /api/v1/ai/refine — key bắt buộc; replay cùng key trả CÙNG gợi ý. */
-    async aiRefine({ text, purpose = "refine_expression", key, timeoutMs } = {}) {
+    /**
+     * POST /api/v1/ai/refine — key BẮT BUỘC do caller tạo (crypto.randomUUID);
+     * replay cùng key trả CÙNG gợi ý (máy chủ quyết). Body mapping theo hợp
+     * đồng freeze v1 (C2): {original_text, purpose, input_revision?}.
+     * inputRevision là field MỚI optional (counter keystroke của composer):
+     *  - KHÔNG truyền / null  → body legacy {original_text, purpose} — máy chủ
+     *    hiện hành chấp nhận (payload thiếu input_revision vẫn hợp lệ).
+     *  - Truyền số nguyên dương ≤ 2147483647 → gửi kèm `input_revision`; máy chủ
+     *    echo lại trong DTO để UI đối chiếu stale (C7).
+     * Response trả NGUYÊN VẸN DTO của máy chủ (AiSuggestion.view() + echo) —
+     * adapter KHÔNG đổi tên field: text duy nhất là `suggested_text`, không
+     * bao giờ `refined_text`, không biến đổi envelope.
+     */
+    async aiRefine({ text, purpose = "refine_expression", key, inputRevision, timeoutMs } = {}) {
       requireBaseUrl();
       if (!key) {
         throw new ApiError("Thiếu khóa lượt gửi (idempotency key).", 0, "configuration");
       }
+      const body = { original_text: text, purpose };
+      if (inputRevision !== undefined && inputRevision !== null) {
+        if (!Number.isInteger(inputRevision) || inputRevision < 1
+          || inputRevision > 2147483647) {
+          // Chặn trước fetch — 1..2147483647 theo hợp đồng C2 (int dương).
+          throw new ApiError("inputRevision phải là số nguyên dương.", 400, "http",
+            { code: "input_invalid", details: { field: "input_revision", reason: "must_be_positive_int" } });
+        }
+        body.input_revision = inputRevision;
+      }
       const data = await authed(() => request("/api/v1/ai/refine", {
         method: "POST",
-        body: { original_text: text, purpose },
+        body,
         idempotencyKey: key,
         ...(timeoutMs ? { timeoutMs } : {}),
       }));
-      return data; // suggestion.view() (201)
+      return data; // suggestion.view() (201) — pass-through, không rename field
     },
 
     async aiAccept(suggestionId) {
@@ -789,9 +853,14 @@ export function createHttpEndpoints({
 
     // --------------------- Web (Task 2): F15 riêng tư ------------------------
 
-    async privacyOverview() {
+    /** GET /api/v1/privacy/overview — cursor v2 "ov2|<created_at_iso>|<share_id>"
+     * (R09): trang-1 gọi KHÔNG cursor; nút "Tải thêm" truyền cursor opaque
+     * xuống query. Envelope giữ nguyên (data || fallback rỗng trung thực). */
+    async privacyOverview({ cursor } = {}) {
       requireBaseUrl();
-      const data = await authed(() => request("/api/v1/privacy/overview"));
+      const data = await authed(() => request("/api/v1/privacy/overview", {
+        query: { ...(cursor ? { cursor } : {}) },
+      }));
       return data || { shared_by_me: [], connections: [] };
     },
 
@@ -813,6 +882,24 @@ export function createHttpEndpoints({
         body: { categories },
       }));
       return data; // { request_id, status, receipt?, duplicate? }
+    },
+
+    /** GET /api/v1/privacy/deletion-requests/list — owner-only (KHÔNG dùng
+     * POST để tra cứu; POST tạo yêu cầu mới). Path ĐÚNG urls.py: GET nằm ở
+     * /list (view gốc chỉ có POST). Cursor v2 "v2|<requested_at_iso>|<id>";
+     * shape ĐÚNG backend list_requests (services/deletion.py):
+     * { results: [{request_id,status,scope_categories,requested_at,revision}],
+     *   next_cursor, has_more } — mới nhất trước. */
+    async listDeletionRequests({ cursor } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/privacy/deletion-requests/list", {
+        query: { ...(cursor ? { cursor } : {}) },
+      }));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        next_cursor: (data && data.next_cursor) || null,
+        has_more: Boolean(data && data.has_more),
+      };
     },
 
     async getDeletionRequest(requestId) {
@@ -862,16 +949,121 @@ export function createHttpEndpoints({
 
     async listMoodEntries({ cursor = null, limit } = {}) {
       requireBaseUrl();
+      // Backend đọc `page_size` (validate_page_size) — tham số `limit` của
+      // caller giữ nguyên tên để không phá consumer, nhưng PHẢI map đúng
+      // query param server đọc; trước đây gửi `limit` và bị bỏ qua im lặng
+      // (phân trang vô hiệu, lịch sử tải không giới hạn).
       const data = await authed(() => request("/api/v1/mood/entries", {
         query: {
           ...(cursor ? { cursor } : {}),
-          ...(limit ? { limit: String(limit) } : {}),
+          // F07 dùng param trang `page_size` + envelope `next` (giống F05).
+          ...(limit ? { page_size: String(limit) } : {}),
         },
       }));
       return {
         results: data && Array.isArray(data.results) ? data.results : [],
         nextCursor: (data && data.next) || null,
       };
+    },
+
+    // ------------------- F07 (US-015/US-026): chi tiết/sửa/tổng hợp ----------
+
+    /** GET /api/v1/mood/entries/{id} — mục của chính mình. */
+    async getMoodEntry(entryId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}`));
+      return data;
+    },
+
+    /** PATCH /api/v1/mood/entries/{id} — sửa mục, revision +1; bản mới
+     * KHÔNG tự chia sẻ cho người nhận cũ. */
+    async editMoodEntry(entryId, { emotion = null, note = null } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}`, {
+          method: "PATCH",
+          body: {
+            ...(emotion ? { emotion } : {}),
+            ...(note !== null ? { note } : {}),
+          },
+        }));
+      return data; // entry.view() với revision mới
+    },
+
+    /** GET /api/v1/mood/entries/summary — đếm mô tả của chính mình. */
+    async moodSummary(days = null) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/mood/entries/summary", {
+        query: days ? { days: String(days) } : {},
+      }));
+      return data || { results: [], emotions: [] };
+    },
+
+    // ------------------- F07: chia sẻ từng mục ------------------------------
+
+    /** GET /api/v1/mood/entries/{id}/shares — mục này đang chia sẻ cho ai
+     * với trạng thái THẬT (active/stale_revision/revoked/unlinked). */
+    async listMoodEntryShares(entryId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}/shares`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/mood/entries/{id}/share — chia sẻ ĐÚNG mục cho ĐÚNG
+     * một người đang kết nối, tại revision ĐÃ xem trước (expectedRevision;
+     * lệch -> 409 stale). KHÔNG tự retry thao tác ghi. */
+    async shareMoodEntry(entryId, { recipientId, expectedRevision = null } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}/share`, {
+          method: "POST",
+          body: {
+            recipient_id: recipientId,
+            ...(expectedRevision ? { expected_revision: expectedRevision } : {}),
+          },
+        }));
+      return data; // grant_view() (201) với status thật của grant
+    },
+
+    /** POST /api/v1/mood/shares/{id}/revoke — thu hồi ĐÚNG grant này;
+     * các mục/người nhận khác không đổi. */
+    async revokeMoodShare(shareId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/shares/${encodeURIComponent(shareId)}/revoke`, {
+          method: "POST",
+          body: {},
+        }));
+      return data;
+    },
+
+    /** GET /api/v1/mood/shared — những mục CÒN ĐƯỢC PHÉP xem (máy chủ lọc
+     * quyền trước phân trang; `limit` map đúng `page_size`). */
+    async listSharedMoodEntries({ cursor = null, limit } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/mood/shared", {
+        query: {
+          ...(cursor ? { cursor } : {}),
+          ...(limit ? { page_size: String(limit) } : {}),
+        },
+      }));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        nextCursor: (data && data.next) || null,
+      };
+    },
+
+    /** GET /api/v1/mood/shared/{id} — máy chủ recheck quyền MỖI lần đọc;
+     * 404 khi thu hồi/đã sửa/không còn kết nối. */
+    async getSharedMoodEntry(shareId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/shared/${encodeURIComponent(shareId)}`));
+      return data;
     },
 
     /** GET /api/v1/program/my — enrollment CẢ các row opted-out (trung thực). */
@@ -1042,6 +1234,134 @@ export function createHttpEndpoints({
       requireBaseUrl();
       const data = await authed(() => request("/api/v1/appointments/queue"));
       return data && Array.isArray(data.results) ? data.results : [];
+    },
+
+
+    // -------- F02 chương trình bốn tuần (US-036/US-044, additive) --------
+
+    /** GET /api/v1/program/catalog — chỉ chương trình đã publish (B16). */
+    async programCatalog() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/catalog"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/program/enroll — tham gia tự nguyện, pin revision. */
+    async programEnroll({ programKey, programRevision }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/enroll", {
+        method: "POST",
+        body: { program_key: programKey, program_revision: programRevision },
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/program/opt-out — tự nguyện, không áp lực. */
+    async programOptOut(programKey) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/opt-out", {
+        method: "POST",
+        body: { program_key: programKey },
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/program/progress — tiến độ CỦA MÌNH (done|skipped|reset). */
+    async programProgress({ programKey, weekNo, activityKey, status }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/progress", {
+        method: "POST",
+        body: {
+          program_key: programKey, week_no: weekNo,
+          activity_key: activityKey, status,
+        },
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/program/agreement/accept — chấp nhận cá nhân template. */
+    async programAgreementAccept(programKey) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/program/agreement/accept", {
+          method: "POST",
+          body: { program_key: programKey },
+        }));
+      return data;
+    },
+
+    /** GET /api/v1/program/agreement?program_key= — thỏa ước gia đình của
+     * cặp mình (generation hiện tại) + template đã pin; null khi chưa có. */
+    async programAgreement(programKey) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/program/agreement", {
+        query: { program_key: programKey },
+      }));
+      return data || { agreement: null };
+    },
+
+    /** POST /api/v1/program/agreement/propose — một bên đề xuất. */
+    async programAgreementPropose(programKey) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request("/api/v1/program/agreement/propose", {
+          method: "POST",
+          body: { program_key: programKey },
+        }));
+      return data;
+    },
+
+    /** POST .../confirm — mỗi người tự xác nhận cho mình. */
+    async programAgreementConfirm(agreementId) {
+      requireBaseUrl();
+      const data = await authed(() => request(
+        `/api/v1/program/agreement/${encodeURIComponent(agreementId)}/confirm`,
+        { method: "POST", body: {} }));
+      return data;
+    },
+
+    /** POST .../withdraw — chỉ người đề xuất, khi còn proposed. */
+    async programAgreementWithdraw(agreementId) {
+      requireBaseUrl();
+      const data = await authed(() => request(
+        `/api/v1/program/agreement/${encodeURIComponent(agreementId)}/withdraw`,
+        { method: "POST", body: {} }));
+      return data;
+    },
+
+    // ------------------- F09 lời mời hoạt động chung -------------------
+
+    /** GET /api/v1/activities/invites — lời mời liên quan tới tôi (2 chiều). */
+    async activitiesInvites() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/activities/invites"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/activities/invites — mời người ĐÃ kết nối cùng làm. */
+    async activitiesInvite({ inviteeId, contentKey, contentRevision }) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/activities/invites", {
+        method: "POST",
+        body: {
+          invitee_id: inviteeId, content_key: contentKey,
+          content_revision: contentRevision,
+        },
+      }));
+      return data;
+    },
+
+    /** POST .../respond — CHỈ người được mời accept|decline. */
+    async activitiesRespond(inviteId, decision) {
+      requireBaseUrl();
+      const data = await authed(() => request(
+        `/api/v1/activities/invites/${encodeURIComponent(inviteId)}/respond`,
+        { method: "POST", body: { decision } }));
+      return data;
     },
   };
 }

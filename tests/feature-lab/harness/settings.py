@@ -62,7 +62,12 @@ if unknown:
 # feature module; other known substrate deps resolved here so feature branches
 # test standalone with one command.
 HARNESS_DEPS = {
-    "f15_privacy": ["f01_identity"],
+    # F15 (round 2): production adapters/wiring tests consume the domains it
+    # adapts — F01 sessions/reader, F07/F08 share tables, F14 research store,
+    # F13 help (consent independence check). Presence-guarded for branches
+    # that predate those packages.
+    "f15_privacy": ["f01_identity", "f07_mood", "f08_journal", "f14_surveys",
+                    "f13_help"],
     "f07_mood": ["f01_identity", "f15_privacy"],
     "f08_journal": ["f01_identity", "f15_privacy"],
     "f05_inbox": ["f01_identity"],

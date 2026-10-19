@@ -26,9 +26,9 @@ import {
   createEmptyState,
   createErrorState,
   createDemoBanner,
-  createIcon,
   createSkeleton,
 } from "../../components/index.js";
+import { createAiAssist, AI_COPY } from "../../components/ai-assist.js";
 
 const BODY_MAX = 4000; // ràng buộc backend (f05 validate_text max_len)
 
@@ -101,9 +101,13 @@ export const page = {
 
     let cancelled = false;
     let runId = 0;
+    const destroyHooks = []; // F04: gỡ listener/đóng sheet consent khi unmount
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
+      destroyHooks.splice(0).forEach((fn) => {
+        try { fn(); } catch { /* unmount không được chặn nhau */ }
+      });
     };
 
     const messageId = ctx.params ? ctx.params.get("id") : null;
@@ -168,6 +172,7 @@ export const page = {
           namesById,
           role: state.role || null,
           stale: () => cancelled || currentRun !== runId,
+          destroyHooks,
         });
 
         // Đồng bộ trạng thái qua markRead: CHỈ thư nhận và CHỈ khi dữ liệu
@@ -219,7 +224,7 @@ function renderLoadError(body, error) {
 
 /* ------------------------------ Màn chi tiết (w15) ------------------------------ */
 
-function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
+function renderThread(body, ctx, { demo, thread, namesById, role, stale, destroyHooks = [] }) {
   clear(body);
   if (demo) body.appendChild(createDemoBanner());
 
@@ -406,117 +411,14 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
       chipsNote.textContent = "Chưa lấy được gợi ý nhanh — bạn vẫn viết phản hồi tự do bên dưới.";
     });
 
-  // ---- AI (F04): cổng THẬT qua aiStatus; tắt → không render nút ----
-  Promise.resolve()
-    .then(() => ctx.adapter.aiStatus())
-    .then((aiStatus) => {
-      if (stale()) return;
-      const enabled = Boolean(
-        aiStatus && (aiStatus.enabled === true || aiStatus.ai_enabled === true),
-      );
-      if (!enabled) return; // trung thực: không có cổng thì không có nút
-      renderAiSlot(ctx, { aiSlot, textarea, stale });
-    })
-    .catch(() => { /* không có trạng thái AI → không nút */ });
-}
-
-/* --------------------------- AI gợi ý (chỉ điền textarea) --------------------------- */
-
-function renderAiSlot(ctx, { aiSlot, textarea, stale }) {
-  const pill = h("button", {
-    class: "fb-btn fb-btn--neutral",
-    type: "button",
-    title: "Xin gợi ý diễn đạt êm ái hơn cho lời phản hồi hiện tại.",
-    onclick: () => onAiRefine(),
-  },
-    createIcon({ name: "auto_awesome", size: 18 }),
-    h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
-  );
-  const aiMsg = h("p", { class: "fb-sec__sub", role: "status" },
-    "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời phản hồi của mình.");
-  const suggestion = h("div", { class: "fb-compose__ai-suggestion", hidden: true });
-  aiSlot.appendChild(pill);
-  aiSlot.appendChild(aiMsg);
-  aiSlot.appendChild(suggestion);
-
-  let current = null;
-
-  function onAiRefine() {
-    const text = textarea.value.trim();
-    if (!text) {
-      aiMsg.textContent = "Hãy viết vài dòng trước khi dùng gợi ý AI.";
-      return;
-    }
-    pill.disabled = true;
-    aiMsg.textContent = "Đang xin gợi ý từ máy chủ…";
-    const key = newIdemKey();
-    Promise.resolve()
-      .then(() => ctx.adapter.aiRefine({ text, key }))
-      .then((result) => {
-        pill.disabled = false;
-        if (stale()) return;
-        if (!result || !result.suggestion_id) throw new Error("invalid_suggestion");
-        current = result;
-        renderSuggestion();
-        aiMsg.textContent = "Bạn hoàn toàn quyết định giữ nguyên hay sửa đổi lời phản hồi của mình.";
-      })
-      .catch((error) => {
-        pill.disabled = false;
-        aiMsg.textContent = describeError(error, "Chưa lấy được gợi ý AI — lời phản hồi của bạn giữ nguyên.");
-      });
-  }
-
-  function onAiAccept(suggestionRow) {
-    Promise.resolve()
-      .then(() => ctx.adapter.aiAccept(suggestionRow.suggestion_id))
-      .then(() => {
-        if (stale()) return;
-        textarea.value = String(suggestionRow.refined_text || textarea.value);
-        textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        current = null;
-        renderSuggestion();
-        aiMsg.textContent = "Bạn đã dùng gợi ý — nội dung chỉ nằm trong ô soạn, chưa gửi.";
-      })
-      .catch(() => {
-        aiMsg.textContent = "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại.";
-      });
-  }
-
-  function onAiDiscard(suggestionRow) {
-    Promise.resolve()
-      .then(() => ctx.adapter.aiDiscard(suggestionRow.suggestion_id))
-      .then(() => {
-        current = null;
-        renderSuggestion();
-        aiMsg.textContent = "Bạn đã bỏ gợi ý — lời phản hồi hiện tại giữ nguyên.";
-      })
-      .catch(() => {
-        aiMsg.textContent = "Chưa ghi nhận được lựa chọn. Gợi ý vẫn giữ nguyên — bạn có thể thử lại.";
-      });
-  }
-
-  function renderSuggestion() {
-    clear(suggestion);
-    if (!current) {
-      suggestion.hidden = true;
-      return;
-    }
-    suggestion.hidden = false;
-    suggestion.appendChild(h("p", { class: "fb-compose__ai-suggest-label" }, "Gợi ý của máy chủ:"));
-    suggestion.appendChild(
-      h("p", { class: "fb-compose__ai-suggest-text" }, String(current.refined_text || "")),
-    );
-    const row = h("div", { class: "fb-compose__pause-buttons" });
-    row.appendChild(createButton({
-      label: "Dùng gợi ý",
-      variant: "primary",
-      onClick: () => onAiAccept(current),
-    }));
-    row.appendChild(createButton({
-      label: "Bỏ",
-      variant: "ghost",
-      onClick: () => onAiDiscard(current),
-    }));
-    suggestion.appendChild(row);
-  }
+  // ---- AI (F04): khối assist CHUNG với màn soạn — consent gate + stale guard
+  // + loading + lỗi trung thực; aiStatus tắt -> nút disabled kèm lý do (trung
+  // thực theo ui-rules: disabled phải nêu lý do, không biến mất âm thầm).
+  const aiAssist = createAiAssist({
+    adapter: ctx.adapter,
+    textarea,
+    copy: AI_COPY.reply,
+  });
+  aiSlot.appendChild(aiAssist.el);
+  if (typeof destroyHooks?.push === "function") destroyHooks.push(aiAssist.destroy);
 }

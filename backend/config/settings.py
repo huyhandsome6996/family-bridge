@@ -11,6 +11,7 @@ from datetime import timedelta
 from pathlib import Path
 
 from django.core.exceptions import ImproperlyConfigured
+from corsheaders.conf import default_headers as corsheaders_default_headers
 from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -98,6 +99,32 @@ ZALO_APP_SECRET = os.getenv("ZALO_APP_SECRET", "")
 FB_ZALO_LOGIN_ENABLED = os.getenv("FB_ZALO_LOGIN_ENABLED", "true").lower() in {
     "1", "true", "yes", "on",
 }
+
+# --- F04 AI (Gemini) runtime configuration — read-only env binding ----------
+# Secrets are read into settings server-side ONLY (never rendered, never
+# logged). Misconfiguration DISABLES the AI module safely (fail closed via
+# family_bridge_features.f04_ai.services.wiring) and must never crash boot.
+# Numeric bounds follow frozen contract C5; unparseable values become None
+# which the F04 wiring treats as "AI off" (no partial/garbage config).
+FB_AI_ENABLED = os.getenv("FB_AI_ENABLED", "").strip().lower() in {"1", "true"}
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip()
+
+
+def _bounded_int_env(name: str, default: int, lo: int, hi: int):
+    """Parse+clamp an int env var; None signals "misconfigured -> AI off"."""
+    raw = os.getenv(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return max(lo, min(hi, int(raw)))
+    except (TypeError, ValueError):
+        return None
+
+
+GEMINI_TIMEOUT_SECONDS = _bounded_int_env("GEMINI_TIMEOUT_SECONDS", 15, 3, 30)
+GEMINI_MAX_OUTPUT_TOKENS = _bounded_int_env("GEMINI_MAX_OUTPUT_TOKENS", 1024, 64, 4096)
+
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -160,6 +187,9 @@ CORS_ALLOWED_ORIGINS = csv_env("CORS_ALLOWED_ORIGINS")
 if DJANGO_ENV == "development":
     CORS_ALLOWED_ORIGINS += ["http://localhost:3000", "http://127.0.0.1:3000"]
 CORS_ALLOW_CREDENTIALS = False
+# Preflight must accept the idempotency header used by send-class mutations
+# (F05 messages, F04 refine) — not part of django-cors-headers defaults.
+CORS_ALLOW_HEADERS = list(corsheaders_default_headers) + ["x-idempotency-key"]
 CORS_URLS_REGEX = r"^/api/.*$"
 REST_FRAMEWORK = {
     # B18: bearer application sessions issued by F01 after server-side Zalo

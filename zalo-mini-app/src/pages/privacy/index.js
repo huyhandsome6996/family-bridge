@@ -4,7 +4,10 @@
 //
 // Hợp đồng backend F15 (packages/family_bridge_features/f15_privacy):
 //   GET  /api/v1/privacy/overview → { shared_by_me:[{item_type,item_id,
-//        recipient_id,approved_revision,revoked}], connections:[...] }
+//        share_id,recipient_id,approved_revision,revoked}], connections:[...],
+//        next_cursor, has_more }  — cursor v2 "ov2|<created_at_iso>|<share_id>"
+//        (nút "Tải thêm" chỉ hiện khi has_more; nối CÓ DEDUP theo khóa
+//        item_type|item_id|share_id; dừng có trần khi không còn mục mới)
 //        (payload KHÔNG có consents — trạng thái đồng ý đọc qua F01
 //        GET /api/v1/consents, mỗi purpose đều được liệt kê)
 //   POST /api/v1/privacy/grants/{item_type}/{item_id}/revoke {recipient_id?}
@@ -13,6 +16,9 @@
 //   GET  /api/v1/privacy/deletion-requests/{id} → {request_id,status,
 //        scope_categories,requested_at,completed_at,failure_detail,note}
 //   POST /api/v1/privacy/deletion-requests/{id}/cancel {expected_revision?}
+//   GET  /api/v1/privacy/deletion-requests/list → {results:[{request_id,
+//        status,scope_categories,requested_at,revision}],next_cursor,has_more}
+//        (mới nhất trước — dùng để ĐỌC LẠI trạng thái lúc mở trang)
 //   POST /api/v1/privacy/consents/{purpose}/withdraw → {purpose,withdrawn}
 //
 // TRUNG THỰC (FL-20/WF-21 + worklog Task 19):
@@ -23,6 +29,21 @@
 // - Yêu cầu xóa ≠ dữ liệu biến mất ngay: máy chủ xác minh trước khi xử lý.
 // - Biên nhận chỉ hiện MỘT LẦN (backend chỉ lưu hash — SEC-19/22).
 // - Không polling: trạng thái mới hơn khi người dùng tải lại hoặc thao tác xong.
+//
+// Port từ page-core F15 (packages/family_bridge_mobile/f15_privacy/page-core.js)
+// những gì trang native còn thiếu — cursor v2 (R09), share_id + dedup, guard
+// double-submit cho thu hồi, đọc lại ĐÚNG MỘT lần sau mutation mất response
+// (K7 unknown outcome), phân loại lỗi kind=configuration.
+//
+// Task 3-c (P2-1 + P2-2 của QA-3):
+// - P2-1: nối điều hướng tới trang "Chia sẻ từng mục" (/privacy-items) —
+//   trước đây route mồ côi (0 điểm điều hướng tới nó trên cả 2 client).
+// - P2-2: lúc mở trang đọc lại danh sách yêu cầu xóa ĐÃ CÓ trên máy chủ qua
+//   adapter.listDeletionRequests() (shared, Task 3-b) — trạng thái không còn
+//   mất sau reload; nút hủy trong danh sách nối vào đúng logic hủy có sẵn
+//   (giữ expected_revision); list lỗi → báo thật, không bịa danh sách rỗng;
+//   has_more=true → nói thật là còn yêu cầu cũ hơn trên máy chủ (không giả
+//   vờ trang đầu tiên là toàn bộ — máy chủ cắt theo trang, mặc định 20).
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import {
@@ -35,6 +56,10 @@ const ITEM_TYPE_LABELS = {
   mood_entry: "Ghi nhận tâm trạng",
   journal_page: "Trang nhật ký",
 };
+
+// Trần tích lũy danh sách chia sẻ (bounded) — chống phình vô hạn khi máy chủ
+// liên tục trả cursor mới; phần còn lại vẫn nằm an toàn trên máy chủ.
+const SHARE_ITEMS_MAX = 300;
 
 // Allowlist phạm vi xóa dữ liệu — ĐÚNG DeletionRequest.CATEGORIES (models.py).
 const DELETION_CATEGORIES = [
@@ -175,6 +200,17 @@ export const page = {
       deletionRevision: null,
       receipt: null,
       duplicate: false,
+      // Cursor v2 cho danh sách chia sẻ (port page-core F15/R09): con trỏ +
+      // khóa dedup + cờ dừng có trần; sống qua các lần render lại trong cùng
+      // một lần mở trang, reset khi nhận trang-1 mới từ máy chủ.
+      renderSeq: 0,
+      sharedNextCursor: null,
+      sharedHasMore: false,
+      sharedExhausted: false,
+      sharedKeys: new Set(),
+      loadMoreBusy: false,
+      revokeBusy: false,
+      reconcileNote: null,
     };
 
     const load = () => {
@@ -186,13 +222,23 @@ export const page = {
       Promise.all([
         Promise.resolve().then(() => ctx.adapter.privacyOverview()),
         Promise.resolve().then(() => ctx.adapter.listConsents()).catch(() => null),
+        // Danh sách yêu cầu xóa đã có trên máy chủ (P2-2/QA-3, adapter Task
+        // 3-b): đọc lại lúc mở trang — lỗi → null và card sẽ báo thật, KHÔNG
+        // bịa thành "chưa có yêu cầu nào".
+        Promise.resolve()
+          .then(() => ctx.adapter.listDeletionRequests())
+          .catch(() => null),
       ])
-        .then(([overview, consents]) => {
+        .then(([overview, consents, deletionPage]) => {
           if (cancelled || thisRun !== runId) return;
           renderPrivacy(body, ctx, {
             demo,
             overview: overview || { shared_by_me: [], connections: [] },
             consents: Array.isArray(consents) ? consents : null,
+            // TRANG ĐẦY ĐỦ {results,next_cursor,has_more} (shape Task 3-b):
+            // giữ cả has_more để card nói thật khi danh sách bị cắt theo trang.
+            deletionPage: deletionPage && typeof deletionPage === "object"
+              ? deletionPage : null,
             state,
             reload: load,
             openDialogs,
@@ -209,9 +255,12 @@ export const page = {
           body.appendChild(
             createErrorState({
               title: "Không tải được trạng thái riêng tư",
-              description: error && error.kind === "timeout"
-                ? "Kết nối quá thời gian chờ. Vui lòng thử lại."
-                : "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.",
+              description:
+                error && error.kind === "configuration"
+                  ? "Ứng dụng chưa cấu hình địa chỉ máy chủ. Vui lòng cập nhật bản mới."
+                  : error && error.kind === "timeout"
+                    ? "Kết nối quá thời gian chờ. Vui lòng thử lại."
+                    : "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.",
               retryLabel: "Thử lại",
               onRetry: () => load(),
             }),
@@ -233,7 +282,7 @@ page.destroy = destroy;
 
 /* ------------------------------- Trang chính ------------------------------- */
 
-function renderPrivacy(body, ctx, { demo, overview, consents, state, reload, openDialogs }) {
+function renderPrivacy(body, ctx, { demo, overview, consents, deletionPage, state, reload, openDialogs }) {
   clear(body);
   if (demo) body.appendChild(createDemoBanner());
 
@@ -255,8 +304,27 @@ function renderPrivacy(body, ctx, { demo, overview, consents, state, reload, ope
     ),
   );
 
-  body.appendChild(renderGrantsCard(ctx, overview, reload));
-  body.appendChild(renderDeletionCard(ctx, state, reload, openDialogs));
+  // "Chia sẻ từng mục" — điều hướng tới /privacy-items (P2-1/QA-3: route từng
+  // mồ côi, web thiếu hẳn; giờ cả 2 client cùng nối từ vùng grants này).
+  // Đặt SÁT card "Đang chia sẻ" nhưng NGOÀI card — card grants giữ nguyên
+  // ngữ nghĩa riêng (trạng thái rỗng của card không kèm nút hành động).
+  body.appendChild(
+    h("div", { class: "fb-field" },
+      h("p", { class: "fb-field__hint" },
+        "Muốn chia sẻ đúng MỘT trang nhật ký cho một người nhận cụ thể? "
+        + "Mở trang chia sẻ từng mục.",
+      ),
+      createButton({
+        label: "Chia sẻ từng mục",
+        variant: "ghost",
+        ariaLabel: "Mở trang chia sẻ từng mục nhật ký",
+        onClick: () => ctx.navigate("/privacy-items"),
+      }),
+    ),
+  );
+
+  body.appendChild(renderGrantsCard(ctx, overview, state, reload, openDialogs));
+  body.appendChild(renderDeletionCard(ctx, state, reload, openDialogs, deletionPage));
   body.appendChild(renderConsentsCard(ctx, consents, reload, openDialogs));
 
   body.appendChild(
@@ -269,12 +337,33 @@ function renderPrivacy(body, ctx, { demo, overview, consents, state, reload, ope
 
 /* ---------------------------- (1) Đang chia sẻ ----------------------------- */
 
-function renderGrantsCard(ctx, overview, reload) {
+// Khóa nhận dạng một mục chia sẻ cho dedup (cursor v2): cùng hình dạng với
+// page-core F15 — item_type|item_id|share_id (share_id rỗng với provider cũ
+// không có share id; khi đó khóa vẫn phân biệt theo item_id).
+function shareKey(grant) {
+  if (!grant) return "";
+  return `${grant.item_type || ""}|${grant.item_id || ""}|${grant.share_id || ""}`;
+}
+
+function renderGrantsCard(ctx, overview, state, reload, openDialogs) {
   const wrap = h("div", {});
   const note = h("p", { class: "fb-page__note", role: "status", "aria-live": "polite" });
   wrap.appendChild(note);
 
   const grants = Array.isArray(overview.shared_by_me) ? overview.shared_by_me : [];
+
+  // Mỗi lần render lại toàn trang là một lần nhận trang-1 MỚI từ máy chủ
+  // (sau thu hồi/rút đồng ý) → con trỏ + khóa dedup reset theo dữ liệu mới.
+  state.renderSeq = (state.renderSeq || 0) + 1;
+  const renderSeq = state.renderSeq;
+  state.sharedNextCursor = typeof overview.next_cursor === "string" && overview.next_cursor
+    ? overview.next_cursor : null;
+  state.sharedHasMore = Boolean(overview.has_more);
+  state.sharedExhausted = false;
+  state.sharedKeys = new Set(grants.map(shareKey));
+
+  if (state.reconcileNote) note.textContent = state.reconcileNote;
+
   if (!grants.length) {
     // Trạng thái rỗng THẬT của máy chủ — không bịa mục nào.
     wrap.appendChild(
@@ -285,9 +374,22 @@ function renderGrantsCard(ctx, overview, reload) {
     return createCard({ title: "Đang chia sẻ", children: wrap });
   }
 
+  const listWrap = h("div", {});
+  wrap.appendChild(listWrap);
   grants.forEach((grant) => {
-    if (!grant) return;
-    const row = h("div", { class: "fb-field" });
+    if (grant) listWrap.appendChild(grantRow(grant));
+  });
+
+  // Vùng nút "Tải thêm" — render lại theo trạng thái cursor sau mỗi bước.
+  const loadMoreArea = h("div", {});
+  wrap.appendChild(loadMoreArea);
+  drawLoadMore();
+
+  function grantRow(grant) {
+    const row = h("div", {
+      class: "fb-field",
+      dataset: { shareId: grant.share_id || "" }, // share_id theo từng item (cursor v2)
+    });
     row.appendChild(
       h("p", {},
         h("strong", {}, itemTypeLabel(grant.item_type)),
@@ -300,6 +402,7 @@ function renderGrantsCard(ctx, overview, reload) {
         variant: "danger",
         ariaLabel: `Thu hồi chia sẻ ${itemTypeLabel(grant.item_type)}`,
         onClick: () => {
+          if (state.revokeBusy) return; // một mutation riêng tư tại một thời điểm
           const dialog = createDialog({
             title: "Thu hồi chia sẻ mục này?",
             message:
@@ -318,10 +421,92 @@ function renderGrantsCard(ctx, overview, reload) {
         },
       }));
     }
-    wrap.appendChild(row);
-  });
+    return row;
+  }
+
+  // Nút "Tải thêm" (cursor v2 backend): CHỈ hiện khi has_more; click → GET
+  // trang kế với cursor; nối CÓ DEDUP theo item_type|item_id|share_id; dừng
+  // CÓ TRẦN khi trang kế không còn mục mới (không lặp vô hạn cùng một trang).
+  function drawLoadMore() {
+    clear(loadMoreArea);
+    if (!state.sharedHasMore || state.sharedExhausted) return;
+    if (listWrap.children.length >= SHARE_ITEMS_MAX) {
+      loadMoreArea.appendChild(
+        h("p", { class: "fb-field__hint" },
+          `Đã hiển thị ${SHARE_ITEMS_MAX} mục gần nhất; các mục khác vẫn nằm an toàn trên máy chủ.`,
+        ),
+      );
+      return;
+    }
+    loadMoreArea.appendChild(createButton({
+      label: "Tải thêm",
+      variant: "ghost",
+      ariaLabel: "Tải thêm mục đang chia sẻ",
+      onClick: onLoadMore,
+    }));
+  }
+
+  function onLoadMore() {
+    if (state.loadMoreBusy) return; // guard double-submit
+    const cursor = state.sharedNextCursor;
+    if (!cursor) {
+      state.sharedHasMore = false;
+      drawLoadMore();
+      return;
+    }
+    state.loadMoreBusy = true;
+    const btn = loadMoreArea.querySelector("button");
+    if (btn) btn.disabled = true;
+    Promise.resolve()
+      .then(() => ctx.adapter.privacyOverview({ cursor }))
+      .then((pageData) => {
+        state.loadMoreBusy = false;
+        // Trang đã render lại (mutation khác/tải lại) → response cũ bỏ, không
+        // nối vào danh sách của lần render mới.
+        if (renderSeq !== state.renderSeq || !listWrap.isConnected) return;
+        const rows = Array.isArray(pageData && pageData.shared_by_me)
+          ? pageData.shared_by_me : [];
+        let freshCount = 0;
+        rows.forEach((grant) => {
+          if (!grant) return;
+          const key = shareKey(grant);
+          if (state.sharedKeys.has(key)) return; // dedup — không append trùng
+          state.sharedKeys.add(key);
+          freshCount += 1;
+          listWrap.appendChild(grantRow(grant));
+        });
+        if (freshCount > 0) {
+          state.sharedNextCursor = pageData && typeof pageData.next_cursor === "string"
+            && pageData.next_cursor ? pageData.next_cursor : null;
+          state.sharedHasMore = Boolean(pageData && pageData.has_more);
+          if (!state.sharedHasMore) state.sharedExhausted = true;
+          note.textContent = state.reconcileNote || "";
+          drawLoadMore();
+          return;
+        }
+        // Không có mục mới nào (ví dụ adapter chưa chuyển cursor tới máy chủ)
+        // → dừng có trần, nói thật; không cho bấm vô hạn cùng một trang.
+        state.sharedExhausted = true;
+        drawLoadMore();
+        note.textContent =
+          "Chưa tải thêm được mục mới nào. Tải lại trang để xem danh sách mới nhất.";
+      })
+      .catch((error) => {
+        state.loadMoreBusy = false;
+        if (renderSeq !== state.renderSeq || !listWrap.isConnected) return;
+        note.appendChild(h("span", { class: "fb-field__error", role: "alert" },
+          error && error.kind === "timeout"
+            ? "Kết nối quá thời gian chờ. Chưa tải thêm được — thử lại."
+            : "Không tải thêm được. Thử lại.",
+        ));
+        drawLoadMore();
+      });
+  }
 
   function onRevoke(grant) {
+    if (state.revokeBusy) return;
+    state.revokeBusy = true;
+    state.reconcileNote = null;
     clear(note);
     note.textContent = "Đang thu hồi…";
     Promise.resolve()
@@ -331,6 +516,7 @@ function renderGrantsCard(ctx, overview, reload) {
         recipientId: grant.recipient_id || null,
       }))
       .then(() => {
+        state.revokeBusy = false;
         // Copy đối chiếu note thật của backend: chặn đọc mới, không thu hồi
         // được bản sao ngoài ứng dụng. Tải lại danh sách để thấy trạng thái mới.
         note.textContent =
@@ -338,14 +524,24 @@ function renderGrantsCard(ctx, overview, reload) {
         reload();
       })
       .catch((error) => {
+        state.revokeBusy = false;
         if (error && error.status === 401) {
           ctx.navigate("/login?reason=expired");
           return;
         }
+        if (error && (error.kind === "timeout" || error.kind === "network")) {
+          // Kết quả mutation CHƯA XÁC ĐỊNH (máy chủ có thể đã nhận): KHÔNG tự
+          // gửi lại POST — đọc lại ĐÚNG MỘT lần để đối chiếu trạng thái thật
+          // (port K7 từ page-core F15).
+          state.reconcileNote =
+            "Kết quả thu hồi CHƯA XÁC ĐỊNH (lỗi mạng/quá thời gian chờ). "
+            + "Đã đọc lại trạng thái từ máy chủ đúng MỘT lần bên dưới; "
+            + "ứng dụng không tự gửi lại yêu cầu thu hồi.";
+          reload();
+          return;
+        }
         note.appendChild(h("span", { class: "fb-field__error", role: "alert" },
-          error && error.kind === "timeout"
-            ? "Kết nối quá thời gian chờ. Chưa thu hồi được — thử lại."
-            : "Không thu hồi được. Thử lại.",
+          "Không thu hồi được. Thử lại.",
         ));
       });
   }
@@ -361,10 +557,18 @@ function renderGrantsCard(ctx, overview, reload) {
 
 /* ------------------------ (2) Yêu cầu xóa dữ liệu -------------------------- */
 
-function renderDeletionCard(ctx, state, reload, openDialogs) {
+function renderDeletionCard(ctx, state, reload, openDialogs, deletionPage) {
   const wrap = h("div", {});
   const statusBox = h("div", { role: "status", "aria-live": "polite" });
   const note = h("p", { class: "fb-page__note", role: "status", "aria-live": "polite" });
+  // Danh sách yêu cầu xóa ĐÃ GỬI, đọc từ máy chủ lúc mở trang (P2-2/QA-3):
+  // trước đây trạng thái chỉ sống trong bộ nhớ phiên — reload là mất đường UI
+  // để xem lại. null = chưa tải được (lỗi thật); [] = máy chủ xác nhận rỗng.
+  // has_more=true = máy chủ cắt theo trang → nói thật, không giả vờ đủ.
+  const deletionRequests = deletionPage && Array.isArray(deletionPage.results)
+    ? deletionPage.results : null;
+  const deletionHasMore = Boolean(deletionPage && deletionPage.has_more);
+  const listBox = h("div", {});
   const checkboxes = new Map();
 
   wrap.appendChild(
@@ -396,6 +600,8 @@ function renderDeletionCard(ctx, state, reload, openDialogs) {
   wrap.appendChild(submit);
   wrap.appendChild(statusBox);
   wrap.appendChild(note);
+  wrap.appendChild(listBox);
+  drawRequests();
 
   function selectedCategories() {
     const selected = [];
@@ -420,6 +626,124 @@ function renderDeletionCard(ctx, state, reload, openDialogs) {
         // Không lấy được chi tiết → vẫn giữ nguyên dữ liệu đã có, không bịa.
         drawStatus();
       });
+  }
+
+  // Đọc lại MỘT hàng trong danh sách (ví dụ sau 409 khi hủy từ danh sách):
+  // cập nhật đúng hàng đó theo dữ liệu máy chủ trả về, không bịa trạng thái.
+  function refreshListItem(requestId) {
+    Promise.resolve()
+      .then(() => ctx.adapter.getDeletionRequest(requestId))
+      .then((detail) => {
+        if (!detail) return;
+        const item = deletionRequests
+          && deletionRequests.find((row) => row && row.request_id === requestId);
+        if (!item) return;
+        item.status = detail.status;
+        item.revision = typeof detail.revision === "number" ? detail.revision : item.revision;
+        drawRequests();
+      })
+      .catch(() => { /* không đọc được → giữ dữ liệu đã có, không bịa */ });
+  }
+
+  function drawRequests() {
+    clear(listBox);
+    listBox.appendChild(
+      h("p", { class: "fb-sec__sub" },
+        "Các yêu cầu đã gửi (đọc từ máy chủ lúc tải trang):",
+      ),
+    );
+    if (deletionRequests === null) {
+      // Lỗi thật khi tải danh sách → báo thật, không bịa thành “không có”.
+      listBox.appendChild(
+        h("p", { class: "fb-field__hint" },
+          "Chưa tải được danh sách yêu cầu xóa từ máy chủ. "
+          + "Tải lại trang để xem trạng thái thật.",
+        ),
+      );
+      return;
+    }
+    if (!deletionRequests.length) {
+      listBox.appendChild(
+        h("p", { class: "fb-field__hint" },
+          "Chưa có yêu cầu xóa nào được ghi nhận trên máy chủ.",
+        ),
+      );
+      return;
+    }
+    deletionRequests.forEach((request) => {
+      if (request && request.request_id) listBox.appendChild(requestRow(request));
+    });
+    if (deletionHasMore) {
+      // Máy chủ trả theo trang (mặc định 20 — NOTE-4/QA-3) — cắt thì nói
+      // thật, không giả vờ đây là toàn bộ yêu cầu của người dùng.
+      listBox.appendChild(
+        h("p", { class: "fb-field__hint" },
+          "Đang hiển thị các yêu cầu gần nhất; vẫn còn yêu cầu cũ hơn "
+          + "được lưu trên máy chủ.",
+        ),
+      );
+    }
+  }
+
+  function requestRow(request) {
+    const row = h("div", {
+      class: "fb-field",
+      dataset: { requestId: request.request_id },
+    });
+    row.appendChild(
+      h("p", {},
+        h("strong", {}, "Yêu cầu xóa dữ liệu"),
+        ` — ${deletionStatusLabel(request.status)}`,
+      ),
+    );
+    const scope = Array.isArray(request.scope_categories) ? request.scope_categories : [];
+    if (scope.length) {
+      row.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          `Phạm vi: ${scope.map((key) => {
+            const found = DELETION_CATEGORIES.find((c) => c.key === key);
+            return found ? found.label : key;
+          }).join(", ")}`,
+        ),
+      );
+    }
+    const when = timeLabel(request.requested_at);
+    if (when) row.appendChild(h("p", { class: "fb-sec__sub" }, `Tiếp nhận lúc: ${when}`));
+    if (request.status === "requested") {
+      row.appendChild(createButton({
+        label: "Hủy yêu cầu xóa",
+        variant: "ghost",
+        ariaLabel: "Hủy yêu cầu xóa dữ liệu này",
+        onClick: () => openCancelDialog(
+          () => onCancel(request.request_id, request.revision, request),
+        ),
+      }));
+    } else if (request.status
+      && request.status !== "cancelled"
+      && request.status !== "completed") {
+      row.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          "Yêu cầu đã vào xử lý nên không thể hủy — trạng thái sẽ phản ánh tiến trình thật.",
+        ),
+      );
+    }
+    return row;
+  }
+
+  // Hộp thoại xác nhận hủy dùng CHUNG cho cả trạng thái trong phiên lẫn từng
+  // hàng trong danh sách — một copy, một hậu quả thật.
+  function openCancelDialog(onConfirm) {
+    const dialog = createDialog({
+      title: "Hủy yêu cầu xóa dữ liệu?",
+      message:
+        "Bạn chỉ hủy được khi yêu cầu còn ở trạng thái chờ xác minh. "
+        + "Sau khi xử lý bắt đầu, không thể hủy.",
+      actions: [
+        { label: "Giữ yêu cầu", variant: "ghost", onClick: () => {} },
+        { label: "Hủy yêu cầu", variant: "danger", onClick: onConfirm },
+      ],
+    });
+    openDialogs.add(dialog);
   }
 
   function drawStatus() {
@@ -461,19 +785,7 @@ function renderDeletionCard(ctx, state, reload, openDialogs) {
       panel.appendChild(createButton({
         label: "Hủy yêu cầu xóa",
         variant: "ghost",
-        onClick: () => {
-          const dialog = createDialog({
-            title: "Hủy yêu cầu xóa dữ liệu?",
-            message:
-              "Bạn chỉ hủy được khi yêu cầu còn ở trạng thái chờ xác minh. "
-              + "Sau khi xử lý bắt đầu, không thể hủy.",
-            actions: [
-              { label: "Giữ yêu cầu", variant: "ghost", onClick: () => {} },
-              { label: "Hủy yêu cầu", variant: "danger", onClick: () => onCancel() },
-            ],
-          });
-          openDialogs.add(dialog);
-        },
+        onClick: () => openCancelDialog(() => onCancel()),
       }));
     } else if (state.deletionStatus
       && state.deletionStatus !== "cancelled"
@@ -527,6 +839,25 @@ function renderDeletionCard(ctx, state, reload, openDialogs) {
           note.textContent = "Yêu cầu đã được ghi nhận (trùng yêu cầu đang mở không tạo bản mới).";
         }
         drawStatus();
+        if (deletionRequests && state.deletionRequestId) {
+          // Đưa yêu cầu VỪA được máy chủ ghi nhận vào danh sách (đúng thứ tự
+          // mới-nhất-trước của list_requests). requested_at/revision chưa có
+          // trên response tạo → để trống thật; tải lại trang sẽ có đủ từ máy
+          // chủ. Trùng request_id (duplicate) thì không thêm lại.
+          const alreadyListed = deletionRequests.some(
+            (row) => row && row.request_id === state.deletionRequestId,
+          );
+          if (!alreadyListed) {
+            deletionRequests.unshift({
+              request_id: state.deletionRequestId,
+              status: state.deletionStatus,
+              scope_categories: categories.slice(),
+              requested_at: null,
+              revision: null,
+            });
+          }
+          drawRequests();
+        }
         if (state.deletionRequestId) fetchStatus(state.deletionRequestId);
       })
       .catch((error) => {
@@ -543,20 +874,32 @@ function renderDeletionCard(ctx, state, reload, openDialogs) {
       .then(() => { submit.disabled = false; });
   }
 
-  function onCancel() {
-    if (!state.deletionRequestId) return;
+  function onCancel(
+    requestId = state.deletionRequestId,
+    revision = state.deletionRevision,
+    listItem = null,
+  ) {
+    if (!requestId) return;
     clear(note);
     note.textContent = "Đang hủy yêu cầu…";
     Promise.resolve()
-      .then(() => ctx.adapter.cancelDeletionRequest(
-        state.deletionRequestId,
-        { expectedRevision: state.deletionRevision },
-      ))
+      .then(() => ctx.adapter.cancelDeletionRequest(requestId, { expectedRevision: revision }))
       .then((result) => {
-        state.deletionStatus = (result && result.status) || "cancelled";
+        const newStatus = (result && result.status) || "cancelled";
+        // Cập nhật trạng thái MỚI THEO MÁY CHỦ ở mọi nơi đang hiển thị cùng
+        // yêu cầu (hàng trong danh sách + panel trong phiên) — không để lệch
+        // nhau (ví dụ duplicate: panel và danh sách cùng là một request_id).
+        if (listItem) listItem.status = newStatus;
+        const listed = deletionRequests
+          && deletionRequests.find((row) => row && row.request_id === requestId);
+        if (listed) listed.status = newStatus;
+        if (listItem || listed) drawRequests();
+        if (requestId === state.deletionRequestId) {
+          state.deletionStatus = newStatus;
+          drawStatus();
+        }
         clear(note);
         note.textContent = "Yêu cầu đã hủy. Dữ liệu của bạn không bị xóa bởi yêu cầu này.";
-        drawStatus();
       })
       .catch((error) => {
         if (error && error.status === 401) {
@@ -570,7 +913,12 @@ function renderDeletionCard(ctx, state, reload, openDialogs) {
           note.textContent =
             "Trạng thái yêu cầu vừa thay đổi trên máy chủ — đã tải lại trạng thái mới nhất. "
             + "Kiểm tra lại trước khi hủy tiếp.";
-          fetchStatus(state.deletionRequestId);
+          if (listItem
+            || (deletionRequests
+              && deletionRequests.some((row) => row && row.request_id === requestId))) {
+            refreshListItem(requestId);
+          }
+          if (requestId === state.deletionRequestId) fetchStatus(requestId);
           return;
         }
         const reason = error && error.details && error.details.reason

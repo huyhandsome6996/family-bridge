@@ -8,7 +8,10 @@ import { fixtures } from "../fixtures/index.js";
 import {
   clearSession, getSession, hasLiveSession, setSession,
 } from "../session.js";
-import { CONSENT_ORDER } from "../policy.js";
+// POLICY_PURPOSES = bản mirror client của CURRENT_POLICY_VERSIONS (f01
+// services/policy.py: service-v1 / ai-v1 / research-v1) — cùng nguồn so sánh
+// `current` như evaluateAiConsent của web/zalo (không hardcode riêng).
+import { CONSENT_ORDER, POLICY_PURPOSES } from "../policy.js";
 
 const DEFAULT_LATENCY_MS = 450;
 const TIMEOUT_MS = 4000;
@@ -37,7 +40,10 @@ export function createMockAdapter({ scenario = null } = {}) {
   const messages = new Map(); // fixture Web: thư đã "gửi" trong demo
   const sentCards = 1;
   const sentSignals = 1;
-  const sentSuggestions = 1;
+  // F04 fixture: gợi ý theo idempotency key — replay cùng key trả CÙNG gợi ý
+  // (không "gọi provider" lần 2), cùng key khác payload → 409 như backend.
+  const aiSuggestions = new Map(); // key -> { payload, view }
+  const aiSuggestionsById = new Map(); // suggestion_id -> view (để decide)
   const moodEntries = 1;
   const connections = [
     {
@@ -64,6 +70,70 @@ export function createMockAdapter({ scenario = null } = {}) {
   ];
   // Yêu cầu xóa demo (trạng thái trong bộ nhớ adapter, giống dữ liệu thật).
   let deletionRequest = null;
+
+  /**
+   * Giây còn lại của khoảng dừng ĐANG ÁP DỤNG (null khi guard không chặn).
+   * Nguồn sự thật: `_deadline_guard` (f06_drafts/services/drafts.py:73-94) —
+   * cooldown là OPT-IN: chỉ chặn khi draft ĐANG paused (status=="paused" VÀ có
+   * deadline). Edit trong lúc pause đưa draft về "editing" (deadline cố tình
+   * KHÔNG xóa — drafts.py edit) → preview/send CHO QUA; paused mà đã quá
+   * deadline cũng CHO QUA (t=299 chặn, t=300 qua; không auto-send). (F1)
+   */
+  function remainingPauseSeconds(draft) {
+    if (!draft.pause || draft.status !== "paused") return null;
+    return Math.max(0, Math.round((Date.parse(draft.pause.deadline) - Date.now()) / 1000));
+  }
+
+  /**
+   * Shape `pause` GIỐNG HỆT Draft.view() backend (f06_drafts/models.py:70-92):
+   * remaining_seconds/can_preview chỉ được tính khi status=="paused"; editing
+   * dù còn lưu deadline (edit-during-pause) → remaining null + can_preview
+   * false; không chọn pause bao giờ → null. (F1)
+   */
+  function pauseViewOf(draft, nowMs) {
+    if (!draft.pause) return null;
+    const paused = draft.status === "paused";
+    return {
+      ...draft.pause,
+      remaining_seconds: paused
+        ? Math.max(0, Math.round((Date.parse(draft.pause.deadline) - nowMs) / 1000))
+        : null,
+      can_preview: Boolean(paused && Date.parse(draft.pause.deadline) <= nowMs),
+    };
+  }
+
+  /**
+   * F3: decide (accept/discard) GIỐNG express.decide (f04 express.py:226-237)
+   * — one-way idempotent: chỉ "suggested" mới chuyển trạng thái và đóng dấu
+   * decided_at; gọi lại (hoặc chiều kia) trả nguyên trạng. Id chưa qua
+   * aiRefine của phiên này vẫn trả ĐỦ shape view() (fixture) thay vì stub để
+   * demo không lệch serializer thật.
+   */
+  function decideSuggestion(suggestionId, status) {
+    const id = String(suggestionId || "");
+    let view = aiSuggestionsById.get(id);
+    if (!view) {
+      view = {
+        suggestion_id: id,
+        purpose: "refine_expression",
+        status: "suggested",
+        original_text: "(minh họa)",
+        suggested_text: "(minh họa)",
+        model_revision: "demo-model-1",
+        prompt_revision: "demo-prompt-1",
+        input_revision: null,
+        created_at: new Date().toISOString(),
+        decided_at: null,
+        source: "fixture",
+      };
+      aiSuggestionsById.set(id, view);
+    }
+    if (view.status === "suggested") {
+      view.status = status;
+      view.decided_at = new Date().toISOString();
+    }
+    return { ...view };
+  }
 
   async function simulate({ kind, fallback }) {
     const mode = pick(fallback);
@@ -170,17 +240,34 @@ export function createMockAdapter({ scenario = null } = {}) {
 
     async listConsents() {
       await wait(150);
+      // F2: shape GIỐNG HỆT ConsentView.get (f01_identity/api.py:191-211) —
+      // mỗi purpose đã biết đều có row; decision ∈ {accepted, declined, none}
+      // (enum backend; KHÔNG có "withdrawn"); withdrawn là bool THẬT từ sổ cái
+      // (rút giữ nguyên decision — ConsentRecord.withdraw); current =
+      // policy_version == phiên bản hiện hành (CURRENT_POLICY_VERSIONS, mục
+      // ai_processing = "ai-v1") — false khi chưa có bản ghi.
       return CONSENT_ORDER.map((purpose) => {
         const recorded = consents.get(purpose);
-        return recorded
-          ? { purpose, decision: recorded.decision, policy_version: recorded.version, withdrawn: false }
-          : { purpose, decision: "none", policy_version: null, withdrawn: false };
+        if (!recorded) {
+          return { purpose, decision: "none", policy_version: null, withdrawn: false, current: false };
+        }
+        const currentVersion = POLICY_PURPOSES[purpose]?.version;
+        return {
+          purpose,
+          decision: recorded.decision,
+          policy_version: recorded.version,
+          withdrawn: Boolean(recorded.withdrawn),
+          current: Boolean(recorded.version) && recorded.version === currentVersion,
+        };
       });
     },
 
     async recordConsent({ purpose, policyVersion, decision }) {
       await wait(150);
-      consents.set(purpose, { version: policyVersion, decision });
+      // POST mới = bản ghi MỚI NHẤT của purpose (latest-wins) — đè cả trạng
+      // thái withdrawn cũ (accept sau rút là hành động mới, có hiệu lực lại
+      // như has_active_consent).
+      consents.set(purpose, { version: policyVersion ?? null, decision, withdrawn: false });
       return { consent_id: `demo-consent-${purpose}`, purpose, policy_version: policyVersion, decision, recorded_at: new Date().toISOString(), source: "fixture" };
     },
 
@@ -319,14 +406,10 @@ export function createMockAdapter({ scenario = null } = {}) {
       return {
         results: Array.from(drafts.values()).map((draft) => ({
           ...draft,
-          pause: draft.pause
-            ? {
-              ...draft.pause,
-              // remaining_seconds tính tại thời điểm list (như backend view)
-              remaining_seconds: Math.max(0, Math.round((Date.parse(draft.pause.deadline) - now.getTime()) / 1000)),
-              can_preview: Date.parse(draft.pause.deadline) <= now.getTime(),
-            }
-            : null,
+          // F1: đúng Draft.view() — remaining/can_preview CHỈ khi đang paused;
+          // edit-during-pause (status=editing) phải trả null/false dù deadline
+          // còn lưu trong bộ nhớ.
+          pause: pauseViewOf(draft, now.getTime()),
         })),
         nextCursor: null,
         server_time: now.toISOString(),
@@ -374,10 +457,29 @@ export function createMockAdapter({ scenario = null } = {}) {
       if (!draft) {
         throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
       }
-      return { ...draft, pause: draft.pause ? { ...draft.pause } : null, server_time: new Date().toISOString() };
+      // F1: view tính TẠI thời điểm đọc như backend (không echo số liệu cũ
+      // từ lúc pause).
+      return { ...draft, pause: pauseViewOf(draft, Date.now()), server_time: new Date().toISOString() };
     },
 
-    async editDraft(draftId, { body, title = "", recipientId = null } = {}) {
+    /**
+     * N06 (QA vòng 2 — contract BINDING F04R2-LEAD-1): mirror ĐÚNG semantics
+     * `expected_revision` của server (A2 land trên POST /api/v1/drafts/{id}):
+     *  - KHÔNG truyền / null → hành vi cũ (bump revision, không conflict —
+     *    backcompat, cùng convention `expectedRevision === null || ===
+     *    undefined` của confirmInvite http).
+     *  - expectedRevision là số nguyên dương ≤ 2147483647:
+     *      lệch với revision hiện tại của mock → 409 revision_conflict,
+     *      details {reason:"draft_conflict", current_revision:<rev hiện tại>},
+     *      details KHÔNG chứa body (FORBIDDEN_DETAIL_KEYS) — KHÔNG đè bản của
+     *      client khác im lặng;
+     *      khớp → bump revision như cũ.
+     *  - Sai kiểu → 400 input_invalid {field:"expected_revision",
+     *    reason:"must_be_positive_int"} (parity aiRefine input_revision).
+     * So revision TRƯỚC khi áp dụng nội dung — draft của client khác phải còn
+     * nguyên vẹn sau một edit stale bị chặn.
+     */
+    async editDraft(draftId, { body, title = "", recipientId = null, expectedRevision } = {}) {
       await simulate({ kind: "drafts", fallback: "ok" });
       const draft = drafts.get(draftId);
       if (!draft) {
@@ -387,14 +489,30 @@ export function createMockAdapter({ scenario = null } = {}) {
       if (!text.trim() || text.length > 4000) {
         throw new ApiError("Lời nhắn phải 1..4000 ký tự (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "body" } });
       }
+      if (expectedRevision !== undefined && expectedRevision !== null) {
+        if (!Number.isInteger(expectedRevision) || expectedRevision < 1
+          || expectedRevision > 2147483647) {
+          throw new ApiError("expectedRevision phải là số nguyên dương (dữ liệu minh họa).",
+            400, "http", { code: "input_invalid",
+              details: { field: "expected_revision", reason: "must_be_positive_int" } });
+        }
+        if (draft.revision !== expectedRevision) {
+          // current_revision = revision HIỆN TẠI của mock (đúng response
+          // backend: client dùng giá trị này để reconcile bằng GET).
+          throw new ApiError("Bản nháp đã thay đổi trên máy chủ, cần nạp lại bản mới trước khi sửa (dữ liệu minh họa).",
+            409, "http", { code: "revision_conflict",
+              details: { reason: "draft_conflict", current_revision: draft.revision } });
+        }
+      }
       draft.body = text;
       draft.title = String(title || "").slice(0, 200);
       draft.recipient_id = recipientId;
       draft.revision += 1; // sửa nội dung làm preview cũ hết giá trị (contract)
       // Backend: edit đặt lại status=editing, deadline CỐ TÌNH không xóa
-      // (sửa nội dung không reset khoảng dừng).
+      // (sửa nội dung không reset khoảng dừng). F1: view trả remaining null +
+      // can_preview false vì guard chỉ áp dụng khi ĐANG paused.
       draft.status = "editing";
-      return { ...draft, pause: draft.pause ? { ...draft.pause } : null };
+      return { ...draft, pause: pauseViewOf(draft, Date.now()) };
     },
 
     async discardDraft(draftId) {
@@ -411,7 +529,7 @@ export function createMockAdapter({ scenario = null } = {}) {
       }
       if (draft.status === "paused" && draft.pause) {
         // re-pause giữ nguyên deadline — không reset (contract backend).
-        return { ...draft, pause: { ...draft.pause }, server_time: new Date().toISOString() };
+        return { ...draft, pause: pauseViewOf(draft, Date.now()), server_time: new Date().toISOString() };
       }
       const deadline = Date.now() + 300 * 1000; // 300 giây cố định
       draft.status = "paused";
@@ -421,7 +539,7 @@ export function createMockAdapter({ scenario = null } = {}) {
         remaining_seconds: 300,
         can_preview: false,
       };
-      return { ...draft, pause: { ...draft.pause }, server_time: new Date().toISOString(), source: "fixture" };
+      return { ...draft, pause: pauseViewOf(draft, Date.now()), server_time: new Date().toISOString(), source: "fixture" };
     },
 
     async cancelDraftPause(draftId) {
@@ -435,28 +553,44 @@ export function createMockAdapter({ scenario = null } = {}) {
       return { ...draft, server_time: new Date().toISOString(), source: "fixture" };
     },
 
+    /** Giây còn lại của khoảng dừng đã chọn (null khi không chọn pause). */
     async previewDraft(draftId) {
       await simulate({ kind: "drafts", fallback: "ok" });
       const draft = drafts.get(draftId);
       if (!draft) {
         throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
       }
-      const remaining = draft.pause
-        ? Math.max(0, Math.round((Date.parse(draft.pause.deadline) - Date.now()) / 1000))
-        : 0;
-      if (draft.status !== "paused" || remaining > 0) {
+      // C8 + F1: gate OPT-IN đúng _deadline_guard (drafts.py:73-94) — chỉ
+      // chặn khi draft ĐANG paused còn deadline. KHÔNG chọn pause → hợp lệ
+      // ngay; pause→edit (status về "editing") → CHO QUA; paused hết hạn →
+      // CHO QUA (không auto-send, chỉ là không còn chặn).
+      const remaining = remainingPauseSeconds(draft);
+      if (remaining !== null && remaining > 0) {
         throw new ApiError(
           "Chưa hết 5 phút tạm dừng nên chưa xem trước được (dữ liệu minh họa).",
           409, "http",
-          { code: "cooldown_active", details: { remaining_seconds: remaining } },
+          // details khớp CooldownActive backend (drafts.py:89-94):
+          // {reason:"pause_in_progress", deadline, remaining_seconds}.
+          { code: "cooldown_active", details: {
+            reason: "pause_in_progress",
+            deadline: draft.pause.deadline,
+            remaining_seconds: remaining,
+          } },
         );
       }
       const nowIso = new Date().toISOString();
+      // N01 (QA 19/10 — P1 "gửi sai bản đã duyệt"): preview response PHẢI kèm
+      // `body` = snapshot nội dung mà MÁY CHỦ vừa chốt (bản của draft tại thời
+      // điểm preview, sau mọi editDraft). Client bắt buộc hiển thị preview.body
+      // trong sheet xác nhận (fallback snapshot chốt trước await) — TUYỆT ĐỐI
+      // không đọc lại live textarea. Parity với make_preview backend
+      // (f06_drafts/services/drafts.py) sau khi A2 thêm field `body`.
       return {
         preview_id: `demo-preview-${draftId}-${draft.revision}`,
         revision: draft.revision,
         recipient_id: draft.recipient_id,
-        deadline: draft.pause.deadline,
+        body: draft.body,
+        deadline: draft.pause ? draft.pause.deadline : null,
         server_time: nowIso,
         source: "fixture",
       };
@@ -468,6 +602,22 @@ export function createMockAdapter({ scenario = null } = {}) {
       if (!draft) {
         throw new ApiError("Không tìm thấy bản nháp (dữ liệu minh họa).", 404, "http", { code: "not_found" });
       }
+      // C8 + F1: gate OPT-IN giống preview — chỉ paused+còn deadline mới chặn;
+      // không chọn pause → gửi thẳng; pause→edit/hết hạn → cho qua tay.
+      // Không bao giờ auto-send t=300.
+      const remaining = remainingPauseSeconds(draft);
+      if (remaining !== null && remaining > 0) {
+        throw new ApiError(
+          "Còn thời gian tạm dừng đã chọn, chưa thể gửi (dữ liệu minh họa).",
+          409, "http",
+          // details khớp CooldownActive backend (drafts.py:89-94).
+          { code: "cooldown_active", details: {
+            reason: "pause_in_progress",
+            deadline: draft.pause.deadline,
+            remaining_seconds: remaining,
+          } },
+        );
+      }
       const expected = `demo-preview-${draftId}-${draft.revision}`;
       if (previewId !== expected) {
         throw new ApiError("Bản xem trước đã cũ, cần xem lại trước khi gửi (dữ liệu minh họa).", 409, "http", { code: "preview_stale" });
@@ -476,7 +626,9 @@ export function createMockAdapter({ scenario = null } = {}) {
         throw new ApiError("Thiếu người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "recipient_id" } });
       }
       drafts.delete(draftId); // gửi xong nháp rời danh sách đang soạn
-      return { draft_id: draftId, status: "sent", preview_id: previewId, source: "fixture" };
+      // F3: shape GIỐNG confirm_send backend (f06 drafts.py:247-248):
+      // {message_id, draft_id, status:"sent"} — KHÔNG có preview_id.
+      return { message_id: `demo-message-${draftId}`, draft_id: draftId, status: "sent", source: "fixture" };
     },
 
     // ------------------ Web (Task 2): demo counterparts ---------------------
@@ -875,29 +1027,83 @@ export function createMockAdapter({ scenario = null } = {}) {
       return { ai_enabled: true, source: "fixture" };
     },
 
-    async aiRefine({ text, purpose = "refine_expression", key } = {}) {
+    /**
+     * F04 demo (C2/C3/C6): shape GIỐNG serializer thật AiSuggestion.view() +
+     * echo `input_revision` (int hoặc null) — text duy nhất là `suggested_text`,
+     * KHÔNG BAO GIỜ `refined_text` (mock phải khớp serializer thật, không che
+     * lỗi schema — handoff 01 §6.1). input_revision cùng ràng buộc backend:
+     * số nguyên dương ≤ 2147483647, thiếu/vẫn hợp lệ (legacy).
+     */
+    async aiRefine({ text, purpose = "refine_expression", key, inputRevision } = {}) {
       await wait(300);
       if (!key) {
         throw new ApiError("Thiếu khóa lượt gửi (dữ liệu minh họa).", 0, "configuration");
       }
-      return {
-        suggestion_id: `demo-suggestion-${sentSuggestions}`,
-        original_text: String(text || ""),
-        refined_text: String(text || ""),
+      let revision = null;
+      if (inputRevision !== undefined && inputRevision !== null) {
+        if (!Number.isInteger(inputRevision) || inputRevision < 1
+          || inputRevision > 2147483647) {
+          throw new ApiError("input_revision phải là số nguyên dương (dữ liệu minh họa).",
+            400, "http", { code: "input_invalid",
+              details: { field: "input_revision", reason: "must_be_positive_int" } });
+        }
+        revision = inputRevision;
+      }
+      const original = String(text || "");
+      const payload = { original_text: original, purpose, input_revision: revision };
+      const existing = aiSuggestions.get(String(key));
+      if (existing) {
+        // F4: payload hash backend (send_payload_hash —
+        // family_bridge_core/idempotency.py) = {kind:"ai_refine",
+        // recipient_id:"", body, reply_to:null, context_revision} — KHÔNG có
+        // `purpose`, nên so khớp replay chỉ (text, input_revision). Cùng key +
+        // text + revision nhưng purpose khác → backend REPLAY, không 409. Biên
+        // này hiện unreachable (allowlist purpose backend chỉ có 1 giá trị —
+        // f04 express.py PURPOSES → 400 purpose_not_allowed trước replay) nhưng
+        // mock phải cùng semantics: khi backend thêm purpose thứ 2, mock không
+        // được tự nghiêm hơn hash thật.
+        if (existing.payload.original_text !== payload.original_text
+          || existing.payload.input_revision !== payload.input_revision) {
+          throw new ApiError("Khóa đã dùng cho nội dung khác (dữ liệu minh họa).",
+            409, "http", { code: "duplicate_key_payload_mismatch" });
+        }
+        return { ...existing.view }; // replay: KHÔNG tạo gợi ý thứ hai
+      }
+      // Thứ tự field = CHÍNH XÁC AiSuggestion.view() (f04_ai/models.py:69-82)
+      // để test shape contract (f04-contract.test.mjs — F5) pin được thứ tự;
+      // `source:"fixture"` là quy ước mock-wide đã ghi nhận trong peer-review.
+      const view = {
+        suggestion_id: `demo-suggestion-${aiSuggestions.size + 1}`,
         purpose,
-        status: "pending",
+        status: "suggested", // đúng STATUS_SUGGESTED của model (không "pending")
+        original_text: original,
+        suggested_text: `Bản diễn đạt êm hơn (minh họa): ${original}`,
+        model_revision: "demo-model-1",
+        prompt_revision: "demo-prompt-1",
+        input_revision: revision,
+        created_at: new Date().toISOString(),
+        decided_at: null,
         source: "fixture",
       };
+      aiSuggestions.set(String(key), { payload, view });
+      aiSuggestionsById.set(view.suggestion_id, view);
+      return { ...view };
     },
 
+    /**
+     * F3: accept/discard trả ĐỦ view() như backend `_decide` (f04 api.py:
+     * 122-129 → suggestion.view() gồm decided_at), one-way idempotent: hủy
+     * sau accept không đổi trạng thái (express.decide). Không tự sinh
+     * Message, không gửi.
+     */
     async aiAccept(suggestionId) {
       await wait(100);
-      return { suggestion_id: suggestionId, status: "accepted", source: "fixture" };
+      return decideSuggestion(suggestionId, "accepted");
     },
 
     async aiDiscard(suggestionId) {
       await wait(100);
-      return { suggestion_id: suggestionId, status: "discarded", source: "fixture" };
+      return decideSuggestion(suggestionId, "discarded");
     },
 
     async helpDirectory() {
@@ -910,9 +1116,30 @@ export function createMockAdapter({ scenario = null } = {}) {
       };
     },
 
-    async privacyOverview() {
+    async privacyOverview({ cursor = null } = {}) {
       await wait(150);
-      return { shared_by_me: privacyGrants.map((grant) => ({ ...grant })), connections: connections.map((c) => ({ ...c })), source: "fixture" };
+      // Fixture cursor v2 (R09) — CHỈ dùng cho demo/test, KHÔNG phải dữ liệu
+      // thật: trang-1 trả các grant minh họa + con trỏ giả + has_more:true;
+      // trang kế (cursor bất kỳ) RỖNG — trang phải dừng CÓ TRẦN (không append
+      // mục nào, không lặp vô hạn). source:"fixture" là quy ước mock-wide.
+      if (cursor) {
+        return {
+          shared_by_me: [],
+          connections: connections.map((c) => ({ ...c })),
+          next_cursor: null,
+          has_more: false,
+          source: "fixture",
+        };
+      }
+      return {
+        shared_by_me: privacyGrants.map((grant) => ({ ...grant })),
+        connections: connections.map((c) => ({ ...c })),
+        next_cursor: privacyGrants.length
+          ? "ov2|2026-01-01T00:00:00+00:00|demo-mood-grant-1"
+          : null,
+        has_more: privacyGrants.length > 0,
+        source: "fixture",
+      };
     },
 
     async revokeGrant({ itemType, itemId, recipientId } = {}) {
@@ -963,9 +1190,38 @@ export function createMockAdapter({ scenario = null } = {}) {
       return { request_id: requestId, status: "cancelled", source: "fixture" };
     },
 
+    async listDeletionRequests({ cursor = null } = {}) {
+      await wait(120);
+      // Fixture MỘT trang (test-only/demo) — shape ĐÚNG backend list_requests
+      // (f15 services/deletion.py): {results, next_cursor, has_more}, item
+      // {request_id,status,scope_categories,requested_at,revision}. Fixture
+      // không có trang thứ hai → next_cursor:null + has_more:false; cursor
+      // đưa vào (vượt phạm vi fixture) trả rỗng — trung thực, không bịa thêm.
+      if (cursor) {
+        return { results: [], next_cursor: null, has_more: false, source: "fixture" };
+      }
+      const results = deletionRequest
+        ? [{
+          request_id: deletionRequest.request_id,
+          status: deletionRequest.status,
+          scope_categories: (deletionRequest.scope_categories || []).slice(),
+          requested_at: deletionRequest.requested_at,
+          revision: 1,
+        }]
+        : [];
+      return { results, next_cursor: null, has_more: false, source: "fixture" };
+    },
+
     async withdrawConsent({ purpose } = {}) {
       await wait(120);
-      consents.set(purpose, { version: null, decision: "withdrawn" });
+      // F2: rút đúng sổ cái backend (ConsentRecord.withdraw — f01 models.py:
+      // chỉ ĐÁNH DẤU withdrawn_at, giữ nguyên decision + policy_version) để
+      // GET sau đó trả decision cũ + withdrawn:true + current theo version
+      // (giống ConsentView.get). Chưa có bản ghi thì không bịa row — GET vẫn
+      // trả {decision:"none", policy_version:null, withdrawn:false,
+      // current:false} như backend khi sổ trống.
+      const recorded = consents.get(purpose);
+      if (recorded) recorded.withdrawn = true;
       return { purpose, withdrawn: true, source: "fixture" };
     },
 
@@ -987,6 +1243,57 @@ export function createMockAdapter({ scenario = null } = {}) {
     async listMoodEntries() {
       await wait(100);
       return { results: [], nextCursor: null, source: "fixture" };
+    },
+
+    async getMoodEntry(entryId) {
+      await wait(100);
+      throw new ApiError("Không tìm thấy mục tâm trạng (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "entry_not_found" } });
+    },
+
+    async editMoodEntry(entryId, { emotion = null, note = null } = {}) {
+      await wait(120);
+      throw new ApiError("Không tìm thấy mục tâm trạng (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "entry_not_found" } });
+    },
+
+    async moodSummary(days = null) {
+      await wait(100);
+      return { results: [], emotions: [], source: "fixture" };
+    },
+
+    async listMoodEntryShares(entryId) {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async shareMoodEntry(entryId, { recipientId, expectedRevision = null } = {}) {
+      await wait(140);
+      if (!recipientId) {
+        throw new ApiError("Thiếu người nhận (dữ liệu minh họa).", 400, "http", { code: "input_invalid", details: { field: "recipient_id" } });
+      }
+      return {
+        share_id: `demo-share-${recipientId}`,
+        entry_id: entryId,
+        recipient_id: recipientId,
+        approved_revision: expectedRevision || 1,
+        revoked: false,
+        status: "active",
+        source: "fixture",
+      };
+    },
+
+    async revokeMoodShare(shareId) {
+      await wait(120);
+      return { share_id: shareId, revoked: true, status: "revoked", source: "fixture" };
+    },
+
+    async listSharedMoodEntries() {
+      await wait(100);
+      return { results: [], nextCursor: null, source: "fixture" };
+    },
+
+    async getSharedMoodEntry(shareId) {
+      await wait(120);
+      throw new ApiError("Mục này không còn xem được (dữ liệu minh họa).", 404, "http", { code: "not_found", details: { reason: "share_not_found" } });
     },
 
     async programMy() {
@@ -1074,6 +1381,86 @@ export function createMockAdapter({ scenario = null } = {}) {
     async getAppointmentQueue() {
       await wait(100);
       return [];
+    },
+
+
+    // ---- F02/F09 fixtures (demo mode chỉ dùng khi bật rõ ràng) ----
+    // Demo KHÔNG mô phỏng luồng thỏa ước hai bên hay lời mời thật — trả
+    // trạng thái rỗng trung thực để UI hiển thị đúng empty state.
+
+    async programCatalog() {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async programEnroll({ programKey, programRevision }) {
+      await wait(120);
+      return {
+        program_key: programKey, program_revision: programRevision,
+        active: true, source: "fixture",
+      };
+    },
+
+    async programOptOut(programKey) {
+      await wait(120);
+      return { program_key: programKey, active: false, source: "fixture" };
+    },
+
+    async programProgress({ programKey, weekNo, activityKey, status }) {
+      await wait(120);
+      return {
+        program_key: programKey, week_no: weekNo,
+        activity_key: activityKey, status, source: "fixture",
+      };
+    },
+
+    async programAgreementAccept(programKey) {
+      await wait(120);
+      return { accepted: true, program_key: programKey, source: "fixture" };
+    },
+
+    async programAgreement(programKey) {
+      await wait(100);
+      return {
+        agreement: null, program_key: programKey,
+        agreement_template: null, source: "fixture",
+      };
+    },
+
+    async programAgreementPropose(programKey) {
+      await wait(120);
+      return { status: "proposed", program_key: programKey, source: "fixture" };
+    },
+
+    async programAgreementConfirm(agreementId) {
+      await wait(120);
+      return { agreement_id: agreementId, status: "confirmed",
+        source: "fixture" };
+    },
+
+    async programAgreementWithdraw(agreementId) {
+      await wait(120);
+      return { agreement_id: agreementId, status: "withdrawn",
+        source: "fixture" };
+    },
+
+    async activitiesInvites() {
+      await wait(100);
+      return { results: [], source: "fixture" };
+    },
+
+    async activitiesInvite({ inviteeId, contentKey, contentRevision }) {
+      await wait(120);
+      return {
+        invite_id: "demo-invite-1", invitee_id: inviteeId,
+        content_key: contentKey, content_revision: contentRevision,
+        status: "pending", direction: "sent", source: "fixture",
+      };
+    },
+
+    async activitiesRespond(inviteId, decision) {
+      await wait(120);
+      return { invite_id: inviteId, status: decision, source: "fixture" };
     },
   };
 }

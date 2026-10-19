@@ -187,6 +187,7 @@ class SessionService:
                    .update(revoked_at=now))
 
 
+@transaction.atomic
 def record_consent(*, user, purpose: str, policy_version: str,
                    decision: str, now: Optional[dt.datetime] = None):
     """Explicit consent per purpose/version (WF-17). Never implied.
@@ -206,9 +207,16 @@ def record_consent(*, user, purpose: str, policy_version: str,
     if not is_current_version(purpose, policy_version):
         raise InputInvalid({"field": "policy_version",
                             "reason": "policy_version_not_current"})
+    # Serialize explicit decisions with withdrawal on the same user row.
+    # Timestamp ties must not let random UUID order resurrect acceptance.
+    get_user_model().objects.select_for_update().get(pk=user.pk)
+    recorded_at = now or dt.datetime.now(tz=UTC)
+    latest = ConsentRecord.objects.filter(user=user, purpose=purpose).order_by("-recorded_at", "-id").first()
+    if latest is not None and recorded_at <= latest.recorded_at:
+        recorded_at = latest.recorded_at + dt.timedelta(microseconds=1)
     return ConsentRecord.objects.create(
         user=user, purpose=purpose, policy_version=policy_version,
-        decision=decision, recorded_at=now or dt.datetime.now(tz=UTC),
+        decision=decision, recorded_at=recorded_at,
     )
 
 

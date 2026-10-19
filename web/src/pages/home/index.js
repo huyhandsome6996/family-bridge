@@ -157,7 +157,16 @@ export const page = {
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
-      root.querySelectorAll(".fb-sheet, .fb-overlay, .fb-sheet-root").forEach((el) => el.remove());
+      // R01 hygiene: nếu có overlay đang mở, đóng ĐÚNG qua close() để gỡ cả
+      // listener document (Esc) — không chỉ trục node khỏi DOM.
+      root.querySelectorAll(".fb-sheet-root, .fb-dialog-root").forEach((el) => {
+        if (typeof el.close === "function") {
+          try { el.close(); } catch { /* đã đóng */ }
+        } else {
+          el.remove();
+        }
+      });
+      root.querySelectorAll(".fb-sheet, .fb-overlay").forEach((el) => el.remove());
     };
 
     // Phòng thủ: router đã chặn trước, nhưng nếu render thiếu vai trò thì
@@ -321,6 +330,12 @@ function renderHome(body, ctx, data) {
   // đã kết nối (trung thực về trạng thái).
   if (!data.connected) {
     renderGreeting(body, { displayName, role: data.role });
+    // F07 web parity (19/10/2026): ghi nhận cảm xúc RIÊNG TƯ không cần kết
+    // nối — card mood vẫn hiện; chỉ chia sẻ mới đòi hỏi kết nối hoạt động.
+    renderMoodCard(body, ctx, {
+      title: data.role === "student" ? "Cảm xúc lúc này" : "Ghi nhận cảm xúc của bạn hôm nay",
+      moodResults: data.mood,
+    });
     renderNotConnected(body, ctx);
     return;
   }
@@ -514,8 +529,9 @@ function renderMoodCard(body, ctx, { kicker, title, moodResults }) {
           if (error && error.details && error.details.reason === "entry_already_exists_use_edit") {
             feedback.appendChild(
               h("span", {},
-                `Hôm nay (${todayIso}) bạn đã ghi nhận cảm xúc rồi — mỗi ngày một ghi nhận. `
-                + "Màn nhật ký sẽ cho phép chỉnh sửa ở bản đầy đủ.",
+                `Hôm nay (${todayIso}) bạn đã ghi nhận cảm xúc rồi — mỗi ngày một ghi nhận. `,
+                h("a", { href: "#/mood" },
+                  "Mở Tâm trạng của mình để sửa mục hôm nay."),
               ),
             );
           } else if (error && error.kind === "timeout") {
@@ -552,6 +568,12 @@ function renderMoodCard(body, ctx, { kicker, title, moodResults }) {
     );
   }
   card.appendChild(feedback);
+  // F07 web parity (19/10/2026): lối vào trang F07 đầy đủ từ quick card —
+  // duplicate/đã ghi nhận hôm nay cũng dẫn tới đúng mục cần sửa.
+  card.appendChild(
+    h("a", { href: "#/mood", class: "fb-sec__sub" },
+      "Xem lịch sử, sửa và chia sẻ từng mục →"),
+  );
   body.appendChild(card);
 }
 

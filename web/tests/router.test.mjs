@@ -1,9 +1,11 @@
-// tests/router.test.mjs — port web (task 19-a + W2-b): bảng route 21 hash path
-// của web GIỮ NGUYÊN mini + pattern ":param" + guard requiresAuth/requiresRole
-// đúng thứ tự. 8 trang cards/signal/message/mailbox/compose/proposal/
+// tests/router.test.mjs — port web (task 19-a + W2-b): bảng route của web GIỮ
+// NGUYÊN mini + pattern ":param" + guard requiresAuth/requiresRole đúng thứ tự.
+// 8 trang cards/signal/message/mailbox/compose/proposal/
 // settings/privacy đã được W2-b port THÀNH TRANG THẬT (thay stub) — meta giữ
 // NGUYÊN mini (requiresAuth 7 trang phiên lớp học + compose tự kiểm tra phiên
 // trong render), nên mọi assertion meta của 19-a giữ nguyên giá trị.
+// Task 3-c (P2-1/QA-3): +1 route "/privacy-items" (F15, parity mini — route
+// từng mồ côi ở mini và thiếu hẳn ở web; giờ cả 2 client đều có).
 //
 // Pattern happy-dom giống pages.test.mjs: gắn globals TRƯỚC khi import động.
 
@@ -38,13 +40,18 @@ const notFoundModule = await import("../src/pages/not-found/index.js");
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---------------------------------------------------------------- route table
-// 24 hash path: 21 giữ nguyên mini + 1 trang admin cấp phát cặp (18/10/2026) + 2 trang F11/F12 (19/10/2026).
+// 27 hash path: bảng mini (gồm /privacy-items F15) + admin-provision +
+// supporters/appointments (F11/F12, 19/10/2026) + 2 route F07 web parity
+// (quyết định Huy: /mood + /mood-shared, UI tree web độc lập — route mapping
+// giống Mini App). "/privacy-items" thêm Task 3-c theo parity mini.
 const EXPECTED_ROUTES = [
   "/", "/welcome", "/how-to-use", "/role-select", "/home", "/companion",
   "/mailbox", "/diary", "/profile", "/connection-check", "/help",
   "/login", "/consent", "/connect", "/compose",
   "/cards", "/signal", "/messages/:id", "/proposal", "/settings", "/privacy",
+  "/privacy-items",
   "/admin-provision", "/supporters", "/appointments",
+  "/mood", "/mood-shared",
 ];
 
 // 8 trang phức tạp (W2-b: trang thật thay stub) — GIỮ NGUYÊN meta mini.
@@ -56,8 +63,11 @@ const W2B_ROUTES = [
   ["/proposal", { id: "proposal", requiresAuth: true, showBottomNav: true, chrome: "app" }],
   ["/settings", { id: "settings", requiresAuth: true, showBottomNav: true, chrome: "app" }],
   ["/privacy", { id: "privacy", requiresAuth: true, showBottomNav: true, chrome: "app" }],
-  // GIỮ NGUYÊN mini: compose KHÔNG requiresAuth (tự kiểm tra phiên trong render).
-  ["/compose", { id: "f06-compose", requiresAuth: false, showBottomNav: false }],
+  // R04 (QA F04 18/10): compose render trong app-shell desktop như 7 trang
+  // còn lại — trước đây bare + showBottomNav false khiến desktop 1440px mất
+  // shell, .fb-page cap 480px, textarea 52px. requiresAuth vẫn false (tự
+  // kiểm tra phiên trong render, giữ nguyên semantics mini).
+  ["/compose", { id: "f06-compose", requiresAuth: false, showBottomNav: true, chrome: "app" }],
 ];
 
 // 13 trang đã port thật (W2-a) — meta khớp mini.
@@ -75,11 +85,18 @@ const PORTED_META = [
   ["/login", "f01-login", { requiresRole: false }],
   ["/consent", "f01-consent", { requiresRole: false }],
   ["/connect", "f01-connect", { requiresRole: false }],
+  // Task 3-c: /privacy-items — meta giữ NGUYÊN mini (items.js copy y hệt mini
+  // NGOẠI TRỪ 2 chuỗi thông báo: web/tests/qa-web-invariants quét toàn bộ
+  // web/src cấm copy "Đã gửi/Đã lưu nháp/Đã lưu/Đã chia sẻ" không có miễn
+  // trừ; web đổi thành "Máy chủ xác nhận đã…" — vẫn chỉ hiện SAU khi máy chủ
+  // xác nhận). requiresRole như mini, không chrome đặc biệt.
+  ["/privacy-items", "f15-items", { requiresRole: true }],
 ];
 
-describe("Route table: 24 hash path (21 mini + admin-provision + supporters + appointments)", () => {
-  it("đúng 24 route, không thêm/bớt", () => {
-    assert.equal(Object.keys(routes).length, 24);
+describe("Route table: 27 hash path (bảng mini + admin-provision + supporters/appointments + 2 F07 + 1 F15 items)", () => {
+  it("đúng 27 route, không thêm/bớt", () => {
+    assert.equal(Object.keys(routes).length, 27);
+
     assert.deepEqual(Object.keys(routes).sort(), [...EXPECTED_ROUTES].sort());
   });
 
