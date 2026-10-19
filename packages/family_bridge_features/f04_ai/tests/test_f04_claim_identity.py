@@ -81,9 +81,12 @@ class ClaimReuseAfterDeletionTests(F04ApiBase):
                 self.young_row_pk = None
 
             def refine(self, *, text, purpose, timeout_seconds=None):
-                # (2) F15 deletion category "ai" HOÀN TẤT trong lúc chờ:
+                # (2) F15 deletion category "ai" HOÀN TẤT trong lúc chờ
+                # (cutoff = bây giờ — đúng cách runner F15 truyền cutoff):
                 self.deletion_outcome = AiSuggestionDeletionHook() \
-                    .apply_user_deletion(user_id=self._victim_id)
+                    .apply_user_deletion(
+                        user_id=self._victim_id,
+                        requested_at=dt.datetime.now(tz=UTC))
                 # (3) Request B claim lại key K qua service thật → row Y.
                 AiExpressService()._claim_refine_operation(
                     author_id=self._victim_id, idempotency_key=self._key,
@@ -292,7 +295,9 @@ class DeletionInflightBasicTests(F04ApiBase):
 
             def refine(self, *, text, purpose, timeout_seconds=None):
                 self.deletion_outcome = AiSuggestionDeletionHook() \
-                    .apply_user_deletion(user_id=self._victim_id)
+                    .apply_user_deletion(
+                        user_id=self._victim_id,
+                        requested_at=dt.datetime.now(tz=UTC))
                 return super().refine(text=text, purpose=purpose,
                                       timeout_seconds=timeout_seconds)
 
