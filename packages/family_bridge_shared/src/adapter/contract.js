@@ -93,6 +93,25 @@ export const ADAPTER_METHODS = [
   "programMy",            // GET  /api/v1/program/my (kèm opted-out)
   "programWeeks",         // GET  /api/v1/program/weeks/{program_key}
   "activitiesCatalog",    // GET  /api/v1/activities/catalog
+  // ---- F11: Điểm tựa dự phòng ----
+  "listSupporterRoles",
+  "inviteSupporter",
+  "respondSupporterRole",
+  "revokeSupporterRole",
+  "contactSupporter",
+  "listSupporterCommitments",
+  // ---- F12: Lịch hẹn & đầu mối trường ----
+  "getSchoolDirectory",
+  "listAppointmentRequests",
+  "createAppointmentRequest",
+  "getAppointmentRequest",
+  "claimAppointmentRequest",
+  "proposeAppointmentSlot",
+  "acceptAppointmentSlot",
+  "declineAppointmentSlot",
+  "cancelAppointmentRequest",
+  "completeAppointmentRequest",
+  "getAppointmentQueue",
 ];
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".

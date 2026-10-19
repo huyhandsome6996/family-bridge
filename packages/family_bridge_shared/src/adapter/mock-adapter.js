@@ -1003,5 +1003,77 @@ export function createMockAdapter({ scenario = null } = {}) {
       await wait(100);
       return { results: [], kind, source: "fixture" };
     },
+
+    // ---- F11 mock ----
+    async listSupporterRoles() {
+      await wait(100);
+      return [];
+    },
+    async inviteSupporter({ supporterId, relationshipKind } = {}) {
+      await wait(100);
+      return { role_id: "mock-role-1", supporter_id: supporterId, relationship_kind: relationshipKind, status: "pending" };
+    },
+    async respondSupporterRole({ roleId, decision } = {}) {
+      await wait(100);
+      return { role_id: roleId, status: decision === "accept" ? "active" : "declined" };
+    },
+    async revokeSupporterRole({ roleId } = {}) {
+      await wait(100);
+      return { role_id: roleId, status: "revoked" };
+    },
+    async contactSupporter({ roleId, body, key } = {}) {
+      await wait(100);
+      return { message_id: "mock-msg-1", role_id: roleId, state: "sent" };
+    },
+    async listSupporterCommitments() {
+      await wait(100);
+      return [];
+    },
+
+    // ---- F12 mock ----
+    async getSchoolDirectory() {
+      await wait(100);
+      return [];
+    },
+    async listAppointmentRequests() {
+      await wait(100);
+      return [];
+    },
+    async createAppointmentRequest({ topic, note = "" } = {}) {
+      await wait(100);
+      return { request_id: "mock-req-1", topic, note, status: "submitted" };
+    },
+    async getAppointmentRequest(requestId) {
+      await wait(100);
+      return { request_id: requestId, status: "submitted", slots: [] };
+    },
+    async claimAppointmentRequest(requestId) {
+      await wait(100);
+      return { request_id: requestId, status: "assigned" };
+    },
+    async proposeAppointmentSlot({ requestId, startAt } = {}) {
+      await wait(100);
+      return { slot_id: "mock-slot-1", request_id: requestId, start_at: startAt, status: "proposed" };
+    },
+    async acceptAppointmentSlot({ requestId, slotId } = {}) {
+      await wait(100);
+      return { request_id: requestId, slot_id: slotId, status: "scheduled" };
+    },
+    async declineAppointmentSlot({ requestId, slotId } = {}) {
+      await wait(100);
+      return { request_id: requestId, slot_id: slotId, status: "assigned" };
+    },
+    async cancelAppointmentRequest(requestId) {
+      await wait(100);
+      return { request_id: requestId, status: "cancelled" };
+    },
+    async completeAppointmentRequest(requestId) {
+      await wait(100);
+      return { request_id: requestId, status: "completed" };
+    },
+    async getAppointmentQueue() {
+      await wait(100);
+      return [];
+    },
   };
 }

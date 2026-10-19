@@ -597,6 +597,22 @@ function renderStudentHome(body, ctx, data) {
   signalTile.appendChild(h("span", { class: "fb-tile__hint" }, "Gửi tín hiệu bằng một lần chạm xác nhận"));
   tiles.appendChild(signalTile);
 
+  const supportersTile = h("a", { class: "fb-tile", href: "#/supporters" });
+  const supportersIcon = h("span", { class: "fb-tile__icon fb-tile__icon--primary", "aria-hidden": "true" });
+  supportersIcon.appendChild(createIcon({ name: "shield", size: 22, fill: true }));
+  supportersTile.appendChild(supportersIcon);
+  supportersTile.appendChild(h("span", { class: "fb-tile__label" }, "Điểm tựa dự phòng"));
+  supportersTile.appendChild(h("span", { class: "fb-tile__hint" }, "Người hỗ trợ tin cậy và cam kết"));
+  tiles.appendChild(supportersTile);
+
+  const appointmentsTile = h("a", { class: "fb-tile", href: "#/appointments" });
+  const appointmentsIcon = h("span", { class: "fb-tile__icon fb-tile__icon--warm", "aria-hidden": "true" });
+  appointmentsIcon.appendChild(createIcon({ name: "calendar_month", size: 22 }));
+  appointmentsTile.appendChild(appointmentsIcon);
+  appointmentsTile.appendChild(h("span", { class: "fb-tile__label" }, "Lịch hẹn & Đầu mối"));
+  appointmentsTile.appendChild(h("span", { class: "fb-tile__hint" }, "Đầu mối trường học và hỗ trợ tâm lý"));
+  tiles.appendChild(appointmentsTile);
+
   actions.appendChild(tiles);
   body.appendChild(actions);
 
@@ -835,6 +851,23 @@ function renderCaregiverHome(body, ctx, data) {
   signalTile.appendChild(h("span", { class: "fb-tile__label" }, "Tín hiệu từ con"));
   signalTile.appendChild(h("span", { class: "fb-tile__hint" }, "Xác nhận đã nhận tín hiệu"));
   tiles.appendChild(signalTile);
+
+  const supportersTile = h("a", { class: "fb-tile", href: "#/supporters" });
+  const supportersIcon = h("span", { class: "fb-tile__icon fb-tile__icon--primary", "aria-hidden": "true" });
+  supportersIcon.appendChild(createIcon({ name: "shield", size: 22, fill: true }));
+  supportersTile.appendChild(supportersIcon);
+  supportersTile.appendChild(h("span", { class: "fb-tile__label" }, "Cam kết điểm tựa"));
+  supportersTile.appendChild(h("span", { class: "fb-tile__hint" }, "Lời mời và vai trò người hỗ trợ"));
+  tiles.appendChild(supportersTile);
+
+  const appointmentsTile = h("a", { class: "fb-tile", href: "#/appointments" });
+  const appointmentsIcon = h("span", { class: "fb-tile__icon fb-tile__icon--warm", "aria-hidden": "true" });
+  appointmentsIcon.appendChild(createIcon({ name: "calendar_month", size: 22 }));
+  appointmentsTile.appendChild(appointmentsIcon);
+  appointmentsTile.appendChild(h("span", { class: "fb-tile__label" }, "Lịch hẹn & Đầu mối"));
+  appointmentsTile.appendChild(h("span", { class: "fb-tile__hint" }, "Đầu mối trường học và tiếp nhận"));
+  tiles.appendChild(appointmentsTile);
+
   actions.appendChild(tiles);
   body.appendChild(actions);
 

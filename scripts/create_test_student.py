@@ -4,10 +4,16 @@ import sys
 import uuid
 import datetime as dt
 
+if os.environ.get("RENDER") or os.environ.get("DJANGO_ENV") == "production":
+    raise RuntimeError(
+        "CRITICAL: create_test_student.py is strictly restricted to local development/test. "
+        "Execution on production/Render is forbidden."
+    )
+
 # Set Django settings
-os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings"
-os.environ["DB_ENGINE"] = "sqlite"
-os.environ["DJANGO_ENV"] = "development"
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+os.environ.setdefault("DB_ENGINE", "sqlite")
+os.environ.setdefault("DJANGO_ENV", "development")
 
 # Add backend and packages to sys.path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

@@ -78,10 +78,22 @@ class SupporterRole(models.Model):
 
     def view(self, *, viewer_id: str) -> dict:
         role_for_me = str(self.supporter_id) == str(viewer_id)
+        supporter_user = getattr(self, "supporter", None)
+        student_user = getattr(self, "student", None)
+        supporter_name = (
+            supporter_user.get_full_name() if hasattr(supporter_user, "get_full_name") and supporter_user.get_full_name()
+            else getattr(supporter_user, "first_name", "") or getattr(supporter_user, "username", "") or str(self.supporter_id)
+        )
+        student_name = (
+            student_user.get_full_name() if hasattr(student_user, "get_full_name") and student_user.get_full_name()
+            else getattr(student_user, "first_name", "") or getattr(student_user, "username", "") or str(self.student_id)
+        )
         return {
             "role_id": str(self.id),
             "student_id": str(self.student_id),
+            "student_name": student_name,
             "supporter_id": str(self.supporter_id),
+            "supporter_name": supporter_name,
             "relationship_kind": self.relationship_kind,
             "support_scope": self.support_scope,
             "status": self.status,

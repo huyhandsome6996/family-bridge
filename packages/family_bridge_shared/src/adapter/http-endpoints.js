@@ -904,5 +904,144 @@ export function createHttpEndpoints({
         results: data && Array.isArray(data.results) ? data.results : [],
       };
     },
+
+    // ----------------------- F11: Điểm tựa dự phòng -------------------------
+    async listSupporterRoles() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/supporters/roles"));
+      return data && Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+    },
+
+    async inviteSupporter({ supporterId, relationshipKind } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/supporters/roles", {
+        method: "POST",
+        body: { supporter_id: supporterId, relationship_kind: relationshipKind },
+      }));
+      return data;
+    },
+
+    async respondSupporterRole({ roleId, decision } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/supporters/roles/${encodeURIComponent(roleId)}/respond`, {
+        method: "POST",
+        body: { decision },
+      }));
+      return data;
+    },
+
+    async revokeSupporterRole({ roleId } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/supporters/roles/${encodeURIComponent(roleId)}/revoke`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    async contactSupporter({ roleId, body, key } = {}) {
+      requireBaseUrl();
+      if (!key) throw new ApiError("Thiếu idempotency key", 400, "client");
+      const data = await authed(() => request(`/api/v1/supporters/roles/${encodeURIComponent(roleId)}/contact`, {
+        method: "POST",
+        headers: { "X-Idempotency-Key": key },
+        body: { body },
+      }));
+      return data;
+    },
+
+    async listSupporterCommitments() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/supporters/commitments"));
+      return data && Array.isArray(data.results) ? data.results : (Array.isArray(data) ? data : []);
+    },
+
+    // ----------------------- F12: Lịch hẹn & đầu mối trường ----------------
+    async getSchoolDirectory() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/appointments/directory"));
+      return data && Array.isArray(data.results) ? data.results : [];
+    },
+
+    async listAppointmentRequests() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/appointments/requests"));
+      return data && Array.isArray(data.results) ? data.results : [];
+    },
+
+    async createAppointmentRequest({ topic, note = "" } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/appointments/requests", {
+        method: "POST",
+        body: { topic, note },
+      }));
+      return data;
+    },
+
+    async getAppointmentRequest(requestId) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}`));
+      return data;
+    },
+
+    async claimAppointmentRequest(requestId) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}/claim`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    async proposeAppointmentSlot({ requestId, startAt } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}/slots`, {
+        method: "POST",
+        body: { start_at: startAt },
+      }));
+      return data;
+    },
+
+    async acceptAppointmentSlot({ requestId, slotId } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}/slots/${encodeURIComponent(slotId)}/accept`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    async declineAppointmentSlot({ requestId, slotId } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}/slots/${encodeURIComponent(slotId)}/decline`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    async cancelAppointmentRequest(requestId) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}/cancel`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    async completeAppointmentRequest(requestId) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/appointments/requests/${encodeURIComponent(requestId)}/complete`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    async getAppointmentQueue() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/appointments/queue"));
+      return data && Array.isArray(data.results) ? data.results : [];
+    },
   };
 }

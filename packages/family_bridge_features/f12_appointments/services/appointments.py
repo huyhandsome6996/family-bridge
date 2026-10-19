@@ -66,16 +66,22 @@ class AppointmentService:
         for raw in (provider.list_public_contacts(now=now) or [])[:20]:
             if not isinstance(raw, dict):
                 continue
-            if raw.get("verified") is False or raw.get("status") == "retired":
+            if raw.get("verified") is not True or raw.get("status") == "retired":
                 continue
             review_due = raw.get("review_due")
             if isinstance(review_due, str):
                 try:
                     review_due = dt.date.fromisoformat(review_due[:10])
                 except ValueError:
-                    review_due = None
-            current = review_due is None or (
-                isinstance(review_due, dt.date) and review_due >= today)
+                    review_due = "malformed"
+            if review_due == "malformed":
+                current = False
+            elif review_due is None:
+                current = True
+            elif isinstance(review_due, dt.date):
+                current = (review_due >= today)
+            else:
+                current = False
             out.append({
                 "contact_id": str(raw.get("contact_id", ""))[:64],
                 "public_name": str(raw.get("public_name", ""))[:200],
@@ -106,9 +112,15 @@ class AppointmentService:
                   staff) -> bool:
         if str(request.requester_id) == str(viewer_id):
             return True
-        return bool(request.handler_id
-                    and request.handler_id == str(viewer_id)
-                    and staff.has_capability(viewer_id))
+        if bool(request.handler_id
+                and request.handler_id == str(viewer_id)
+                and staff.has_capability(viewer_id)):
+            return True
+        if bool(request.status == STATUS_SUBMITTED
+                and not request.handler_id
+                and staff.has_capability(viewer_id)):
+            return True
+        return False
 
     def get_request(self, *, request_id: str, viewer_id: str,
                     include_note: bool = True) -> Dict[str, Any]:
@@ -116,7 +128,12 @@ class AppointmentService:
         request = _require_request(request_id=request_id)
         if not self._readable(request, str(viewer_id), staff):
             raise NotFound({"reason": "request_not_found"})
-        view = request.view(include_note=include_note)
+        is_assigned_handler = bool(request.handler_id
+                                   and request.handler_id == str(viewer_id)
+                                   and staff.has_capability(viewer_id))
+        is_requester = str(request.requester_id) == str(viewer_id)
+        can_see_note = include_note and (is_requester or is_assigned_handler)
+        view = request.view(include_note=can_see_note)
         view["slots"] = [slot.view() for slot in
                          request.slots.order_by("-created_at")[:5]]
         return view
@@ -131,11 +148,15 @@ class AppointmentService:
         staff = _staff_directory()
         if not staff.has_capability(str(handler_id)):
             raise NotFound({"reason": "request_not_found"})  # no scope leak
-        rows = AppointmentRequest.objects.filter(
+        assigned = AppointmentRequest.objects.filter(
             handler_id=str(handler_id),
             status__in=(STATUS_ASSIGNED, STATUS_SLOT_PROPOSED,
                         STATUS_SCHEDULED)).order_by("-updated_at")[:20]
-        return [row.view(include_note=True) for row in rows]
+        unassigned = AppointmentRequest.objects.filter(
+            status=STATUS_SUBMITTED).order_by("-created_at")[:20]
+        results = [row.view(include_note=True) for row in assigned]
+        results.extend([row.view(include_note=False) for row in unassigned])
+        return results
 
     @transaction.atomic
     def claim(self, *, request_id: str, handler_id: str) -> AppointmentRequest:

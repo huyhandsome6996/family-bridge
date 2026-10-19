@@ -38,6 +38,9 @@ FALLBACK_CONTACTS: List[Dict[str, Any]] = [
         "tz_offset_hours": 7,
         "contact_type": "help",
         "accepting_appointments": False,
+        "verified": True,
+        "review_due": FALLBACK_REVIEW_DUE,
+        "status": "published",
         "provenance": "fallback snapshot kèm build; cần xác minh lại định kỳ "
                       "(external-inputs.md) — KHÔNG phải danh bạ production",
     },
@@ -105,7 +108,7 @@ class HelpDirectoryService:
         for raw in raw_contacts:
             if not isinstance(raw, dict):
                 continue
-            if raw.get("verified") is False or raw.get("status") == "retired":
+            if raw.get("verified") is not True or raw.get("status") == "retired":
                 continue  # never show unverified/retired entries
             review_due = raw.get("review_due")
             review_current = _is_review_current(review_due, today)

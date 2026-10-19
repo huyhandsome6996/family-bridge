@@ -17,6 +17,9 @@ urlpatterns = [
 ]
 
 from django.conf import settings  # noqa: E402  (needs full settings module)
+from core.wiring import wire_backend_ports  # noqa: E402
+
+wire_backend_ports()
 
 _loaded = set(getattr(settings, "FEATURE_APPS", []))
 for _feature in FEATURES:

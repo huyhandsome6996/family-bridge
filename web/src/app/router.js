@@ -42,6 +42,8 @@ export const routes = {
   // ---- Web Render (Task 2): màn web mới + pattern route chi tiết thư ----
   "/cards": () => import("../pages/cards/index.js"),
   "/signal": () => import("../pages/signal/index.js"),
+  "/supporters": () => import("../pages/supporters/index.js"),
+  "/appointments": () => import("../pages/appointments/index.js"),
   "/messages/:id": () => import("../pages/message/index.js"),
   "/proposal": () => import("../pages/proposal/index.js"),
   "/settings": () => import("../pages/settings/index.js"),
