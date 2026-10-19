@@ -21,6 +21,10 @@ register(new URL("./asset-hook.mjs", import.meta.url));
 //   7. destroy() dọn dẹp: response muộn không cập nhật lại nội dung.
 //   8. kind=configuration → thông báo cấu hình (tính năng MỚI port từ
 //      page-core: không nuốt lỗi cấu hình thành lỗi mạng chung).
+//   9. Task 3-b (cursor v2 THẬT trên shared adapter): test MỚI — lần-2 "Tải
+//      thêm" truyền ĐÚNG cursor trang-1 vào privacyOverview, dedup giữ nguyên,
+//      has_more=false → nút ẨN THẬT (bị gỡ khỏi DOM). Không xóa assertion
+//      nào của Task 3-a.
 // Chạy: node --test tests/f15-privacy.test.mjs (happy-dom — không framework mới).
 
 import { test } from "node:test";
@@ -233,6 +237,54 @@ test("có phiên + API trả dữ liệu -> mục đang chia sẻ + nút thu h�
   );
   assert.match(textOf(shared), /Chưa tải thêm được mục mới nào/,
     "phải nói thật thay vì im lặng hoặc bịa thêm mục");
+  host.remove();
+  page.destroy();
+  clearSession();
+});
+
+test("Task 3-b: Tải thêm lần 2 privacyOverview nhận cursor trang-1; append không trùng; has_more=false → ẩn nút thật", async () => {
+  withSession();
+  const behavior = {};
+  const pages = [
+    { shared_by_me: [grant("s1")], connections: [],
+      next_cursor: "ov2|2026-10-19T01:00:00+00:00|s1", has_more: true },
+    { shared_by_me: [grant("s1"), grant("s2")], connections: [],
+      next_cursor: null, has_more: false },
+  ];
+  const api = privacyAdapter({ behavior, pages });
+  const { host, el } = mount(ctxOf(api));
+  await wait(30);
+  const shared = grantsCard(el);
+
+  // (1) trang-1 has_more=true → nút Tải thêm hiện thật (không hidden)
+  const loadMore1 = Array.from(shared.querySelectorAll("button"))
+    .find((b) => /Tải thêm/.test(b.textContent));
+  assert.ok(loadMore1, "trang-1 has_more=true phải có nút Tải thêm");
+  assert.ok(!loadMore1.hidden, "nút Tải thêm phải hiện thật (không hidden)");
+
+  // (2) click lần 1 → lần gọi privacyOverview THỨ HAI phải nhận ĐÚNG cursor
+  // trang-1 trả về (không phải null, không phải cursor khác)
+  loadMore1.click();
+  await wait(20);
+  assert.equal(behavior.overviewCursors.length, 2,
+    "lần gọi thứ hai phải xảy ra sau click Tải thêm");
+  assert.equal(behavior.overviewCursors[1], "ov2|2026-10-19T01:00:00+00:00|s1",
+    "lần 2 privacyOverview phải nhận đúng cursor trang-1 trả về");
+
+  // (3) append KHÔNG TRÙNG (dedup share_id): s1 trùng không lặp, s2 mới nối vào
+  assert.equal(shared.querySelectorAll('[data-share-id="s1"]').length, 1,
+    "s1 trùng không được append lần hai (dedup theo share_id)");
+  assert.ok(shared.querySelector('[data-share-id="s2"]'),
+    "s2 mới phải được nối vào danh sách");
+  assert.equal(shared.querySelectorAll("[data-share-id]").length, 2,
+    "tổng mục hiển thị = trang-1 + đúng 1 mục mới");
+
+  // (4) trang-2 has_more=false → nút ẨN THẬT: bị gỡ khỏi DOM (không chỉ disabled)
+  const loadMore2 = Array.from(shared.querySelectorAll("button"))
+    .find((b) => /Tải thêm/.test(b.textContent));
+  assert.equal(loadMore2, undefined,
+    "has_more=false → nút Tải thêm phải biến mất khỏi DOM (ẩn thật)");
+
   host.remove();
   page.destroy();
   clearSession();

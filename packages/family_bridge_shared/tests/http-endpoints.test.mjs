@@ -310,9 +310,9 @@ describe("shared http-endpoints — hợp đồng boundary", () => {
     }
   });
 
-  it("surface phủ ADAPTER_METHODS: 111 tên hợp đồng (union main 91 + F07 8 + F02 12), mọi method endpoint đều là hàm", () => {
+  it("surface phủ ADAPTER_METHODS: 112 tên hợp đồng (union main 91 + F07 8 + F02 12 + F15 list 1), mọi method endpoint đều là hàm", () => {
     const endpoints = makeEndpoints();
-    assert.equal(ADAPTER_METHODS.length, 111);
+    assert.equal(ADAPTER_METHODS.length, 112);
     for (const name of ADAPTER_METHODS) {
       // loginWithZaloToken/trySilentLogin/logout là glue SDK của host (mini: zmp-sdk).
       if (name === "loginWithZaloToken" || name === "trySilentLogin" || name === "logout") continue;
@@ -388,6 +388,107 @@ describe("shared http-endpoints — F07 mood (US-015/US-026)", () => {
       assert.ok(calls[4].url.endsWith("/api/v1/mood/shares/s-1/revoke"), calls[4].url);
       assert.ok(calls[5].url.includes("page_size=10"), calls[5].url);
       assert.ok(calls[6].url.endsWith("/api/v1/mood/shared/s-1"), calls[6].url);
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+});
+
+describe("shared http-endpoints — F15 privacy cursor v2 (Task 3-b)", () => {
+  function captureFetch() {
+    const calls = [];
+    mock.method(globalThis, "fetch", async (url, options = {}) => {
+      calls.push({ url: String(url), options });
+      return jsonResponse({});
+    });
+    return calls;
+  }
+
+  const CURSOR_OVERVIEW = "ov2|2026-10-19T01:00:00+00:00|s1";
+  const CURSOR_REQUESTS = "v2|2026-10-19T00:00:00Z|33333333-3333-3333-3333-333333333333";
+
+  it("privacyOverview truyền cursor v2 xuống query; trang-1 (không cursor) thì URL không có cursor", async () => {
+    clearSession();
+    setSession({ token: "tok-f15", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.privacyOverview();
+      assert.ok(calls[0].url.endsWith("/api/v1/privacy/overview"), calls[0].url);
+      assert.ok(!calls[0].url.includes("cursor="), "trang-1 không được gửi query cursor");
+      await endpoints.privacyOverview({ cursor: CURSOR_OVERVIEW });
+      assert.ok(
+        calls[1].url.startsWith("https://backend.example/api/v1/privacy/overview?cursor="),
+        calls[1].url,
+      );
+      assert.equal(
+        decodeURIComponent(calls[1].url.split("cursor=")[1]),
+        CURSOR_OVERVIEW,
+        "cursor phải đi nguyên vẹn (URLSearchParams encode, không ghép chuỗi thô)",
+      );
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("listDeletionRequests: GET đúng /privacy/deletion-requests/list + cursor pass-through + shape {results,next_cursor,has_more}", async () => {
+    clearSession();
+    setSession({ token: "tok-f15", userId: "u", expiresAt: Date.now() + 60_000 });
+    const row = {
+      request_id: "33333333-3333-3333-3333-333333333333",
+      status: "requested",
+      scope_categories: ["mood", "journal"],
+      requested_at: "2026-10-19T00:00:00Z",
+      revision: 1,
+    };
+    const calls = [];
+    mock.method(globalThis, "fetch", async (url, options = {}) => {
+      calls.push({ url: String(url), options });
+      return jsonResponse({
+        results: [row],
+        next_cursor: CURSOR_REQUESTS,
+        has_more: true,
+      });
+    });
+    try {
+      const endpoints = makeEndpoints();
+      const page = await endpoints.listDeletionRequests();
+      assert.ok(
+        calls[0].url.endsWith("/api/v1/privacy/deletion-requests/list"),
+        `path list phải đúng urls.py (GET ở /list), thấy: ${calls[0].url}`,
+      );
+      assert.deepEqual(page, {
+        results: [row],
+        next_cursor: CURSOR_REQUESTS,
+        has_more: true,
+      }, "shape ĐÚNG backend list_requests (f15 services/deletion.py)");
+      await endpoints.listDeletionRequests({ cursor: CURSOR_REQUESTS });
+      assert.ok(
+        calls[1].url.startsWith("https://backend.example/api/v1/privacy/deletion-requests/list?cursor="),
+        calls[1].url,
+      );
+      assert.equal(
+        decodeURIComponent(calls[1].url.split("cursor=")[1]),
+        CURSOR_REQUESTS,
+        "cursor v2 phải truyền nguyên vẹn xuống query",
+      );
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("listDeletionRequests: body thiếu trường -> fallback rỗng trung thực (không ném, không bịa)", async () => {
+    clearSession();
+    setSession({ token: "tok-f15", userId: "u", expiresAt: Date.now() + 60_000 });
+    mock.method(globalThis, "fetch", async () => jsonResponse({}));
+    try {
+      const endpoints = makeEndpoints();
+      assert.deepEqual(await endpoints.listDeletionRequests(), {
+        results: [], next_cursor: null, has_more: false,
+      });
     } finally {
       clearSession();
       mock.restoreAll();

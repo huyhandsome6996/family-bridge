@@ -853,9 +853,14 @@ export function createHttpEndpoints({
 
     // --------------------- Web (Task 2): F15 riêng tư ------------------------
 
-    async privacyOverview() {
+    /** GET /api/v1/privacy/overview — cursor v2 "ov2|<created_at_iso>|<share_id>"
+     * (R09): trang-1 gọi KHÔNG cursor; nút "Tải thêm" truyền cursor opaque
+     * xuống query. Envelope giữ nguyên (data || fallback rỗng trung thực). */
+    async privacyOverview({ cursor } = {}) {
       requireBaseUrl();
-      const data = await authed(() => request("/api/v1/privacy/overview"));
+      const data = await authed(() => request("/api/v1/privacy/overview", {
+        query: { ...(cursor ? { cursor } : {}) },
+      }));
       return data || { shared_by_me: [], connections: [] };
     },
 
@@ -877,6 +882,24 @@ export function createHttpEndpoints({
         body: { categories },
       }));
       return data; // { request_id, status, receipt?, duplicate? }
+    },
+
+    /** GET /api/v1/privacy/deletion-requests/list — owner-only (KHÔNG dùng
+     * POST để tra cứu; POST tạo yêu cầu mới). Path ĐÚNG urls.py: GET nằm ở
+     * /list (view gốc chỉ có POST). Cursor v2 "v2|<requested_at_iso>|<id>";
+     * shape ĐÚNG backend list_requests (services/deletion.py):
+     * { results: [{request_id,status,scope_categories,requested_at,revision}],
+     *   next_cursor, has_more } — mới nhất trước. */
+    async listDeletionRequests({ cursor } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/privacy/deletion-requests/list", {
+        query: { ...(cursor ? { cursor } : {}) },
+      }));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        next_cursor: (data && data.next_cursor) || null,
+        has_more: Boolean(data && data.has_more),
+      };
     },
 
     async getDeletionRequest(requestId) {
