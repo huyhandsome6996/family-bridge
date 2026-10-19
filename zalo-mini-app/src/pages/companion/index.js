@@ -352,12 +352,31 @@ function renderCompanion(body, ctx, { demo, role, data, load }) {
   // Danh mục F09 thật: content_key -> {revision,title,minutes,...}. Lời mời
   // cần revision PUBLISHED từ nguồn này — không hardcode (R1). Catalog lỗi
   // → nút mời bị khóa với lý do trung thực, phần còn lại vẫn dùng được.
+  //
+  // QA 19/10 R01: catalog có thể trả NHIỀU revision đã publish của cùng
+  // content_key (reader sắp mới nhất trước, nhưng UI không được phụ thuộc
+  // thứ tự — bản cũ ở cuối từng ghi đè bản mới). Chính sách chọn rõ ràng:
+  //   - chỉ nhận status published (draft/retired không bao giờ được mời);
+  //   - revision SỐ CAO NHẤT thắng, độc lập thứ tự rows;
+  //   - bằng revision → giữ bản đến trước (reader đã sắp mới nhất trước).
   const activityMeta = {};
   const catalogRows = data.catalog && Array.isArray(data.catalog.results)
     ? data.catalog.results : [];
+  const revisionOf = (card) => Number.parseInt(card.revision, 10);
   catalogRows.forEach((card) => {
-    if (card && card.content_key) {
-      activityMeta[String(card.content_key)] = card;
+    if (!card || !card.content_key) return;
+    if (card.status && card.status !== "published") return;
+    const key = String(card.content_key);
+    const current = activityMeta[key];
+    if (!current) {
+      activityMeta[key] = card;
+      return;
+    }
+    const revision = revisionOf(card);
+    const currentRevision = revisionOf(current);
+    if (Number.isInteger(revision)
+      && (!Number.isInteger(currentRevision) || revision > currentRevision)) {
+      activityMeta[key] = card;
     }
   });
 
@@ -416,19 +435,40 @@ function renderNotEnrolled(body, ctx, { load }) {
         const weekTitles = (program.weeks || [])
           .map((week) => `Tuần ${week.week_no}: ${week.title}`)
           .join(" • ");
-        body.appendChild(
-          createCard({
-            title: program.title,
-            description: weekTitles || "Chương trình bốn tuần",
-            footer: createButton({
-              label: "Tham gia chương trình",
-              variant: "primary",
-              onClick: (event) => onEnroll(ctx, program,
-                { load, note, button: event && event.currentTarget
-                  ? event.currentTarget : null }),
-            }),
-          }),
-        );
+        const card = createCard({
+          title: program.title,
+          description: weekTitles || "Chương trình bốn tuần",
+        });
+        // QA 19/10 R05: người dùng được ĐỌC giáo trình đã phát hành trước
+        // khi quyết định tham gia — xem trước chỉ đọc, KHÔNG POST enroll,
+        // không cần ghi enrollment chỉ để đọc.
+        const preview = renderProgramPreview(program);
+        preview.hidden = true;
+        card.appendChild(preview);
+        const actions = h("div", { class: "fb-compose__pause-buttons" });
+        actions.appendChild(createButton({
+          label: "Xem trước hướng dẫn từng tuần",
+          variant: "ghost",
+          onClick: (event) => {
+            preview.hidden = !preview.hidden;
+            const button = event && event.currentTarget
+              ? event.currentTarget : null;
+            if (button) {
+              button.textContent = preview.hidden
+                ? "Xem trước hướng dẫn từng tuần"
+                : "Ẩn hướng dẫn xem trước";
+            }
+          },
+        }));
+        actions.appendChild(createButton({
+          label: "Tham gia chương trình",
+          variant: "primary",
+          onClick: (event) => onEnroll(ctx, program,
+            { load, note, button: event && event.currentTarget
+              ? event.currentTarget : null }),
+        }));
+        card.appendChild(actions);
+        body.appendChild(card);
       });
       renderPaperNote(body, null);
     })
@@ -471,6 +511,143 @@ function onEnroll(ctx, program, { load, note, button }) {
     ],
   });
   return dialog;
+}
+
+/* -------------------- Xem trước giáo trình (R05) -------------------- */
+
+/** Render chỉ-ĐỌC toàn bộ tuần của một chương trình từ catalog đã publish:
+ * mục tiêu + hướng dẫn cho cả hai vai trò của MỌI tuần. Không POST gì,
+ * không tạo enrollment, không ghi tiến độ — đọc thôi (QA 19/10 R05). */
+function renderProgramPreview(program) {
+  const box = h("div", { class: "fb-list", dataset: { programPreview: "1" } });
+  const weeks = Array.isArray(program.weeks) ? program.weeks : [];
+  if (!weeks.length) {
+    box.appendChild(
+      h("p", { class: "fb-sec__sub" },
+        "Chương trình này chưa có nội dung tuần để xem trước."),
+    );
+    return box;
+  }
+  weeks.forEach((week) => {
+    const section = h("div", { class: "fb-preview__week" });
+    section.appendChild(
+      h("p", { class: "fb-care__kicker" },
+        `Tuần ${week.week_no}: ${week.title}`),
+    );
+    if (Array.isArray(week.goals) && week.goals.length) {
+      const goalsList = h("ul", { class: "fb-list" });
+      week.goals.forEach((goal) => {
+        goalsList.appendChild(
+          h("li", { class: "fb-list__item" }, String(goal)));
+      });
+      section.appendChild(goalsList);
+    }
+    if (week.student_guide) {
+      section.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          `Hướng dẫn cho bạn: ${week.student_guide}`),
+      );
+    }
+    if (week.caregiver_guide) {
+      section.appendChild(
+        h("p", { class: "fb-sec__sub" },
+          `Hướng dẫn cho anh/chị: ${week.caregiver_guide}`),
+      );
+    }
+    const jointKeys = Array.isArray(week.joint_activity_keys)
+      ? week.joint_activity_keys : [];
+    if (jointKeys.length) {
+      section.appendChild(
+        h("p", { class: "fb-page__note" },
+          "Tuần này có hoạt động chung hai người — chi tiết từng hoạt động "
+          + "mở sau khi tham gia chương trình."),
+      );
+    }
+    box.appendChild(section);
+  });
+  return box;
+}
+
+/* ------------------ Chi tiết hoạt động chung (R06) ------------------ */
+
+/** Body hoạt động từ F09: dict (backend thật trả JSON object) hoặc chuỗi
+ * JSON (fixture/adapter cũ). Parse phòng thủ — lỗi parse trả {} thay vì
+ * render chuỗi repr thô. */
+function parseActivityBody(rawBody) {
+  if (rawBody && typeof rawBody === "object"
+    && !Array.isArray(rawBody)) {
+    return rawBody;
+  }
+  if (typeof rawBody !== "string" || !rawBody.trim()) return {};
+  try {
+    const parsed = JSON.parse(rawBody);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Khối chi tiết chỉ-đọc của MỘT hoạt động: mục tiêu, các bước, điều gì
+ * được chia sẻ, thời lượng CÓ NGUỒN (hoặc nói thẳng chưa cung cấp — không
+ * tự bịa mặc định). Toàn bộ text render qua textContent, không innerHTML
+ * (QA 19/10 R06). */
+function renderActivityDetail(meta) {
+  const detail = h("div", { dataset: { activityDetail: "1" } });
+  const body = parseActivityBody(meta ? meta.body : null);
+  const revision = meta ? Number.parseInt(meta.revision, 10) : NaN;
+
+  if (body.goal) {
+    detail.appendChild(
+      h("p", { class: "fb-sec__sub" }, `Mục tiêu: ${body.goal}`),
+    );
+  }
+  if (Array.isArray(body.steps) && body.steps.length) {
+    detail.appendChild(h("p", { class: "fb-care__kicker" }, "Cách làm:"));
+    const steps = h("ul", { class: "fb-list" });
+    body.steps.forEach((step) => {
+      steps.appendChild(h("li", { class: "fb-list__item" }, String(step)));
+    });
+    detail.appendChild(steps);
+  }
+  if (body.share) {
+    detail.appendChild(
+      h("p", { class: "fb-sec__sub" }, `Được chia sẻ: ${body.share}`),
+    );
+  }
+  if (body.text && !body.goal && !body.steps && !body.share) {
+    detail.appendChild(h("p", { class: "fb-sec__sub" }, String(body.text)));
+  }
+  if (!detail.childNodes.length) {
+    detail.appendChild(
+      h("p", { class: "fb-sec__sub" },
+        "Hoạt động này chưa có mô tả từng bước trong nội dung đã phát hành."),
+    );
+  }
+
+  // Thời lượng CÓ NGUỒN: số phút do nội dung phát hành cung cấp mới hiển
+  // thị; thiếu nguồn thì nói rõ, không dùng mặc định (1 phút là bịa).
+  if (meta && Number.isInteger(meta.minutes) && meta.minutes >= 1) {
+    detail.appendChild(
+      h("p", { class: "fb-page__note" },
+        `Thời lượng: khoảng ${meta.minutes} phút `
+        + (Number.isInteger(revision)
+          ? `(nguồn: nội dung đã phát hành rev ${revision}).`
+          : "(nguồn: nội dung đã phát hành).")),
+    );
+  } else {
+    detail.appendChild(
+      h("p", { class: "fb-page__note" },
+        "Thời lượng: chưa được cung cấp trong nội dung đã phát hành — "
+        + "bạn tự căn cứ thời gian hợp lý cho gia đình mình."),
+    );
+  }
+  detail.appendChild(
+    h("p", { class: "fb-page__note" },
+      "Lời mời gửi đến người đồng hành của bạn; mỗi người tự ghi phản hồi "
+      + "của mình — không ai tick hộ ai."),
+  );
+  return detail;
 }
 
 /* -------------------------------- Tuần -------------------------------- */
@@ -520,13 +697,37 @@ function renderWeekCard(ctx, { week, role, suggested, invites, activityMeta,
     const key = String(activity.activity_key);
     const meta = activityMeta && activityMeta[key] ? activityMeta[key] : null;
     const titleText = meta && meta.title ? String(meta.title) : key;
-    const minutesText = meta && meta.minutes
+    // QA 19/10 R06: chỉ hiển thị phút khi NỘI DUNG PHÁT HÀNH cung cấp số
+    // nguyên hợp lệ; thiếu nguồn thì im — không tự bịa "1 phút".
+    const minutesText = meta && Number.isInteger(meta.minutes)
+      && meta.minutes >= 1
       ? ` · khoảng ${meta.minutes} phút` : "";
 
-    card.appendChild(
+    const chipRow = h("div", { class: "fb-compose__pause-buttons" });
+    chipRow.appendChild(
       h("span", { class: "fb-chip" },
         `Hoạt động chung: ${titleText}${minutesText}`),
     );
+    // QA 19/10 R06: người dùng phải đọc được mục tiêu/các bước/thời lượng
+    // có nguồn TRƯỚC khi mời hoặc tick — mở khối chi tiết chỉ-đọc.
+    const detail = renderActivityDetail(meta);
+    detail.hidden = true;
+    chipRow.appendChild(createButton({
+      label: "Xem chi tiết hoạt động",
+      variant: "ghost",
+      onClick: (event) => {
+        detail.hidden = !detail.hidden;
+        const button = event && event.currentTarget
+          ? event.currentTarget : null;
+        if (button) {
+          button.textContent = detail.hidden
+            ? "Xem chi tiết hoạt động"
+            : "Ẩn chi tiết hoạt động";
+        }
+      },
+    }));
+    card.appendChild(chipRow);
+    card.appendChild(detail);
 
     const sentPending = myInvites.find((row) => row
       && row.content_key === key && row.direction === "sent"
