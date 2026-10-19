@@ -265,18 +265,54 @@ export function createHttpEndpoints({
       return data; // draft.view + server_time (countdown từ MÁY CHỦ)
     },
 
-    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId }) {
+    /**
+     * POST /api/v1/drafts/{id} — edit theo hợp đồng C8: `kind` OPTIONAL khi
+     * edit (bất biến sau create) — adapter KHÔNG BAO GIỜ gửi `kind` trong body
+     * edit; edit chỉ mang field có mặt (body/title/card/recipient). Lưu ý:
+     * backend f06_drafts tại baseline 72930ae vẫn validate `kind` ở edit
+     * (DraftDetailView.post -> _content_fields require_all=True rồi mới pop)
+     * — gap backend thuộc A2, không fix bằng cách gửi kind từ client.
+     *
+     * N06 (QA vòng 2 — "client stale lưu đè im lặng bản của client khác",
+     * contract BINDING F04R2-LEAD-1): field MỚI optional `expectedRevision` —
+     *  - KHÔNG truyền / null → KHÔNG gửi `expected_revision` (backcompat hành
+     *    vi cũ, cùng convention expectedRevision === null || === undefined của
+     *    confirmInvite/confirmClassProposal/cancelDeletionRequest).
+     *  - Truyền số nguyên dương ≤ 2147483647 → body kèm `expected_revision`;
+     *    máy chủ so với draft.revision: lệch → 409
+     *    {"error":{"code":"revision_conflict","details":{"reason":
+     *    "draft_conflict","current_revision":N}}} (details KHÔNG chứa body —
+     *    FORBIDDEN_DETAIL_KEYS), khớp → 200 revision+1.
+     *  - 409 revision_conflict nổi lên NGUYÊN status/code/details qua ApiError
+     *    của createApiClient (đọc envelope lỗi thống nhất — cùng parity các
+     *    lỗi khác). Adapter KHÔNG nuốt, KHÔNG tự retry thao tác ghi; phía UI
+     *    phải GET lại bản mới để reconcile rồi mới sửa tiếp.
+     *  - Sai kiểu (0/âm/lẻ/chuỗi/vượt 2^31-1) → chặn TRƯỚC fetch 400
+     *    input_invalid {field:"expected_revision", reason:"must_be_positive_int"}
+     *    (parity aiRefine input_revision — hợp đồng C2).
+     */
+    async editDraft(draftId, { body, title = "", cardId, cardVersion, recipientId, expectedRevision } = {}) {
       requireBaseUrl();
+      const payload = {
+        body,
+        title: title || "",
+        ...(cardId ? { card_id: cardId } : {}),
+        ...(cardVersion != null ? { card_version: cardVersion } : {}),
+        ...(recipientId ? { recipient_id: recipientId } : {}),
+      };
+      if (expectedRevision !== undefined && expectedRevision !== null) {
+        if (!Number.isInteger(expectedRevision) || expectedRevision < 1
+          || expectedRevision > 2147483647) {
+          // Chặn trước fetch — 1..2147483647 theo hợp đồng N06 (int dương).
+          throw new ApiError("expectedRevision phải là số nguyên dương.", 400, "http",
+            { code: "input_invalid", details: { field: "expected_revision", reason: "must_be_positive_int" } });
+        }
+        payload.expected_revision = expectedRevision;
+      }
       const data = await authed(() =>
         request(`/api/v1/drafts/${encodeURIComponent(draftId)}`, {
           method: "POST",
-          body: {
-            body,
-            title: title || "",
-            ...(cardId ? { card_id: cardId } : {}),
-            ...(cardVersion != null ? { card_version: cardVersion } : {}),
-            ...(recipientId ? { recipient_id: recipientId } : {}),
-          },
+          body: payload,
         }));
       return data;
     },
@@ -321,7 +357,11 @@ export function createHttpEndpoints({
           method: "POST",
           body: {},
         }));
-      return data; // preview gắn (revision, recipient, hash payload)
+      return data; // pass-through NGUYÊN VẸN (parity mock): {preview_id,
+      // revision, recipient_id, body, deadline, server_time} — `body` là
+      // snapshot server-bound (N01, QA 19/10): client hiển thị preview.body
+      // trong sheet xác nhận, KHÔNG đọc lại live textarea. Adapter KHÔNG được
+      // thêm/bớt field của preview (cùng quy tắc pass-through với aiRefine).
     },
 
     async confirmDraftSend(draftId, previewId) {
@@ -548,15 +588,17 @@ export function createHttpEndpoints({
     },
 
     // ---------------------- Web (Task 2): F05 hộp thư ------------------------
-    // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Cursor của
-    // f05 dùng tên "next" trong envelope → map về nextCursor cho UI.
+    // list KHÔNG bao giờ trả body/snippet — chỉ metadata (DSA). Envelope của
+    // f05: param trang là `page_size`, cursor là `next` → map về
+    // { results, nextCursor } cho UI (handoff 02 §4.6: không để tham số trang
+    // bị máy chủ bỏ im lặng).
 
     async listMessages({ cursor = null, limit, timeoutMs } = {}) {
       requireBaseUrl();
       const data = await authed(() => request("/api/v1/messages", {
         query: {
           ...(cursor ? { cursor } : {}),
-          ...(limit ? { limit: String(limit) } : {}),
+          ...(limit ? { page_size: String(limit) } : {}),
         },
         ...(timeoutMs ? { timeoutMs } : {}),
       }));
@@ -743,19 +785,41 @@ export function createHttpEndpoints({
       return data || { ai_enabled: false };
     },
 
-    /** POST /api/v1/ai/refine — key bắt buộc; replay cùng key trả CÙNG gợi ý. */
-    async aiRefine({ text, purpose = "refine_expression", key, timeoutMs } = {}) {
+    /**
+     * POST /api/v1/ai/refine — key BẮT BUỘC do caller tạo (crypto.randomUUID);
+     * replay cùng key trả CÙNG gợi ý (máy chủ quyết). Body mapping theo hợp
+     * đồng freeze v1 (C2): {original_text, purpose, input_revision?}.
+     * inputRevision là field MỚI optional (counter keystroke của composer):
+     *  - KHÔNG truyền / null  → body legacy {original_text, purpose} — máy chủ
+     *    hiện hành chấp nhận (payload thiếu input_revision vẫn hợp lệ).
+     *  - Truyền số nguyên dương ≤ 2147483647 → gửi kèm `input_revision`; máy chủ
+     *    echo lại trong DTO để UI đối chiếu stale (C7).
+     * Response trả NGUYÊN VẸN DTO của máy chủ (AiSuggestion.view() + echo) —
+     * adapter KHÔNG đổi tên field: text duy nhất là `suggested_text`, không
+     * bao giờ `refined_text`, không biến đổi envelope.
+     */
+    async aiRefine({ text, purpose = "refine_expression", key, inputRevision, timeoutMs } = {}) {
       requireBaseUrl();
       if (!key) {
         throw new ApiError("Thiếu khóa lượt gửi (idempotency key).", 0, "configuration");
       }
+      const body = { original_text: text, purpose };
+      if (inputRevision !== undefined && inputRevision !== null) {
+        if (!Number.isInteger(inputRevision) || inputRevision < 1
+          || inputRevision > 2147483647) {
+          // Chặn trước fetch — 1..2147483647 theo hợp đồng C2 (int dương).
+          throw new ApiError("inputRevision phải là số nguyên dương.", 400, "http",
+            { code: "input_invalid", details: { field: "input_revision", reason: "must_be_positive_int" } });
+        }
+        body.input_revision = inputRevision;
+      }
       const data = await authed(() => request("/api/v1/ai/refine", {
         method: "POST",
-        body: { original_text: text, purpose },
+        body,
         idempotencyKey: key,
         ...(timeoutMs ? { timeoutMs } : {}),
       }));
-      return data; // suggestion.view() (201)
+      return data; // suggestion.view() (201) — pass-through, không rename field
     },
 
     async aiAccept(suggestionId) {
@@ -869,6 +933,7 @@ export function createHttpEndpoints({
       const data = await authed(() => request("/api/v1/mood/entries", {
         query: {
           ...(cursor ? { cursor } : {}),
+          // F07 dùng param trang `page_size` + envelope `next` (giống F05).
           ...(limit ? { page_size: String(limit) } : {}),
         },
       }));
