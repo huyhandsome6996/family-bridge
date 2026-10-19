@@ -25,6 +25,13 @@ register(new URL("./asset-hook.mjs", import.meta.url));
 //      thêm" truyền ĐÚNG cursor trang-1 vào privacyOverview, dedup giữ nguyên,
 //      has_more=false → nút ẨN THẬT (bị gỡ khỏi DOM). Không xóa assertion
 //      nào của Task 3-a.
+//  10. Task 3-c (P2-2/QA-3 — listDeletionRequests nối UI): test MỚI — mở trang
+//      phải gọi listDeletionRequests; yêu cầu status "requested" từ máy chủ
+//      hiện với nhãn trung thực + nút hủy trong danh sách (mở dialog confirm
+//      của luồng hủy có sẵn); list lỗi → báo thật, không bịa rỗng;
+//      has_more=true → nói thật là còn yêu cầu cũ hơn trên máy chủ và status
+//      đã vào xử lý thì KHÔNG có nút hủy (kèm giải thích trung thực).
+//      Không xóa assertion nào của các Task trước.
 // Chạy: node --test tests/f15-privacy.test.mjs (happy-dom — không framework mới).
 
 import { test } from "node:test";
@@ -113,8 +120,13 @@ function grant(shareId) {
  * Adapter theo pattern web-screens.test.mjs (privacyAdapter) — mở rộng cho
  * cursor v2: `pages` là các trang overview; lần gọi KHÔNG cursor trả
  * pages[0], lần gọi với cursor = next_cursor của trang i trả pages[i+1].
+ * Task 3-c: mở rộng thêm nhóm deletion — `deletionRequests` là trang kết quả
+ * listDeletionRequests (mặc định rỗng trung thực khi test cũ không truyền).
  */
-function privacyAdapter({ behavior = {}, pages = [], consents = null } = {}) {
+function privacyAdapter({
+  behavior = {}, pages = [], consents = null, deletionRequests = [],
+  deletionHasMore = false,
+} = {}) {
   const consentsState = consents === null
     ? [
       { purpose: "service", decision: "accepted", policy_version: "service-v1", withdrawn: false, current: true },
@@ -122,6 +134,7 @@ function privacyAdapter({ behavior = {}, pages = [], consents = null } = {}) {
       { purpose: "research", decision: "declined", policy_version: "research-v1", withdrawn: false, current: true },
     ]
     : JSON.parse(JSON.stringify(consents));
+  const deletionState = JSON.parse(JSON.stringify(deletionRequests));
   const clone = (value) => JSON.parse(JSON.stringify(value));
   const emptyPage = { shared_by_me: [], connections: [], next_cursor: null, has_more: false };
   return {
@@ -153,6 +166,32 @@ function privacyAdapter({ behavior = {}, pages = [], consents = null } = {}) {
       behavior.consentsCalls = behavior.consentsCalls || [];
       behavior.consentsCalls.push(true);
       return clone(consentsState);
+    },
+    // ---- Task 3-c: nhóm deletion (đúng shape shared adapter Task 3-b) ----
+    listDeletionRequests: async () => {
+      behavior.deletionListCalls = behavior.deletionListCalls || [];
+      behavior.deletionListCalls.push(true);
+      if (behavior.deletionListError) throw behavior.deletionListError;
+      return {
+        results: clone(deletionState),
+        next_cursor: null,
+        has_more: deletionHasMore === true,
+      };
+    },
+    getDeletionRequest: async (requestId) => {
+      behavior.detailCalls = behavior.detailCalls || [];
+      behavior.detailCalls.push(requestId);
+      if (behavior.detailError) throw behavior.detailError;
+      const row = deletionState.find((r) => r && r.request_id === requestId);
+      return row ? clone(row) : null;
+    },
+    cancelDeletionRequest: async (requestId, args = {}) => {
+      behavior.cancelCalls = behavior.cancelCalls || [];
+      behavior.cancelCalls.push({ requestId, args });
+      if (behavior.cancelError) throw behavior.cancelError;
+      const row = deletionState.find((r) => r && r.request_id === requestId);
+      if (row) row.status = "cancelled";
+      return { request_id: requestId, status: "cancelled" };
     },
   };
 }
@@ -395,6 +434,122 @@ test("lỗi cấu hình (kind=configuration) -> thông báo cấu hình, không 
   await wait(30);
   assert.match(textOf(el), /chưa cấu hình địa chỉ máy chủ/i,
     "lỗi cấu hình phải có thông báo riêng, đúng thật");
+  host.remove();
+  page.destroy();
+  clearSession();
+});
+
+test("Task 3-c: mở trang đọc lại yêu cầu xóa từ máy chủ; yêu cầu 'requested' hiện kèm nút Hủy nối vào luồng hủy có sẵn", async () => {
+  withSession();
+  const behavior = {};
+  const api = privacyAdapter({
+    behavior,
+    pages: [{ shared_by_me: [grant("s1")], connections: [] }],
+    deletionRequests: [{
+      request_id: "9d2f0a10-1111-4111-8111-111111111111",
+      status: "requested",
+      scope_categories: ["journal", "mood"],
+      requested_at: "2026-10-19T01:00:00+00:00",
+      revision: 3,
+    }],
+  });
+  const { host, el } = mount(ctxOf(api));
+  await wait(30);
+  assert.equal((behavior.deletionListCalls || []).length, 1,
+    "mở trang phải gọi listDeletionRequests đúng 1 lần (phục hồi trạng thái sau reload)");
+
+  const deletionCard = Array.from(el.querySelectorAll(".fb-card"))
+    .find((card) => textOf(card).includes("Yêu cầu xóa dữ liệu"));
+  assert.ok(deletionCard, "card yêu cầu xóa dữ liệu phải tồn tại");
+  // Trạng thái TRUNG THỰC từ máy chủ — nhãn đúng DeletionRequest.STATUS_REQUESTED.
+  assert.match(textOf(deletionCard), /Đã tiếp nhận — chờ xác minh/,
+    "yêu cầu 'requested' phải hiện đúng nhãn trung thực của máy chủ");
+  assert.match(textOf(deletionCard), /Nhật ký/,
+    "phạm vi categories phải hiện nhãn tiếng Việt đúng models.py");
+
+  // Nút hủy trong danh sách nối vào LUỒNG HỸ CÓ: click phải mở dialog confirm
+  // (chưa mutation — chỉ xác nhận mở đúng dialog của luồng hủy hiện có).
+  const cancelBtn = Array.from(deletionCard.querySelectorAll("button"))
+    .find((b) => /Hủy yêu cầu xóa/.test(b.textContent));
+  assert.ok(cancelBtn, "yêu cầu 'requested' phải có nút hủy trong danh sách");
+  assert.equal((behavior.cancelCalls || []).length, 0,
+    "chưa xác nhận qua dialog thì chưa được gọi cancelDeletionRequest");
+  cancelBtn.click();
+  dialogButton("Hủy yêu cầu");
+  assert.equal((behavior.cancelCalls || []).length, 0,
+    "mở dialog chưa tạo mutation; mutation chỉ chạy sau khi xác nhận");
+
+  // Xác nhận hủy → đúng 1 lần cancelDeletionRequest với đúng request_id.
+  dialogButton("Hủy yêu cầu").click();
+  await wait(20);
+  assert.equal((behavior.cancelCalls || []).length, 1,
+    "xác nhận hủy phải tạo đúng 1 lần cancelDeletionRequest");
+  assert.equal(behavior.cancelCalls[0].requestId,
+    "9d2f0a10-1111-4111-8111-111111111111",
+    "hủy đúng yêu cầu trong danh sách");
+  assert.match(textOf(deletionCard), /Đã hủy/,
+    "sau hủy thành công, hàng trong danh sách phải phản ánh trạng thái máy chủ trả về");
+
+  host.remove();
+  page.destroy();
+  clearSession();
+});
+
+test("Task 3-c: listDeletionRequests lỗi -> card báo thật, không bịa thành 'chưa có yêu cầu nào'", async () => {
+  withSession();
+  const behavior = { deletionListError: new ApiError("mạng lỗi", 0, "network") };
+  const api = privacyAdapter({
+    behavior,
+    pages: [{ shared_by_me: [], connections: [] }],
+  });
+  const { host, el } = mount(ctxOf(api));
+  await wait(30);
+  const deletionCard = Array.from(el.querySelectorAll(".fb-card"))
+    .find((card) => textOf(card).includes("Yêu cầu xóa dữ liệu"));
+  assert.ok(deletionCard, "card yêu cầu xóa dữ liệu vẫn render");
+  assert.match(textOf(deletionCard), /Chưa tải được danh sách yêu cầu xóa từ máy chủ/,
+    "lỗi tải danh sách phải báo thật trong card");
+  assert.doesNotMatch(textOf(deletionCard), /Chưa có yêu cầu xóa nào được ghi nhận/,
+    "KHÔNG được bịa danh sách rỗng khi chưa tải được dữ liệu");
+  host.remove();
+  page.destroy();
+  clearSession();
+});
+
+test("Task 3-c: has_more=true phải nói thật là còn yêu cầu cũ hơn; status đã vào xử lý thì không nút hủy", async () => {
+  withSession();
+  const behavior = {};
+  const api = privacyAdapter({
+    behavior,
+    pages: [{ shared_by_me: [], connections: [] }],
+    deletionRequests: [{
+      request_id: "9d2f0a10-2222-4222-8222-222222222222",
+      status: "processing",
+      scope_categories: ["journal"],
+      requested_at: "2026-10-18T01:00:00+00:00",
+      revision: 5,
+    }],
+    deletionHasMore: true,
+  });
+  const { host, el } = mount(ctxOf(api));
+  await wait(30);
+  const deletionCard = Array.from(el.querySelectorAll(".fb-card"))
+    .find((card) => textOf(card).includes("Yêu cầu xóa dữ liệu"));
+  assert.ok(deletionCard, "card yêu cầu xóa dữ liệu phải tồn tại");
+  // Máy chủ cắt danh sách theo trang — UI phải nói thật, không giả vờ đủ.
+  assert.match(textOf(deletionCard), /vẫn còn yêu cầu cũ hơn/,
+    "has_more=true phải nói thật rằng còn yêu cầu cũ hơn trên máy chủ");
+  // "processing" ĐÚNG models.py STATUS_PROCESSING: đã vào xử lý → không hủy.
+  assert.match(textOf(deletionCard), /Đang xử lý/,
+    "status 'processing' phải hiện đúng nhãn trung thực của máy chủ");
+  const cancelBtn = Array.from(deletionCard.querySelectorAll("button"))
+    .find((b) => /Hủy yêu cầu xóa/.test(b.textContent));
+  assert.equal(cancelBtn, undefined,
+    "yêu cầu đã vào xử lý KHÔNG được có nút hủy trong danh sách");
+  assert.match(textOf(deletionCard), /không thể hủy/,
+    "trạng thái không hủy được phải kèm giải thích trung thực");
+  assert.equal((behavior.cancelCalls || []).length, 0,
+    "không được có mutation hủy nào cho yêu cầu đã vào xử lý");
   host.remove();
   page.destroy();
   clearSession();
