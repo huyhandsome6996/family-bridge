@@ -118,6 +118,20 @@ class MoodShare(models.Model):
             models.Index(fields=["owner", "created_at"]),
         ]
 
+    def grant_status(self) -> str:
+        """True grant state for display: list rows may carry a computed
+        share_status (active/stale_revision/unlinked/revoked); standalone
+        rows derive it from their own fields."""
+        computed = getattr(self, "share_status", None)
+        if computed:
+            return computed
+        if self.revoked_at is not None:
+            return "revoked"
+        entry = MoodEntry.objects.filter(pk=self.entry_id).only("revision").first()
+        if entry is not None and entry.revision != self.approved_revision:
+            return "stale_revision"
+        return "active"
+
     def grant_view(self) -> dict:
         return {
             "share_id": str(self.id),
@@ -126,5 +140,6 @@ class MoodShare(models.Model):
             "owner_id": str(self.owner_id),
             "approved_revision": self.approved_revision,
             "revoked": self.revoked_at is not None,
+            "status": self.grant_status(),
             "created_at": self.created_at.isoformat(),
         }

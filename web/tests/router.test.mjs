@@ -38,13 +38,16 @@ const notFoundModule = await import("../src/pages/not-found/index.js");
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // ---------------------------------------------------------------- route table
-// 24 hash path: 21 giữ nguyên mini + 1 trang admin cấp phát cặp (18/10/2026) + 2 trang F11/F12 (19/10/2026).
+// 26 hash path: 21 giữ nguyên mini + admin-provision + supporters/appointments
+// (F11/F12, 19/10/2026) + 2 route F07 web parity (quyết định Huy: /mood +
+// /mood-shared, UI tree web độc lập — route mapping giống Mini App).
 const EXPECTED_ROUTES = [
   "/", "/welcome", "/how-to-use", "/role-select", "/home", "/companion",
   "/mailbox", "/diary", "/profile", "/connection-check", "/help",
   "/login", "/consent", "/connect", "/compose",
   "/cards", "/signal", "/messages/:id", "/proposal", "/settings", "/privacy",
   "/admin-provision", "/supporters", "/appointments",
+  "/mood", "/mood-shared",
 ];
 
 // 8 trang phức tạp (W2-b: trang thật thay stub) — GIỮ NGUYÊN meta mini.
@@ -77,9 +80,10 @@ const PORTED_META = [
   ["/connect", "f01-connect", { requiresRole: false }],
 ];
 
-describe("Route table: 24 hash path (21 mini + admin-provision + supporters + appointments)", () => {
-  it("đúng 24 route, không thêm/bớt", () => {
-    assert.equal(Object.keys(routes).length, 24);
+describe("Route table: 26 hash path (21 mini + admin-provision + supporters/appointments + 2 F07)", () => {
+  it("đúng 26 route, không thêm/bớt", () => {
+    assert.equal(Object.keys(routes).length, 26);
+
     assert.deepEqual(Object.keys(routes).sort(), [...EXPECTED_ROUTES].sort());
   });
 

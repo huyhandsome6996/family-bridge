@@ -6,23 +6,33 @@ Port wiring (same pattern as sibling features):
   unlink/revocation takes effect on the very next read (no cache).
 - Session resolver: labgrants double standalone; F01 at integration.
 
-The grant model intentionally mirrors the F15 GrantView shape so B18 can
-register MoodShareService as the mood grant provider on the F15 policy
-registry (item_type="mood_entry") without adaptation."""
+The grant model intentionally mirrors the F15 GrantView shape so the
+mood grant provider (services/grant_provider.py) registers as the
+item_type="mood_entry" provider on the F15 policy registry without
+adaptation.
+
+Authorization invariants (fail closed everywhere):
+- Every recipient read re-verifies: grant unrevoked + revision still
+  current + connection STILL ACTIVE with the SAME identity and generation
+  recorded at share time. Missing/erroring provider denies the read.
+- Re-share after revoke/edit/reconnect is an explicit new confirmation:
+  it re-validates the connection NOW and rebinds the grant to the CURRENT
+  connection; revoked grants never revive on their own.
+"""
 
 from __future__ import annotations
 
 import datetime as dt
-from typing import Any, Dict, List, Optional
+import re
+from typing import Any, Dict, List, Optional, Tuple
 
 from django.db import transaction
-from django.utils import timezone
+from django.db.utils import IntegrityError
 
 from family_bridge_core.errors import (
-    InputInvalid, ModuleUnavailable, NotFound, NotAuthorized,
+    InputInvalid, ModuleUnavailable, NotFound, PreviewStale,
 )
 from family_bridge_core.timeutils import UTC
-from family_bridge_core.validation import MAX_PAGE_SIZE
 
 from ..models import (
     EMOTIONS, MAX_DATE_DAYS_AHEAD, MAX_NOTE_CHARS, MIN_DATE_DAYS_AGO,
@@ -32,9 +42,18 @@ from . import registry
 
 VN_TZ = dt.timezone(dt.timedelta(hours=7), name="Asia/Ho_Chi_Minh")
 
+MAX_OWNED_SHARE_ROWS = 50  # bounded per-entry grant listing (DSA-05)
+
 
 def _now() -> dt.datetime:
     return dt.datetime.now(tz=UTC)
+
+
+# R05 fix: the API publishes "YYYY-MM-DD" — the WHOLE string must match.
+# No silent truncation (the old value[:10] turned "2026-10-19-not-a-date"
+# and timestamps into a valid day). A separate date/datetime object is
+# still accepted (internal callers), but any JSON string must be exact.
+_ISO_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 
 def parse_entry_date(value: Any) -> dt.date:
@@ -42,8 +61,11 @@ def parse_entry_date(value: Any) -> dt.date:
         return value
     if not isinstance(value, str):
         raise InputInvalid({"field": "entry_date", "reason": "must_be_iso_date"})
+    if not _ISO_DATE_RE.fullmatch(value):
+        raise InputInvalid({"field": "entry_date",
+                            "reason": "must_be_iso_date"})
     try:
-        parsed = dt.date.fromisoformat(value[:10])
+        parsed = dt.date.fromisoformat(value)
     except ValueError as exc:
         raise InputInvalid({"field": "entry_date",
                             "reason": "must_be_iso_date"}) from exc
@@ -63,8 +85,16 @@ def _require_own_entry(*, owner_id: str, entry_id: str) -> MoodEntry:
     return entry
 
 
+def _require_reader():
+    """Authorization dependency: a MISSING connection reader is a hard
+    failure for any sharing decision (fail closed, never read-through)."""
+    reader = registry.get_connection_reader()
+    if reader is None:
+        raise ModuleUnavailable({"reason": "connection_reader_not_wired"})
+    return reader
+
+
 class MoodEntryService:
-    @transaction.atomic
     def create(self, *, owner_id: str, entry_date, emotion: str,
                note: str = "") -> MoodEntry:
         today_vn = _now().astimezone(VN_TZ).date()
@@ -83,9 +113,20 @@ class MoodEntryService:
             raise InputInvalid({"field": "entry_date",
                                 "reason": "entry_already_exists_use_edit",
                                 "entry_date": date.isoformat()})
-        return MoodEntry.objects.create(owner_id=str(owner_id),
-                                        entry_date=date, emotion=emotion,
-                                        note=note)
+        try:
+            with transaction.atomic():
+                return MoodEntry.objects.create(owner_id=str(owner_id),
+                                                entry_date=date,
+                                                emotion=emotion, note=note)
+        except IntegrityError as exc:
+            # Lost a real concurrent-create race (two devices, same day):
+            # the UNIQUE constraint is the authority, the loser gets the
+            # same business recovery path as the sequential duplicate.
+            raise InputInvalid({
+                "field": "entry_date",
+                "reason": "entry_already_exists_use_edit",
+                "entry_date": date.isoformat(),
+            }) from exc
 
     def get_own(self, *, owner_id: str, entry_id: str) -> MoodEntry:
         return _require_own_entry(owner_id=owner_id, entry_id=entry_id)
@@ -100,7 +141,15 @@ class MoodEntryService:
     @transaction.atomic
     def edit(self, *, owner_id: str, entry_id: str, emotion: Optional[str],
              note: Optional[str]) -> MoodEntry:
+        # R02 fix: two concurrent edits must never reuse one revision.
+        # _require_own_entry stays the (patchable) ownership gate; the row
+        # is then re-read UNDER LOCK inside this transaction so the
+        # read-modify-write of `revision` serializes on MySQL (InnoDB
+        # SELECT ... FOR UPDATE). Both edit and share lock the SAME single
+        # row first -> consistent lock order, no deadlock, no network
+        # calls while the lock is held.
         entry = _require_own_entry(owner_id=owner_id, entry_id=entry_id)
+        entry = MoodEntry.objects.select_for_update().get(pk=entry.pk)
         if emotion is not None:
             if emotion not in EMOTIONS:
                 raise InputInvalid({"field": "emotion",
@@ -137,30 +186,69 @@ class MoodEntryService:
 
 
 class MoodShareService:
-    def share(self, *, owner_id: str, entry_id: str,
-              recipient_id: str) -> MoodShare:
+    def share(self, *, owner_id: str, entry_id: str, recipient_id: str,
+              expected_revision: Optional[int] = None) -> MoodShare:
+        """Share EXACTLY this entry with ONE currently-connected recipient.
+
+        expected_revision pins the version the owner previewed/confirmed;
+        a mismatch is a 409 stale error — the current revision is NEVER
+        shared silently when the owner confirmed an older one.
+        Re-share after revoke/reconnect is an explicit new confirmation:
+        the connection is re-validated NOW and the grant rebinds to the
+        current connection identity/generation (revoked grants never
+        revive without this explicit call)."""
+        # Existence/ownership fail first (patchable gate, 404 semantics),
+        # but the REVISION the grant pins must be decided under the row
+        # lock — otherwise a concurrent edit could commit a new revision
+        # between the check and the grant write (R02: unapproved content
+        # became readable under a reused revision).
         entry = _require_own_entry(owner_id=owner_id, entry_id=entry_id)
         if str(recipient_id) == str(owner_id):
             raise InputInvalid({"field": "recipient_id",
                                 "reason": "cannot_share_to_self"})
-        reader = registry.get_connection_reader()
-        if reader is None:
-            raise ModuleUnavailable({"reason": "connection_reader_not_wired"})
-        connection = reader.active_connection_between(
-            user_a=str(owner_id), user_b=str(recipient_id))
-        if connection is None:
-            raise NotFound({"reason": "no_active_connection"})
-        share, created = MoodShare.objects.get_or_create(
-            entry=entry, recipient_id=str(recipient_id),
-            approved_revision=entry.revision,
-            defaults={"owner_id": str(owner_id),
-                      "connection_id": str(connection.connection_id),
-                      "connection_generation": connection.generation})
-        if not created and share.revoked_at is not None:
-            # A revoked grant is TERMINAL for this (entry, recipient, revision)
-            # (FL-05): re-sharing the same revision would silently revive it.
-            # The owner edits the entry (new revision) and shares that.
-            raise InputInvalid({"reason": "reshare_after_revoke_requires_edit"})
+        if expected_revision is not None and (
+                isinstance(expected_revision, bool) or not isinstance(
+                    expected_revision, int) or expected_revision < 1):
+            raise InputInvalid({"field": "expected_revision",
+                                "reason": "must_be_positive_int"})
+        reader = _require_reader()
+        try:
+            with transaction.atomic():
+                locked = MoodEntry.objects.select_for_update().get(pk=entry.pk)
+                if expected_revision is not None and (
+                        expected_revision != locked.revision):
+                    raise PreviewStale({
+                        "reason": "stale_revision",
+                        "field": "expected_revision",
+                        "expected_revision": expected_revision,
+                        "current_revision": locked.revision,
+                    })
+                connection = reader.active_connection_between(
+                    user_a=str(owner_id), user_b=str(recipient_id))
+                if connection is None:
+                    raise NotFound({"reason": "no_active_connection"})
+                current_conn_id = str(getattr(connection, "connection_id", ""))
+                current_generation = int(getattr(connection, "generation", 0) or 0)
+                share, created = MoodShare.objects.get_or_create(
+                    entry=locked, recipient_id=str(recipient_id),
+                    approved_revision=locked.revision,
+                    defaults={"owner_id": str(owner_id),
+                              "connection_id": current_conn_id,
+                              "connection_generation": current_generation})
+                if not created:
+                    # Explicit re-share of an existing (entry, recipient,
+                    # revision) grant: reactivate a revoked row ONLY here
+                    # (owner action), and always rebind to the CURRENT
+                    # connection identity/generation.
+                    share.revoked_at = None
+                    share.connection_id = current_conn_id
+                    share.connection_generation = current_generation
+                    share.save(update_fields=["revoked_at", "connection_id",
+                                              "connection_generation"])
+        except IntegrityError as exc:
+            raise InputInvalid({
+                "reason": "share_conflict_retry",
+            }) from exc
         return share
 
     def revoke(self, *, owner_id: str, share_id: str) -> MoodShare:
@@ -170,10 +258,11 @@ class MoodShareService:
         if share.revoked_at is None:
             share.revoked_at = _now()
             share.save(update_fields=["revoked_at"])
-            # R10 fix: EVERY revoke entry point is durable — the domain path
-            # appends the same ``grant_revoked`` ledger event as the F15 API
-            # so a backup restore replays it. ImportError-guarded: standalone
-            # runs without f15_privacy keep working (coupling documented).
+            # R10 fix (union F15): EVERY revoke entry point is durable — the
+            # domain path appends the same ``grant_revoked`` ledger event as
+            # the F15 API so a backup restore replays it. ImportError-guarded:
+            # standalone runs without f15_privacy keep working (coupling
+            # documented).
             try:
                 from family_bridge_features.f15_privacy.models import (
                     DeletionLedgerEvent,
@@ -190,58 +279,88 @@ class MoodShareService:
                 pass
         return share
 
+    @staticmethod
+    def _connections_current(reader, shares) -> Dict[str, Dict[str, bool]]:
+        """For each share row, decide whether its stored connection binding
+        matches the CURRENT active connection for that pair. One reader
+        lookup per distinct (owner, recipient) PAIR (R03 fix: the lookup
+        depends on both sides; caching by recipient_id alone reused the
+        first owner's verdict for every other owner sharing with the same
+        recipient and silently dropped their grants from the list).
+        Bounded by the page size (<= 50 distinct pairs)."""
+        verdicts: Dict[str, Dict[str, bool]] = {}
+        cache: Dict[Tuple[str, str], Any] = {}
+        for share in shares:
+            owner_key = str(share.owner_id)
+            recipient_key = str(share.recipient_id)
+            pair = (owner_key, recipient_key)
+            if pair not in cache:
+                cache[pair] = reader.active_connection_between(
+                    user_a=owner_key, user_b=recipient_key)
+            connection = cache[pair]
+            ok = (
+                connection is not None
+                and str(getattr(connection, "connection_id", ""))
+                == str(share.connection_id)
+                and int(getattr(connection, "generation", 0) or 0)
+                == int(share.connection_generation)
+            )
+            verdicts.setdefault(recipient_key, {})[str(share.pk)] = ok
+        return verdicts
+
     def list_shared_by_me(self, *, owner_id: str, entry_id: str):
-        return MoodShare.objects.filter(
-            owner_id=str(owner_id), entry_id=entry_id,
-            revoked_at__isnull=True).select_related("entry")
+        """Owner's per-entry grants with their TRUE status: active /
+        stale_revision / revoked / unlinked. Stale or revoked rows are
+        listed (bounded) but never labeled as still readable."""
+        reader = _require_reader()
+        rows = list(MoodShare.objects.filter(
+            owner_id=str(owner_id), entry_id=entry_id)
+            .select_related("entry").order_by("-created_at")[:MAX_OWNED_SHARE_ROWS])
+        if not rows:
+            return rows
+        entry = rows[0].entry
+        verdicts = self._connections_current(reader, rows)
+        for row in rows:
+            if row.revoked_at is not None:
+                row.share_status = "revoked"
+            elif row.approved_revision != entry.revision:
+                row.share_status = "stale_revision"
+            elif not verdicts.get(str(row.recipient_id), {}).get(str(row.pk)):
+                row.share_status = "unlinked"
+            else:
+                row.share_status = "active"
+        return rows
 
-    def list_shared_with_me(self, *, recipient_id: str):
-        """Active grants for the recipient whose revision is STILL current
-        (edited entries disappear until re-shared) AND whose recorded
-        connection is still the ACTIVE connection at the SAME generation
-        (a reconnect never revives stale bindings — F15/WF-04).
-
-        R09 fix: the (connection_id, generation) binding filter runs in SQL
-        BEFORE any bound, so stale rows on old connections can no longer
-        push valid grants past the list bound. The Python re-check below
-        remains as the authoritative second line of defense."""
-        from django.db.models import F, Q
-
-        rows = (MoodShare.objects
-                .filter(recipient_id=str(recipient_id),
-                        revoked_at__isnull=True,
-                        approved_revision=models_f7_entry_revision())
-                .select_related("entry", "owner")
-                .order_by("-created_at", "-id"))
-        reader = registry.get_connection_reader()
-        if reader is None:
-            return []  # fail-closed: cannot verify connection state
-        active = {}
-        bindings = []
-        result = reader.list_active_for_user(user_id=str(recipient_id))
-        connections = result[0] if isinstance(result, tuple) else result
-        for connection in connections:
-            other = connection.party_b if connection.party_a == str(recipient_id) \
-                else connection.party_a
-            active[str(other)] = connection
-            bindings.append(Q(connection_id=str(connection.connection_id),
-                              connection_generation=int(connection.generation)))
-        if bindings:
-            pair_q = bindings[0]
-            for q in bindings[1:]:
-                pair_q |= q
-            rows = rows.filter(pair_q)
-        bounded = list(rows[:_LIST_BINDING_BOUND])
-        return [row for row in bounded
-                if _binding_current(row, owner_id=str(row.owner_id),
-                                    recipient_id=str(recipient_id),
-                                    active=active)]
+    def list_shared_with_me(self, *, recipient_id: str,
+                            cursor: Optional[str] = None,
+                            page_size: int = 20):
+        """Active grants for the recipient that are STILL readable: revision
+        current + connection still the one bound at share time. Filtered in
+        the DB first (recipient/revoked/revision), connection re-checked per
+        row on the bounded page; cursor pagination keeps the list bounded."""
+        from family_bridge_core.drf import cursor_paginate
+        from django.db.models import F
+        reader = _require_reader()
+        qs = (MoodShare.objects
+              .filter(recipient_id=str(recipient_id),
+                      revoked_at__isnull=True,
+                      approved_revision=F("entry__revision"))
+              .select_related("entry", "owner"))
+        rows, next_cursor = cursor_paginate(qs, cursor=cursor,
+                                            page_size=page_size,
+                                            timestamp_field="created_at")
+        if rows:
+            verdicts = self._connections_current(reader, rows)
+            rows = [row for row in rows
+                    if verdicts.get(str(row.recipient_id), {})
+                              .get(str(row.pk))]
+        return rows, next_cursor
 
     def read_shared(self, *, recipient_id: str, share_id: str) -> Dict[str, Any]:
-        """Recipient read path — re-checks EVERYTHING at read time:
-        grant unrevoked + revision still current + connection ACTIVE at the
-        CURRENT generation AND the grant's recorded connection binding is
-        still the live one. Any drift -> 404 (fail closed, no cache)."""
+        """Recipient read path — re-checks EVERYTHING at read time, fail
+        closed on any drift or missing dependency:
+        grant unrevoked + revision still current + connection ACTIVE with
+        the SAME identity AND generation bound at share time."""
         share = MoodShare.objects.select_related("entry").filter(
             pk=share_id).first()
         if share is None or str(share.recipient_id) != str(recipient_id):
@@ -250,17 +369,18 @@ class MoodShareService:
             raise NotFound({"reason": "share_not_found"})
         if share.approved_revision != share.entry.revision:
             raise NotFound({"reason": "entry_edited_not_reshared"})
-        reader = registry.get_connection_reader()
-        if reader is None:
-            raise NotFound({"reason": "share_not_found"})
+        reader = _require_reader()
         connection = reader.active_connection_between(
             user_a=str(share.owner_id), user_b=str(recipient_id))
         if connection is None:
             raise NotFound({"reason": "share_not_found"})
         if (str(getattr(connection, "connection_id", ""))
                 != str(share.connection_id)
-                or int(getattr(connection, "generation", -1))
+                or int(getattr(connection, "generation", 0) or 0)
                 != int(share.connection_generation)):
+            # Old grant over a dead connection id/generation: reconnecting
+            # the same two people creates a NEW connection and must NOT
+            # revive grants made against the previous one.
             raise NotFound({"reason": "share_not_found"})
         return {
             "share_id": str(share.id),
@@ -268,25 +388,3 @@ class MoodShareService:
             "owner_id": str(share.owner_id),
             "shared_at": share.created_at.isoformat(),
         }
-
-
-def models_f7_entry_revision():
-    """F(...) helper keeping the queryset import local for readability."""
-    from django.db.models import F
-    return F("entry__revision")
-
-
-_LIST_BINDING_BOUND = 200  # DSA bound before the binding filter
-
-
-def _binding_current(share, *, owner_id: str, recipient_id: str,
-                     active: dict) -> bool:
-    """True when the grant's recorded connection is STILL the active
-    connection between the pair at the SAME generation."""
-    connection = active.get(str(owner_id))
-    if connection is None:
-        return False
-    return (str(getattr(connection, "connection_id", ""))
-            == str(share.connection_id)
-            and int(getattr(connection, "generation", -1))
-            == int(share.connection_generation))

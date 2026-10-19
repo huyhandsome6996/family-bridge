@@ -862,16 +862,120 @@ export function createHttpEndpoints({
 
     async listMoodEntries({ cursor = null, limit } = {}) {
       requireBaseUrl();
+      // Backend đọc `page_size` (validate_page_size) — tham số `limit` của
+      // caller giữ nguyên tên để không phá consumer, nhưng PHẢI map đúng
+      // query param server đọc; trước đây gửi `limit` và bị bỏ qua im lặng
+      // (phân trang vô hiệu, lịch sử tải không giới hạn).
       const data = await authed(() => request("/api/v1/mood/entries", {
         query: {
           ...(cursor ? { cursor } : {}),
-          ...(limit ? { limit: String(limit) } : {}),
+          ...(limit ? { page_size: String(limit) } : {}),
         },
       }));
       return {
         results: data && Array.isArray(data.results) ? data.results : [],
         nextCursor: (data && data.next) || null,
       };
+    },
+
+    // ------------------- F07 (US-015/US-026): chi tiết/sửa/tổng hợp ----------
+
+    /** GET /api/v1/mood/entries/{id} — mục của chính mình. */
+    async getMoodEntry(entryId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}`));
+      return data;
+    },
+
+    /** PATCH /api/v1/mood/entries/{id} — sửa mục, revision +1; bản mới
+     * KHÔNG tự chia sẻ cho người nhận cũ. */
+    async editMoodEntry(entryId, { emotion = null, note = null } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}`, {
+          method: "PATCH",
+          body: {
+            ...(emotion ? { emotion } : {}),
+            ...(note !== null ? { note } : {}),
+          },
+        }));
+      return data; // entry.view() với revision mới
+    },
+
+    /** GET /api/v1/mood/entries/summary — đếm mô tả của chính mình. */
+    async moodSummary(days = null) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/mood/entries/summary", {
+        query: days ? { days: String(days) } : {},
+      }));
+      return data || { results: [], emotions: [] };
+    },
+
+    // ------------------- F07: chia sẻ từng mục ------------------------------
+
+    /** GET /api/v1/mood/entries/{id}/shares — mục này đang chia sẻ cho ai
+     * với trạng thái THẬT (active/stale_revision/revoked/unlinked). */
+    async listMoodEntryShares(entryId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}/shares`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/mood/entries/{id}/share — chia sẻ ĐÚNG mục cho ĐÚNG
+     * một người đang kết nối, tại revision ĐÃ xem trước (expectedRevision;
+     * lệch -> 409 stale). KHÔNG tự retry thao tác ghi. */
+    async shareMoodEntry(entryId, { recipientId, expectedRevision = null } = {}) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/entries/${encodeURIComponent(entryId)}/share`, {
+          method: "POST",
+          body: {
+            recipient_id: recipientId,
+            ...(expectedRevision ? { expected_revision: expectedRevision } : {}),
+          },
+        }));
+      return data; // grant_view() (201) với status thật của grant
+    },
+
+    /** POST /api/v1/mood/shares/{id}/revoke — thu hồi ĐÚNG grant này;
+     * các mục/người nhận khác không đổi. */
+    async revokeMoodShare(shareId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/shares/${encodeURIComponent(shareId)}/revoke`, {
+          method: "POST",
+          body: {},
+        }));
+      return data;
+    },
+
+    /** GET /api/v1/mood/shared — những mục CÒN ĐƯỢC PHÉP xem (máy chủ lọc
+     * quyền trước phân trang; `limit` map đúng `page_size`). */
+    async listSharedMoodEntries({ cursor = null, limit } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/mood/shared", {
+        query: {
+          ...(cursor ? { cursor } : {}),
+          ...(limit ? { page_size: String(limit) } : {}),
+        },
+      }));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        nextCursor: (data && data.next) || null,
+      };
+    },
+
+    /** GET /api/v1/mood/shared/{id} — máy chủ recheck quyền MỖI lần đọc;
+     * 404 khi thu hồi/đã sửa/không còn kết nối. */
+    async getSharedMoodEntry(shareId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/mood/shared/${encodeURIComponent(shareId)}`));
+      return data;
     },
 
     /** GET /api/v1/program/my — enrollment CẢ các row opted-out (trung thực). */

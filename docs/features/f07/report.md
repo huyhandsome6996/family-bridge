@@ -76,3 +76,55 @@ node 3/3 PASS.
 - B18: wire ConnectionReader thật; register mood grant provider vào F15
   policy registry (item_type="mood_entry"); nhãn cảm xúc chính thức cần
   Thầy duyệt (US-005) — hiện là nhãn DEC-17 provisional.
+
+## Cập nhật 18/10/2026 — đợt kiểm thử/sửa/hoàn thiện (nhánh tinh-nang/f07-tam-trang-va-chia-se-us015-us026, sync main 571abcb)
+
+Sửa 8 lỗi được tái hiện bằng test trước khi vá (không vá mù):
+
+1. `MoodEntrySharesView` gọi `get_own(author_id=...)` — kwarg sai → 500 cho
+   chính owner. Sửa: `owner_id=`.
+2. `read_shared()` bỏ qua kiểm tra connection khi thiếu reader (fail-open).
+   Sửa: thiếu reader → `ModuleUnavailable` (fail-closed) ở MỌI path chia sẻ/đọc.
+3. Grant không bind connection identity/generation hiện hành. Sửa: đọc so
+   `connection_id` + `generation` với connection active hiện tại; reconnect
+   generation mới không hồi sinh grant cũ.
+4. `share()` `get_or_create` trả row revoked như thành công và không rebind
+   connection sau reconnect. Sửa: re-share là hành động tường minh — kích hoạt
+   lại đúng row đó kèm re-validate connection + rebind id/generation.
+5. `/mood/shared` không phân trang + không recheck connection (metadata leak
+   sau unlink). Sửa: cursor pagination (`page_size`, `next`) + recheck
+   connection per-row trên trang bounded.
+6. Share không pin bản đã xem trước. Sửa: nhận `expected_revision` (validation
+   `validate_revision`); lệch bản → `PreviewStale` 409 `stale_revision`; grant
+   bind đúng bản được xác nhận. Client Mini App luôn gửi `expected_revision`.
+7. Shared adapter gửi query `limit` trong khi API đọc `page_size` — phân trang
+   bị bỏ qua im lặng. Sửa: map `limit` (tên tham số caller giữ nguyên) →
+   `page_size`; thêm test bắt URL fetch thật.
+8. Create `.exists()` rồi insert — race thật → IntegrityError 500. Sửa: bọc
+   transaction + `IntegrityError` → 400 `entry_already_exists_use_edit`
+   (cùng recovery path với duplicate tuần tự). Race thật MySQL: NOT_RUN
+   (tests/test_race_mysql.py chạy khi FB_TEST_DB=mysql).
+
+Wiring production (trước đây chỉ test mới có): `f07_mood/apps.py ready()`
+đăng ký F01 `InviteService` làm ConnectionReader, đăng provider grant
+`mood_entry` + hook xóa `mood` vào F15 registry (pattern F16, guarded import,
+không bao giờ che lỗi của module hiện diện).
+
+Mini App chính thức: routes `/mood` + `/mood-shared` mount 2 trang mới theo
+page contract (chips radiogroup, preview đủ nội dung + revision, xác nhận
+tường minh với expected_revision, quản lý/thu hồi từng grant với badge trạng
+thái thật, phía nhận recheck mỗi lần đọc + gỡ nội dung cũ khi lần đọc mới
+bị chặn); shared adapter thêm 8 method (74→82, update contract test);
+home/profile có đường đi rõ; không đụng `web/**` (regression 227 PASS).
+
+Bằng chứng đầy đủ: `docs/handover/f07-mood-sharing/` (bàn giao) — verification
+report từng nghiệm thu, lệnh chạy, SHA.
+
+## Vòng 19/10/2026 — sửa R01–R07 + web parity
+
+Chi tiết đầy đủ ở `docs/handover/f07-mood-sharing/verification-report.md`
+(mục "Vòng 19/10/2026"). Tóm tắt số runner: F07 module SQLite 53 OK/4 skip;
+MySQL 8.4.6 53 OK/0 skip (row lock thật); race MySQL 4/4; full harness 534
+OK/13 skip; repro độc lập MySQL 3/3 OK; browser R01/R06 9/9; parity smoke
+12/12; E2E HTTP 21/21; E2E chéo UI hai client 20/20; Mini App 313 PASS +
+build; Web 243 PASS + build; shared 37; mobile 53; boundaries SẠCH; docs OK.

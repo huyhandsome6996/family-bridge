@@ -89,7 +89,15 @@ export const ADAPTER_METHODS = [
   "cancelDeletionRequest",// POST /api/v1/privacy/deletion-requests/{id}/cancel
   "withdrawConsent",      // POST /api/v1/privacy/consents/{purpose}/withdraw
   "createMoodEntry",      // POST /api/v1/mood/entries (F07 emotion allowlist)
-  "listMoodEntries",      // GET  /api/v1/mood/entries
+  "listMoodEntries",      // GET  /api/v1/mood/entries (page_size mapping đúng)
+  "getMoodEntry",         // GET   /api/v1/mood/entries/{id} (owner-only)
+  "editMoodEntry",        // PATCH /api/v1/mood/entries/{id} (revision +1, auto un-share)
+  "moodSummary",          // GET   /api/v1/mood/entries/summary (đếm mô tả)
+  "listMoodEntryShares",  // GET   /api/v1/mood/entries/{id}/shares (trạng thái thật)
+  "shareMoodEntry",       // POST  /api/v1/mood/entries/{id}/share (+expected_revision)
+  "revokeMoodShare",      // POST  /api/v1/mood/shares/{id}/revoke
+  "listSharedMoodEntries",// GET   /api/v1/mood/shared (phía nhận, có cursor)
+  "getSharedMoodEntry",   // GET   /api/v1/mood/shared/{id} (recheck mỗi lần đọc)
   "programMy",            // GET  /api/v1/program/my (kèm opted-out)
   "programWeeks",         // GET  /api/v1/program/weeks/{program_key}
   "activitiesCatalog",    // GET  /api/v1/activities/catalog

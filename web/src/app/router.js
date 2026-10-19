@@ -50,6 +50,11 @@ export const routes = {
   "/privacy": () => import("../pages/privacy/index.js"),
   // ---- Admin cấp phát cặp HS/PH (CAP-23, 18/10/2026) ----
   "/admin-provision": () => import("../pages/admin-provision/index.js"),
+  // ---- F07: tâm trạng, lịch sử và chia sẻ từng mục (US-015/US-026) ----
+  // 19/10/2026: web parity theo quyết định Huy — UI tree web độc lập, cùng
+  // gọi backend thật qua shared headless adapter (route giống Mini App).
+  "/mood": () => import("../pages/mood/index.js"),
+  "/mood-shared": () => import("../pages/mood-shared/index.js"),
 };
 
 export function parseHash() {

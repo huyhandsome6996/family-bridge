@@ -35,6 +35,16 @@
   transform: scale(0.98);
 }
 
+/* R09 (F07 audit 19/10): thuộc tính hidden phải ẩn THẬT SỰ. display:
+   inline-flex của .fb-btn đè lên default display:none cho [hidden] của UA,
+   khiến nút "Tải thêm" hết trang vẫn nhìn thấy/nhận focus/click được
+   (mini + web cùng lỗi). Quy tắc scoped cho .fb-btn: mọi nút có
+   hidden=true không hiển thị, không focus/click — các control dùng hidden
+   khác (badge/error/compose) vẫn theo quy tắc riêng của chúng. */
+.fb-btn[hidden] {
+  display: none !important;
+}
+
 .fb-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
@@ -979,18 +989,21 @@
   cursor: not-allowed;
 }
 
-/* ---- Mood grid (U08 3 cột / U10 4 cột) ---- */
+/* ---- Mood grid (U08 3 cột / U10 4 cột) ----
+   R06 reflow: track dùng minmax(0, 1fr) — nội dung KHÔNG đẩy rộng lưới
+   nữa; nhãn được phép xuống dòng (overflow-wrap) thay vì tràn ngang khi
+   chữ phóng to (200%) ở viewport 320/390. Không thu chữ, không cắt nhãn. */
 .fb-mood-grid {
   display: grid;
   gap: var(--fb-space-2);
 }
 
 .fb-mood-grid--3 {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .fb-mood-grid--4 {
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .fb-mood {
@@ -1000,6 +1013,7 @@
   justify-content: center;
   gap: 4px;
   min-height: 44px;
+  min-width: 0;
   padding: var(--fb-space-3);
   border: 0;
   border-radius: var(--fb-radius-control);
@@ -1027,6 +1041,17 @@
   font-size: var(--fb-fs-label-sm);
   line-height: var(--fb-lh-label-sm);
   font-weight: 500;
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.fb-mood .fb-sec__sub {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
 }
 
 .fb-mood[aria-pressed="true"] {
