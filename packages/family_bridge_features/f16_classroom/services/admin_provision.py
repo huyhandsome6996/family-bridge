@@ -15,6 +15,12 @@ Nguyen tac bat dien:
   tra ve ket qua da luu, khong xu ly lai; re-apply khac batch_ref tren cung
   bo hang → "pair_already_active", khong bao gio nhan doi connection
   (uniq_active_pair + generation moi khi reconnect co chu y).
+  LUU Y MariaDB/MySQL: uniq_active_pair cua f01 Connection la constraint CO
+  DIEU KIEN (Q(status="active")) — MariaDB khong ho tro nen Django khong
+  tao constraint (models.W036), INSERT trung khong bao IntegrityError.
+  Vi vay idempotency phai dam bao o TANG APP trong _create_admin_connection
+  (lock ClassAccount hai ben + select_for_update + postcondition) — thay vi
+  tin vao constraint DB nhu tren SQLite.
 - KHONG hoi sinh: cap da revoke/unlink KHONG tu active lai khi nap lai
   roster; reconnect chi xay ra khi row co allow_reconnect=true (hanh vi
   admin co y thuc, tao generation moi, grant cu van revoked — FL-20).
@@ -305,16 +311,63 @@ def _next_generation(low_id: str, high_id: str) -> int:
     return (last.generation + 1) if last else 1
 
 
+class _ActivePairRace(Exception):
+    """Noi bo: phat hien connection ACTIVE khac cua cung cap SAU khi ghi.
+
+    Chi xay ra khi DB thieu constraint dieu kien (MariaDB W036) va mot luong
+    khong qua lock f16 (vi du: luong loi moi nguoi dung cua f01) vua ghi truoc
+    — raise trong atomic de ROLLBACK dong vua tao, khong bao gio de 2 dong
+    ACTIVE cung cap.
+    """
+
+    def __init__(self, existing):
+        super().__init__("active_pair_exists")
+        self.existing = existing
+
+
 def _create_admin_connection(*, student_user, caregiver_user, admin, batch_ref):
     """Tao Connection ACTIVE canonical (party_low/high, generation theo cuoc
-    doi cap). Va cham uniq_active_pair → tra (None, existing)."""
+    doi cap). Cap da active / va cham uniq_active_pair → tra (None, existing).
+
+    Idempotent o TANG APP — bat buoc cho MariaDB/MySQL: constraint
+    uniq_active_pair cua f01 Connection co DIEU KIEN (Q(status="active"))
+    nen MariaDB khong ho tro, Django khong tao constraint (models.W036) →
+    INSERT trung KHONG bao IntegrityError nhu tren SQLite. Ba lop cham,
+    khong doi schema, khong mat du lieu:
+    1) LOCK row ClassAccount (model f16 so huu) cua hai ben trong cung
+       transaction — cac lan provision cung cap/cung tai khoan chay SERIAL
+       o moi isolation level (row lock co that, khong phu thuoc gap lock);
+    2) select_for_update connection ACTIVE cua cap — locking read thay du
+       commit moi nhat (tranh doc snapshot cu REPEATABLE READ) → cap da
+       active → KHONG ghi, tra existing;
+    3) POSTCONDITION sau khi tao: van chi dung MOT connection ACTIVE cho
+       cap; neu thread duong khac vua ghi → rollback lan ghi nay (raise
+       _ActivePairRace trong atomic) va tra existing.
+    Nhanh IntegrityError (SQLite co that constraint) giu nguyen nhu lop
+    cham cuoi cung.
+    """
     from family_bridge_features.f01_identity.models import (
         CONNECTION_ACTIVE, CONNECTION_SOURCE_ADMIN, Connection,
     )
+    from ..models import ClassAccount
     User = get_user_model()
     low_id, high_id = sorted([str(student_user.pk), str(caregiver_user.pk)])
     try:
         with transaction.atomic():
+            # (1) Khoa row ClassAccount cua hai ben (f16 so huu) — diem
+            # serial hoa chung cho moi luong provision/backfill; user_id
+            # tang dan (index duy nhat cua OneToOne) → thu tu khoa deterministic.
+            # SQLite: FOR UPDATE la no-op, van dung trong atomic.
+            list(ClassAccount.objects.select_for_update()
+                 .filter(user_id__in=[student_user.pk, caregiver_user.pk])
+                 .order_by("user_id"))
+            # (2) Locking read — luon thay du lieu commit moi nhat.
+            existing = (Connection.objects.select_for_update()
+                        .filter(party_low_id=low_id, party_high_id=high_id,
+                                status=CONNECTION_ACTIVE)
+                        .order_by("-generation").first())
+            if existing is not None:
+                return None, existing
             connection = Connection.objects.create(
                 party_low=User.objects.get(pk=low_id),
                 party_high=User.objects.get(pk=high_id),
@@ -326,7 +379,19 @@ def _create_admin_connection(*, student_user, caregiver_user, admin, batch_ref):
                 source_admin=str(admin.pk),
                 source_batch=str(batch_ref)[:64],
             )
-        return connection, None
+            # (3) Postcondition: khong duoc ton tai dong ACTIVE thu hai
+            # cua cung cap sau lan ghi nay.
+            dupe = (Connection.objects.select_for_update()
+                    .filter(party_low_id=low_id, party_high_id=high_id,
+                            status=CONNECTION_ACTIVE)
+                    .exclude(pk=connection.pk).first())
+            if dupe is not None:
+                raise _ActivePairRace(dupe)
+            return connection, None
+    except _ActivePairRace as exc:
+        # Atomic da rollback dong vua tao — giu dong co san truoc do;
+        # nguoi goi xu ly giong nhanh "cap da active" (STATUS_ALREADY).
+        return None, exc.existing
     except IntegrityError:
         existing = (Connection.objects
                     .filter(party_low_id=low_id, party_high_id=high_id,
