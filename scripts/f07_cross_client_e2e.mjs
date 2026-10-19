@@ -1,7 +1,11 @@
 #!/usr/bin/env node
-// scripts/f07_cross_client_e2e.mjs — E2E chéo hai client (X01–X06, X08, X09)
-// qua UI THẬT (Playwright) cùng backend thật. KHÔNG gọi adapter từ console để
-// thay bằng chứng UI; không token vào URL/storage/log; dữ liệu synthetic.
+// scripts/f07_cross_client_e2e.mjs — E2E chéo hai client (X01–X09) qua UI
+// THẬT (Playwright) cùng backend thật. KHÔNG gọi adapter từ console để thay
+// bằng chứng UI; không token vào URL/storage/log; dữ liệu synthetic.
+//
+// Trạng thái kết quả TÁCH RIÊNG: PASS / FAIL / NOT_RUN / BLOCKED (bài học
+// audit 19/10: NOT_RUN KHÔNG được cộng vào PASS; "20/20 PASS" cũ thực chất
+// là 19 assertion chạy + 1 dòng NOT_RUN). Exit 1 CHỈ khi có FAIL.
 //
 // Yêu cầu môi trường (xem tests/handover F07):
 //   - backend Django:     $F07_API_BASE  (mặc định http://127.0.0.1:8019)
@@ -10,9 +14,11 @@
 //   - fixture parity:     HSPAR19 / PHPAR19 (seed_parity.py, admin_provisioned,
 //     invite NULL) + HSZE2E99 (người lạ, f07_local_fixtures.py)
 //   - mật khẩu synthetic: $F07_SYNTHETIC_PASSWORD (fixture local, không log)
-// Đầu ra: JSON + screenshot vào $F07_E2E_OUTPUT. Exit 1 nếu bất kỳ phép kiểm
-// nào FAIL. X07 (unlink/reconnect qua UI) chỉ chạy khi F07_E2E_WITH_UNLINK=1
-// vì hủy kết nối làm mất trạng thái fixture dùng chung.
+//   - X07 unlink/reconnect: CHỈ chạy trên cặp fixture RIÊNG cho bước này
+//     (F07_E2E_WITH_UNLINK=1 + F07_E2E_UNLINK_HS/F07_E2E_UNLINK_PH) vì hủy
+//     kết nối phá trạng thái pair dùng chung; KHÔNG hồi sinh grant cũ bằng
+//     seed/DB. Không có cặp riêng -> X07 = NOT_RUN (không tính PASS).
+// Đầu ra: JSON + screenshot vào $F07_E2E_OUTPUT.
 import { mkdir, writeFile } from "node:fs/promises";
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || "playwright");
 
@@ -31,11 +37,21 @@ for (const value of [apiBase, ...Object.values(origins)]) {
 }
 await mkdir(output, { recursive: true });
 
-const results = [];
+const results = [];   // { name, status: PASS|FAIL, observed }
+const notRun = [];    // { name, status: "NOT_RUN"|"BLOCKED", reason }
+const mappings = [];  // ánh xạ tầng kiểm thử cho X09/X10 — không cộng PASS
 const requests = [];
 function check(name, pass, observed) {
-  results.push({ name, pass, observed });
+  results.push({ name, status: pass ? "PASS" : "FAIL", pass, observed });
   console.log(`${pass ? "PASS" : "FAIL"} ${name}: ${JSON.stringify(observed)}`);
+}
+function markNotRun(name, reason, status = "NOT_RUN") {
+  notRun.push({ name, status, reason });
+  console.log(`${status} ${name}: ${reason}`);
+}
+function mapLayer(name, detail) {
+  mappings.push({ name, detail });
+  console.log(`MAP ${name}: ${detail}`);
 }
 
 const browser = await chromium.launch({
@@ -107,13 +123,19 @@ async function latestHistoryRow(page) {
   return { text, revision: match ? Number(match[1]) : null, row };
 }
 
-/** Sheet chia sẻ: mở từ dòng lịch sử mới nhất, trả preview revision. */
-async function shareLatest(page, _recipientLabel) {
+/** Mở sheet chia sẻ từ dòng lịch sử mới nhất; KHÔNG xác nhận. Trả sheet. */
+async function openShareSheet(page) {
   await page.locator("[data-page='mood'] button", { hasText: "Chia sẻ mục này" })
     .first().click();
   const sheet = page.locator(".fb-sheet");
   await sheet.waitFor({ timeout: 15000 });
   await wait(400);
+  return sheet;
+}
+
+/** Sheet chia sẻ: mở từ dòng lịch sử mới nhất, chọn người nhận, xác nhận. */
+async function shareLatest(page, _recipientLabel) {
+  const sheet = await openShareSheet(page);
   const previewText = norm(await sheet.innerText());
   const previewRev = Number((previewText.match(/Phiên bản:\s*(\d+)/) || [])[1]);
   const select = sheet.locator("#mood-share-recipient");
@@ -258,13 +280,68 @@ try {
     .includes(`Phiên bản: ${sharedRev2}`);
   check("X05-stale-grant-hidden-on-web", !staleVisible, { staleRev: sharedRev2, blocked: !staleVisible });
 
+  // ------ X05b (R10): preview cũ xác nhận ở client kia -> lỗi 409 NẰM
+  // TRONG sheet (live region), có đường "Xem lại bản mới"; KHÔNG tự share.
+  let currentNote = N4; // theo dõi note hiện hành — mỗi edit đều đổi note
+  {
+    const x05bNote = `X05b stale ${suffix}`;
+    const sheet = await openShareSheet(hsMini.page); // preview rev hiện hành
+    const previewRev = Number(
+      (norm(await sheet.innerText()).match(/Phiên bản:\s*(\d+)/) || [])[1]);
+    const sharePostsBefore = requests.filter((r) =>
+      r.tag === "HS-mini" && r.method === "POST" && r.path.endsWith("/share")).length;
+    await editEntry(hsWeb.page, true, "lo", x05bNote); // revision +1 ở client kia
+    currentNote = x05bNote;
+    const select = sheet.locator("#mood-share-recipient");
+    if ((await select.locator("option").count()) > 0) await select.selectOption({ index: 0 });
+    const shareResponse = hsMini.page.waitForResponse(
+      (r) => r.request().method() === "POST"
+        && new URL(r.url()).pathname.endsWith("/share"));
+    await sheet.locator("button", { hasText: "Xác nhận chia sẻ" }).click();
+    const response = await shareResponse;
+    let errorCode = null;
+    try { errorCode = (await response.json()).error?.code || null; } catch { /* body lỗi */ }
+    await wait(300);
+    const sheetStillOpen = (await sheet.count()) === 1
+      && (await sheet.innerText()).length > 0;
+    const sheetText = norm(await sheet.innerText());
+    const editorBehind = norm(await hsMini.page
+      .locator("[data-page='mood']").innerText());
+    const feedbackInSheet = sheetText.includes("Mục này vừa đổi");
+    const confirmLocked = await sheet
+      .locator("button", { hasText: "Xác nhận chia sẻ" }).first()
+      .isDisabled();
+    const refreshVisible = await sheet
+      .locator("button", { hasText: "Xem lại bản mới" }).first()
+      .isVisible().catch(() => false);
+    // Phục hồi chủ động: xem bản mới (GET) — KHÔNG tự share revision mới.
+    await sheet.locator("button", { hasText: "Xem lại bản mới" }).first().click();
+    await wait(600);
+    const refreshedText = norm(await sheet.innerText());
+    const refreshedRev = Number((refreshedText.match(/Phiên bản:\s*(\d+)/) || [])[1]);
+    const sharePostsAfterRefresh = requests.filter((r) =>
+      r.tag === "HS-mini" && r.method === "POST" && r.path.endsWith("/share")).length;
+    await hsMini.page.keyboard.press("Escape");
+    await wait(300);
+    check("X05b-stale-error-inside-sheet",
+      response.status() === 409 && errorCode === "preview_stale"
+      && sheetStillOpen && feedbackInSheet && confirmLocked && refreshVisible,
+      { status: response.status(), code: errorCode, inSheet: feedbackInSheet,
+        locked: confirmLocked, refresh: refreshVisible });
+    check("X05b-recovery-refresh-only",
+      refreshedRev === previewRev + 1
+        && sharePostsAfterRefresh === sharePostsBefore + 1,
+      { previewRev, refreshedRev, shareAttempts: sharePostsAfterRefresh - sharePostsBefore });
+    await hsMini.page.screenshot({ path: `${output}/x05b-stale-sheet.png`, fullPage: true });
+  }
+
   // ----------------- X06a: revoke trên web -> mini không đọc tiếp được
   await refreshMood(hsWeb.page); // UI web đang giữ rev cũ sau edit của mini
   const sharedRev3 = await shareLatest(hsWeb.page, recipientLabel); // chia sẻ lại bản hiện hành
   await goto(phMini.page, "profile"); // remount trung gian
   await goto(phMini.page, "mood-shared");
   const phRead3 = await readFirstShared(phMini.page);
-  check("X06a-reshare-readable-on-mini", phRead3.text.includes(N4) && phRead3.revision === sharedRev3,
+  check("X06a-reshare-readable-on-mini", phRead3.text.includes(currentNote) && phRead3.revision === sharedRev3,
     { sharedRev: sharedRev3, phRev: phRead3.revision });
   await revokeLatestInSheet(hsWeb.page);
   await goto(phMini.page, "profile"); // remount trung gian
@@ -279,7 +356,7 @@ try {
   await goto(phWeb.page, "profile"); // remount trung gian
   await goto(phWeb.page, "mood-shared");
   const phRead4 = await readFirstShared(phWeb.page);
-  check("X06b-reshare-readable-on-web", phRead4.text.includes(N4) && phRead4.revision === sharedRev4,
+  check("X06b-reshare-readable-on-web", phRead4.text.includes(currentNote) && phRead4.revision === sharedRev4,
     { sharedRev: sharedRev4, phRev: phRead4.revision });
   await revokeLatestInSheet(hsMini.page);
   await goto(phWeb.page, "profile"); // remount trung gian
@@ -289,43 +366,114 @@ try {
   check("X06b-mini-revoke-blocks-web", blockedOnWeb, { revokedRev: sharedRev4, blocked: blockedOnWeb });
   await hsMini.page.screenshot({ path: `${output}/x06-mini-after-revoke.png`, fullPage: true });
 
-  // ----------------- X07 (tùy chọn): hủy kết nối qua UI /connect
-  if (process.env.F07_E2E_WITH_UNLINK === "1") {
-    await goto(hsWeb.page, "connect");
-    await hsWeb.page.locator("button", { hasText: "Hủy kết nối" }).first().click();
-    const unlinkDialog = hsWeb.page.locator(".fb-dialog");
+  // ---- X07 (tùy chọn): hủy kết nối qua UI — CHỈ trên cặp fixture RIÊNG
+  // (F07_E2E_UNLINK_HS/PH) để không phá pair chính và không hồi sinh grant
+  // bằng seed/DB. HS của cặp riêng chia sẻ 1 mục cho PH riêng, rồi unlink.
+  const unlinkHs = process.env.F07_E2E_UNLINK_HS;
+  const unlinkPh = process.env.F07_E2E_UNLINK_PH;
+  if (process.env.F07_E2E_WITH_UNLINK === "1" && unlinkHs && unlinkPh) {
+    const uHs = await newClientPage("web", "unlink-HS");
+    const uPh = await newClientPage("mini", "unlink-PH");
+    check("X07 unlink-hs-login",
+      (await login(uHs.page, "web", unlinkHs)) === 200, 200);
+    check("X07 unlink-ph-login",
+      (await login(uPh.page, "mini", unlinkPh)) === 200, 200);
+    await goto(uHs.page, "mood");
+    const unlinkNote = `X07 unlink ${suffix}`;
+    await editEntry(uHs.page, false, "vui", unlinkNote);
+    const sheetU = await openShareSheet(uHs.page);
+    const selectU = sheetU.locator("#mood-share-recipient");
+    if ((await selectU.locator("option").count()) > 0) {
+      await selectU.selectOption({ index: 0 });
+      await sheetU.locator("button", { hasText: "Xác nhận chia sẻ" }).click();
+      await sheetU.waitFor({ state: "detached", timeout: 15000 });
+      await goto(uPh.page, "mood-shared");
+      const beforeUnlink = await readFirstShared(uPh.page);
+      check("X07 grant-readable-before-unlink",
+        beforeUnlink.text.includes(unlinkNote), { ok: true });
+    } else {
+      markNotRun("X07 grant-readable-before-unlink",
+        "pair riêng chưa có kết nối active — cần fixture reconnect đúng quy trình", "BLOCKED");
+    }
+    // Unlink qua UI (F15 cũng chạy ở tầng HTTP E2E 21 bước).
+    await goto(uHs.page, "connect");
+    await uHs.page.locator("button", { hasText: "Hủy kết nối" }).first().click();
+    const unlinkDialog = uHs.page.locator(".fb-dialog");
     await unlinkDialog.waitFor({ timeout: 15000 });
     await unlinkDialog.locator("button", { hasText: "Hủy kết nối" }).last().click();
     await wait(500);
-    await goto(phMini.page, "profile"); // remount trung gian
-    await goto(phMini.page, "mood-shared");
-    const afterUnlink = await phMini.page.locator("[data-page='mood-shared']").innerText();
-    check("X07-unlink-blocks-read", !afterUnlink.includes("Phiên bản:"), { blocked: true });
+    await goto(uPh.page, "mood-shared");
+    const afterUnlink = await uPh.page.locator("[data-page='mood-shared']").innerText();
+    check("X07-unlink-blocks-read",
+      !afterUnlink.includes("Phiên bản:") && !afterUnlink.includes(unlinkNote),
+      { blocked: true });
+    await uHs.context.close();
+    await uPh.context.close();
   } else {
-    check("X07-unlink-ui", true, "NOT_RUN (F07_E2E_WITH_UNLINK!=1) — phủ bởi regression backend Finding3/Finding4 + f07_local_e2e F15 bước 20-21");
+    markNotRun("X07-unlink-ui",
+      "NOT_RUN (F07_E2E_WITH_UNLINK!=1 hoặc thiếu F07_E2E_UNLINK_HS/PH) — "
+      + "phủ bởi regression backend Finding3/Finding4 + f07_local_e2e F15 "
+      + "bước unlink (HTTP 21 bước); UI unlink/reconnect cần cặp fixture riêng");
   }
+  mapLayer("X07 unlink/reconnect/F15",
+    "UI (script này, khi bật cờ + cặp riêng) + HTTP E2E 21 bước (F15, unlink) "
+    + "+ backend regression Finding3/4 — không hồi sinh grant bằng seed/DB");
 
   // ----------------- X08: logout bằng nút thật -> không còn private DOM
-  await goto(phWeb.page, "mood-shared"); // đọc lần cuối trước khi logout
-  await readFirstShared(phWeb.page).catch(() => null);
-  // Đảm bảo PH còn quyền: chia sẻ lại từ mini trước khi test logout
+  // Bắt buộc: CẢ HAI PH đang xem private detail thật sự trước logout, kiểm
+  // AND (note VÀ revision) — không dùng OR, không logout khi màn hình trống.
   await refreshMood(hsMini.page);
   const sharedRev5 = await shareLatest(hsMini.page, recipientLabel);
   await goto(phWeb.page, "mood-shared");
   const phRead5 = await readFirstShared(phWeb.page);
-  check("X08-prelogout-readable", phRead5.text.includes(N4) || phRead5.revision === sharedRev5,
-    { sharedRev: sharedRev5 });
-  const noteOnScreen = N4;
+  check("X08-prelogout-readable-web",
+    phRead5.text.includes(currentNote) && phRead5.revision === sharedRev5,
+    { sharedRev: sharedRev5, note: phRead5.text.includes(currentNote), rev: phRead5.revision });
+  await goto(phMini.page, "mood-shared");
+  const phRead5m = await readFirstShared(phMini.page);
+  check("X08-prelogout-readable-mini",
+    phRead5m.text.includes(currentNote) && phRead5m.revision === sharedRev5,
+    { sharedRev: sharedRev5, note: phRead5m.text.includes(currentNote), rev: phRead5m.revision });
+
+  // Late response: chi tiết share đang bay -> logout trước khi response về;
+  // phản hồi muộn KHÔNG được render nội dung riêng lên phiên đã đăng xuất.
+  await phMini.context.route("**/api/v1/mood/shared/*", async (route) => {
+    await wait(2500);
+    await route.continue();
+  });
+  await goto(phMini.page, "mood-shared");
+  const lateRow = phMini.page.locator(".fb-list__item", { hasText: "Mở nội dung" }).first();
+  await lateRow.waitFor({ timeout: 15000 });
+  await lateRow.locator("button", { hasText: "Mở nội dung" }).click();
+  await wait(200); // request đang treo trong route delay
+  await logoutViaUi(phMini.page, "mini"); // logout khi response chưa về
+  await wait(2800); // cho response muộn về sau logout
+  const miniBodyAfterLogout = await phMini.page.evaluate(() => document.body.innerText);
+  check("X08-mini-logout-no-private-dom",
+    !miniBodyAfterLogout.includes(currentNote) && !miniBodyAfterLogout.includes(N1)
+      && !miniBodyAfterLogout.includes(`Phiên bản: ${sharedRev5}`),
+    { note: miniBodyAfterLogout.includes(currentNote), rev: miniBodyAfterLogout.includes(`Phiên bản: ${sharedRev5}`) });
+  await phMini.page.screenshot({ path: `${output}/x08-mini-after-logout.png`, fullPage: true });
+
   await logoutViaUi(phWeb.page, "web");
   const webBodyAfterLogout = await phWeb.page.evaluate(() => document.body.innerText);
   check("X08-web-logout-no-private-dom",
-    !webBodyAfterLogout.includes(noteOnScreen) && !webBodyAfterLogout.includes("Được chia sẻ với bạn"),
-    { onLogin: true });
-  await logoutViaUi(phMini.page, "mini");
-  const miniBodyAfterLogout = await phMini.page.evaluate(() => document.body.innerText);
-  check("X08-mini-logout-no-private-dom", !miniBodyAfterLogout.includes(noteOnScreen),
-    { onLogin: true });
+    !webBodyAfterLogout.includes(currentNote) && !webBodyAfterLogout.includes(`Phiên bản: ${sharedRev5}`),
+    { note: webBodyAfterLogout.includes(currentNote), rev: webBodyAfterLogout.includes(`Phiên bản: ${sharedRev5}`) });
   await phWeb.page.screenshot({ path: `${output}/x08-web-after-logout.png`, fullPage: true });
+
+  // Đổi actor trên cùng trang mini của PH: login NGƯỜI LẠ thay PH cũ —
+  // phiên mới không được thấy dữ liệu riêng của phiên trước.
+  check("X08 actor-switch-login",
+    (await login(phMini.page, "mini", "HSZE2E99")) === 200, 200);
+  await goto(phMini.page, "mood-shared");
+  const actorShared = await phMini.page.locator("[data-page='mood-shared']").innerText();
+  await goto(phMini.page, "mood");
+  const actorMood = await phMini.page.locator("[data-page='mood']").innerText();
+  check("X08-actor-switch-no-legacy-data",
+    actorShared.includes("Chưa có gì được chia sẻ với bạn")
+      && !actorMood.includes(N1) && !actorMood.includes(currentNote),
+    { sharedEmpty: actorShared.includes("Chưa có gì được chia sẻ với bạn") });
 
   // ----------------- X09: người lạ không thấy dữ liệu của người khác
   check("X09-stranger-login", (await login(strangerWeb.page, "web", "HSZE2E99")) === 200, 200);
@@ -333,22 +481,49 @@ try {
   const strangerShared = await strangerWeb.page.locator("[data-page='mood-shared']").innerText();
   check("X09-stranger-shared-empty",
     strangerShared.includes("Chưa có gì được chia sẻ với bạn")
-      && !strangerShared.includes(N1) && !strangerShared.includes(N4),
+      && !strangerShared.includes(N1) && !strangerShared.includes(currentNote),
     { empty: true });
   await goto(strangerWeb.page, "mood");
   const strangerMood = await strangerWeb.page.locator("[data-page='mood']").innerText();
-  check("X09-stranger-mood-private", !strangerMood.includes(N1) && !strangerMood.includes(N4),
+  check("X09-stranger-mood-private", !strangerMood.includes(N1) && !strangerMood.includes(currentNote),
     { private: true });
   await strangerWeb.page.screenshot({ path: `${output}/x09-stranger-mood.png`, fullPage: true });
+
+  // Ánh xạ tầng kiểm thử cho các khía cạnh KHÔNG thuộc UI này (không cộng PASS):
+  mapLayer("X09 IDOR/object-level",
+    "UI: stranger trống + riêng tư (script này); API/backend: object-level "
+    + "authorization trong tests backend f07 (owner-only, reader-only) — "
+    + "tầng service không thay bằng chứng UI");
+  mapLayer("X09 admin/multi-owner",
+    "no is_staff bypass + hai owner cùng recipient: backend suite F07 "
+    + "(SQLite/MySQL) + independent repro R03 — không phải assertion UI");
+  mapLayer("X10 MySQL concurrency",
+    "F07 MySQL suite gồm 4 test race (create/share/edit) + independent "
+    + "MySQL repro (revision tăng đúng, unapproved_readable=false) — "
+    + "KHÔNG chạy UI trên MySQL này và không thay thiết bị Zalo thật");
 
   for (const { context } of [hsMini, hsWeb, phWeb, phMini, strangerWeb]) {
     await context.close();
   }
+} catch (error) {
+  // Lỗi ngoài mong đợi: kết thúc CHẮC CHẮN là incomplete, không phải PASS âm thầm.
+  markNotRun("unexpected-error", `Lỗi script: ${error && error.message}`, "BLOCKED");
+  throw error;
 } finally {
+  const passCount = results.filter((r) => r.status === "PASS").length;
+  const failCount = results.filter((r) => r.status === "FAIL").length;
+  const notRunCount = notRun.filter((r) => r.status === "NOT_RUN").length;
+  const blockedCount = notRun.filter((r) => r.status === "BLOCKED").length;
+  console.log(`SUMMARY pass=${passCount} fail=${failCount} not_run=${notRunCount} blocked=${blockedCount}`);
+  console.log("Lưu ý: NOT_RUN/BLOCKED KHÔNG cộng vào PASS; exit 1 chỉ khi có FAIL.");
   await writeFile(
     `${output}/results.json`,
-    JSON.stringify({ scope: "Cross-client UI E2E X01–X09 trên backend thật, tài khoản synthetic", results, requests }, null, 2) + "\n",
+    JSON.stringify({
+      scope: "Cross-client UI E2E X01–X09 trên backend thật, tài khoản synthetic; PASS/FAIL tách NOT_RUN/BLOCKED",
+      summary: { pass: passCount, fail: failCount, not_run: notRunCount, blocked: blockedCount },
+      results, not_run: notRun, mappings, requests,
+    }, null, 2) + "\n",
   );
   await browser.close();
 }
-process.exitCode = results.some((r) => !r.pass) ? 1 : 0;
+process.exitCode = results.some((r) => r.status === "FAIL") ? 1 : 0;

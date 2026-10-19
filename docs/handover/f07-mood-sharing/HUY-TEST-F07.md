@@ -96,5 +96,31 @@ VITE_API_BASE_URL=http://127.0.0.1:8000 npm run dev -- --host 127.0.0.1 --port 5
 ## Mật khẩu + E2E tự động
 
 - Mật khẩu fixture: `E2e-local-2026!` (chỉ local, ghi trong `scripts/f07_local_fixtures.py`).
-- E2E chéo UI: `PLAYWRIGHT_MODULE=... CHROMIUM_PATH=... F07_API_BASE=http://127.0.0.1:8000 F07_MINI_BASE=http://127.0.0.1:3000 F07_WEB_BASE=http://127.0.0.1:5179 F07_SYNTHETIC_PASSWORD=E2e-local-2026! node scripts/f07_cross_client_e2e.mjs` — mong đợi 20/20 PASS.
+- E2E chéo UI: `PLAYWRIGHT_MODULE=... CHROMIUM_PATH=... F07_API_BASE=http://127.0.0.1:8000 F07_MINI_BASE=http://127.0.0.1:3000 F07_WEB_BASE=http://127.0.0.1:5179 F07_SYNTHETIC_PASSWORD=E2e-local-2026! node scripts/f07_cross_client_e2e.mjs` — mong đợi `SUMMARY pass=24 fail=0 not_run=1` (script TÁCH PASS/FAIL/NOT_RUN — NOT_RUN không cộng PASS; X07 UI chỉ chạy khi có cặp fixture riêng).
 - Mini App dev mặc định cổng 3000; nếu dùng 3019 thì đổi `F07_MINI_BASE` tương ứng.
+
+---
+
+## Vòng 19/10 (2) — R08–R10 đã sửa; checklist gate cho Huy (10–15 phút)
+
+Ba finding của audit độc lập (gói 12 f07-docx) đã sửa trên CẢ web và Mini App,
+repro gói 12 exit 0 toàn bộ. Khi có URL thật (hoặc chạy local theo phần trên),
+kiểm bằng UI bình thường theo thứ tự:
+
+| Bước | Thao tác bằng UI | Kỳ vọng |
+| --- | --- | --- |
+| 1 | HS vào Cá nhân → Tâm trạng của mình trên cả hai client | Có UI thật, ngày/emotion/note theo backend |
+| 2 | HS chưa kết nối ghi note, lưu rồi sửa/lưu tiếp 2 lần ngay tại editor (không rời trang) | Cùng một mục, revision tăng (1→2→3), không lỗi "đã có mục"; nút thành "Lưu thay đổi cho hôm nay"; note đã lưu vẫn hiển thị |
+| 3 | Mở lại history ở client kia, thử Tải thêm đến cuối | Đúng nội dung; không lặp mục; hết trang nút biến mất hoàn toàn (không click/focus được) |
+| 4 | Với pair đang kết nối: mở preview một mục, chọn PH, xác nhận | Xem đủ note/revision trước khi chia sẻ; không auto-share |
+| 5 | PH ở client kia mở Được chia sẻ với bạn → Mở nội dung | Chỉ mục được cấp, đúng note VÀ revision |
+| 6 | HS mở preview; HS sửa mục đó ở client kia; quay lại bấm xác nhận trên preview cũ | Lỗi "Mục này vừa đổi…" hiện ngay TRONG sheet (không phải ở trang sau overlay); nút xác nhận bị khoá; có nút "Xem lại bản mới" → bấm thì preview hiện bản mới, phải tự bấm xác nhận lại mới gửi |
+| 7 | HS sửa sau khi đã share, PH mở lại | Bản mới riêng tư đến khi share rõ ràng lại (mục ẩn khỏi list PH) |
+| 8 | Thu hồi ở web rồi PH mở mini; làm chiều ngược lại | Lần đọc mới bị chặn, nội dung cũ rời màn |
+| 9 | Unlink/reconnect (nếu cấp cặp fixture riêng) | Grant cũ không tự sống lại |
+| 10 | PH đang xem note rồi logout bằng nút thật; login người lạ cùng thiết bị | Không còn note/overlay từ phiên trước; người lạ không thấy dữ liệu HS |
+
+Trạng thái bằng chứng (trung thực): mọi phép kiểm trên đã chạy tự động PASS
+trên Chromium + backend thật (SQLite, MySQL 8.4.11 cho concurrency) — xem
+verification-report.md vòng 19/10 (2). Chưa có: Zalo Android/iOS thật
+(NOT_RUN) và URL công khai Huy truy cập được (BLOCKED — không tự deploy).

@@ -157,3 +157,60 @@ race MySQL 1 FAIL (R04), browser 5 FAIL (R01×3, R06×2), parity smoke 3 FAIL (R
 - R05 repro: ngày suffix trả 400 `must_be_iso_date`.
 - Browser: sheet `expected=0 observed=0` cả navigation lẫn clearSession; content width 320/390/430 = đúng viewport, `overflow: []`.
 - Parity: `web-route-mood=["mood"]`, `web-route-mood-shared=["mood-shared"]`, `web-profile-f07-navigation={owner:1,recipient:1}`, `web-home-edit-placeholder=false`.
+
+---
+
+# Vòng 19/10/2026 (2) — sửa R08–R10 theo audit độc lập gói 12 (baseline 2ffd674)
+
+Audit độc lập (f07-docx main e286f85, gói 12) kết luận NOT_READY vì 3 finding
+UI mức P2 trên CẢ HAI client. Đợt này tái hiện bằng repro gói 12 rồi sửa; KHÔNG
+sửa backend, không nới uniqueness/privacy (backend 409/400 đã đúng).
+
+## Bản sửa
+
+| Finding | Bản sửa | Regression trong app |
+| --- | --- | --- |
+| R08 — editor rơi về tạo sau lưu thành công | `web/src/pages/mood/index.js` + `zalo-mini-app/src/pages/mood/index.js`: `saveEntry` đặt trạng thái theo RESPONSE máy chủ (`entry.view()`): `state.editing = saved`, giữ note đã lưu trong editor, chip theo server, nhãn nút "Lưu thay đổi…"; khoá nhánh ghi trước khi gọi (`editingBefore`); payload thiếu entry → hỏi lại máy chủ bằng `syncEditorWithToday`, không tự đoán; lỗi giữ nguyên nháp + chip | `tests/f07-r08-r10.test.mjs` ×5 mỗi client (tạo→lưu tiếp×3 PATCH cùng entry_id, sửa history→lưu liên tiếp, sửa ngày cũ, 400 trùng ngày giữ nháp, PATCH lỗi mạng vẫn PATCH đúng mục) |
+| R09 — Tải thêm hết trang vẫn hiện + append lặp | Hai lớp: (1) CSS `components.css` CẢ HAI client thêm `.fb-btn[hidden] { display: none !important; }` — trước đây `display:inline-flex` của `.fb-btn` đè UA default cho `[hidden]`; (2) guard onClick `loadHistory`/`loadList`: chặn khi `nextCursor` rỗng hoặc đang tải (cờ theo seq lần tải, lần cũ không clear cờ lần mới) | `tests/f07-r08-r10.test.mjs` ×4 + 1 CSS pin mỗi client; browser thật: `visible=false, focusable=false, clicks→0 requests` (`scripts/f07_layout_more_check.mjs`) |
+| R10 — lỗi share stale ghi vào editor sau overlay | Sheet có live region riêng (`.fb-sheet__feedback`, `role=alert`, `aria-live=assertive`): mọi lỗi share/thu hồi hiện NGAY TRONG sheet; 409 `preview_stale` khoá nút xác nhận + hiện nút "Xem lại bản mới" → GET entry mới → preview revision mới trong sheet → người dùng TỰ xác nhận lại (không auto-retry/auto-share); lỗi thu hồi báo trong sheet, badge giữ trạng thái thật | `tests/f07-r08-r10.test.mjs` ×4 mỗi client (409 lỗi trong sheet + confirm bị khoá, phục hồi gửi đúng revision mới sau khi bấm lại, timeout không fake success/không tự retry, thu hồi lỗi giữ badge) |
+
+## Repro gói 12 sau sửa (Chromium thật + backend thật, synthetic)
+
+| Repro | Baseline 2ffd674 | Sau sửa |
+| --- | --- | --- |
+| `repeat_save.mjs` (R08, 4 scenario web+mini) | exit 1 (POST201→POST400, PATCH200→POST400) | **exit 0: 4/4 PASS** — POST 201 → PATCH 200, revision 1→2→3→4, `draftPreserved=true` |
+| `pagination.mjs` (R09, 2 client) | exit 1 (display=flex, 2 GET trang đầu, rows 1→3) | **exit 0: 2/2 PASS** — `hidden=true, display=none, visible=false, clickedRequests=[], rows 1→1` |
+| `stale_preview.mjs` (R10, 2 chiều) | exit 1 (`feedbackOutsideDialog=true`) | **exit 0: 2/2 PASS** — 409 `preview_stale`, `backendProtectionPass=true`, `feedbackStale=true` (TRONG sheet), `feedbackOutsideDialog=false` |
+
+## E2E + layout (lượt này)
+
+| Suite | Kết quả | Ghi chú |
+| --- | --- | --- |
+| Cross-client UI E2E (Playwright, 2 context/actor) | **24 PASS + 1 NOT_RUN, 0 FAIL** | Output TÁCH `PASS/FAIL/NOT_RUN/BLOCKED` + `SUMMARY` (sửa lỗi cũ cộng NOT_RUN vào "20/20 PASS"); X05b mới: lỗi 409 nằm trong sheet + recovery chỉ GET (0 auto-share); X08 mới: **AND** note+revision ở CẢ HAI PH trước logout, late-response khi đang mở chi tiết, đổi actor bằng login người lạ sau logout; X07 chỉ chạy với cặp fixture riêng (`F07_E2E_WITH_UNLINK=1` + `F07_E2E_UNLINK_HS/PH`), không bật → NOT_RUN có lý do + mapping tầng |
+| HTTP E2E 21 bước | **21/21 PASS** | gồm F15 + unlink tầng API |
+| Layout + R09 browser thật | **10/10 PASS** | 320/390/430 + CSS text 200% cả 2 client: `scrollWidth = innerWidth`; nút Tải thêm hết trang: `hidden/display:none/visible:false/focusable:false/0 request` (`scripts/f07_layout_more_check.mjs`) |
+
+## Suite giữ regression (lượt này)
+
+| Suite | Kết quả |
+| --- | --- |
+| Backend check + makemigrations --check | OK, không migration mới |
+| core + accounts (SQLite) | 46 PASS |
+| F07 feature-lab SQLite | 53 tests = 49 PASS + 4 SKIP (MySQL-gated), 0 FAIL |
+| F07 feature-lab **MySQL 8.4.11** (tarball chính thức, loopback 13306) | **53 PASS, 0 SKIP** — gồm 4 test race create/share/edit |
+| Repro độc lập gói 10 (R02/R03/R05) | SQLite: 2 PASS + 1 SKIP (R02 cần MySQL); **MySQL: 3/3 PASS** |
+| Full harness (harness + 17 feature) | **534 tests = 521 PASS + 13 SKIP**, 0 FAIL |
+| Mini App suite | **327 PASS** (313 cũ + 14 mới) |
+| Web suite | **257 PASS** (243 cũ + 14 mới) |
+| Build mini + verify assets / build web | OK |
+| Shared adapter | 37 PASS |
+| Mobile packages | 61 PASS |
+| Import boundaries | SẠCH (web không zmp-sdk, không import chéo UI/CSS) |
+| Agent docs checker | OK |
+
+## NOT_RUN / BLOCKED còn lại (trung thực)
+
+- **Zalo Android/iOS thật** (keyboard/safe-area/OS text scaling/TalkBack): NOT_RUN — không có device runtime; browser + CSS simulation không thay thế.
+- **X07 UI unlink/reconnect**: NOT_RUN khi không cấp cặp fixture riêng — phủ tầng HTTP E2E 21 bước (F15 + unlink) + backend Finding3/4; script sẵn sàng chạy khi có `F07_E2E_UNLINK_HS/PH`.
+- **X10 UI trên MySQL**: mapping — concurrency chứng minh ở tầng MySQL suite (4 race) + independent repro; UI chạy trên SQLite dev.
+- **URL truy cập từ máy Huy**: BLOCKED — không tự deploy theo phạm vi; loopback trong container không phải URL Huy dùng được (xem HUY-TEST-F07.md).

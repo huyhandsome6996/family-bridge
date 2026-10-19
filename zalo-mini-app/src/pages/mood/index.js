@@ -289,19 +289,44 @@ function saveEntry(ctx, state, editor) {
   const note = editor.noteField.input.value;
   editor.saveBtn.disabled = true;
   editor.saveBtn.title = "Đang lưu…";
-  const write = state.editing
-    ? ctx.adapter.editMoodEntry(state.editing.entry_id, { emotion, note })
+  // R08: khoá đúng nhánh ghi TRƯỚC khi gọi — tạo chỉ khi thực sự chưa có
+  // mục đang sửa; đã có thì PATCH ĐÚNG entry_id đó (không bao giờ đổi
+  // nhánh giữa chừng dựa trên trạng thái đã bị mutation).
+  const editingBefore = state.editing;
+  const write = editingBefore
+    ? ctx.adapter.editMoodEntry(editingBefore.entry_id, { emotion, note })
     : ctx.adapter.createMoodEntry({ emotion, note });
   write
-    .then(() => {
+    .then((saved) => {
       if (lc.cancelled || lc.generation !== gen) return; // phiên/trang đã đổi
-      editor.feedback.textContent = state.editing
-        ? "Máy chủ đã ghi nhận phiên bản mới. Bản đang chia sẻ (nếu có) ngừng "
-          + "đọc được cho đến khi bạn xem trước và chia sẻ lại."
-        : "Máy chủ đã ghi nhận tâm trạng hôm nay — chỉ mình bạn thấy.";
-      editor.noteField.input.value = "";
-      state.editing = null;
-      editor.saveBtn.textContent = "Lưu tâm trạng hôm nay";
+      // R08: trạng thái editor theo RESPONSE máy chủ — không reset về chế
+      // độ tạo sau khi lưu. Lần lưu kế tiếp tiếp tục PATCH đúng mục vừa
+      // lưu (revision tăng), không bao giờ POST trùng ngày nữa.
+      const entry = saved && saved.entry_id ? saved : null;
+      if (entry) {
+        state.editing = entry;
+        editor.noteField.input.value = entry.note || ""; // nội dung máy chủ đã ghi
+        state.selectedEmotion = entry.emotion;
+        markSelectedChip(editor.chips, entry.emotion);
+        editor.saveBtn.textContent = entry.entry_date === todayVnIso()
+          ? "Lưu thay đổi cho hôm nay"
+          : "Lưu thay đổi cho mục đã chọn";
+        editor.feedback.textContent = editingBefore
+          ? `Máy chủ đã ghi nhận phiên bản ${entry.revision} cho mục ngày `
+            + `${entry.entry_date}. Bản đang chia sẻ (nếu có) ngừng đọc được `
+            + "cho đến khi bạn xem trước và chia sẻ lại. Lưu tiếp sẽ cập "
+            + "nhật đúng mục này, không tạo mục ngày khác."
+          : `Máy chủ đã ghi nhận tâm trạng ngày ${entry.entry_date} `
+            + `(phiên bản ${entry.revision}) — chỉ mình bạn thấy. Lưu tiếp `
+            + "sẽ cập nhật đúng mục này thành phiên bản mới, không tạo "
+            + "mục trùng ngày.";
+      } else {
+        // Máy chủ không trả payload entry (trường hợp ngoại lệ): hỏi lại
+        // máy chủ để đặt đúng chế độ — không tự đoán, không tự xoá nháp.
+        editor.feedback.textContent = "Máy chủ đã ghi nhận. Đang đồng bộ "
+          + "lại trạng thái mục…";
+        syncEditorWithToday(ctx, editor, state);
+      }
       loadSummary(ctx, state, state._summaryCard);
       loadHistory(ctx, state._historyCard, state, { reset: true });
     })
@@ -311,6 +336,7 @@ function saveEntry(ctx, state, editor) {
         ctx.navigate("/login?reason=expired");
         return;
       }
+      // Giữ nguyên nháp (emotion + note) để sửa rồi lưu lại; KHÔNG tự retry.
       editor.feedback.textContent = errorText(error);
     })
     .finally(() => {
@@ -378,13 +404,22 @@ function loadHistory(ctx, card, state, { reset = false } = {}) {
   if (!moreBtn) {
     moreBtn = createButton({
       label: "Tải thêm", variant: "ghost",
-      onClick: () => loadHistory(ctx, card, state, {}),
+      // R09: guard kép — KHÔNG gọi API khi (1) đang có lần tải chạy hoặc
+      // (2) hết cursor (máy chủ trả next=null). Chặn double-click/race
+      // làm tải lại trang đầu rồi append trùng mục.
+      onClick: () => {
+        if (state._histLoading || !state.historyNextCursor) return;
+        loadHistory(ctx, card, state, {});
+      },
     });
     moreBtn.dataset.moodMore = "1";
     moreBtn.hidden = true;
     card.appendChild(moreBtn);
   }
 
+  // R09: cờ đang-tải theo số thứ tự lần tải — chỉ lần tải MỚI NHẤT được
+  // quyền mở khoá nút; lần cũ bị thay thế không tự clear cờ của lần mới.
+  state._histLoading = seq;
   const loading = h("li", { class: "fb-list__item" }, "Đang tải…");
   list.appendChild(loading);
   ctx.adapter.listMoodEntries({
@@ -406,6 +441,8 @@ function loadHistory(ctx, card, state, { reset = false } = {}) {
       for (const entry of rows) {
         list.appendChild(historyRow(ctx, state, entry));
       }
+      // hidden=true + CSS .fb-btn[hidden]{display:none} ẩn THẬT SỰ (không
+      // nhận focus/click); guard onClick phía trên chặn cả trường hợp khác.
       moreBtn.hidden = !state.historyNextCursor;
     })
     .catch((error) => {
@@ -418,8 +455,13 @@ function loadHistory(ctx, card, state, { reset = false } = {}) {
         ctx.navigate("/login?reason=expired");
         return;
       }
+      // Lỗi tải thêm: giữ cursor hiện có, hiện lỗi trong danh sách; người
+      // dùng bấm lại khi muốn — KHÔNG tự retry.
       list.appendChild(h("li", { class: "fb-list__item" },
         errorText(error)));
+    })
+    .finally(() => {
+      if (state._histLoading === seq) state._histLoading = null;
     });
 }
 
@@ -475,12 +517,11 @@ function openShareSheet(ctx, state, entry) {
     "Chia sẻ ĐÚNG mục này cho ĐÚNG một người — không chia sẻ cả lịch sử."));
 
   content.appendChild(h("h3", {}, "1) Xem trước nội dung sẽ chia sẻ"));
-  content.appendChild(h("div", { class: "fb-card", style: "padding:12px" },
-    h("p", {}, h("strong", {}, `${preview.date} — ${preview.emotionLabel}`)),
-    h("p", { class: "fb-sec__sub" },
-      preview.note ? `Ghi chú: ${preview.note}` : "(Không có ghi chú)"),
-    h("p", { class: "fb-sec__sub" }, `Phiên bản: ${preview.revision}`),
-  ));
+  // R10: thân preview giữ tham chiếu để tải lại bản mới ngay TRONG sheet
+  // khi máy chủ từ chối (409 stale) — bắt buộc xem lại rồi xác nhận lại.
+  const previewBody = h("div", { class: "fb-card", style: "padding:12px" });
+  renderPreviewBody(previewBody, preview);
+  content.appendChild(previewBody);
   content.appendChild(h("p", { class: "fb-sec__sub" },
     "Người nhận sẽ thấy NGUYÊN phần trên (bao gồm ghi chú) ở đúng phiên bản này."));
 
@@ -494,21 +535,85 @@ function openShareSheet(ctx, state, entry) {
   const grantSection = h("div", {});
   content.appendChild(grantSection);
 
+  // R10: lỗi thao tác chia sẻ/thu hồi hiển thị ngay TRONG sheet (live
+  // region assertive) — không ghi vào editor phía sau overlay nữa.
+  const sheetFeedback = h("p", {
+    class: "fb-sec__sub fb-sheet__feedback",
+    role: "alert",
+    "aria-live": "assertive",
+  });
+  // Đường phục hồi khi stale: tải bản mới (GET) rồi NGƯỜI DÙNG phải xem
+  // lại và bấm xác nhận lại — không tự retry, không tự share revision mới.
+  const refreshBtn = createButton({
+    label: "Xem lại bản mới", variant: "secondary",
+    onClick: () => refreshPreview(),
+  });
+  refreshBtn.hidden = true;
+
   const confirmBtn = createButton({
     label: "Xác nhận chia sẻ",
     variant: "cta",
     disabled: true,
     onClick: () => confirmShare(ctx, state, preview, selectWrap, sheetHandle),
   });
+  content.appendChild(sheetFeedback);
+  content.appendChild(refreshBtn);
   content.appendChild(confirmBtn);
 
   const sheetHandle = {
     close() { try { root.close(); } catch { /* đã đóng */ } },
+    feedback: sheetFeedback, // R10: lỗi ghi vào live region trong sheet
     setBusy(value) {
       confirmBtn.disabled = value;
       confirmBtn.title = value ? "Đang gửi…" : "";
     },
+    // R10: sau 409 stale — khoá xác nhận, hiện đường "Xem lại bản mới";
+    // chỉ refreshPreview (đã xem bản mới) mở khoá lại.
+    setStale(stale) {
+      refreshBtn.hidden = !stale;
+      confirmBtn.disabled = stale === true;
+      confirmBtn.title = stale ? "Hãy xem lại bản mới rồi xác nhận lại" : "";
+    },
   };
+
+  function renderPreviewBody(target, data) {
+    clear(target);
+    target.appendChild(h("p", {},
+      h("strong", {}, `${data.date} — ${data.emotionLabel}`)));
+    target.appendChild(h("p", { class: "fb-sec__sub" },
+      data.note ? `Ghi chú: ${data.note}` : "(Không có ghi chú)"));
+    target.appendChild(h("p", { class: "fb-sec__sub" },
+      `Phiên bản: ${data.revision}`));
+  }
+
+  function refreshPreview() {
+    if (lc.cancelled || lc.generation !== gen) return;
+    refreshBtn.disabled = true;
+    sheetFeedback.textContent = "Đang tải bản mới nhất…";
+    ctx.adapter.getMoodEntry(preview.entryId)
+      .then((fresh) => {
+        if (lc.cancelled || lc.generation !== gen) return;
+        if (!fresh || !fresh.entry_id) throw new Error("missing-entry");
+        preview.revision = fresh.revision;
+        preview.date = fresh.entry_date;
+        preview.emotionLabel = fresh.emotion_label || fresh.emotion;
+        preview.note = fresh.note || "";
+        renderPreviewBody(previewBody, preview);
+        refreshBtn.hidden = true;
+        refreshBtn.disabled = false;
+        confirmBtn.disabled = false; // đã xem bản mới — xác nhận lại thủ công
+        confirmBtn.title = "";
+        sheetFeedback.textContent = "Đã tải bản mới nhất. Hãy đọc lại nội dung "
+          + "trên rồi bấm “Xác nhận chia sẻ” để gửi đúng bản này. Chưa xác nhận "
+          + "thì chưa gửi cho ai.";
+      })
+      .catch(() => {
+        if (lc.cancelled || lc.generation !== gen) return;
+        refreshBtn.disabled = false;
+        sheetFeedback.textContent =
+          "Chưa tải được bản mới. Vui lòng thử lại — chưa gửi gì cho ai.";
+      });
+  }
 
   const root = createSheet({
     title: "Chia sẻ mục này",
@@ -534,7 +639,7 @@ function openShareSheet(ctx, state, entry) {
         recipientStatus.textContent =
           "Chưa kết nối với ai. Vẫn ghi tâm trạng riêng được nhé; muốn chia sẻ "
           + "hãy mở trang Cá nhân để tạo lời mời kết nối.";
-        renderGrants(ctx, state, grantSection, shares, preview);
+        renderGrants(ctx, state, grantSection, shares, preview, sheetFeedback);
         return;
       }
       for (const conn of rows) {
@@ -546,13 +651,13 @@ function openShareSheet(ctx, state, entry) {
       recipientStatus.textContent =
         "Tên là tự khai báo — hãy chắc chắn bạn chọn đúng người.";
       confirmBtn.disabled = false;
-      renderGrants(ctx, state, grantSection, shares, preview);
+      renderGrants(ctx, state, grantSection, shares, preview, sheetFeedback);
     });
 
   return sheetHandle;
 }
 
-function renderGrants(ctx, state, section, shares, preview) {
+function renderGrants(ctx, state, section, shares, preview, sheetFeedback) {
   const lc = state._lc;
   const gen = lc.generation;
   clear(section);
@@ -590,15 +695,22 @@ function renderGrants(ctx, state, section, shares, preview) {
                     .then(() => ctx.adapter.listMoodEntryShares(preview.entryId))
                     .then((fresh) => {
                       if (lc.cancelled || lc.generation !== gen) return;
-                      renderGrants(ctx, state, section, fresh, preview);
+                      renderGrants(ctx, state, section, fresh, preview,
+                        sheetFeedback);
                     })
                     .catch((error) => {
                       if (lc.cancelled || lc.generation !== gen) return;
                       if (error && error.status === 401) {
                         ctx.navigate("/login?reason=expired");
+                        return;
                       }
-                      // Lỗi thu hồi: giữ nguyên trạng thái cũ trên màn,
-                      // KHÔNG báo đã thu hồi.
+                      // R10: lỗi thu hồi báo ngay trong sheet, trạng thái
+                      // badge giữ nguyên — KHÔNG báo đã thu hồi.
+                      if (sheetFeedback) {
+                        sheetFeedback.textContent =
+                          "Chưa thu hồi được quyền này — máy chủ chưa ghi "
+                          + "nhận thay đổi. Vui lòng thử lại.";
+                      }
                     });
                 },
               },
@@ -621,6 +733,7 @@ function confirmShare(ctx, state, preview, selectWrap, sheetHandle) {
   const gen = lc.generation;
   const recipientId = selectWrap.value;
   if (!recipientId) return;
+  const sheetFeedback = sheetHandle && sheetHandle.feedback;
   sheetHandle.setBusy(true);
   ctx.adapter.shareMoodEntry(preview.entryId, {
     recipientId,
@@ -641,8 +754,18 @@ function confirmShare(ctx, state, preview, selectWrap, sheetHandle) {
         ctx.navigate("/login?reason=expired");
         return;
       }
-      if (state._editor) {
-        state._editor.feedback.textContent = errorText(error);
+      // R10: lỗi hiện NGAY TRONG sheet đang mở (không ghi ra editor phía
+      // sau overlay). Stale: khoá nút xác nhận, bắt buộc bấm “Xem lại bản
+      // mới” rồi xác nhận lại — KHÔNG tự retry, KHÔNG tự share bản mới.
+      const stale = error && (error.code === "preview_stale"
+        || (error.details && error.details.reason === "stale_revision"));
+      const baseMessage = errorText(error);
+      if (sheetFeedback) {
+        sheetFeedback.textContent = stale
+          ? baseMessage + " Bấm “Xem lại bản mới” để tải nội dung hiện tại, "
+            + "đọc lại rồi xác nhận lại. Chưa gửi gì cho ai."
+          : baseMessage;
       }
+      sheetHandle.setStale(stale === true);
     });
 }

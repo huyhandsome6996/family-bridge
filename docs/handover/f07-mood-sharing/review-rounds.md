@@ -70,3 +70,36 @@ suite cũ để chắc không vỡ hành vi khác.
   từ client ở bất kỳ path nào (test cross-user + admin 404) — không finding mới.
 - Không phát hiện thêm lỗi authorization mới ngoài 8 điểm đã nêu trong phạm vi
   code đã đọc; các vùng ngoài phạm vi (F02, web, F15 internals) không review.
+
+## Vòng 19/10 (2) — R08–R10 từ audit độc lập gói 12 (baseline 2ffd674)
+
+Tái hiện TRƯỚC khi sửa bằng repro gói 12 (Chromium thật + backend thật,
+tài khoản synthetic HSR08M19/HSR08W19/HSPAR19):
+
+- R08 `repeat_save.mjs`: 4/4 scenario FAIL — POST 201 → POST 400 (tạo liên
+  tiếp) và PATCH 200 → POST 400 (sửa từ history), màn hiện "Ngày này đã có
+  mục rồi". Nguyên nhân: callback thành công của `saveEntry` bỏ payload,
+  xoá note, `state.editing = null`, nút về "Lưu tâm trạng hôm nay" → lần
+  lưu kế luôn POST.
+- R09 `pagination.mjs`: 2/2 client FAIL — nút `[data-mood-more]` có
+  `hidden=true` nhưng `display:flex` (`.fb-btn` đè UA default), bấm 2 lần
+  gửi 2 GET trang đầu không cursor, DOM 1→3 dòng trùng.
+- R10 `stale_preview.mjs`: 2 chiều FAIL ở phần trình bày — API trả 409
+  `preview_stale` ĐÚNG (`backendProtectionPass=true`) nhưng lỗi ghi vào
+  `state._editor.feedback` PHÍA SAU overlay (`feedbackOutsideDialog=true`),
+  sheet giữ preview cũ không có đường phục hồi.
+
+Sửa (chi tiết kỹ thuật ở verification-report.md vòng này):
+- R08: trạng thái editor theo response máy chủ; khoá nhánh ghi trước khi
+  gọi; lỗi giữ nháp; fallback hỏi lại máy chủ khi payload thiếu.
+- R09: CSS `.fb-btn[hidden]{display:none!important}` cả hai client + guard
+  onClick (hết cursor/đang tải, cờ theo seq).
+- R10: live region TRONG sheet cho mọi lỗi share/thu hồi; stale khoá xác
+  nhận + nút "Xem lại bản mới" (GET) → xác nhận lại thủ công; không
+  auto-retry/auto-share.
+
+Sau sửa: repro gói 12 exit 0 toàn bộ (4+2+2 phép), E2E chéo 24 PASS + 1
+NOT_RUN (tách đúng PASS/NOT_RUN — sửa lỗi cộng dồn cũ), layout browser
+10/10 (320/390/430 + text 200%, visible/focus/click thật), toàn bộ suite
+regression giữ xanh (SQLite/MySQL/full harness/clients/contracts) — số
+liệu đầy đủ ở verification-report.md vòng này.

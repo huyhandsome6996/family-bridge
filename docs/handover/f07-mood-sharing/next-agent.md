@@ -1,5 +1,12 @@
 # next-agent.md — cho agent tiếp tục sau đợt F07 này
 
+> **Cập nhật 19/10/2026 (2) — R08–R10 đã sửa:** ba finding UI của audit độc
+> lập gói 12 (lưu liên tiếp sai POST/PATCH; Tải thêm hết trang vẫn hiện +
+> append lặp; lỗi share stale nằm sau modal) đã sửa trên CẢ web và Mini App,
+> kèm regression 14 test/client + E2E tách đúng PASS/NOT_RUN. Repro gói 12
+> exit 0 toàn bộ; chi tiết ở verification-report.md "Vòng 19/10 (2)". Backend
+> KHÔNG đổi (409/400/unique đã đúng); không có migration mới.
+
 > **Cập nhật 19/10/2026 (dated supersede theo quyết định Huy trong PROMPT-COPY-F07):** F07 phải có UI gọi backend thật trên CẢ web và Zalo Mini App. Phần web F07 đã triển khai trên nhánh này (`web/src/pages/mood/`, `web/src/pages/mood-shared/`, router, profile/home, tests). Xem `docs/handover/web-miniapp-separation/route-feature-parity.md` cho 2 route mới.
 
 ## Luồng auth đang dùng (đừng đoán lại)

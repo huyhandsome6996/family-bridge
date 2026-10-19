@@ -92,13 +92,20 @@ function loadList(ctx, card, state, { reset = false } = {}) {
   if (!moreBtn) {
     moreBtn = createButton({
       label: "Tải thêm", variant: "ghost",
-      onClick: () => loadList(ctx, card, state, {}),
+      // R09: guard kép — không gọi API khi đang tải hoặc hết cursor;
+      // chặn double-click/race append trùng mục ở danh sách nhận.
+      onClick: () => {
+        if (state._listLoading || !state.nextCursor) return;
+        loadList(ctx, card, state, {});
+      },
     });
     moreBtn.dataset.sharedMore = "1";
     moreBtn.hidden = true;
     card.appendChild(moreBtn);
   }
 
+  // R09: cờ đang-tải theo seq — chỉ lần tải mới nhất được mở khoá nút.
+  state._listLoading = seq;
   const loading = h("li", { class: "fb-list__item" }, "Đang tải…");
   list.appendChild(loading);
   ctx.adapter.listSharedMoodEntries({
@@ -149,6 +156,9 @@ function loadList(ctx, card, state, { reset = false } = {}) {
         retryLabel: "Thử lại",
         onRetry: () => loadList(ctx, card, state, { reset: true }),
       }));
+    })
+    .finally(() => {
+      if (state._listLoading === seq) state._listLoading = null;
     });
 }
 

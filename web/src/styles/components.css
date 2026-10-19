@@ -35,6 +35,16 @@
   transform: scale(0.98);
 }
 
+/* R09 (F07 audit 19/10): thuộc tính hidden phải ẩn THẬT SỰ. display:
+   inline-flex của .fb-btn đè lên default display:none cho [hidden] của UA,
+   khiến nút "Tải thêm" hết trang vẫn nhìn thấy/nhận focus/click được
+   (mini + web cùng lỗi). Quy tắc scoped cho .fb-btn: mọi nút có
+   hidden=true không hiển thị, không focus/click — các control dùng hidden
+   khác (badge/error/compose) vẫn theo quy tắc riêng của chúng. */
+.fb-btn[hidden] {
+  display: none !important;
+}
+
 .fb-btn:disabled {
   opacity: 0.55;
   cursor: not-allowed;
