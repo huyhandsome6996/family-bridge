@@ -51,7 +51,7 @@ from family_bridge_features.f01_identity.services.identity import (
     has_active_consent,
     record_consent,
 )
-from family_bridge_features.f04_ai.models import AiSuggestion
+from family_bridge_features.f04_ai.models import AiRefineOperation, AiSuggestion
 from family_bridge_features.f04_ai.services import registry as f04_registry
 from family_bridge_features.f04_ai.services.express import AiExpressService
 from family_bridge_features.f05_inbox.models import Message
@@ -395,6 +395,12 @@ class F04A5IdempotencyTests(F04A5BaseMixin, TestCase):
 # ==========================================================================
 # F04-T07 (race) — concurrent cùng key: đúng MỘT provider effect.
 # Gated: FB_TEST_DB=mysql (SQLite serialize writer, không tái hiện race).
+# Disposition (task 2-c, MySQL evidence): người thua claim race CÙNG payload
+# KHÔNG fail cứng slot_unavailable — express._claim_refine_operation chờ có
+# bounds (poll 0.1s, tổng <= 2s, thấp hơn hẳn TTL 60s) cho winner finalize
+# rồi REPLAY kết quả đã lưu; quá bound mới trả 409 truthful. Provider vẫn
+# đúng 1 lần (người chờ không bao giờ gọi provider), claim của winner không
+# bị reclaim/đụng tới trong cửa sổ chờ.
 # ==========================================================================
 class F04A5ConcurrentKeyTests(F04A5BaseMixin, TransactionTestCase):
     KEY = "a5-race-0001-abcdef01"
@@ -436,6 +442,9 @@ class F04A5ConcurrentKeyTests(F04A5BaseMixin, TransactionTestCase):
         self.assertEqual(len(set(results)), 1,
                          "cùng key+payload phải trả CÙNG suggestion")
         self.assertEqual(AiSuggestion.objects.count(), 1)
+        self.assertEqual(AiRefineOperation.objects.count(), 1,
+                         "chỉ một thế hệ claim: người thua chờ-replay, "
+                         "không reclaim claim của winner")
         self.assertEqual(len(self.provider.calls), 1,
                          "đúng MỘT provider effect cho cùng key (không double-charge)")
 
