@@ -250,12 +250,15 @@ def wire_backend_ports() -> None:
         except ImportError:
             pass
 
-        # F09 Activities
-        try:
-            import family_bridge_features.f09_activities.services.registry as f09_reg
-            f09_reg.register_connection_reader(invite_service)
-        except ImportError:
-            pass
+        # F09 Activities — NOT wired here anymore (integration F02 2026-10-20):
+        # the F02 branch ships f09's own apps.ready() wiring with a proper
+        # F01ConnectionReader (deterministic order_by("-id"), relationship_kind
+        # exposed, generation normalized). Registering core's InviteService
+        # here first would silently shadow it (core precedes feature apps in
+        # INSTALLED_APPS, and f09's registration is guarded by an empty slot),
+        # degrading the invite generation pin to a nondeterministic reader.
+        # f03/f05/f07/f08 keep the core InviteService wiring — those features
+        # have no reader of their own.
 
         _WIRED = True
         logger.info("Family Bridge backend ports successfully wired.")

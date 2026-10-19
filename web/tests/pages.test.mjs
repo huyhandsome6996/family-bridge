@@ -172,7 +172,7 @@ describe("Page contract (shape) — 13 trang port", () => {
     ["login", { id: "f01-login", title: "Đăng nhập", requiresRole: false, showBottomNav: false }],
     ["consent", { id: "f01-consent", title: "Đồng ý & quyền riêng tư", requiresRole: false, showBottomNav: false }],
     ["connect", { id: "f01-connect", title: "Kết nối người đồng hành", requiresRole: false, showBottomNav: false }],
-    ["companion", { id: "companion", title: "Đồng hành", requiresRole: true, showBottomNav: true }],
+    ["companion", { id: "companion", title: "Đồng hành", requiresRole: true, showBottomNav: true, requiresAuth: true, chrome: "app" }],
     ["diary", { id: "diary", title: "Nhật ký", requiresRole: true, showBottomNav: true }],
     ["profile", { id: "profile", title: "Cá nhân", requiresRole: true, showBottomNav: true }],
     ["connectionCheck", { id: "connection-check", title: "Kiểm tra kết nối máy chủ", requiresRole: false, showBottomNav: false }],
@@ -436,14 +436,15 @@ describe("Render không throw + copy bắt buộc", () => {
     });
   });
 
-  it("Hub Đồng hành: tuần 1 xem trước được, tuần 2–4 'Sắp có', ghi chú tự nguyện", () => {
+  it("Hub Đồng hành (F02 web thật — QA 19/10 R07): chưa đăng nhập → gate trung thực, không placeholder tĩnh", () => {
     const { ctx } = makeCtx({ demo: false, role: "student" });
     const { host, el } = mount(pages.companion, ctx);
     const text = textOf(el);
-    assert.ok(text.includes("Lộ trình tự nguyện, bạn có thể bỏ qua hoặc quay lại bất cứ lúc nào."));
-    assert.ok(findButton(el, "Xem trước chủ đề"), "tuần 1 phải có nút xem trước");
-    const comingSoonCount = (text.match(/Sắp có/g) || []).length;
-    assert.ok(comingSoonCount >= 3, `tuần 2–4 phải badge Sắp có (thấy ${comingSoonCount})`);
+    assert.ok(text.includes("Cần đăng nhập để xem chương trình"),
+      "trang thật yêu cầu phiên; không còn WEEKS hardcode");
+    assert.ok(!text.includes("Sắp có"), "không còn badge 'Sắp có' giả");
+    assert.ok(!text.includes("Tiếng lòng chưa nói"),
+      "không còn copy tĩnh của placeholder cũ");
     unmount(host);
   });
 

@@ -7,6 +7,14 @@ Invariants:
 - Shared invites need TWO independent responses — nobody ticks for anyone
   else. Inviter and invitee each own their response; decline/cancel keep
   honest states.
+- QA 19/10 R03: every invite pins the connection GENERATION it was
+  created under. Accepting or updating shared responses requires the
+  connection to STILL be active at that same generation — unlink blocks
+  accept/own-response, and a NEW generation after reconnect never
+  revives old invites (a re-invite on the new connection cancels the
+  stale pending row and creates a fresh one). Reading the invite
+  history of your own pair stays possible; declining a stale invite is
+  always allowed so the recipient can close it honestly.
 - No reminders are scheduled anywhere in this app (voluntary by design);
   content links come from the published-content port (F02 refs at B18) —
   no duplicated program/enrollment logic.
@@ -77,6 +85,11 @@ class SharedActivityInvite(models.Model):
     status = models.CharField(max_length=16, default=INVITE_PENDING)
     inviter_response = models.CharField(max_length=16, blank=True, default="")
     invitee_response = models.CharField(max_length=16, blank=True, default="")
+    # Generation of the connection this invite was created under. Nullable
+    # only for rows created before this column existed; new writes always
+    # pin it and the respond/own-response guards use it to refuse reviving
+    # an invite on a different (newer) generation (QA 19/10 R03).
+    connection_generation = models.PositiveIntegerField(null=True, blank=True)
     created_at = models.DateTimeField(default=_utc_now, editable=False)
     updated_at = models.DateTimeField(default=_utc_now, editable=False)
 
@@ -105,5 +118,6 @@ class SharedActivityInvite(models.Model):
             "status": self.status,
             "inviter_response": self.inviter_response or None,
             "invitee_response": self.invitee_response or None,
+            "connection_generation": self.connection_generation,
             "updated_at": self.updated_at.isoformat(),
         }

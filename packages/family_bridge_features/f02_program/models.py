@@ -1,4 +1,5 @@
-"""F02 models: Enrollment + WeekProgress + AgreementAcceptance (US-036/044).
+"""F02 models: Enrollment + WeekProgress + AgreementAcceptance + the
+week-4 FamilyAgreement instance (US-036/044).
 
 Invariants:
 - Participation is VOLUNTARY: join/opt-out anytime; opt-out leaves no
@@ -6,12 +7,26 @@ Invariants:
   ALL published weeks of the pinned revision stay accessible.
 - Enrollment PINS the program revision; content re-publishes NEVER
   silently migrate an enrollment (explicit re-enroll required).
-- The family agreement is immutable-per-revision: acceptance binds
-  (participant, program, agreement_revision); editing the template creates
-  a NEW revision and old acceptances do NOT carry over. NO ONE can sign
-  for another person (each participant's row is their own action).
-- Week progress is private per participant; joint activities are F09
-  invites (referenced by key — no duplicated invite tables here).
+- The personal agreement acceptance binds (participant, program,
+  agreement_revision) and is each person's own action; the FAMILY
+  agreement instance (FamilyAgreement) is bound to the pair
+  (party_low/party_high), the connection generation, ONE program
+  revision AND ONE agreement revision (QA 19/10 R02: the instance is a
+  snapshot of what BOTH people pinned — a cloned program with the same
+  agreement template revision is still a different pin, so proposing on
+  a new program revision creates a NEW instance instead of resurrecting
+  the row pinned to the old program revision). It is confirmed only when
+  TWO DIFFERENT actors of the same pair have confirmed the SAME
+  (program_revision, agreement_revision) row (proposer + counterpart,
+  each recorded with their own timestamp). Editing creates a NEW
+  revision = a new instance; old confirmed instances stay valid per
+  policy until the new one is confirmed (superseded) or ended. Nobody
+  can sign for another person.
+- Week progress is private per participant and pinned to the program
+  revision it was made on (program_revision column) so a reused
+  activity_key in a newer revision cannot inherit old status.
+- Joint activities are F09 invites (referenced by key — no duplicated
+  invite tables here).
 """
 
 import datetime as dt
@@ -64,6 +79,10 @@ class WeekProgress(models.Model):
                                     on_delete=models.CASCADE,
                                     related_name="f02_week_progress")
     program_key = models.CharField(max_length=64)
+    # Revision of the program this progress was made on. Nullable only for
+    # legacy rows created before this column existed (production had zero
+    # rows at introduction); new writes always pin the enrollment revision.
+    program_revision = models.PositiveIntegerField(null=True, blank=True)
     week_no = models.PositiveIntegerField()
     activity_key = models.CharField(max_length=64)
     status = models.CharField(max_length=16)  # done | skipped | reset
@@ -73,8 +92,9 @@ class WeekProgress(models.Model):
         app_label = "f02_program"
         constraints = [
             models.UniqueConstraint(
-                fields=["participant", "program_key", "activity_key"],
-                name="uniq_f02_participant_activity"),
+                fields=["participant", "program_key", "activity_key",
+                        "program_revision"],
+                name="uniq_f02_participant_activity_rev"),
         ]
         indexes = [
             models.Index(fields=["participant", "updated_at"]),
@@ -84,6 +104,7 @@ class WeekProgress(models.Model):
         return {
             "week_no": self.week_no,
             "activity_key": self.activity_key,
+            "program_revision": self.program_revision,
             "status": self.status,
             "updated_at": self.updated_at.isoformat(),
         }
@@ -116,4 +137,115 @@ class AgreementAcceptance(models.Model):
             "program_revision": self.program_revision,
             "agreement_revision": self.agreement_revision,
             "accepted_at": self.accepted_at.isoformat(),
+        }
+
+
+AGREEMENT_PROPOSED = "proposed"
+AGREEMENT_CONFIRMED = "confirmed"
+AGREEMENT_SUPERSEDED = "superseded"
+AGREEMENT_WITHDRAWN = "withdrawn"
+AGREEMENT_ENDED = "ended"
+AGREEMENT_OPEN_STATUSES = (AGREEMENT_PROPOSED,)
+AGREEMENT_LIVE_STATUSES = (AGREEMENT_PROPOSED, AGREEMENT_CONFIRMED)
+AGREEMENT_TERMINAL_STATUSES = (
+    AGREEMENT_SUPERSEDED, AGREEMENT_WITHDRAWN, AGREEMENT_ENDED,
+)
+
+
+class FamilyAgreement(models.Model):
+    """Week-4 family agreement INSTANCE of exactly one pair.
+
+    State machine (docs/product/four-week-flow.md — Thỏa ước):
+      proposed -> proposed   : one side confirmed the revision
+      proposed -> confirmed  : BOTH sides confirmed the same revision
+      proposed -> withdrawn  : proposer withdraws
+      proposed|confirmed -> superseded : a newer revision got confirmed
+      confirmed -> ended     : explicit end (or unlink policy upstream)
+    One row per (pair, program_key, program_revision,
+    agreement_revision, generation): re-confirming the same row by the
+    same person is idempotent, never a second signature; A confirming v1
+    and B confirming v2 touch DIFFERENT rows and can never merge into one
+    confirmed agreement (QA 19/10 R02: program_revision is part of the
+    identity — same template revision under a new program pin is a new
+    snapshot the pair confirms on their chosen program version).
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    program_key = models.CharField(max_length=64)
+    program_revision = models.PositiveIntegerField()
+    agreement_revision = models.PositiveIntegerField()
+    connection_generation = models.PositiveIntegerField()
+    party_low_id = models.CharField(max_length=64)
+    party_high_id = models.CharField(max_length=64)
+    proposed_by = models.CharField(max_length=64)
+    proposed_by_role = models.CharField(max_length=16)
+    commitments = models.JSONField(default=list)
+    status = models.CharField(max_length=16, default=AGREEMENT_PROPOSED)
+    proposer_confirmed_at = models.DateTimeField(null=True, blank=True)
+    counterpart_confirmed_at = models.DateTimeField(null=True, blank=True)
+    counterpart_role = models.CharField(max_length=16, blank=True, default="")
+    created_at = models.DateTimeField(default=_utc_now, editable=False)
+    updated_at = models.DateTimeField(default=_utc_now, editable=False)
+
+    class Meta:
+        app_label = "f02_program"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["party_low_id", "party_high_id", "program_key",
+                        "program_revision", "agreement_revision",
+                        "connection_generation"],
+                name="uniq_f02_agreement_pair_rev_pin_generation"),
+        ]
+        indexes = [
+            models.Index(fields=["party_low_id", "updated_at"]),
+            models.Index(fields=["party_high_id", "updated_at"]),
+        ]
+
+    def is_member(self, user_id: str) -> bool:
+        return str(user_id) in (str(self.party_low_id), str(self.party_high_id))
+
+    def other_party(self, user_id: str) -> str:
+        return (str(self.party_high_id)
+                if str(user_id) == str(self.party_low_id)
+                else str(self.party_low_id))
+
+    def role_of(self, user_id: str) -> str:
+        """Role ONLY via the proposal record — the pair is one student and
+        one caregiver (class accounts); the proposer's role pins which side
+        is which for this instance."""
+        return (self.proposed_by_role
+                if str(user_id) == str(self.proposed_by)
+                else self.counterpart_role
+                or ("caregiver" if self.proposed_by_role == "student"
+                    else "student"))
+
+    def view(self, *, viewer_id: str) -> dict:
+        my_confirmed = (self.proposer_confirmed_at is not None
+                        if str(viewer_id) == str(self.proposed_by)
+                        else self.counterpart_confirmed_at is not None)
+        counterpart_confirmed = (self.counterpart_confirmed_at is not None
+                                 if str(viewer_id) == str(self.proposed_by)
+                                 else self.proposer_confirmed_at is not None)
+        return {
+            "agreement_id": str(self.id),
+            "program_key": self.program_key,
+            "program_revision": self.program_revision,
+            "agreement_revision": self.agreement_revision,
+            "connection_generation": self.connection_generation,
+            "status": self.status,
+            "proposed_by": self.proposed_by,
+            "proposed_by_me": str(viewer_id) == str(self.proposed_by),
+            "my_confirmed": my_confirmed,
+            "counterpart_confirmed": counterpart_confirmed,
+            "commitments": list(self.commitments or []),
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
+            # QA 19/10 R04: the agreement is confirmed at the SECOND
+            # signature — max of the two timestamps, never min (the first
+            # signature time only means "proposed with one signature").
+            "confirmed_at": (max(
+                t for t in (self.proposer_confirmed_at,
+                            self.counterpart_confirmed_at)
+                if t is not None).isoformat()
+                if self.status == AGREEMENT_CONFIRMED else None),
         }

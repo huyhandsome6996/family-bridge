@@ -402,15 +402,25 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Đồng hành: tuần 1 xem trước được, tuần 2–4 'Sắp có', ghi chú tự nguyện", () => {
+  it("Hub Đồng hành (F02 thật): không còn WEEKS hardcode/'Sắp có'; catalog fixture rỗng → empty state trung thực", async () => {
+    // PIN UPDATE (F02 task 2026-10-16): trang /companion đọc programMy/
+    // programCatalog qua adapter. Mock fixture trả catalog rỗng → trang phải
+    // nói trung thực "chưa có chương trình nào được phát hành" và TUYỆT ĐỐI
+    // không quay lại copy hardcode "Sắp có" theo tiến độ người dùng.
+    setSession({ token: "t-pages", userId: "u-pages", expiresAt: Date.now() + 3600_000 });
     const { ctx } = makeCtx({ demo: false, role: "student" });
     const { host, el } = mount(pages.companion, ctx);
+    await wait(400); // mock fixtures chờ ~100ms mỗi call
     const text = textOf(el);
-    assert.ok(text.includes("Lộ trình tự nguyện, bạn có thể bỏ qua hoặc quay lại bất cứ lúc nào."));
-    assert.ok(findButton(el, "Xem trước chủ đề"), "tuần 1 phải có nút xem trước");
-    const comingSoonCount = (text.match(/Sắp có/g) || []).length;
-    assert.ok(comingSoonCount >= 3, `tuần 2–4 phải badge Sắp có (thấy ${comingSoonCount})`);
+    assert.ok(text.includes("Chưa có chương trình nào được phát hành"),
+      `thấy: ${text.slice(0, 220)}`);
+    assert.ok(!text.includes("Sắp có"),
+      "cấm hồi quy 'Sắp có' hardcode theo tiến độ");
+    assert.ok(!text.includes("Xem trước chủ đề"),
+      "cấm hồi quy sheet xem trước tĩnh");
+    assert.ok(text.includes("sổ giấy"), "ghi chú sổ giấy không ép app");
     unmount(host);
+    clearSession();
   });
 
   it("Hub Hộp thư (w14, PIN UPDATE task 3-b4): danh sách dữ liệu thật từ F05", async () => {

@@ -143,3 +143,64 @@ class AgreementAcceptView(APIView):
             participant_id=str(request.user.pk),
             program_key=_program_key(payload.get("program_key")))
         return Response(result)
+
+
+class FamilyAgreementOverviewView(APIView):
+    """GET /api/v1/program/agreement?program_key= — the week-4 family
+    agreement instance of MY pair (current connection generation) + the
+    pinned template; null instance when not proposed yet."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        program_key = _program_key(request.query_params.get("program_key"))
+        return Response(ProgramService().agreement_overview(
+            participant_id=str(request.user.pk), program_key=program_key))
+
+
+class FamilyAgreementProposeView(APIView):
+    """POST — one side proposes the family agreement of their pinned
+    revision for the current connection generation (idempotent per
+    revision+generation; a new revision supersedes the previous live one)."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        payload = _json_body(request)
+        reject_unknown_fields(payload, allowed={"program_key"})
+        result = ProgramService().propose_family_agreement(
+            participant_id=str(request.user.pk),
+            program_key=_program_key(payload.get("program_key")))
+        return Response(result, status=201)
+
+
+class FamilyAgreementConfirmView(APIView):
+    """POST — each side confirms for themselves; status becomes confirmed
+    only when the two different actors of the pair confirmed the same
+    revision row (same connection generation, same program_revision)."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, agreement_id: str):
+        from family_bridge_core.validation import validate_uuid
+        agreement_uuid = validate_uuid(agreement_id, field="agreement_id")
+        _json_body(request)  # optional empty body
+        result = ProgramService().confirm_family_agreement(
+            participant_id=str(request.user.pk),
+            agreement_id=str(agreement_uuid))
+        return Response(result)
+
+
+class FamilyAgreementWithdrawView(APIView):
+    """POST — proposer-only withdraw while proposed (Proposed -> Withdrawn)."""
+    authentication_classes = [FBSDSessionAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, agreement_id: str):
+        from family_bridge_core.validation import validate_uuid
+        agreement_uuid = validate_uuid(agreement_id, field="agreement_id")
+        _json_body(request)
+        result = ProgramService().withdraw_family_agreement(
+            participant_id=str(request.user.pk),
+            agreement_id=str(agreement_uuid))
+        return Response(result)

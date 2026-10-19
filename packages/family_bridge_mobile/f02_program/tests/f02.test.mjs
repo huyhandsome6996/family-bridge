@@ -45,3 +45,18 @@ test("voluntary wording + per-person agreement + paper notebook option", async (
   assert.match(source, /\(gợi ý\)/);
   assert.doesNotMatch(source, /innerHTML\s*=\s*[^`]*\$\{/);
 });
+
+test("family agreement instance wrappers hit pair-bound contract paths", async () => {
+  const api = fakeApi();
+  const program = createProgramApi({ api });
+  await program.agreementOverview("family-4w");
+  await program.proposeAgreement("family-4w");
+  await program.confirmAgreement("ag-1");
+  await program.withdrawAgreement("ag-1");
+
+  assert.match(api.calls[0][1], /^\/api\/v1\/program\/agreement$/);
+  assert.equal(api.calls[0][2].query.program_key, "family-4w");
+  assert.match(api.calls[1][1], /agreement\/propose$/);
+  assert.match(api.calls[2][1], /agreement\/ag-1\/confirm$/);
+  assert.match(api.calls[3][1], /agreement\/ag-1\/withdraw$/);
+});

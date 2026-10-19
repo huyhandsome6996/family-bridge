@@ -94,6 +94,18 @@ class WeeksProgressTests(F02ApiBase):
                             for w in weeks.data["weeks"]))
         self.assertEqual(weeks.data["suggested_week"], 1)  # suggestion only
 
+    def test_paper_note_copy_no_typo(self):
+        # Copy máy chủ cho sổ giấy phải là "không bắt buộc ghi trong app"
+        # (mini-dev 3-c báo lỗi chính tả "bắt đầu buộc" — pin chống tái phát).
+        self._enroll()
+        weeks = self.client.get("/api/v1/program/weeks/family-4w",
+                                format="json",
+                                **auth_header(self.student_token))
+        note = weeks.data["note_paper_guide"]
+        self.assertIn("sổ giấy", note)
+        self.assertIn("không bắt buộc ghi trong app", note)
+        self.assertNotIn("bắt đầu buộc", note)
+
     def test_progress_own_only_and_reset(self):
         self._enroll()
         response = self.client.post(
