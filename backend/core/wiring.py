@@ -1,7 +1,9 @@
 """Production backend port wiring (B18 integration).
 
 Wires real services across feature app registries:
-- F01 InviteService -> ConnectionReader across features (f03, f05, f07, f08, f09, f10).
+- F01 InviteService -> ConnectionReader across features (f03, f05, f07, f08, f10).
+  (f09 no longer wired here: it owns a deterministic F01ConnectionReader of
+  its own, and a core registration would shadow it — T1-a risk #1.)
 - F05 MessageTransportService -> MessageTransport (f03, f10, f11) with F10 viewer adapter.
 - F11 invite connector -> ensures backup supporter reachability.
 - F12 staff directory -> capability-checked operators (preserves scheduling_no_staff gate when empty).
