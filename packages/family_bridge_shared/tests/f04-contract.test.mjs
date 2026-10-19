@@ -7,6 +7,8 @@
 //  - C6/C8: replay idempotency + editDraft KHÔNG gửi kind; pause chỉ chặn khi
 //    ĐÃ chọn (mock không ép preview/send chờ 300s khi chưa chọn pause).
 //  - Pagination mapping: F05/F07 dùng page_size + next; F06 server_time/pause_seconds.
+//  - N01 (QA 19/10): preview response kèm `body` snapshot server-bound;
+//    http pass-through nguyên vẹn; mock cùng shape (parity backend A2).
 // Chạy: node --test packages/family_bridge_shared/tests/f04-contract.test.mjs
 import { describe, it, mock } from "node:test";
 import assert from "node:assert/strict";
@@ -510,6 +512,96 @@ describe("F5 — shape contract đơn nguồn: mock DTO = đúng key set AiSugge
         ["purpose", "decision", "policy_version", "withdrawn", "current"]);
       assert.ok(["accepted", "declined", "none"].includes(row.decision),
         `decision phải thuộc enum backend accepted|declined|none, nhận: ${row.decision}`);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// N01 (QA F04 19/10 — P1 "gửi sai bản đã duyệt"): preview response PHẢI mang
+// `body` = snapshot server-bound. Nguồn sự thật: make_preview backend
+// (f06_drafts/services/drafts.py) sau khi A2 thêm field `body`; mock adapter
+// phải cùng shape để 2 client chạy mock có hành vi giống HTTP thật. Quy tắc
+// bảo trì (giống F5): khi backend đổi shape preview PHẢI cập nhật CẢ HAI
+// phía mock + mảng hằng dưới đây cùng một lúc.
+// ---------------------------------------------------------------------------
+const DOCUMENTED_PREVIEW_DTO_FIELDS = [
+  "preview_id",
+  "revision",
+  "recipient_id",
+  "body",
+  "deadline",
+  "server_time",
+];
+
+describe("N01 — mock previewDraft trả body server-bound (parity backend mới)", () => {
+  it("preview trả ĐÚNG key set {preview_id, revision, recipient_id, body, deadline, server_time} + source quy ước", async () => {
+    const adapter = createMockAdapter();
+    const draft = await adapter.createDraft({ kind: "text", body: "ban can gui", recipientId: "r-n01" });
+    const preview = await adapter.previewDraft(draft.draft_id);
+    assert.deepEqual(Object.keys(preview),
+      [...DOCUMENTED_PREVIEW_DTO_FIELDS, "source"],
+      "shape preview = make_preview backend (drafts.py) + body snapshot N01 + source ở cuối");
+  });
+
+  it("preview.body là snapshot đúng nội dung draft TẠI THỜI ĐIỂM preview (bản đã lưu cuối)", async () => {
+    const adapter = createMockAdapter();
+    const draft = await adapter.createDraft({ kind: "text", body: "ban dau", recipientId: "r-n01" });
+    const first = await adapter.previewDraft(draft.draft_id);
+    assert.equal(first.body, "ban dau");
+    // Sửa nháp (revision bump) → preview MỚI phải chốt bản mới.
+    const edited = await adapter.editDraft(draft.draft_id, { body: "ban da sua", recipientId: "r-n01" });
+    const second = await adapter.previewDraft(draft.draft_id);
+    assert.equal(second.body, "ban da sua", "body = bản server giữ sau editDraft");
+    assert.equal(second.revision, edited.revision);
+    assert.notEqual(second.preview_id, first.preview_id, "preview cũ hết giá trị sau edit");
+    // Snapshot của preview cũ GIỮ NGUYÊN (server-bound, không sống theo live state).
+    assert.equal(first.body, "ban dau");
+  });
+
+  it("N01 invalidate: confirm với preview cũ sau edit → 409 preview_stale (không gửi bản cũ)", async () => {
+    const adapter = createMockAdapter();
+    const draft = await adapter.createDraft({ kind: "text", body: "ban A", recipientId: "r-n01" });
+    const stale = await adapter.previewDraft(draft.draft_id);
+    await adapter.editDraft(draft.draft_id, { body: "ban B", recipientId: "r-n01" });
+    await assert.rejects(
+      () => adapter.confirmDraftSend(draft.draft_id, stale.preview_id),
+      (error) => error.status === 409 && error.code === "preview_stale",
+      "preview chốt bản A nhưng revision đã đổi — confirm phải bị chặn, không hồi sinh bản A",
+    );
+    const fresh = await adapter.previewDraft(draft.draft_id);
+    assert.equal(fresh.body, "ban B");
+    const sent = await adapter.confirmDraftSend(draft.draft_id, fresh.preview_id);
+    assert.equal(sent.status, "sent");
+  });
+});
+
+describe("N01 — http previewDraft pass-through NGUYÊN VẸN (không biến đổi envelope)", () => {
+  it("response của máy chủ trả NGUYÊN VẸN: body snapshot + mọi field server giữ nguyên", async () => {
+    clearSession();
+    setSession({ token: "tok", userId: "u", expiresAt: Date.now() + 60_000 });
+    // Shape = make_preview backend sau khi A2 thêm `body` (snapshot server-bound).
+    const serverPreview = {
+      preview_id: "8b1e1c58-0000-4a5a-9d1f-000000000001",
+      revision: 7,
+      recipient_id: "r-uuid-n01",
+      body: "bản máy chủ đã chốt — client KHÔNG được đọc live textarea thay cho field này",
+      deadline: null,
+      server_time: "2026-10-19T00:00:00+00:00",
+      server_only_field: "giữ nguyên (pass-through như aiRefine C3)",
+    };
+    const calls = await captureFetch(() => jsonResponse(serverPreview));
+    try {
+      const endpoints = makeEndpoints();
+      const preview = await endpoints.previewDraft("d-n01");
+      assert.deepEqual(preview, serverPreview,
+        "adapter phải trả preview nguyên vẹn — KHÔNG thêm/bớt/đổi tên field");
+      assert.equal(preview.body, serverPreview.body,
+        "body server-bound phải tới tay client nguyên vẹn (N01)");
+      assert.equal(calls[0].url, "https://backend.example/api/v1/drafts/d-n01/preview");
+      assert.equal(calls[0].options.method, "POST");
+    } finally {
+      clearSession();
+      mock.restoreAll();
     }
   });
 });

@@ -112,6 +112,17 @@ function suggestionDto({ text, id = "sg-t", echo = null } = {}) {
 
 /** Adapter web giả tối thiểu cho compose: draft engine + AI hooks kiểm soát. */
 function f04Adapter({ behavior = {} } = {}) {
+  // N01 (19/10): hợp đồng preview mới trả kèm `body` = bản máy chủ BIND
+  // (server-bound snapshot). Adapter giả phải phản ánh đúng contract mới:
+  // server body = body của draft ban đầu, đổi theo MỖI editDraft — sheet
+  // xác nhận phải hiển thị bản này (preview.body ?? snapshotBody), KHÔNG
+  // đọc live textarea. (Cập nhật adapter giả vì hành vi cũ "preview trả
+  // body: "x" cố định" không còn đúng hợp đồng.)
+  if (behavior.serverBody === undefined) {
+    behavior.serverBody = behavior.drafts && behavior.drafts[0] && behavior.drafts[0].body != null
+      ? String(behavior.drafts[0].body)
+      : "x";
+  }
   return {
     mode: "web",
     listConnections: async () => ({
@@ -130,6 +141,7 @@ function f04Adapter({ behavior = {} } = {}) {
       // Ghi nhận body lưu lên máy chủ — dùng assert "preview dùng bản ĐÃ SỬA".
       behavior.editDraftBodies = behavior.editDraftBodies || [];
       behavior.editDraftBodies.push(body);
+      behavior.serverBody = body; // N01: máy chủ giờ giữ đúng bản này
       return {
         draft_id: id, revision: (behavior.revision = (behavior.revision || 1) + 1),
         status: "editing", pause: null, server_time: "2026-10-16T00:00:00Z", body,
@@ -138,7 +150,15 @@ function f04Adapter({ behavior = {} } = {}) {
     previewDraft: async (id) => {
       behavior.previewCalls = (behavior.previewCalls || 0) + 1;
       if (behavior.previewError) throw behavior.previewError;
-      return { preview_id: "pv-1", draft_id: id, body: "x" };
+      // N01: response preview kèm server-bound snapshot (body/revision/
+      // recipient_id) — parity với backend A2.
+      return {
+        preview_id: "pv-1",
+        draft_id: id,
+        revision: behavior.revision || 1,
+        recipient_id: "u-care-1",
+        body: behavior.serverBody,
+      };
     },
     confirmDraftSend: async (id, previewId) => {
       behavior.confirmCalls = (behavior.confirmCalls || 0) + 1;

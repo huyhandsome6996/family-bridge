@@ -157,3 +157,152 @@ Kiểm chứng chất lượng đã chạy (A4-FINISH):
   contract freeze v1 và backend đã land)*.
 - Verify test: **A5** *(placeholder — chờ rerun độc lập `cd web && npm test`
   và đối chiếu 24 dòng)*.
+
+## 6. Preview snapshot contract (N01) — QA 2026-10-19
+
+> **Phạm vi hiệu lực**: áp dụng cho các commit sửa N01 trên nhánh
+> `tinh-nang/f04-ai-ho-tro-dien-dat-us029-us033` — snapshot audit tại SHA
+> `e0ee38827562a75542fa79fff50984696088d1c9` (đã xác minh = đúng SHA được audit),
+> ngày chốt **2026-10-19**. Mục này **supersede** khẳng định "shared KHÔNG yêu
+> cầu thay đổi" ở mục 4 (đúng tại thời điểm viết, nhưng N01 buộc preview
+> response thêm `body` nên shared phải cập nhật mock + test).
+
+### 6.1 Lỗi N01 (P1) — "gửi sai bản đã duyệt"
+
+Khi preview request đang bay, author sửa textarea → sheet xác nhận hiển thị
+nội dung B (đọc LIVE textarea) trong khi server bind bản A → recipient nhận A
+khác B đã duyệt. Đường đọc live textarea duy nhất liên quan preview/sheet:
+
+- `web/src/pages/compose/index.js:836` — `openConfirmSheet()` render
+  `String(ui.textarea.value || "")` tại thời điểm mở sheet (sau await).
+- `zalo-mini-app/src/pages/compose/index.js:1228` — y hệt.
+- Ngoài `compose/index.js` KHÔNG còn đường nào đọc live textarea để hiển thị
+  preview: đã grep toàn bộ `web/src` + `zalo-mini-app/src` — các hit `.value`
+  còn lại thuộc luồng khác (login/connect/mailbox/cards/settings/consent) và
+  `message/index.js` chỉ gửi reply qua `sendMessage` (không đi qua preview/
+  confirm-send). Grep evidence: mục 6.5.
+
+Gốc rễ: `onPreview()` không chốt snapshot, không có token chống phiên cũ, và
+không khóa input trong lúc request bay → mọi state giữa các bước `await`
+(editDraft sync → previewDraft) đều có thể đổi dưới chân flow.
+
+### 6.2 Request/response shape mới (backend A2 + shared A1)
+
+Request KHÔNG đổi:
+
+- `POST /api/v1/drafts/{draft_id}/preview` — body `{}`, Bearer, author-only,
+  gate `_deadline_guard` giữ nguyên (409 `cooldown_active` khi ĐANG paused còn
+  deadline — C8/R2A3-01).
+
+Response THÊM `body` (server-bound snapshot):
+
+```json
+{
+  "preview_id": "<uuid>",
+  "revision": <int — revision của draft TẠI THỜI ĐIỂM preview>,
+  "recipient_id": "<uuid|null>",
+  "body": "<nội dung draft mà MÁY CHỦ vừa chốt — snapshot bất biến>",
+  "deadline": "<iso|null>",
+  "server_time": "<iso>"
+}
+```
+
+- Nguồn sự thật backend: `make_preview` (f06_drafts/services/drafts.py:200) —
+  hiện trả 5 field, A2 thêm `"body": draft.body` (đọc một chiều; audit tại
+  SHA e0ee388 chưa có field này).
+- `body` là SNAPSHOT chốt lúc preview: sau đó draft đổi (edit lưu) không ảnh
+  hưởng giá trị đã trả; confirm_send vẫn validate `used` + `revision` +
+  `recipient_id` như hiện tại — `body` chỉ là bản "đã duyệt để hiển thị".
+- Shared HTTP adapter (`http-endpoints.js` `previewDraft`): **pass-through
+  NGUYÊN VẸN** — `return data` không thêm/bớt/đổi tên field (đã chứng minh
+  bằng đọc code + test mới "N01 — http previewDraft pass-through"). Khi A2
+  land `body`, cả hai client nhận ngay, không phải đổi adapter.
+- Shared mock adapter (`mock-adapter.js` `previewDraft`): **ĐÃ trả thêm
+  `body: draft.body`** (A1, phiên 2026-10-19) — parity để hai client chạy demo
+  `?demo=1` có hành vi giống HTTP thật. Zalo shim
+  (`zalo-mini-app/src/core/adapter/mock-adapter.js`) re-export shared nên tự
+  nhận thay đổi; web import thẳng shared.
+- Key set chuẩn (đơn nguồn trong test): `preview_id, revision, recipient_id,
+  body, deadline, server_time` (+ `source:"fixture"` ở cuối CHỈ ở mock — quy
+  ước mock-wide như F5). Bảo trì: đổi shape preview phải sửa CẢ mock +
+  `DOCUMENTED_PREVIEW_DTO_FIELDS` + test Python phía backend cùng lúc.
+
+### 6.3 Hành vi client bắt buộc (web = zalo-mini-app, như nhau)
+
+Ký hiệu: `snapshotBody/snapshotRecipientId/snapshotRevision` = giá trị chốt
+trước await; `previewSeq` = token tăng dần mỗi lượt preview.
+
+1. **(a) previewSeq token** — tăng ở ĐẦU mỗi lần `onPreview`; mọi `await`
+   (editDraft sync, previewDraft) xong phải so lại token: lệch → abort IM
+   LẶNG (phiên mới hơn đã chạy, không toast chồng, không mở sheet).
+2. **(b) Snapshot trước await** — sau khi bước sync-dirty (editDraft) THÀNH
+   CÔNG và TRƯỚC `await previewDraft`, chốt `snapshotBody` (text đã trim đã
+   sync), `snapshotRecipientId`, `snapshotRevision` (từ edit response).
+3. **(c) Khóa khi đang bay** — textarea + sheet chọn người nhận + nút preview
+   disabled kèm giải thích trung thực ("Đang lấy bản xem trước từ máy chủ…");
+   mở lại sau mọi nhánh kết thúc (kể cả abort).
+4. **(d) Kiểm tra sau await** — nếu live body/recipient/revision (hoặc state)
+   lệch snapshot → KHÔNG mở sheet; báo "Nội dung/người nhận đã thay đổi trong
+   khi lấy bản xem trước — hãy bấm Xem trước nội dung lại"; mở khóa.
+5. **(e) Sheet hiển thị `preview.body`** (fallback `snapshotBody` nếu server
+   cũ chưa trả body) — TUYỆT ĐỐI không đọc live textarea.
+6. **(f) Re-verify trước confirm** — nút Gửi trong sheet kiểm lại
+   `body === snapshotBody && recipient không đổi && revision không đổi` trước
+   khi gọi `confirmDraftSend`; lệch → đóng/refresh sheet theo nhánh (d).
+7. **(g) Sync/editDraft lỗi** — dừng flow, KHÔNG gọi preview, mở khóa, báo lỗi
+   lưu nháp trung thực (không tự retry).
+8. **(h) Giữ nguyên** xử lý unknown-outcome (confirm lỗi mạng → "KẾT QUẢ CHƯA
+   XÁC ĐỊNH", không tự retry/auto-send) + `cooldown_active` (báo
+   `remaining_seconds` của máy chủ); copy tiếng Việt có dấu.
+
+### 6.4 Các trường hợp invalidate + unknown outcome
+
+| # | Sự kiện | Server phản ứng | Client bắt buộc |
+|---|---|---|---|
+| 1 | Edit LƯU (editDraft/createDraft) sau preview | revision bump → confirm preview cũ 409 `preview_stale` (`draft_changed_after_preview`) | Test mới N01 pin 409; UI phải quay lại bước preview |
+| 2 | Preview mới cùng revision | backend supersedes: preview cũ `used=true` → confirm preview cũ 409 `preview_already_used` | Chỉ giữ preview mới nhất trong state |
+| 3 | Đổi người nhận sau preview | confirm 409 `preview_stale` (`recipient_changed_after_preview`) | Snapshot recipient + re-verify (f) |
+| 4 | Edit CHƯA lưu trong lúc preview bay | KHÔNG có invalidate (server không thấy) — chính là gap N01 | (b)(c)(d)(e): snapshot + khóa + so lại sau await; sheet chỉ hiển thị `preview.body` |
+| 5 | Đang paused còn deadline | preview/confirm 409 `cooldown_active` + `details.remaining_seconds` | Giữ nguyên xử lý hiện có (h) |
+| 6 | Logout/đổi phiên trong lúc bay | 401 / `stale_session` | previewSeq lệch → abort im lặng (a); tuyệt đối không mở sheet với kết quả của phiên cũ |
+| 7 | Confirm-send lỗi mạng / không response | KẾT QUẢ không xác định | Giữ nguyên unknown-outcome: báo CHƯA XÁC ĐỊNH trong sheet, không tự retry, không tự suy thành công (h) |
+
+> Lưu ý parity mock: `preview_id` của mock là deterministic
+> `demo-preview-{draftId}-{revision}` nên hai lần preview CÙNG revision trả
+> cùng id — mock KHÔNG mô phỏng được nhánh `preview_already_used` (backend
+> tạo row mới + supersede cũ mỗi lần preview). Client không được dựa vào điều
+> này: luôn dùng preview mới nhất và để 409 của máy chủ là phán quyết cuối.
+
+### 6.5 Ma trận cross-client (state × web × mini × route/component/API × status)
+
+Trạng thái audit tại SHA e0ee388 (trước fix của A3/A4):
+
+| State (compose) | Web (`#/compose` — `web/src/pages/compose/index.js`) | Zalo Mini (`#/compose` — `zalo-mini-app/src/pages/compose/index.js`) | Route/Component/API | Status contract (A1) | Status code |
+|---|---|---|---|---|---|
+| idle → bấm "Xem trước nội dung" | `onPreview()` dòng 732 (guarded "preview") | `onPreview()` dòng 1131 (guarded "preview") | `POST /api/v1/drafts/{id}/preview` | Shape mới chốt §6.2 | mock DONE (A1); backend `body` CHỜ A2 |
+| sync dirty trước preview | dòng 745–765: đọc live `pendingText` → `editDraft` (không snapshot, không token) | dòng 1144–1162: y hệt | `POST /api/v1/drafts/{id}` (edit, C8 kind-optional) | (b)(g) chốt §6.3 | BUG N01 → A4 / A3 |
+| preview in-flight | KHÔNG khóa textarea/recipient; không previewSeq | y hệt | preview đang bay | (a)(c) chốt §6.3 | BUG N01 → A4 / A3 |
+| preview về, mở sheet | `openConfirmSheet()` dòng 786; hiển thị `ui.textarea.value` LIVE dòng 836 | `openConfirmSheet()` dòng 1185; hiển thị live dòng 1228 | — | (e): hiển thị `preview.body` (fallback snapshot) | BUG N01 → A4 / A3 |
+| confirm trong sheet | `confirmBtn` dòng 790–832: gọi thẳng `confirmDraftSend`, không re-verify | dòng 1189–1224: y hệt | `POST /api/v1/drafts/{id}/confirm-send` | (f) re-verify bắt buộc | BUG N01 → A4 / A3 |
+| confirm thành công | receipt `sent` + reset composer | y hệt | confirm-send | Giữ nguyên | OK |
+| confirm unknown | `unknown` + "Kiểm tra trạng thái mới nhất", không retry | y hệt | confirm-send | Giữ nguyên (h) | OK |
+| 409 cooldown_active | báo `remaining_seconds` + `refreshPauseUi` | y hệt (copy R2A3-01) | preview/confirm | Giữ nguyên (h) | OK |
+| phiên đổi giữa chừng | chỉ có stale-session ở lớp adapter; preview flow chưa có token | y hệt | — | (a) previewSeq chốt §6.3 | BUG N01 → A4 / A3 |
+| demo `?demo=1` | import `createMockAdapter` shared (web-adapter.js:28) | shim `core/adapter/mock-adapter.js` → shared | shared mock | `body` DONE (A1) + test N01 xanh | DONE (A1) |
+
+Bằng chứng test shared (A1, 2026-10-19): `node --test
+packages/family_bridge_shared/tests/*.test.mjs` → **65/65 PASS** (gồm 4 test
+N01 mới trong `f04-contract.test.mjs`: key-set preview, snapshot đúng thời
+điểm preview, invalidate 409 preview_stale, pass-through HTTP nguyên vẹn);
+`node --test packages/family_bridge_shared/tests/test_f04_contract_a5.mjs` →
+**13/13 PASS** (chạy tường minh — file không khớp glob). Mobile shared loop:
+**51/51 PASS**. Evidence: `/home/z/my-project/f04-fix-evidence/a1/`.
+
+### 6.6 Ghi chú ownership
+
+- Shared (mock + http comment + tests) và docs này: **A1** — ĐÃ sửa phiên
+  2026-10-19.
+- Backend thêm `"body": draft.body` vào `make_preview` (+ test Python pin
+  shape): **A2** — CHƯA land tại SHA e0ee388.
+- Web `onPreview/openConfirmSheet` theo §6.3: **A4** — CHỜ.
+- Zalo `onPreview/openConfirmSheet` theo §6.3: **A3** — CHỜ.

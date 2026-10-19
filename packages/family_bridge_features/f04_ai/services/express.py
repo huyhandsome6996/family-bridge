@@ -25,7 +25,13 @@ Refine flow (explicit user action only):
    atomic claim (AiRefineOperation) -> provider call OUTSIDE every
    transaction.atomic -> short atomic finalize (suggestion insert + claim
    COMPLETED). Provider/network I/O never runs inside a transaction or row
-   lock.
+   lock. Claim IDENTITY fencing (N02, QA 18/10): the request captures the
+   pk + payload hash of ITS OWN claim at claim time and finalize locks THAT
+   row by pk — never "any INFLIGHT row with the same author+key". A key
+   reused after an F15 deletion or a TTL reclaim belongs to a NEW generation
+   with its own row; the old request's late result is fenced (dropped, 503
+   refine_result_discarded_after_deletion), never stored onto the new
+   generation's claim.
 7. Provider failure modes map to truthful statuses: timeout/outage/quota ->
    temporarily_unavailable (503) with reason; malformed/oversized/truncated
    output -> temporarily_unavailable(provider_output_invalid|_truncated).
@@ -78,9 +84,23 @@ class _ProviderFailed(Exception):
 
 
 class _RefineFencedByDeletion(Exception):
-    """R02 (QA 18/10): the F15 deletion committed while the provider call
-    was in flight — the claim row is gone, so the spent provider result
-    must be DROPPED, never persisted as a suggestion."""
+    """R02 (QA 18/10) + N02 identity fence: the claim row THIS request owns
+    is gone at finalize time — the F15 deletion committed, or a TTL reclaim
+    replaced the row with a new generation. The spent provider result must
+    be DROPPED, never persisted as a suggestion and never attributed to the
+    next generation's claim."""
+
+    def __init__(self, reason: str = "claim_row_missing") -> None:
+        super().__init__(reason)
+        self.reason = reason
+
+
+class _RefineClaimIdentityMismatch(Exception):
+    """N02 defense-in-depth: under the finalize row lock the claim's stored
+    payload hash no longer matches THIS request's payload — the identity
+    binding (claim_pk <-> payload_hash) is broken out-of-band. Refuse to
+    store anything: an old result must never land on a different
+    generation's claim."""
 
 
 def validate_input_revision(value: Any) -> Optional[int]:
@@ -163,10 +183,14 @@ class AiExpressService:
                                 payload_hash: str):
         """Claim the per-(author, key) operation slot in a SHORT atomic.
 
-        Returns None when this request owns the claim and may proceed to the
-        provider call; returns an AiSuggestion when the operation already
-        reached a completed outcome with the same payload (replay — the
-        caller must return it without any provider call).
+        Returns the claim IDENTITY (dict {"claim_pk", "payload_hash"}) when
+        this request owns a FRESH claim and may proceed to the provider
+        call; returns an AiSuggestion when the operation already reached a
+        completed outcome with the same payload (replay — the caller must
+        return it without any provider call). The caller must carry the
+        identity through Phase 3 and present it at finalize: the finalize
+        fence (N02) validates pk + payload hash under lock so a reused or
+        TTL-reclaimed key can never inherit an older request's result.
 
         Raises:
         - SlotUnavailable (409): a FRESH (< TTL) INFLIGHT claim exists —
@@ -180,12 +204,15 @@ class AiExpressService:
         for _ in range(3):  # bounded: stale reclamation retries at most once
             try:
                 with transaction.atomic():
-                    AiRefineOperation.objects.create(
+                    row = AiRefineOperation.objects.create(
                         author_id=str(author_id),
                         idempotency_key=idempotency_key,
                         payload_hash_hex=payload_hash,
                         status=STATUS_INFLIGHT)
-                return None  # claimed: this request may call the provider
+                # N02: claimed — capture THIS generation's identity so the
+                # finalize fence can re-lock exactly this row by pk.
+                return {"claim_pk": str(row.pk),
+                        "payload_hash": payload_hash}
             except IntegrityError:
                 op = AiRefineOperation.objects.filter(
                     author_id=str(author_id),
@@ -261,11 +288,14 @@ class AiExpressService:
 
         # Phase 2: claim the operation slot (R1A2-01, short atomic). A replay
         # here means the operation already finished with the same payload.
-        replay = self._claim_refine_operation(
+        # Otherwise keep the claim IDENTITY: finalize must fence on exactly
+        # this row (pk + payload hash), never on author+key alone (N02).
+        claim_identity = self._claim_refine_operation(
             author_id=str(author_id), idempotency_key=idempotency_key,
             payload_hash=payload_hash)
-        if replay is not None:
-            return replay
+        if isinstance(claim_identity, AiSuggestion):
+            return claim_identity  # replay of the finished operation
+        claim_pk = claim_identity["claim_pk"]
 
         # Phase 3: provider/network I/O — deliberately OUTSIDE any
         # transaction.atomic (probe-tested: connection.in_atomic_block False).
@@ -290,29 +320,49 @@ class AiExpressService:
         # the winner, never 500s and never creates a second stored operation
         # for the same key.
         #
-        # R02 fence (QA 18/10): the claim row is re-verified UNDER LOCK
-        # inside this same atomic. The F15 deletion hook deletes the
-        # author's AiSuggestion + AiRefineOperation rows atomically
-        # (frozen contract C9); if that deletion committed during the
-        # provider wait (Phase 3 is deliberately OUTSIDE any transaction),
-        # the claim no longer exists and the result is fenced: NOTHING is
-        # stored (deletion completed -> suggestion count stays 0). Locking
-        # the claim row first means a deletion racing THIS finalize blocks
-        # on the row lock and then deletes both rows — the fence cannot be
-        # interleaved into a resurrected row.
+        # R02 + N02 identity fence (QA 18/10): the claim row is re-verified
+        # UNDER LOCK inside this same atomic — by PK, the exact row THIS
+        # request claimed, never "any INFLIGHT row with the same author+key".
+        # The F15 deletion hook deletes the author's AiSuggestion +
+        # AiRefineOperation rows atomically (frozen contract C9), and the TTL
+        # reclaim replaces a stale row with a NEW generation row (same key,
+        # new pk). If our row is gone or its identity no longer matches, the
+        # result is fenced: NOTHING is stored (deletion completed ->
+        # suggestion count stays 0) and the next generation's INFLIGHT claim
+        # is never completed on our behalf. Locking the claim row first means
+        # a deletion racing THIS finalize blocks on the row lock and then
+        # deletes both rows — the fence cannot be interleaved into a
+        # resurrected row.
         try:
             with transaction.atomic():
                 claim = (AiRefineOperation.objects.select_for_update()
-                         .filter(author_id=str(author_id),
-                                 idempotency_key=idempotency_key,
-                                 status=STATUS_INFLIGHT).first())
+                         .filter(pk=claim_pk).first())
                 if claim is None:
-                    # Outcome of the deletion race: the author's data was
-                    # deleted between claim and finalize. The provider call
-                    # is already spent (billed) — exactly why nothing may
-                    # be persisted from it afterwards (C6 analog of the
-                    # consent/kill-switch finalize recheck).
+                    # Outcome of the deletion/reclaim race: OUR claim row no
+                    # longer exists (deleted, or replaced by a new generation
+                    # after the TTL). The provider call is already spent
+                    # (billed) — exactly why nothing may be persisted from
+                    # it afterwards (C6 analog of the consent/kill-switch
+                    # finalize recheck).
                     raise _RefineFencedByDeletion()
+                if claim.payload_hash_hex != payload_hash:
+                    # N02: identity binding broken (hash differs under lock)
+                    # — this row belongs to a different payload generation;
+                    # never write our result onto it.
+                    raise _RefineClaimIdentityMismatch()
+                if claim.status != STATUS_INFLIGHT:
+                    # Our OWN row already reached COMPLETED (a twin finalize
+                    # holding the same identity won the race): replay the
+                    # stored outcome honestly — never store a second row and
+                    # never touch any other claim.
+                    winner = AiSuggestion.objects.filter(
+                        author_id=str(author_id),
+                        idempotency_key=idempotency_key).first()
+                    if (winner is None
+                            or winner.payload_hash_hex != payload_hash):
+                        raise TemporarilyUnavailable(
+                            {"reason": "refine_race_unresolved"})
+                    return winner
                 suggestion = AiSuggestion.objects.create(
                     author_id=str(author_id), purpose=purpose,
                     status=STATUS_SUGGESTED,
@@ -330,10 +380,17 @@ class AiExpressService:
                 claim.save(update_fields=["status", "updated_at"])
                 return suggestion
         except _RefineFencedByDeletion:
-            # Truthful 503: the operation no longer exists — the request
-            # must NOT create a suggestion after deletion completed.
+            # Truthful 503: the operation no longer exists (deletion
+            # completed, or the key was TTL-reclaimed into a new generation)
+            # — the request must NOT create a suggestion after deletion, and
+            # a late result must never land on the next generation's claim.
             raise ModuleUnavailable(
                 {"reason": "refine_result_discarded_after_deletion"}) from None
+        except _RefineClaimIdentityMismatch:
+            # N02 defense-in-depth: the locked row's payload identity no
+            # longer matches this request. Drop the result; nothing stored.
+            raise ModuleUnavailable(
+                {"reason": "refine_claim_identity_mismatch"}) from None
         except IntegrityError:
             winner = AiSuggestion.objects.filter(
                 author_id=str(author_id),
@@ -349,12 +406,13 @@ class AiExpressService:
             if winner.payload_hash_hex != payload_hash:
                 raise DuplicateKeyPayloadMismatch(
                     {"reason": "same_key_different_payload"}) from None
-            # Replay of the concurrent winner: reconcile our claim (if we
-            # own one) so the marker reflects the reached outcome; the real
-            # winner already completed the shared operation row.
+            # Replay of the concurrent winner: reconcile ONLY OUR OWN claim
+            # row (by pk — N02) so the marker reflects the reached outcome.
+            # The old author+key+INFLIGHT update would also complete a NEW
+            # generation's claim created after a deletion/TTL reclaim — the
+            # same steal path the finalize fence closes.
             AiRefineOperation.objects.filter(
-                author_id=str(author_id), idempotency_key=idempotency_key,
-                status=STATUS_INFLIGHT).update(
+                pk=claim_pk, status=STATUS_INFLIGHT).update(
                 status=STATUS_COMPLETED, updated_at=dt.datetime.now(tz=UTC))
             return winner  # replay of the concurrent winner: no second row
 

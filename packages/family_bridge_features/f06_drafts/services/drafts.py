@@ -211,8 +211,15 @@ class DraftService:
             recipient_id=draft.recipient_id, payload_hash_hex=payload_hash)
         # Shape stability: "deadline" mirrors the paused-state only (None
         # when no pause is active — same parity as the shared mock adapter).
+        # N01 (QA 19/10, P1 "gửi sai bản đã duyệt"): "body" là snapshot
+        # server-bound TẠI THỜI ĐIỂM preview — bản server sẽ thực sự gửi khi
+        # confirm (confirm tự kiểm revision/recipient/payload_hash của bản
+        # đã lưu, không đọc live textarea phía client). Author-only field:
+        # preview chỉ trả cho chính tác giả draft của mình (không vi phạm
+        # privacy — same scope as the draft GET endpoint).
         return {"preview_id": str(preview.id), "revision": draft.revision,
                 "recipient_id": draft.recipient_id,
+                "body": draft.body,
                 "deadline": (draft.pause_deadline_at.isoformat()
                              if draft.pause_deadline_at else None),
                 "server_time": now.isoformat()}

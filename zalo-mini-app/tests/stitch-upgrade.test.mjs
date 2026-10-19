@@ -350,7 +350,15 @@ describe("Stitch: adapter F06 (nháp + khoảng dừng máy chủ)", () => {
     assert.ok(ok.draft_id);
   });
 
-  it("mock: preview trả ĐÚNG shape backend — KHÔNG có body (compose dùng snapshot)", async () => {
+  // CẬP NHẬT (N01 — QA 19/10, P1 "gửi sai bản đã duyệt"): test cũ pin shape
+  // CŨ "preview KHÔNG có body (compose dùng snapshot)" — assert hành vi SAI
+  // theo hợp đồng mới. Backend A2 (make_preview, f06_drafts/services/drafts.py)
+  // giờ trả kèm `body` = snapshot nội dung MÁY CHỦ chốt; mock (A1) đồng bộ;
+  // client (mini + web) bắt buộc hiển thị `preview.body ?? snapshotBody` trong
+  // sheet xác nhận — TUYỆT ĐỐI không đọc lại live textarea (nguồn lỗi N01:
+  // preview đang bay sửa nội dung -> sheet hiện bản khác bản máy chủ bind).
+  // Nên test đổi chiều: preview PHẢI có body (shape mới), các trường cũ giữ nguyên.
+  it("mock: preview trả ĐÚNG shape backend MỚI — CÓ body (snapshot máy chủ cho sheet xác nhận)", async () => {
     const { ctx } = makeCtx({ demo: true, role: "student" });
     const created = await ctx.adapter.createDraft({
       kind: "text",
@@ -362,16 +370,16 @@ describe("Stitch: adapter F06 (nháp + khoảng dừng máy chủ)", () => {
     // mock không cho sửa deadline từ ngoài; thay vào đó kiểm tra shape qua
     // việc preview CHƯA hết giờ trả cooldown (đã test ở trên) và shape các
     // trường dự kiến có mặt khi hợp lệ được pin qua source của mock:
-    // {preview_id, revision, recipient_id, deadline, server_time} — không body.
+    // {preview_id, revision, recipient_id, body, deadline, server_time}.
     // ADR-1 (task 18-a): mock-adapter chuyển về packages/family_bridge_shared
-    // (shim giữ path import). Đọc SOURCE từ file thật trong shared — assertion
-    // KHÔNG đổi.
+    // (shim giữ path import). Đọc SOURCE từ file thật trong shared.
     const mockSource = readFileSync(join(ROOT, "..", "packages", "family_bridge_shared", "src", "adapter", "mock-adapter.js"), "utf8");
     const previewFn = mockSource.slice(
       mockSource.indexOf("async previewDraft"),
       mockSource.indexOf("async confirmDraftSend"),
     );
-    assert.ok(!previewFn.includes("body: draft.body"), "preview KHÔNG được trả body như backend");
+    assert.ok(previewFn.includes("body: draft.body"),
+      "preview PHẢI trả body = snapshot máy chủ (hợp đồng N01 mới — client dùng preview.body ?? snapshotBody)");
     for (const field of ["preview_id", "revision:", "recipient_id", "deadline", "server_time"]) {
       assert.ok(previewFn.includes(field), `preview phải có ${field}`);
     }

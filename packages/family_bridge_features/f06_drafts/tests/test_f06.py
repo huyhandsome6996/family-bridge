@@ -274,20 +274,42 @@ class NoPauseC8ContractTests(F06ApiBase):
     def test_no_pause_preview_shape_confirm_ok(self):
         # (a)+(d) draft thường không pause: preview OK với shape ổn định
         # (deadline luôn có mặt, = None khi không pause), confirm OK.
+        # N01 (QA 19/10): shape cộng thêm "body" — snapshot server-bound
+        # đúng bản server sẽ gửi khi confirm (parity với
+        # DOCUMENTED_PREVIEW_DTO_FIELDS trong
+        # packages/family_bridge_shared/tests/f04-contract.test.mjs).
         draft = self._created_draft()
         preview = self._preview(str(draft.id))
         self.assertEqual(preview.status_code, 200)
         self.assertEqual(
             set(preview.data.keys()),
-            {"preview_id", "revision", "recipient_id", "deadline",
+            {"preview_id", "revision", "recipient_id", "body", "deadline",
              "server_time"})
         self.assertIsNone(preview.data["deadline"])
         self.assertEqual(preview.data["revision"], draft.revision)
         self.assertEqual(preview.data["recipient_id"], str(self.caregiver.pk))
+        # N01: body snapshot KHỚP ĐÚNG draft.body đã lưu trên server.
+        self.assertEqual(preview.data["body"], draft.body)
         confirmed = self._confirm(str(draft.id), preview.data["preview_id"])
         self.assertEqual(confirmed.status_code, 200, confirmed.data)
         self.assertEqual(len(self.sender.sent), 1)
         self.assertEqual(Draft.objects.get(pk=draft.id).status, "sent")
+
+    def test_preview_body_snapshot_after_edit_is_new_saved_body(self):
+        # N01: preview sau edit phải chốt bản MỚI đã lưu (revision bump),
+        # không phải bản cũ client đang giữ trong textarea.
+        draft = self._created_draft()
+        first = self._preview(str(draft.id))
+        self.assertEqual(first.data["body"], draft.body)
+        edited = self.service.edit(author_id=str(self.student.pk),
+                                   draft_id=str(draft.id),
+                                   body="bản đã sửa sau preview đầu",
+                                   title="", card_id="", card_version=None,
+                                   recipient_id=str(self.caregiver.pk))
+        second = self._preview(str(draft.id))
+        self.assertEqual(second.data["body"], "bản đã sửa sau preview đầu")
+        self.assertEqual(second.data["body"], edited.body)
+        self.assertEqual(second.data["revision"], edited.revision)
 
     def test_paused_t299_confirm_blocked_cooldown(self):
         # (b) đã chọn pause → respect deadline server: t=299 chặn

@@ -329,7 +329,11 @@ export function createHttpEndpoints({
           method: "POST",
           body: {},
         }));
-      return data; // preview gắn (revision, recipient, hash payload)
+      return data; // pass-through NGUYÊN VẸN (parity mock): {preview_id,
+      // revision, recipient_id, body, deadline, server_time} — `body` là
+      // snapshot server-bound (N01, QA 19/10): client hiển thị preview.body
+      // trong sheet xác nhận, KHÔNG đọc lại live textarea. Adapter KHÔNG được
+      // thêm/bớt field của preview (cùng quy tắc pass-through với aiRefine).
     },
 
     async confirmDraftSend(draftId, previewId) {

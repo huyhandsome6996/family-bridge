@@ -1982,6 +1982,19 @@
   background: var(--fb-surface-container);
 }
 
+/* N01 (F04, 19/10): trạng thái preview-locked — bản xem trước đang lấy từ
+   máy chủ nên đường soạn/người nhận bị khóa tạm thời; giải thích trung thực
+   nằm ở status note (role=status) + title/aria-busy trên nút preview. */
+.fb-compose__textarea:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.fb-compose__change-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .fb-compose__ai {
   background: var(--fb-surface-low);
   border-radius: var(--fb-radius-group);

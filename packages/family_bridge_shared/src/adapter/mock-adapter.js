@@ -547,10 +547,17 @@ export function createMockAdapter({ scenario = null } = {}) {
         );
       }
       const nowIso = new Date().toISOString();
+      // N01 (QA 19/10 — P1 "gửi sai bản đã duyệt"): preview response PHẢI kèm
+      // `body` = snapshot nội dung mà MÁY CHỦ vừa chốt (bản của draft tại thời
+      // điểm preview, sau mọi editDraft). Client bắt buộc hiển thị preview.body
+      // trong sheet xác nhận (fallback snapshot chốt trước await) — TUYỆT ĐỐI
+      // không đọc lại live textarea. Parity với make_preview backend
+      // (f06_drafts/services/drafts.py) sau khi A2 thêm field `body`.
       return {
         preview_id: `demo-preview-${draftId}-${draft.revision}`,
         revision: draft.revision,
         recipient_id: draft.recipient_id,
+        body: draft.body,
         deadline: draft.pause ? draft.pause.deadline : null,
         server_time: nowIso,
         source: "fixture",

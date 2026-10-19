@@ -44,6 +44,23 @@
 // - Không auto-generate (C6): AI chỉ chạy khi bấm nút; loading không chặn gõ
 //   tay/lưu nháp/help; AI off/503/timeout/quota -> thông báo trung thực,
 //   KHÔNG fallback giả gợi ý.
+//
+// N01 (QA 19/10 — P1 "gửi sai bản đã duyệt", US-033; tái hiện browser thật
+// @ e0ee388, FAIL 2/2 client):
+// - Bấm "Xem trước nội dung" -> request preview bị trì hoãn -> textarea VẪN
+//   sửa được, author đổi thành B -> request đi tiếp, server bind bản A ->
+//   sheet xác nhận đọc LIVE textarea hiển thị B -> xác nhận -> người nhận
+//   nhận A (khác B đã duyệt). Hợp đồng fix (freeze toàn đội):
+//   1) previewSeq token — sau MỖI await so lại token, lệch -> ABORT im lặng;
+//   2) snapshot (body/recipient/revision) chốt TRƯỚC await preview;
+//   3) đang bay: khóa textarea + chọn người nhận + nút preview (rào cản 1);
+//   4) sau await: body/recipient/revision đổi -> KHÔNG mở sheet + thông báo
+//      trung thực + mở khóa (rào cản 2);
+//   5) sheet hiển thị preview.body ?? snapshotBody (hợp đồng mới của máy chủ
+//      có `body` — parity backend A2/mock A1) — TUYỆT ĐỐI không đọc live text;
+//   6) Gửi: re-verify trước confirmDraftSend; lệch -> lỗi trong sheet, không
+//      gửi, không đóng sheet ép;
+//   7) sync editDraft lỗi -> dừng flow, không preview, mở khóa.
 import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import { POLICY_PURPOSES } from "../../core/policy.js";
@@ -65,6 +82,12 @@ const DRAFT_KIND = "text"; // backend KINDS chỉ nhận ("text","emotion_card")
 // R2A3-04: aiStatus LỖI (mạng/phiên) ≠ AI OFF thật — sentinel để note không
 // tuyên bố sai "chưa được bật trên máy chủ" khi thực ra là không kiểm tra được.
 const AI_STATUS_UNREACHABLE = { unreachable: true };
+
+// N01: copy trung thực cho trạng thái preview-locked + invalidate (dùng chung
+// một nguồn để status note + title nút không lệch nhau).
+const PREVIEW_BUSY_NOTE = "Đang lấy bản xem trước từ máy chủ…";
+const PREVIEW_INVALIDATE_NOTE =
+  "Nội dung hoặc người nhận đã thay đổi trong khi lấy bản xem trước — hãy bấm “Xem trước nội dung” lại.";
 
 // Vòng đếm pause SVG (w12): stroke chạy theo tỷ lệ remaining/PAUSE_SECONDS.
 const RING_RADIUS = 28;
@@ -250,6 +273,7 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     pauseBtnIcon: null,
     previewBtn: null,
     statusNote: null,
+    recipientChangeBtn: null, // N01: nút "Đổi" người nhận — khóa khi preview đang bay
     pauseInfo: null,
     recipientName: null,
     recipientAvatar: null,
@@ -280,6 +304,10 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     connections,
     aiEnabled,
     aiStatusUnknown, // R2A3-04: không kiểm tra được trạng thái AI ≠ AI off
+    // N01: token phiên preview (tăng ở ĐẦU mỗi lượt chạy) + cờ "đang bay" để
+    // refreshPauseUi giữ nút preview khóa giữa các lần gọi phụ.
+    previewSeq: 0,
+    previewInFlight: false,
   };
 
   // F04 hợp đồng v1 — trạng thái riêng của cổng AI trên trang này.
@@ -335,14 +363,31 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   recipientText.appendChild(ui.recipientName);
   recipientWho.appendChild(recipientText);
   recipientRow.appendChild(recipientWho);
+  // N01 (test N01-3): nút "Đổi" mở sheet ĐỒNG BỘ trong nhịp click — đường đổi
+  // người nhận phải luôn sẵn sàng (kể cả khi preview đang bay; rào cản 2 trong
+  // onPreview là chốt chặn thật). busyGuard đẩy handler xuống vi mô-task nên
+  // không dùng ở đây; chặn mở chồng sheet bằng cờ đồng bộ.
+  let recipientSheetOpen = false;
   const changePill = h("button", {
     class: "fb-compose__change-btn",
     type: "button",
-    onclick: () => guarded("recipient", () => openRecipientSheet(body, ctx, state, ui)),
+    onclick: () => {
+      if (recipientSheetOpen) return;
+      recipientSheetOpen = true;
+      openRecipientSheet(body, ctx, state, ui, {
+        onClosed: () => { recipientSheetOpen = false; },
+      });
+    },
   },
     h("span", {}, "Đổi"),
     createIcon({ name: "expand_more", size: 16 }),
   );
+  // N01: nút "Đổi" người nhận KHÔNG bị khóa khi preview đang bay — đường đổi
+  // qua sheet vẫn phải mở được (test N01-3 "đường khác qua sheet đang mở");
+  // rào cản 2 (so snapshot sau await trong onPreview) là chốt chặn thật cho
+  // thay đổi người nhận giữa chừng. Khi đang bay chỉ gắn giải thích trung
+  // thực (title) cho control này.
+  ui.recipientChangeBtn = changePill;
   recipientRow.appendChild(changePill);
   recipientCard.appendChild(recipientRow);
   mainCol.appendChild(recipientCard);
@@ -1003,7 +1048,7 @@ function refreshRecipientUi(state, ui) {
   state.recipientId = selected.other_party_id || selected.connection_id;
 }
 
-function openRecipientSheet(root, ctx, state, ui) {
+function openRecipientSheet(root, ctx, state, ui, { onClosed } = {}) {
   const list = h("div", { style: "display:flex;flex-direction:column;gap:var(--fb-space-2);" });
   const active = state.connections.filter((connection) => connection && connection.status === "active");
 
@@ -1030,7 +1075,9 @@ function openRecipientSheet(root, ctx, state, ui) {
         onClick: () => {
           state.recipientId = connection.other_party_id || connection.connection_id;
           refreshRecipientUi(state, ui);
-          sheet.remove();
+          // N01: đóng qua close() (không remove trực tiếp) để onClose luôn
+          // chạy — nhả cờ mở sheet + trả focus đúng contract mục 3.
+          sheet.close();
         },
       }),
     );
@@ -1044,6 +1091,8 @@ function openRecipientSheet(root, ctx, state, ui) {
     ),
     onClose: () => {
       if (sheet && sheet.isConnected) sheet.remove();
+      // N01: báo lại cho caller (nhả cờ chặn mở chồng sheet).
+      if (typeof onClosed === "function") onClosed();
     },
   });
   root.appendChild(sheet);
@@ -1139,19 +1188,30 @@ function onPreview(ctx, state, ui) {
     ui.statusNote.textContent = "Lời nhắn chưa có nội dung — hãy viết vài dòng trước khi xem trước.";
     return;
   }
-  ui.statusNote.textContent = "Đang lấy bản xem trước từ máy chủ…";
+  // N01 (rào cản 1): phiên đang bay -> bấm lần nữa KHÔNG tạo request chồng
+  // (nút đã khóa; đây là rào chắn dự phòng cho mọi đường gọi khác).
+  if (state.previewInFlight) return;
+  // N01: token phiên preview — tăng ở ĐẦU mỗi lần chạy; sau MỖI await so lại
+  // token, lệch -> ABORT im lặng (phiên mới hơn thay thế; request cũ không mở
+  // sheet, không ghi đè state/UI mới).
+  const previewSeq = (state.previewSeq = (state.previewSeq || 0) + 1);
+  ui.statusNote.textContent = PREVIEW_BUSY_NOTE;
+  lockComposeForPreview(state, ui);
   const run = async () => {
     // R01 (QA F04 18/10 — P1 “gửi sai bản đã duyệt”): AI suggestion chỉ
     // đổ vào textarea (không tự lưu). Preview phải bám đúng text đang
     // hiển thị trong sheet xác nhận — khác bản máy chủ giữ thì TỰ ĐỒNG
     // BỘ (editDraft) trước, nếu không confirm sẽ gửi original cũ.
     const pendingText = currentBodyText(ui).trim();
-    if (pendingText !== state.syncedBody) {
+    if (pendingText && pendingText !== state.syncedBody) {
+      if (state.previewSeq !== previewSeq) return;
       ui.statusNote.textContent = "Đang đồng bộ nội dung mới lên máy chủ…";
       const updated = await ctx.adapter.editDraft(state.draftId, {
         body: pendingText,
         recipientId: state.recipientId || undefined,
       });
+      // N01: sau MỖI await so lại token — lệch -> abort im lặng.
+      if (state.previewSeq !== previewSeq) return;
       state.revision = updated.revision;
       state.status = updated.status;
       state.pause = updated.pause || null;
@@ -1160,12 +1220,41 @@ function onPreview(ctx, state, ui) {
       state.syncedBody = pendingText;
       refreshPauseUi(state, ui);
     }
-    ui.statusNote.textContent = "Đang lấy bản xem trước từ máy chủ…";
+    if (state.previewSeq !== previewSeq) return;
+    // N01: chuẩn hoá textarea == đúng bản máy chủ đang giữ (chỉ khác
+    // khoảng trắng đầu/cuối) để snapshot khớp tuyệt đối với body máy chủ bind.
+    if (currentBodyText(ui) !== pendingText) {
+      ui.textarea.value = pendingText;
+      ui.counter.textContent = `${pendingText.length} ký tự`;
+    }
+    // N01: chốt snapshot TRƯỚC await preview (sau bước sync dirty body
+    // thành công — R01 giữ nguyên): text/recipient/revision tại thời điểm này.
+    const snapshot = {
+      body: currentBodyText(ui),
+      recipientId: state.recipientId,
+      revision: state.revision,
+    };
+    ui.statusNote.textContent = PREVIEW_BUSY_NOTE;
     const preview = await ctx.adapter.previewDraft(state.draftId);
+    if (state.previewSeq !== previewSeq) return;
+    // N01 (rào cản 2): sau await bắt buộc kiểm tra lại — body/recipient/
+    // revision đổi khi preview đang bay -> KHÔNG mở sheet; báo trung thực
+    // + mở khóa.
+    if (currentBodyText(ui) !== snapshot.body
+      || state.recipientId !== snapshot.recipientId
+      || state.revision !== snapshot.revision) {
+      unlockComposeForPreview(state, ui);
+      ui.statusNote.textContent = PREVIEW_INVALIDATE_NOTE;
+      return;
+    }
     ui.statusNote.textContent = "";
-    openConfirmSheet(ctx, state, ui, preview);
+    unlockComposeForPreview(state, ui);
+    openConfirmSheet(ctx, state, ui, preview, snapshot);
   };
   run().catch((error) => {
+    // N01: request cũ (phiên đã bị thay thế) KHÔNG ghi đè state/UI mới.
+    if (state.previewSeq !== previewSeq) return;
+    unlockComposeForPreview(state, ui);
     if (error && error.code === "cooldown_active") {
       const remaining = error.details && Number.isFinite(Number(error.details.remaining_seconds))
         ? Number(error.details.remaining_seconds)
@@ -1178,18 +1267,92 @@ function onPreview(ctx, state, ui) {
       refreshPauseUi(state, ui);
       return;
     }
-    ui.statusNote.textContent = describeError(error, "Chưa lấy được bản xem trước. Vui lòng thử lại sau.");
+    // N01 mục 7: sync editDraft lỗi -> dừng flow, KHÔNG preview, đã mở khóa,
+    // thông báo trung thực (nói đúng cả bước đồng bộ).
+    ui.statusNote.textContent = describeError(error,
+      "Chưa đồng bộ được nội dung mới hoặc chưa lấy được bản xem trước — không có gì được gửi. Vui lòng thử lại sau.");
   });
 }
 
-function openConfirmSheet(ctx, state, ui, preview) {
+/* ---------------- N01: khóa soạn trong lúc preview đang bay ---------------- */
+
+/**
+ * Rào cản 1 (N01): preview đang bay -> khóa textarea (readOnly + disabled) và
+ * nút preview kèm giải thích trung thực (status note do onPreview đặt + title
+ * nút). Nút "Đổi" người nhận KHÔNG khóa — đường đổi qua sheet vẫn mở được
+ * (test N01-3); rào cản 2 (so snapshot sau await) là chốt chặn thật cho thay
+ * đổi người nhận giữa chừng. refreshPauseUi tôn trọng state.previewInFlight
+ * nên việc làm mới UI giữa chừng (sau sync) không tự mở khóa.
+ */
+function lockComposeForPreview(state, ui) {
+  state.previewInFlight = true;
+  if (ui.textarea) {
+    ui.textarea.readOnly = true;
+    ui.textarea.disabled = true;
+  }
+  ui.previewBtn.disabled = true;
+  ui.previewBtn.title = PREVIEW_BUSY_NOTE;
+  ui.previewBtn.setAttribute("aria-busy", "true");
+  if (ui.recipientChangeBtn) {
+    ui.recipientChangeBtn.title =
+      "Bạn vẫn có thể đổi người nhận — nếu người nhận thay đổi, bản xem trước này sẽ bị hủy.";
+  }
+}
+
+/** Mở khóa khi preview xong hoặc bị invalidate — trả trạng thái nút preview
+ * đúng theo dữ liệu máy chủ (refreshPauseUi). */
+function unlockComposeForPreview(state, ui) {
+  state.previewInFlight = false;
+  if (ui.textarea) {
+    ui.textarea.readOnly = false;
+    ui.textarea.disabled = false;
+  }
+  ui.previewBtn.removeAttribute("aria-busy");
+  if (ui.recipientChangeBtn) ui.recipientChangeBtn.title = "";
+  refreshPauseUi(state, ui);
+}
+
+function openConfirmSheet(ctx, state, ui, preview, snapshot) {
   const recipientName = ui.recipientName.textContent || "người nhận";
+  // N01: sheet hiển thị BẢN MÁY CHỦ BIND — `preview.body` khi response mới có
+  // (server-bound snapshot — parity backend A2/mock A1), fallback snapshot đã
+  // sync cho response cũ chưa trả body. TUYỆT ĐỐI KHÔNG đọc live textarea
+  // (`String(ui.textarea.value || "")` cũ là nguồn lỗi N01: preview đang bay
+  // sửa nội dung -> sheet hiện bản khác bản máy chủ bind).
+  const serverBoundBody = preview && typeof preview.body === "string" && preview.body.length > 0
+    ? preview.body
+    : snapshot.body;
+  // Máy chủ có thể chuẩn hoá text khi bind mà không bump revision — nhận bản
+  // máy chủ làm chuẩn (textarea + syncedBody) để re-verify bên dưới không chặn
+  // nhầm lượt gửi hợp lệ; nếu không có khác biệt thì không đụng gì.
+  if (serverBoundBody !== snapshot.body) {
+    state.syncedBody = serverBoundBody;
+    snapshot.body = serverBoundBody;
+    ui.textarea.value = serverBoundBody;
+    ui.counter.textContent = `${serverBoundBody.length} ký tự`;
+  }
+  const displayedSnapshot = String(serverBoundBody);
   const sheetError = h("div", { role: "alert" });
 
   const confirmBtn = createButton({
     label: `Gửi cho ${recipientName}`,
     variant: "primary",
     onClick: () => {
+      // N01 mục 6: re-verify TRƯỚC khi gọi confirmDraftSend — nội dung đang
+      // hiển thị phải vẫn là bản snapshot máy chủ + người nhận không đổi;
+      // lệch -> lỗi trung thực TRONG sheet, KHÔNG gửi, không đóng sheet ép.
+      if (currentBodyText(ui) !== displayedSnapshot
+        || state.recipientId !== snapshot.recipientId) {
+        const changedCopy = state.recipientId !== snapshot.recipientId
+          ? "Người nhận đã thay đổi sau khi xem trước — hãy chọn lại người nhận rồi bấm “Xem trước nội dung” lại."
+          : "Nội dung đã thay đổi sau khi xem trước — hãy bấm “Xem trước nội dung” lại.";
+        clear(sheetError);
+        sheetError.appendChild(
+          h("p", { class: "fb-compose__sheet-error", role: "alert" }, changedCopy),
+        );
+        ui.statusNote.textContent = `${changedCopy} Bấm “Xem trước nội dung” để lấy bản mới.`;
+        return;
+      }
       confirmBtn.disabled = true;
       const run = async () => {
         await ctx.adapter.confirmDraftSend(state.draftId, preview.preview_id);
@@ -1225,9 +1388,9 @@ function openConfirmSheet(ctx, state, ui, preview) {
 
   const content = h("div", {},
     h("p", {}, "Xem lại lời nhắn trước khi gửi. Đây là bước xác nhận cuối cùng — bạn vẫn có thể giữ lại làm nháp."),
-    h("div", { class: "fb-compose__preview-body" }, String(ui.textarea.value || "")),
+    h("div", { class: "fb-compose__preview-body" }, displayedSnapshot),
     h("p", { class: "fb-page__note" },
-      "Máy chủ đã chốt bản xem trước với người nhận và nội dung hiện tại — sửa nội dung sau bước này sẽ cần xem trước lại."),
+      "Bản hiển thị phía trên là bản máy chủ đã chốt cho lần xem trước này — sửa nội dung hoặc đổi người nhận sau bước này sẽ cần xem trước lại."),
     sheetError,
     confirmBtn,
     createButton({
@@ -1251,8 +1414,14 @@ function openConfirmSheet(ctx, state, ui, preview) {
 
 function refreshPauseUi(state, ui) {
   // w12 niêm phong: paused -> làm mờ body nháp + hiện ghi chú (presentation).
+  // N01: preview đang bay -> textarea khóa hẳn (readOnly + disabled tạm thời);
+  // khóa do lockComposeForPreview đặt, refreshPauseUi chỉ GIỮ nguyên trạng
+  // thái khóa giữa các lần làm mới UI (sau sync editDraft).
   const isPaused = state.status === "paused";
-  if (ui.textarea) ui.textarea.classList.toggle("fb-compose__textarea--sealed", isPaused);
+  if (ui.textarea) {
+    ui.textarea.classList.toggle("fb-compose__textarea--sealed", isPaused);
+    ui.textarea.disabled = Boolean(state.previewInFlight);
+  }
   if (ui.sealedNote) ui.sealedNote.hidden = !isPaused;
 
   if (ui.privacyChipText) {
@@ -1307,10 +1476,11 @@ function refreshPauseUi(state, ui) {
       ),
     );
     const serverAllowsPreview = Boolean(state.rowCanPreview) || remaining === 0;
-    ui.previewBtn.disabled = !serverAllowsPreview;
-    ui.previewBtn.title = serverAllowsPreview
-      ? ""
-      : "Máy chủ chưa mở xem trước — còn khoảng dừng.";
+    // N01: đang bay -> giữ nút preview khóa kèm giải thích trung thực.
+    ui.previewBtn.disabled = state.previewInFlight ? true : !serverAllowsPreview;
+    ui.previewBtn.title = state.previewInFlight
+      ? PREVIEW_BUSY_NOTE
+      : (serverAllowsPreview ? "" : "Máy chủ chưa mở xem trước — còn khoảng dừng.");
     // w12 vòng đếm: stroke chạy theo remaining máy chủ (không timer);
     // đổi sang xanh success khi máy chủ báo hết giờ (remaining === 0).
     if (ui.ringProgress) {
@@ -1328,10 +1498,11 @@ function refreshPauseUi(state, ui) {
   ui.timerBadge.textContent = formatRemaining(PAUSE_SECONDS);
   ui.timerBadge.title = "Khoảng dừng chuẩn 5 phút — thời gian thật do máy chủ ghi khi bạn bắt đầu.";
   ui.progressFill.style.width = "0%";
-  ui.previewBtn.disabled = !state.draftId;
-  ui.previewBtn.title = state.draftId
-    ? ""
-    : "Chưa có bản nháp để xem trước — hãy lưu nháp trước.";
+  // N01: đang bay -> giữ nút preview khóa kèm giải thích trung thực.
+  ui.previewBtn.disabled = state.previewInFlight ? true : !state.draftId;
+  ui.previewBtn.title = state.previewInFlight
+    ? PREVIEW_BUSY_NOTE
+    : (state.draftId ? "" : "Chưa có bản nháp để xem trước — hãy lưu nháp trước.");
   ui.pauseBtnIcon.remove();
   ui.pauseBtnIcon = createIcon({ name: "play_arrow", size: 20 });
   ui.pauseBtnLabel.textContent = "Bắt đầu 5 phút nghỉ";
