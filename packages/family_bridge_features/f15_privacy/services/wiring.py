@@ -6,14 +6,19 @@ paths from client/admin config, no plugin discovery (WF-22). Each
 registration is guarded by module presence so standalone feature runs stay
 runnable, and the whole function is idempotent.
 
-Registrations:
-- grant providers: mood_entry / journal_page -> services.adapters (F07/F08);
-- deletion hooks: mood / journal (F15 adapters with cutoff filtering),
-  surveys (F14 adapter), connections (F01 adapter). Categories WITHOUT an
-  approved policy or hook (account per DEC-12/23; messages/ai/drafts/
-  program_progress/appointments until their owners ship hooks) stay
-  unregistered — processing them reports hook_not_registered and the
-  request truthfully lands in failed_needs_action.
+Registrations (F15 OWNS the slots below whenever the domain app is part of
+the build — boot order of the domain app can never take them away, P1-1):
+- grant providers: mood_entry -> services.adapters wrapper over the F07
+  share table (cursor list + expected_revision revoke, overriding any
+  earlier standalone registration); journal_page -> services.adapters when
+  its slot is still empty;
+- deletion hooks: mood (F15 merged hook: cutoff filter + revoke
+  received-grants, forced over any earlier standalone registration),
+  journal (F15 adapter), surveys (F14 adapter), connections (F01 adapter).
+  Categories WITHOUT an approved policy or hook (account per DEC-12/23;
+  messages/ai/drafts/program_progress/appointments until their owners ship
+  hooks) stay unregistered — processing them reports hook_not_registered
+  and the request truthfully lands in failed_needs_action.
 - connection reader: F01 InviteService (read-only port methods);
 - consent writer: services.consent.ProductionConsentWriter (F01 + F14);
 - handler authorizer: services.verification.AdminCapabilityAuthorizer
@@ -49,24 +54,40 @@ def configure_production_wiring(*, force: bool = False) -> None:
         ports.register_connection_reader(InviteService())
 
     # -- grant providers (F07/F08 share tables) -----------------------------------
-    if (has_f07 or has_f08) and not registry.registered_item_types():
-        from . import adapters
+    # Slot ownership (P1-1 fix, QA-1): F15 OWNS these registry slots whenever
+    # the domain app is present in the build. mood_entry is (re-)registered
+    # through the F15 adapter — the wrapper over the F07 MoodShare table that
+    # adds the cursor list (after_created_at/after_share_id), expected_revision
+    # revoke and connection-binding checks — overriding any earlier
+    # standalone registration, so app boot order (f07_mood.ready() runs
+    # before f15_privacy.ready()) can never decide ownership. journal_page
+    # has no competitor and registers when its slot is still empty. The old
+    # all-or-nothing guard (``not registered_item_types()``) let f07's
+    # unconditional mood_entry registration swallow this whole block and
+    # journal_page was never registered in production.
+    from . import adapters
+
+    if has_f07:
         adapters.configure()
-        if has_f07:
-            registry.register_grant_provider(
-                "mood_entry",
-                "family_bridge_features.f15_privacy.services.adapters"
-                ".mood_entry_provider")
-        if has_f08:
-            registry.register_grant_provider(
-                "journal_page",
-                "family_bridge_features.f15_privacy.services.adapters"
-                ".journal_page_provider")
+        registry.register_grant_provider(
+            "mood_entry",
+            "family_bridge_features.f15_privacy.services.adapters"
+            ".mood_entry_provider")
+    if has_f08 and "journal_page" not in registry.registered_item_types():
+        adapters.configure()
+        registry.register_grant_provider(
+            "journal_page",
+            "family_bridge_features.f15_privacy.services.adapters"
+            ".journal_page_provider")
 
     # -- deletion hooks (adapters owned by F15, domain tables stay theirs) --------
     from . import deletion_hooks
 
-    if has_f07 and "mood" not in registry.registered_categories():
+    # "mood" is F15-owned too (P1-1): force the merged hook (cutoff + revoke
+    # received-grants) over any earlier standalone registration, so the
+    # production hook honors the request cutoff no matter which app booted
+    # first. The other categories have no competing registration.
+    if has_f07:
         registry.register_deletion_hook(
             "mood",
             "family_bridge_features.f15_privacy.services.deletion_hooks"

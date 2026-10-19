@@ -839,3 +839,214 @@ class RestoreReplayWiringTests(F15WiringTestCase):
                          count_after_first,
                          "replay must never append new domain events")
         self.assertFalse(second["incomplete"])
+
+
+# ===========================================================================
+# P1-1 (QA-1) — quyền sở hữu slot registry theo THỨ TỰ BOOT production
+# ===========================================================================
+class ProductionBootOrderSlotOwnershipTests(TestCase):
+    """F15 CHỦ slot khi có mặt trong build; f07 chỉ giữ fallback per-item.
+
+    Boot production thật chạy f07_mood.ready() TRƯỚC f15_privacy.ready()
+    (thứ tự INSTALLED_APPS). Lỗi cũ: f07 đăng ký mood_entry vô điều kiện →
+    guard all-or-nothing của F15 thấy registry khác rỗng → bỏ qua CẢ khối →
+    journal_page không bao giờ được đăng ký và mood_entry rơi vào provider
+    F07 (không cursor, không expected_revision). Test này mô phỏng ĐÚNG thứ
+    tự boot đó: registry chỉ được reset ĐÚNG 1 LẦN ở đầu (tương đương một
+    process mới), KHÔNG reset giữa hai bước ready — đúng kịch bản từng nuốt
+    khối F15."""
+
+    def test_full_boot_registers_both_item_types_through_f15_wrapper(self):
+        from django.apps import apps
+
+        # Build dưới test dùng INSTALLED_APPS thật, đầy đủ f07 + f08 + f15.
+        self.assertTrue(apps.is_installed(
+            "family_bridge_features.f07_mood"))
+        self.assertTrue(apps.is_installed(
+            "family_bridge_features.f08_journal"))
+        self.assertTrue(apps.is_installed(
+            "family_bridge_features.f15_privacy"))
+
+        grant_registry.reset_registries()  # đúng 1 lần: trạng thái process mới
+        try:
+            # Thứ tự boot production: f07 chạy TRƯỚC, f15 chạy SAU — không
+            # reset registry ở giữa (đây chính là kịch bản lỗi cũ).
+            from family_bridge_features.f07_mood.apps import (
+                wire_production_ports,
+            )
+            f07_report = wire_production_ports()
+            configure_production_wiring(force=True)
+
+            item_types = grant_registry.registered_item_types()
+            self.assertIn("mood_entry", item_types)
+            self.assertIn("journal_page", item_types)
+
+            # mood_entry phải đi qua revocation wrapper của F15 (adapter trên
+            # bảng MoodShare: revoke nhận expected_revision, list nhận cursor)
+            # — KHÔNG phải provider F07 không tham số như trạng thái lỗi.
+            mood_provider = grant_registry.get_grant_provider("mood_entry")
+            self.assertIs(mood_provider, f15_adapters.mood_entry_provider)
+            self.assertTrue(grant_registry.provider_accepts(
+                mood_provider, "revoke_grant", "expected_revision"))
+            self.assertTrue(grant_registry.provider_accepts(
+                mood_provider, "list_grants", "after_created_at"))
+            self.assertIs(grant_registry.get_grant_provider("journal_page"),
+                          f15_adapters.journal_page_provider)
+
+            # Hook "mood" là hook hợp nhất của F15 (cutoff + revoke
+            # received-grants), không phải bản F07 đăng ký trước boot.
+            hook = grant_registry.get_deletion_hook("mood")
+            self.assertIsNotNone(hook)
+            from ..services.deletion_hooks import MoodDeletionHook
+            instance = hook() if isinstance(hook, type) else hook
+            self.assertIsInstance(instance, MoodDeletionHook)
+
+            # Report của f07 trung thực về TRẠNG THÁI slot (đã được wire bởi
+            # chủ sở hữu F15), không giả "tôi đã đăng ký" khi chỉ là fallback.
+            self.assertTrue(f07_report["connection_reader"])
+            self.assertTrue(f07_report["grant_provider"])
+            self.assertTrue(f07_report["deletion_hook"])
+        finally:
+            # Trả lại trạng thái production wiring cho test khác; không để
+            # lại registry rỗng giữa các module test.
+            configure_production_wiring(force=True)
+
+
+# ===========================================================================
+# P1-2 (QA-1) — hook xoá "mood" hợp nhất: cutoff F15 + revoke received-grants
+# ===========================================================================
+class MoodDeletionHookCutoffWiringTests(F15WiringTestCase):
+    """Hook "mood" mà production resolves (qua wiring) phải tôn trọng cutoff
+    của request — cùng hợp đồng với hook "ai" sau fix Task 2-a và các hook
+    F15 chuẩn (style test_f04_deletion.CutoffScopeDeletionTests): chỉ row tạo
+    TRƯỚC cutoff nằm trong phạm vi; retry/replay với CÙNG cutoff không bao
+    giờ nới phạm vi; thiếu/sai cutoff raise ValueError (fail-loud)."""
+
+    def _resolved_hook(self):
+        hook = grant_registry.get_deletion_hook("mood")
+        self.assertIsNotNone(hook, "category 'mood' phải có hook sau wiring")
+        return hook() if isinstance(hook, type) else hook
+
+    def _age(self, row, *, created_at):
+        row.__class__.objects.filter(pk=row.pk).update(created_at=created_at)
+        row.refresh_from_db()
+
+    def test_entries_and_received_grants_created_after_cutoff_survive(self):
+        from family_bridge_features.f07_mood.models import MoodEntry
+
+        cutoff = dt.datetime.now(tz=UTC)
+        old_entry = self._make_mood_entry(owner=self.owner)
+        new_entry = self._make_mood_entry(owner=self.owner)
+        self._age(old_entry, created_at=cutoff - dt.timedelta(hours=1))
+        self._age(new_entry, created_at=cutoff + dt.timedelta(hours=1))
+        # received grants: entry của NGƯỜI KHÁC share cho owner (bản F07);
+        # hai entry khác nhau vì (entry, recipient, approved_revision) unique.
+        stranger_entry_old = self._make_mood_entry(owner=self.stranger)
+        stranger_entry_new = self._make_mood_entry(owner=self.stranger)
+        received_old = self._make_mood_share(
+            owner=self.stranger, recipient=self.owner,
+            entry=stranger_entry_old)
+        received_new = self._make_mood_share(
+            owner=self.stranger, recipient=self.owner,
+            entry=stranger_entry_new)
+        self._age(received_old, created_at=cutoff - dt.timedelta(hours=1))
+        self._age(received_new, created_at=cutoff + dt.timedelta(hours=1))
+
+        outcome = self._resolved_hook().apply_user_deletion(
+            user_id=str(self.owner.pk), requested_at=cutoff)
+
+        self.assertTrue(outcome["ok"])
+        self.assertIn("entries deleted=1", outcome["detail"])
+        self.assertIn("received grants revoked=1", outcome["detail"])
+        self.assertFalse(MoodEntry.objects.filter(pk=old_entry.pk).exists())
+        self.assertTrue(MoodEntry.objects.filter(pk=new_entry.pk).exists(),
+                        "entry tạo SAU cutoff phải sống sót")
+        received_old.refresh_from_db()
+        received_new.refresh_from_db()
+        self.assertIsNotNone(received_old.revoked_at,
+                             "grant nhận TRƯỚC cutoff bị revoke (F07 behavior)")
+        self.assertIsNone(received_new.revoked_at,
+                          "grant nhận SAU cutoff không được động tới")
+
+    def test_retry_with_same_cutoff_never_widens_scope(self):
+        cutoff = dt.datetime.now(tz=UTC)
+        old_entry = self._make_mood_entry(owner=self.owner)
+        self._age(old_entry, created_at=cutoff - dt.timedelta(hours=1))
+        hook = self._resolved_hook()
+        first = hook.apply_user_deletion(user_id=str(self.owner.pk),
+                                         requested_at=cutoff)
+        self.assertTrue(first["ok"])
+
+        # Dữ liệu MỚI sinh ra sau deletion (created_at > cutoff): entry của
+        # owner + grant owner NHẬN từ người khác.
+        fresh_entry = self._make_mood_entry(owner=self.owner)
+        self._age(fresh_entry, created_at=cutoff + dt.timedelta(hours=2))
+        stranger_entry = self._make_mood_entry(owner=self.stranger)
+        fresh_received = self._make_mood_share(
+            owner=self.stranger, recipient=self.owner, entry=stranger_entry)
+        self._age(fresh_received,
+                  created_at=cutoff + dt.timedelta(hours=2))
+
+        # Replay/retry CÙNG request (CÙNG cutoff): không được nới phạm vi.
+        second = hook.apply_user_deletion(user_id=str(self.owner.pk),
+                                          requested_at=cutoff)
+        self.assertTrue(second["ok"])
+        self.assertIn("entries deleted=0", second["detail"])
+        self.assertIn("received grants revoked=0", second["detail"])
+        fresh_entry.refresh_from_db()
+        fresh_received.refresh_from_db()
+        self.assertIsNone(fresh_received.revoked_at,
+                          "retry không được revoke grant sinh sau cutoff")
+
+    def test_missing_or_invalid_cutoff_raises_like_f15_hooks(self):
+        from family_bridge_features.f07_mood.models import MoodEntry
+
+        entry = self._make_mood_entry(owner=self.owner)
+        hook = self._resolved_hook()
+        with self.assertRaises(ValueError):
+            hook.apply_user_deletion(user_id=str(self.owner.pk),
+                                     requested_at=None)
+        with self.assertRaises(ValueError):
+            hook.apply_user_deletion(user_id=str(self.owner.pk),
+                                     requested_at="khong-phai-ngay")
+        # Fail-loud: không có row nào bị xoá khi cutoff sai.
+        self.assertTrue(MoodEntry.objects.filter(pk=entry.pk).exists())
+
+
+# ===========================================================================
+# P2 (QA-1 mục 6) — authorizer production fail-closed với actor rỗng/lệch
+# ===========================================================================
+class HandlerAuthorizerActorContractTests(F15WiringTestCase):
+    """actor_id rỗng/không phải UUID + authorizer production phải fail-closed
+    503 ``handler_not_authorized`` TRƯỚC khi query — không bao giờ crash
+    ValidationError (500) từ filter UUID."""
+
+    def test_authorizer_raises_module_unavailable_on_bad_actor(self):
+        from family_bridge_core.errors import ModuleUnavailable
+
+        from ..services.verification import (ACTION_VERIFY,
+                                             AdminCapabilityAuthorizer)
+
+        authorizer = AdminCapabilityAuthorizer()
+        for actor in ("", "   ", "khong-phai-uuid"):
+            with self.assertRaises(ModuleUnavailable) as ctx:
+                authorizer.authorize(actor_id=actor, action=ACTION_VERIFY,
+                                     request_id=str(uuid.uuid4()))
+            self.assertEqual(ctx.exception.details.get("reason"),
+                             "handler_not_authorized")
+
+    def test_verify_request_with_empty_actor_fails_closed_not_crash(self):
+        from family_bridge_core.errors import ModuleUnavailable
+
+        service = DeletionService()
+        result = service.request_deletion(user=self.owner,
+                                          categories=["journal"])
+        with self.assertRaises(ModuleUnavailable) as ctx:
+            service.verify_request(request_id=result["request_id"],
+                                   verifier_ref="synthetic",
+                                   actor_id="")
+        self.assertEqual(ctx.exception.details.get("reason"),
+                         "handler_not_authorized")
+        # Không có transition nào xảy ra — request vẫn ở trạng thái REQUESTED.
+        row = DeletionRequest.objects.get(pk=result["request_id"])
+        self.assertEqual(row.status, DeletionRequest.STATUS_REQUESTED)

@@ -7,6 +7,9 @@ fail-closed:
 
 - Without a configured authorizer, verify/process endpoints answer 503
   ``module_unavailable`` (never a fake success, never a UI checkbox).
+- An empty or malformed actor id fails closed the same way (503
+  ``handler_not_authorized``) BEFORE any query — a UUID filter on garbage
+  must never crash into a 500.
 - The admin-core-backed authorizer reads B16 ``AdminCapabilityGrant`` rows
   with capability ``privacy.case`` (CAP-20). Until B16 owns the code constant
   and can grant it, no admin can pass: integration pending, recorded in the
@@ -16,6 +19,10 @@ fail-closed:
 """
 
 from __future__ import annotations
+
+import uuid as uuid_module
+
+from family_bridge_core.errors import ModuleUnavailable
 
 from . import ports
 
@@ -32,6 +39,17 @@ class AdminCapabilityAuthorizer:
     def authorize(self, *, actor_id: str, action: str, request_id: str) -> bool:
         if action not in {ACTION_VERIFY, ACTION_PROCESS}:
             return False
+        # Fail-closed BEFORE any query (P2 fix, QA-1): the grant filter is a
+        # UUID lookup — an empty/malformed actor used to crash into a 500
+        # (UUIDField ValidationError). A handler decision without a
+        # trustworthy actor identity is "not authorized" by contract, so it
+        # raises the same 503 ``handler_not_authorized`` envelope the service
+        # answers with on the deny path — never a crash, never a fake yes.
+        actor = str(actor_id or "").strip()
+        try:
+            uuid_module.UUID(actor)
+        except (ValueError, AttributeError, TypeError):
+            raise ModuleUnavailable({"reason": "handler_not_authorized"})
         try:
             from family_bridge_features.admin_core.models import AdminCapabilityGrant
         except ImportError:

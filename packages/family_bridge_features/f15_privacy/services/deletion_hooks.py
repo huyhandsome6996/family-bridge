@@ -12,7 +12,7 @@ approved production workflow):
 
 | category     | hook                    | scope                                   | status |
 |--------------|-------------------------|-----------------------------------------|--------|
-| mood         | MoodDeletionHook        | owner's mood entries (shares cascade)   | wired  |
+| mood         | MoodDeletionHook        | owner's mood entries (shares cascade) + received grants revoked, all created before the cutoff | wired (P1-2: merged with the F07 received-grants revocation) |
 | journal      | JournalDeletionHook     | owner's pages (shares/replies cascade)  | wired  |
 | surveys      | SurveysDeletionHook     | responses + consents created before the cutoff | wired |
 | connections  | ConnectionsDeletionHook | user's connections, invites, claim attempts created before the cutoff | wired (R04: identity surface split out) |
@@ -45,21 +45,27 @@ def _parse_cutoff(requested_at) -> dt.datetime:
 
 
 class MoodDeletionHook:
-    """Delete the requester's mood entries created before the cutoff."""
+    """F15-owned registry slot for deletion category "mood" (P1-1/P1-2).
+
+    The DOMAIN behavior lives in ONE implementation — the F07 hook
+    (``f07_mood.services.deletion.apply_user_deletion``) — which follows the
+    same F15 cutoff idiom as every other production hook: entries owned by
+    the requester and created BEFORE the cutoff are deleted, grants the
+    requester RECEIVED (the F07 behavior part) and created before the cutoff
+    are revoked, and a retry/replay with the SAME cutoff never widens the
+    scope. This wrapper exists so the registered dotted path stays inside
+    f15_privacy (F15 owns the slot when present in the build and force-
+    registers it over any earlier standalone registration, P1-1) while the
+    standalone-F07 builds register the very same implementation directly —
+    one merged hook, registered exactly once per build."""
 
     def apply_user_deletion(self, *, user_id: str, requested_at) -> Dict[str, Any]:
-        from family_bridge_features.f07_mood.models import MoodEntry
+        from family_bridge_features.f07_mood.services.deletion import (
+            apply_user_deletion as f07_apply_user_deletion,
+        )
 
-        cutoff = _parse_cutoff(requested_at)
-        qs = MoodEntry.objects.filter(owner_id=str(user_id),
-                                      created_at__lte=cutoff)
-        expected = qs.count()
-        deleted, _ = qs.delete()
-        leftover = MoodEntry.objects.filter(owner_id=str(user_id),
-                                            created_at__lte=cutoff).exists()
-        return {"ok": expected == 0 or (deleted > 0 and not leftover),
-                "detail": f"mood entries removed: {deleted}/{expected}",
-                "counts": {"deleted": deleted, "expected": expected}}
+        return f07_apply_user_deletion(user_id=str(user_id),
+                                       requested_at=requested_at)
 
 
 class JournalDeletionHook:
