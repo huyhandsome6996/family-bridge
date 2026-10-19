@@ -10,13 +10,18 @@ Invariants:
 - The personal agreement acceptance binds (participant, program,
   agreement_revision) and is each person's own action; the FAMILY
   agreement instance (FamilyAgreement) is bound to the pair
-  (party_low/party_high), the connection generation and ONE agreement
-  revision. It is confirmed only when TWO DIFFERENT actors of the same
-  pair have confirmed the SAME revision (proposer + counterpart, each
-  recorded with their own timestamp). Editing creates a NEW revision = a
-  new instance; old confirmed instances stay valid per policy until the
-  new one is confirmed (superseded) or ended. Nobody can sign for
-  another person.
+  (party_low/party_high), the connection generation, ONE program
+  revision AND ONE agreement revision (QA 19/10 R02: the instance is a
+  snapshot of what BOTH people pinned — a cloned program with the same
+  agreement template revision is still a different pin, so proposing on
+  a new program revision creates a NEW instance instead of resurrecting
+  the row pinned to the old program revision). It is confirmed only when
+  TWO DIFFERENT actors of the same pair have confirmed the SAME
+  (program_revision, agreement_revision) row (proposer + counterpart,
+  each recorded with their own timestamp). Editing creates a NEW
+  revision = a new instance; old confirmed instances stay valid per
+  policy until the new one is confirmed (superseded) or ended. Nobody
+  can sign for another person.
 - Week progress is private per participant and pinned to the program
   revision it was made on (program_revision column) so a reused
   activity_key in a newer revision cannot inherit old status.
@@ -156,10 +161,13 @@ class FamilyAgreement(models.Model):
       proposed -> withdrawn  : proposer withdraws
       proposed|confirmed -> superseded : a newer revision got confirmed
       confirmed -> ended     : explicit end (or unlink policy upstream)
-    One row per (pair, program_key, agreement_revision, generation):
-    re-confirming the same row by the same person is idempotent, never a
-    second signature; A confirming v1 and B confirming v2 touch DIFFERENT
-    rows and can never merge into one confirmed agreement.
+    One row per (pair, program_key, program_revision,
+    agreement_revision, generation): re-confirming the same row by the
+    same person is idempotent, never a second signature; A confirming v1
+    and B confirming v2 touch DIFFERENT rows and can never merge into one
+    confirmed agreement (QA 19/10 R02: program_revision is part of the
+    identity — same template revision under a new program pin is a new
+    snapshot the pair confirms on their chosen program version).
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -184,8 +192,9 @@ class FamilyAgreement(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["party_low_id", "party_high_id", "program_key",
-                        "agreement_revision", "connection_generation"],
-                name="uniq_f02_agreement_pair_revision_generation"),
+                        "program_revision", "agreement_revision",
+                        "connection_generation"],
+                name="uniq_f02_agreement_pair_rev_pin_generation"),
         ]
         indexes = [
             models.Index(fields=["party_low_id", "updated_at"]),
@@ -231,7 +240,10 @@ class FamilyAgreement(models.Model):
             "commitments": list(self.commitments or []),
             "created_at": self.created_at.isoformat(),
             "updated_at": self.updated_at.isoformat(),
-            "confirmed_at": (min(
+            # QA 19/10 R04: the agreement is confirmed at the SECOND
+            # signature — max of the two timestamps, never min (the first
+            # signature time only means "proposed with one signature").
+            "confirmed_at": (max(
                 t for t in (self.proposer_confirmed_at,
                             self.counterpart_confirmed_at)
                 if t is not None).isoformat()

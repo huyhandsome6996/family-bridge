@@ -314,10 +314,21 @@ class ProgramService:
                                  program_key: str) -> Dict[str, Any]:
         """Draft -> Proposed (docs four-week-flow): one side proposes the
         agreement of THEIR pinned revision for the CURRENT connection
-        generation. Same revision re-propose is idempotent; proposing a
-        NEW revision supersedes only the pair's PENDING proposals of older
-        revisions. A CONFIRMED agreement stays in force until the new
-        revision is confirmed by BOTH sides (supersede happens in
+        generation.
+
+        QA 19/10 R02: the instance identity is (pair, program_key,
+        program_revision, agreement_revision, generation) — the proposal
+        binds what the PROPOSER pinned. Re-pinning the program (both sides
+        on a NEW program_revision while the agreement template keeps its
+        revision) therefore proposes a NEW instance of the same template;
+        the row pinned to the old program revision is history and is never
+        handed back (that used to strand the pair: confirm answered 400
+        revision_mismatch forever).
+
+        Same (program_revision, agreement_revision) re-propose is
+        idempotent; proposing a NEW pin supersedes only the pair's PENDING
+        proposals of other pins. A CONFIRMED agreement stays in force
+        until the new pin is confirmed by BOTH sides (supersede happens in
         confirm_family_agreement) or is ended upstream (R2).
         """
         enrollment = self._active_enrollment(
@@ -335,16 +346,18 @@ class ProgramService:
             "connection_generation": int(connection["generation"]),
         }
         existing = FamilyAgreement.objects.filter(
+            program_revision=enrollment.program_revision,
             agreement_revision=agreement["revision"],
             **pair_filter).first()
         if existing is not None:
             if existing.status in AGREEMENT_LIVE_STATUSES:
                 return existing.view(viewer_id=str(participant_id))
             # terminal (withdrawn/superseded/ended) -> re-propose reuses the
-            # slot only for the SAME revision AND only while no OTHER live
-            # instance of the pair exists (state machine: a superseded row
-            # gave way to a newer confirmed revision — reviving it under a
-            # live confirmed revision would create two effective agreements).
+            # slot only for the SAME (program_revision, agreement_revision)
+            # AND only while no OTHER live instance of the pair exists
+            # (state machine: a superseded row gave way to a newer
+            # confirmed revision — reviving it under a live confirmed
+            # revision would create two effective agreements).
             other_live = FamilyAgreement.objects.filter(
                 **pair_filter,
                 status__in=AGREEMENT_LIVE_STATUSES).exclude(
@@ -365,14 +378,15 @@ class ProgramService:
                 "proposer_confirmed_at", "counterpart_confirmed_at",
                 "counterpart_role", "updated_at"])
             return existing.view(viewer_id=str(participant_id))
-        # Re-propose on a NEW revision supersedes the pair's PENDING
-        # proposals of older revisions (state machine: Proposed ->
-        # Superseded when a replacement proposal is created). CONFIRMED
-        # instances stay in force — they are superseded only when the new
-        # revision reaches confirmed (R2).
+        # Re-propose on a NEW pin supersedes the pair's PENDING proposals of
+        # OTHER pins (state machine: Proposed -> Superseded when a
+        # replacement proposal is created). CONFIRMED instances stay in
+        # force — they are superseded only when the new pin reaches
+        # confirmed (R2).
         FamilyAgreement.objects.filter(
             **pair_filter,
             status=AGREEMENT_PROPOSED).exclude(
+            program_revision=enrollment.program_revision,
             agreement_revision=agreement["revision"]).update(
             status="superseded", updated_at=_now())
         instance = FamilyAgreement.objects.create(

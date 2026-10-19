@@ -19,10 +19,51 @@ from . import registry
 CONTENT_KINDS = ("activity", "micro_lesson")
 AUDIENCES = ("student", "caregiver", "joint", "neutral")
 
+MAX_MINUTES = 24 * 60  # one day bound; activity minutes are honest metadata
+
 
 def _now():
     import datetime as dt
     return dt.datetime.now(tz=UTC)
+
+
+def _safe_body(raw_body: Any) -> Dict[str, Any]:
+    """QA 19/10 R06: bounded, TYPED body for the detail view — never a
+    Python repr string, never innerHTML-fed. Only known fields survive,
+    each bounded, so malformed/untrusted content cannot smuggle structure:
+      {goal?: str<=300, steps?: [str<=500]x10, share?: str<=300,
+       text?: str<=2000}  (text = plain-string bodies, kept honest)
+    """
+    if isinstance(raw_body, str):
+        text = raw_body.strip()[:2000]
+        return {"text": text} if text else {}
+    if not isinstance(raw_body, dict):
+        return {}
+    out: Dict[str, Any] = {}
+    goal = raw_body.get("goal")
+    if isinstance(goal, str) and goal.strip():
+        out["goal"] = goal.strip()[:300]
+    steps = raw_body.get("steps")
+    if isinstance(steps, list):
+        cleaned = [str(step).strip()[:500] for step in steps
+                   if isinstance(step, str) and step.strip()]
+        if cleaned:
+            out["steps"] = cleaned[:10]
+    share = raw_body.get("share")
+    if isinstance(share, str) and share.strip():
+        out["share"] = share.strip()[:300]
+    return out
+
+
+def _safe_minutes(raw_minutes: Any) -> Optional[int]:
+    """QA 19/10 R06: minutes are source metadata — pass the value through
+    when the source provides a sane integer, else None (the UI then says
+    "chưa được cung cấp" instead of inventing a default like 1 minute)."""
+    if isinstance(raw_minutes, bool) or not isinstance(raw_minutes, int):
+        return None
+    if not 1 <= raw_minutes <= MAX_MINUTES:
+        return None
+    return raw_minutes
 
 
 def _safe_content(raw: Any) -> Optional[Dict[str, Any]]:
@@ -41,10 +82,25 @@ def _safe_content(raw: Any) -> Optional[Dict[str, Any]]:
         "kind": str(raw["kind"])[:16],
         "revision": int(raw["revision"]),
         "title": str(raw["title"])[:120],
-        "body": str(raw.get("body", ""))[:2000],
+        "body": _safe_body(raw.get("body")),
         "audience": str(raw["audience"])[:16],
-        "minutes": raw.get("minutes", 1),
+        "minutes": _safe_minutes(raw.get("minutes")),
     }
+
+
+def _connection_generation(connection) -> Optional[int]:
+    """Normalize the connection-reader result (production wiring returns a
+    dict; test doubles may return an attribute view) to an int generation,
+    or None when the reader exposes no usable generation."""
+    if connection is None:
+        return None
+    raw = (connection.get("generation")
+           if isinstance(connection, dict)
+           else getattr(connection, "generation", None))
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return None
 
 
 class ActivityService:
@@ -97,6 +153,30 @@ class ActivityService:
             participant_id=str(participant_id)).order_by("-updated_at")[:50])
 
     # -- two-sided invites -------------------------------------------------------
+    def _require_live_connection(self, *, user_a: str, user_b: str,
+                                 pinned_generation: Optional[int]):
+        """QA 19/10 R03: shared-activity state needs the connection to be
+        active RIGHT NOW at the SAME generation the invite was created
+        under. Unlink -> no_active_connection; reconnect creates a NEW
+        generation -> connection_changed, so an old invite can never be
+        revived on the new connection."""
+        reader = registry.get_connection_reader()
+        if reader is None:
+            raise ModuleUnavailable(
+                {"reason": "connection_reader_not_wired"})
+        connection = reader.active_connection_between(user_a=str(user_a),
+                                                      user_b=str(user_b))
+        if connection is None:
+            raise InputInvalid({"reason": "no_active_connection"})
+        generation = _connection_generation(connection)
+        if (pinned_generation is not None and generation is not None
+                and generation != int(pinned_generation)):
+            raise InputInvalid({"reason": "connection_changed",
+                                "invite_generation":
+                                    int(pinned_generation),
+                                "connection_generation": generation})
+        return connection
+
     @transaction.atomic
     def invite(self, *, inviter_id: str, invitee_id: str, content_key: str,
                content_revision: int) -> SharedActivityInvite:
@@ -108,15 +188,33 @@ class ActivityService:
         if reader is None:
             raise ModuleUnavailable(
                 {"reason": "connection_reader_not_wired"})
-        if reader.active_connection_between(user_a=str(inviter_id),
-                                            user_b=str(invitee_id)) is None:
+        connection = reader.active_connection_between(
+            user_a=str(inviter_id), user_b=str(invitee_id))
+        if connection is None:
             raise NotFound({"reason": "no_active_connection"})
-        invite, _ = SharedActivityInvite.objects.get_or_create(
+        generation = _connection_generation(connection)
+        stale = (SharedActivityInvite.objects.select_for_update().filter(
+            content_key=str(content_key), inviter_id=str(inviter_id),
+            invitee_id=str(invitee_id), status=INVITE_PENDING).first())
+        if stale is not None:
+            same_generation = (
+                stale.connection_generation is not None
+                and generation is not None
+                and int(stale.connection_generation) == generation)
+            if same_generation:
+                return stale  # idempotent re-invite on the same connection
+            # Pending invite from an older/unknown generation: it must NOT
+            # be reused across generations — close it honestly (history
+            # kept) and open the new one pinned to the current generation.
+            stale.status = "cancelled"
+            stale.updated_at = _now()
+            stale.save(update_fields=["status", "updated_at"])
+        invite = SharedActivityInvite.objects.create(
             content_key=str(content_key),
             content_revision=int(content_revision),
             inviter_id=str(inviter_id), invitee_id=str(invitee_id),
-            status=INVITE_PENDING,
-            defaults={})
+            connection_generation=generation,
+            status=INVITE_PENDING)
         return invite
 
     def _require_party(self, invite_id: str,
@@ -137,13 +235,22 @@ class ActivityService:
     @transaction.atomic
     def respond(self, *, invitee_id: str, invite_id: str,
                 decision: str) -> SharedActivityInvite:
-        """INVITEE-only accept/decline — the inviter cannot tick for them."""
+        """INVITEE-only accept/decline — the inviter cannot tick for them.
+        QA 19/10 R03: accepting shared-activity state requires the pair's
+        connection to be active at the invite's generation right now;
+        after unlink the accept is refused (state untouched) and after a
+        reconnect the old invite is never revived. Declining stays
+        possible — the recipient can always close a stale invite
+        honestly."""
         invite = self._require_party(invite_id, str(invitee_id))
         if str(invite.invitee_id) != str(invitee_id):
             raise NotFound({"reason": "invite_not_found"})
         if invite.status != INVITE_PENDING:
             return invite  # one-way
         if decision == "accept":
+            self._require_live_connection(
+                user_a=invite.inviter_id, user_b=invite.invitee_id,
+                pinned_generation=invite.connection_generation)
             invite.status = "accepted"
         elif decision == "decline":
             invite.status = "declined"
@@ -158,21 +265,28 @@ class ActivityService:
     def set_own_response(self, *, actor_id: str, invite_id: str,
                          response_status: str) -> SharedActivityInvite:
         """Each participant records THEIR OWN response — never the other
-        side's. invitee must have accepted first; inviter free-form."""
+        side's. invitee must have accepted first; inviter free-form.
+        QA 19/10 R03: recording a shared response is part of the JOINT
+        activity, so it also requires the connection to still be active at
+        the invite's generation (unlink stops further shared updates;
+        history stays readable)."""
         invite = self._require_party(invite_id, str(actor_id))
         if response_status not in PROGRESS_STATUSES:
             raise InputInvalid({"field": "response_status",
                                 "reason": "invalid_status"})
         is_invitee = str(invite.invitee_id) == str(actor_id)
         is_inviter = str(invite.inviter_id) == str(actor_id)
+        if not (is_invitee or is_inviter):
+            raise NotFound({"reason": "invite_not_found"})
         if is_invitee and invite.status != "accepted":
             raise InputInvalid({"reason": "invite_not_accepted"})
+        self._require_live_connection(
+            user_a=invite.inviter_id, user_b=invite.invitee_id,
+            pinned_generation=invite.connection_generation)
         if is_invitee:
             invite.invitee_response = response_status
-        elif is_inviter:
-            invite.inviter_response = response_status
         else:
-            raise NotFound({"reason": "invite_not_found"})
+            invite.inviter_response = response_status
         invite.updated_at = _now()
         invite.save()
         return invite
