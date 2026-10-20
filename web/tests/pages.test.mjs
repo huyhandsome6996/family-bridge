@@ -448,11 +448,11 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("Hub Nhật ký: chưa mở + nhấn mạnh chia sẻ từng trang do người dùng chọn", () => {
+  it("Hub Nhật ký: cổng đăng nhập + nhấn mạnh chia sẻ từng trang do người dùng chọn", () => {
     const { ctx } = makeCtx({ demo: false, role: "student" });
     const { host, el } = mount(pages.diary, ctx);
     const text = textOf(el);
-    assert.ok(text.includes("Nhật ký sẽ mở ở bản đầy đủ"));
+    assert.ok(text.includes("Cần đăng nhập để mở nhật ký"));
     assert.ok(text.includes("bạn chọn chia sẻ trang đó"));
     unmount(host);
   });

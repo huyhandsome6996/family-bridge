@@ -191,6 +191,70 @@ class ProductionHelpDirectoryReader:
         ]
 
 
+DEFAULT_PUBLISHED_JOURNAL_PROMPTS = [
+    {
+        "topic_code": "dieu_muon_hieu",
+        "prompt_text": "Điều mình muốn được hiểu mà chưa dễ nói thành lời",
+        "status": "published",
+    },
+    {
+        "topic_code": "thu_nhap",
+        "prompt_text": "Hôm nay có điều gì con muốn bố mẹ hiểu mà chưa nói được?",
+        "status": "published",
+    },
+    {
+        "topic_code": "ranh_gioi",
+        "prompt_text": "Khoảnh khắc nào hôm nay mình thấy được tôn trọng không gian riêng?",
+        "status": "published",
+    },
+    {
+        "topic_code": "no_luc_cong_nhan",
+        "prompt_text": "Một việc mình đã cố gắng gần đây và mong được ghi nhận",
+        "status": "published",
+    },
+    {
+        "topic_code": "loi_cam_on",
+        "prompt_text": "Có lời cảm ơn hoặc xin lỗi nào mình muốn gửi người trong nhà?",
+        "status": "published",
+    },
+]
+
+
+class ProductionJournalPromptProvider:
+    """Provides published journal prompts from admin_core ContentItem,
+    falling back to / merging with default published prompts."""
+
+    def list_prompts(self) -> List[Dict[str, Any]]:
+        prompts: List[Dict[str, Any]] = []
+        seen = set()
+
+        try:
+            from family_bridge_features.admin_core.models import ContentItem
+
+            items = ContentItem.objects.filter(
+                kind="journal_prompt",
+                status="published",
+            ).order_by("updated_at")
+            for item in items:
+                topic_code = item.content_key
+                if topic_code and topic_code not in seen:
+                    seen.add(topic_code)
+                    prompts.append({
+                        "topic_code": topic_code,
+                        "prompt_text": item.title or item.body,
+                        "status": "published",
+                    })
+        except Exception:
+            pass
+
+        for p in DEFAULT_PUBLISHED_JOURNAL_PROMPTS:
+            if p["topic_code"] not in seen:
+                seen.add(p["topic_code"])
+                prompts.append(dict(p))
+
+        return prompts
+
+
 def wire_backend_ports() -> None:
     """Wire all feature registries for production runtime."""
     global _WIRED
@@ -262,6 +326,7 @@ def wire_backend_ports() -> None:
         try:
             import family_bridge_features.f08_journal.services.registry as f08_reg
             f08_reg.register_connection_reader(invite_service)
+            f08_reg.register_prompt_provider(ProductionJournalPromptProvider())
         except ImportError:
             pass
 

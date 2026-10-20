@@ -163,6 +163,7 @@ class JournalSharedWithMeView(APIView):
             "share_id": str(row.id),
             "page_id": str(row.page_id),
             "owner_id": str(row.owner_id),
+            "title": row.page.title,
             "approved_revision": row.approved_revision,
             "shared_at": row.created_at.isoformat(),
         } for row in rows]})

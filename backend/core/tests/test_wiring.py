@@ -124,3 +124,22 @@ class PlatformProbesUnchangedTests(TestCase):
         response = self.client.get("/api/v1/does-not-exist/")
         self.assertEqual(response.status_code, 404)
         self.assertNotIn("SECRET", str(response.content))
+
+
+class F08JournalWiringTests(TestCase):
+    def test_journal_prompt_provider_is_registered_and_serves_published_prompts(self):
+        from family_bridge_features.f08_journal.services.journal import JournalPageService
+        import family_bridge_features.f08_journal.services.registry as f08_reg
+
+        provider = f08_reg.get_prompt_provider()
+        self.assertIsNotNone(provider, "F08 PromptProvider must be wired")
+
+        prompts = JournalPageService().prompts()
+        self.assertIsInstance(prompts, list)
+        self.assertGreater(len(prompts), 0, "Published journal prompts must not be empty")
+
+        topic_codes = [p["topic_code"] for p in prompts]
+        self.assertIn("dieu_muon_hieu", topic_codes)
+        self.assertIn("thu_nhap", topic_codes)
+        self.assertIn("ranh_gioi", topic_codes)
+

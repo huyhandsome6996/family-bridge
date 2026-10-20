@@ -1371,5 +1371,158 @@ export function createHttpEndpoints({
         { method: "POST", body: { decision } }));
       return data;
     },
+
+    // ----------------- F08: Nhật ký riêng và nhật ký song hành -----------------
+
+    /** GET /api/v1/journal/prompts — các chủ đề gợi ý đã phát hành. */
+    async listJournalPrompts() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/journal/prompts"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** GET /api/v1/journal/pages — các trang nhật ký của chính mình (cursor + search). */
+    async listJournalPages({ cursor = null, limit = null, search = null } = {}) {
+      requireBaseUrl();
+      const query = {
+        ...(cursor ? { cursor } : {}),
+        ...(limit ? { page_size: String(limit) } : {}),
+        ...(search ? { search: String(search).trim() } : {}),
+      };
+      const data = await authed(() => request("/api/v1/journal/pages", { query }));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+        nextCursor: (data && data.next) || null,
+      };
+    },
+
+    /** POST /api/v1/journal/pages — tạo trang riêng mới (mặc định chỉ mình bạn). */
+    async createJournalPage({ topicCode = "", title = "", content } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/journal/pages", {
+        method: "POST",
+        body: {
+          topic_code: topicCode || "",
+          title: title || "",
+          content,
+        },
+      }));
+      return data;
+    },
+
+    /** GET /api/v1/journal/pages/{id} — đọc trang của chính mình. */
+    async getJournalPage(pageId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/journal/pages/${encodeURIComponent(pageId)}`));
+      return data;
+    },
+
+    /** PATCH /api/v1/journal/pages/{id} — sửa trang có chống ghi đè (expectedRevision). */
+    async editJournalPage(pageId, { title, content, expectedRevision } = {}) {
+      requireBaseUrl();
+      const body = {
+        ...(title !== undefined ? { title } : {}),
+        ...(content !== undefined ? { content } : {}),
+        expected_revision: expectedRevision,
+      };
+      const data = await authed(() => request(`/api/v1/journal/pages/${encodeURIComponent(pageId)}`, {
+        method: "PATCH",
+        body,
+      }));
+      return data;
+    },
+
+    /** DELETE /api/v1/journal/pages/{id} — xóa trang và cascade quyền + phản hồi. */
+    async deleteJournalPage(pageId) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/journal/pages/${encodeURIComponent(pageId)}`, {
+        method: "DELETE",
+        body: {},
+      }));
+      return data;
+    },
+
+    /** GET /api/v1/journal/pages/{id}/shares — danh sách người đang được chia sẻ trang này. */
+    async listJournalPageShares(pageId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/journal/pages/${encodeURIComponent(pageId)}/shares`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** POST /api/v1/journal/pages/{id}/share — chia sẻ ĐÚNG một trang tại revision hiện tại. */
+    async shareJournalPage(pageId, { recipientId, expectedRevision = null } = {}) {
+      requireBaseUrl();
+      const body = {
+        recipient_id: recipientId,
+        ...(expectedRevision !== null && expectedRevision !== undefined ? { expected_revision: expectedRevision } : {}),
+      };
+      const data = await authed(() => request(`/api/v1/journal/pages/${encodeURIComponent(pageId)}/share`, {
+        method: "POST",
+        body,
+      }));
+      return data;
+    },
+
+    /** POST /api/v1/journal/shares/{share_id}/revoke — thu hồi quyền xem trang này. */
+    async revokeJournalShare(shareId) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/journal/shares/${encodeURIComponent(shareId)}/revoke`, {
+        method: "POST",
+        body: {},
+      }));
+      return data;
+    },
+
+    /** GET /api/v1/journal/pages/{id}/replies — phản hồi song hành nhận được trên trang của mình. */
+    async listJournalPageReplies(pageId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/journal/pages/${encodeURIComponent(pageId)}/replies`));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** GET /api/v1/journal/shared — danh sách các trang đang được chia sẻ với mình. */
+    async listSharedJournalPages() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/journal/shared"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
+
+    /** GET /api/v1/journal/shared/{share_id} — đọc trang được chia sẻ (live re-check). */
+    async getSharedJournalPage(shareId) {
+      requireBaseUrl();
+      const data = await authed(() =>
+        request(`/api/v1/journal/shared/${encodeURIComponent(shareId)}`));
+      return data;
+    },
+
+    /** POST /api/v1/journal/shared/{share_id}/replies — viết/sửa phản hồi song hành. */
+    async replySharedJournalPage(shareId, { body } = {}) {
+      requireBaseUrl();
+      const data = await authed(() => request(`/api/v1/journal/shared/${encodeURIComponent(shareId)}/replies`, {
+        method: "POST",
+        body: { body },
+      }));
+      return data;
+    },
+
+    /** GET /api/v1/journal/my-replies — danh sách phản hồi mình đã viết. */
+    async listMyJournalReplies() {
+      requireBaseUrl();
+      const data = await authed(() => request("/api/v1/journal/my-replies"));
+      return {
+        results: data && Array.isArray(data.results) ? data.results : [],
+      };
+    },
   };
 }

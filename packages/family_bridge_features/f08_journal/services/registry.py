@@ -38,7 +38,13 @@ def reset_registries() -> None:
 
 
 def get_prompt_provider() -> Optional[Callable]:
-    return _prompt_provider
+    if _prompt_provider is not None:
+        return _prompt_provider
+    try:
+        from core.wiring import ProductionJournalPromptProvider
+        return ProductionJournalPromptProvider()
+    except ImportError:
+        return None
 
 
 def get_connection_reader() -> Optional[Callable]:

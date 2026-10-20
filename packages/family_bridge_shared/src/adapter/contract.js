@@ -134,6 +134,21 @@ export const ADAPTER_METHODS = [
   "activitiesInvites",    // GET  /api/v1/activities/invites (2 chiều)
   "activitiesInvite",     // POST /api/v1/activities/invites (F09 two-sided)
   "activitiesRespond",    // POST /api/v1/activities/invites/{id}/respond (invitee-only)
+  // ---- F08: Nhật ký riêng và nhật ký song hành (US-016/US-031) ----
+  "listJournalPrompts",       // GET    /api/v1/journal/prompts
+  "listJournalPages",         // GET    /api/v1/journal/pages (?cursor=&page_size=&search=)
+  "createJournalPage",        // POST   /api/v1/journal/pages
+  "getJournalPage",           // GET    /api/v1/journal/pages/{id}
+  "editJournalPage",          // PATCH  /api/v1/journal/pages/{id} (+expected_revision)
+  "deleteJournalPage",        // DELETE /api/v1/journal/pages/{id}
+  "listJournalPageShares",    // GET    /api/v1/journal/pages/{id}/shares
+  "shareJournalPage",         // POST   /api/v1/journal/pages/{id}/share (+expected_revision)
+  "revokeJournalShare",       // POST   /api/v1/journal/shares/{share_id}/revoke
+  "listJournalPageReplies",   // GET    /api/v1/journal/pages/{id}/replies
+  "listSharedJournalPages",   // GET    /api/v1/journal/shared
+  "getSharedJournalPage",     // GET    /api/v1/journal/shared/{share_id}
+  "replySharedJournalPage",   // POST   /api/v1/journal/shared/{share_id}/replies
+  "listMyJournalReplies",     // GET    /api/v1/journal/my-replies
 ];
 // ApiError ném từ adapter luôn có thuộc tính `kind` (phân loại tại nơi ném):
 //   "configuration" | "network" | "timeout" | "http" | "invalid_response".

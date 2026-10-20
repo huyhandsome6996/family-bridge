@@ -22,8 +22,12 @@ export const page = {
     const root = h("div", { class: "fb-page" });
     root.appendChild(createTopBar({ title: "Chia sẻ từng mục", showBack: true, onBack: () => ctx.navigate("/privacy") }));
     const body = h("div", { class: "fb-page__body" }); root.appendChild(body);
-    const notice = h("p", { role: "status", "aria-live": "polite" });
     body.appendChild(h("p", {}, "Ghi chép mới là riêng tư. Bạn chọn đúng một trang, xem nội dung và chọn người nhận trước khi chia sẻ. Kết nối không mở toàn bộ nhật ký."));
+    body.appendChild(createButton({
+      label: "Mở không gian Nhật ký đầy đủ (chủ đề, sửa trang, phản hồi song hành)",
+      variant: "cta",
+      onClick: () => ctx.navigate("/diary"),
+    }));
     body.appendChild(notice);
     const own = h("div"), received = h("div");
     const content = h("textarea", { maxlength: 4000, rows: 5, "aria-label": "Ghi chép riêng của bạn" });

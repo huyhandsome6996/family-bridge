@@ -106,6 +106,7 @@ class JournalPageService:
         """Offline/reload conflict guard: expected_revision must match the
         stored revision or the edit is rejected 409 (never silent merge)."""
         page = _require_own_page(owner_id=owner_id, page_id=page_id)
+        page = JournalPage.objects.select_for_update().get(pk=page.pk)
         if expected_revision != page.revision:
             raise RevisionConflict({
                 "reason": "page_changed_elsewhere",

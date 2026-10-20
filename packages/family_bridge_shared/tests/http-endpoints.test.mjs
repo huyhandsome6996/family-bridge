@@ -310,9 +310,9 @@ describe("shared http-endpoints — hợp đồng boundary", () => {
     }
   });
 
-  it("surface phủ ADAPTER_METHODS: 112 tên hợp đồng (union main 91 + F07 8 + F02 12 + F15 list 1), mọi method endpoint đều là hàm", () => {
+  it("surface phủ ADAPTER_METHODS: 126 tên hợp đồng, mọi method endpoint đều là hàm", () => {
     const endpoints = makeEndpoints();
-    assert.equal(ADAPTER_METHODS.length, 112);
+    assert.equal(ADAPTER_METHODS.length, 126);
     for (const name of ADAPTER_METHODS) {
       // loginWithZaloToken/trySilentLogin/logout là glue SDK của host (mini: zmp-sdk).
       if (name === "loginWithZaloToken" || name === "trySilentLogin" || name === "logout") continue;
@@ -495,3 +495,136 @@ describe("shared http-endpoints — F15 privacy cursor v2 (Task 3-b)", () => {
     }
   });
 });
+
+describe("shared http-endpoints — F08 journal (US-016/US-031)", () => {
+  function captureFetch() {
+    const calls = [];
+    mock.method(globalThis, "fetch", async (url, options = {}) => {
+      calls.push({ url: String(url), options });
+      return jsonResponse({ results: [] });
+    });
+    return calls;
+  }
+
+  it("listJournalPrompts gọi đúng GET /api/v1/journal/prompts", async () => {
+    clearSession();
+    setSession({ token: "tok-f08", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      const res = await endpoints.listJournalPrompts();
+      assert.ok(calls[0].url.endsWith("/api/v1/journal/prompts"));
+      assert.deepEqual(res, { results: [] });
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("listJournalPages map query parameters: page_size, cursor, search", async () => {
+    clearSession();
+    setSession({ token: "tok-f08", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.listJournalPages({ limit: 15, cursor: "cur-1", search: "tự học" });
+      const url = calls[0].url;
+      assert.ok(url.includes("/api/v1/journal/pages"));
+      assert.ok(url.includes("page_size=15"));
+      assert.ok(url.includes("cursor=cur-1"));
+      assert.ok(url.includes("search=t%E1%BB%B1+h%E1%BB%8Dc") || url.includes("search=t%E1%BB%B1%20h%E1%BB%8Dc"));
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("createJournalPage gửi đúng POST /api/v1/journal/pages kèm body", async () => {
+    clearSession();
+    setSession({ token: "tok-f08", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.createJournalPage({ topicCode: "dieu_muon_hieu", title: "Tiêu đề", content: "Nội dung" });
+      assert.ok(calls[0].url.endsWith("/api/v1/journal/pages"));
+      assert.equal(calls[0].options.method, "POST");
+      const body = JSON.parse(calls[0].options.body);
+      assert.equal(body.topic_code, "dieu_muon_hieu");
+      assert.equal(body.title, "Tiêu đề");
+      assert.equal(body.content, "Nội dung");
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("getJournalPage & editJournalPage & deleteJournalPage gọi đúng URL và method", async () => {
+    clearSession();
+    setSession({ token: "tok-f08", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.getJournalPage("page-123");
+      assert.ok(calls[0].url.endsWith("/api/v1/journal/pages/page-123"));
+
+      await endpoints.editJournalPage("page-123", { title: "Mới", content: "Sửa", expectedRevision: 2 });
+      assert.ok(calls[1].url.endsWith("/api/v1/journal/pages/page-123"));
+      assert.equal(calls[1].options.method, "PATCH");
+      const patchBody = JSON.parse(calls[1].options.body);
+      assert.equal(patchBody.title, "Mới");
+      assert.equal(patchBody.content, "Sửa");
+      assert.equal(patchBody.expected_revision, 2);
+
+      await endpoints.deleteJournalPage("page-123");
+      assert.ok(calls[2].url.endsWith("/api/v1/journal/pages/page-123"));
+      assert.equal(calls[2].options.method, "DELETE");
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+
+  it("shareJournalPage, revokeJournalShare, shared & replies gọi đúng endpoint", async () => {
+    clearSession();
+    setSession({ token: "tok-f08", userId: "u", expiresAt: Date.now() + 60_000 });
+    const calls = captureFetch();
+    try {
+      const endpoints = makeEndpoints();
+      await endpoints.shareJournalPage("page-123", { recipientId: "rec-456", expectedRevision: 3 });
+      assert.ok(calls[0].url.endsWith("/api/v1/journal/pages/page-123/share"));
+      assert.equal(calls[0].options.method, "POST");
+      const shareBody = JSON.parse(calls[0].options.body);
+      assert.equal(shareBody.recipient_id, "rec-456");
+      assert.equal(shareBody.expected_revision, 3);
+
+      await endpoints.listJournalPageShares("page-123");
+      assert.ok(calls[1].url.endsWith("/api/v1/journal/pages/page-123/shares"));
+
+      await endpoints.revokeJournalShare("share-789");
+      assert.ok(calls[2].url.endsWith("/api/v1/journal/shares/share-789/revoke"));
+      assert.equal(calls[2].options.method, "POST");
+
+      await endpoints.listJournalPageReplies("page-123");
+      assert.ok(calls[3].url.endsWith("/api/v1/journal/pages/page-123/replies"));
+
+      await endpoints.listSharedJournalPages();
+      assert.ok(calls[4].url.endsWith("/api/v1/journal/shared"));
+
+      await endpoints.getSharedJournalPage("share-789");
+      assert.ok(calls[5].url.endsWith("/api/v1/journal/shared/share-789"));
+
+      await endpoints.replySharedJournalPage("share-789", { body: "Phản hồi song hành" });
+      assert.ok(calls[6].url.endsWith("/api/v1/journal/shared/share-789/replies"));
+      assert.equal(calls[6].options.method, "POST");
+      const replyBody = JSON.parse(calls[6].options.body);
+      assert.equal(replyBody.body, "Phản hồi song hành");
+
+      await endpoints.listMyJournalReplies();
+      assert.ok(calls[7].url.endsWith("/api/v1/journal/my-replies"));
+    } finally {
+      clearSession();
+      mock.restoreAll();
+    }
+  });
+});
+

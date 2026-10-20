@@ -144,6 +144,73 @@ export function createMockAdapter({ scenario = null } = {}) {
     },
   ];
 
+  // F08 fixtures (US-016 & US-031 demo: nhật ký riêng & nhật ký song hành)
+  const defaultJournalPrompts = [
+    {
+      topic_code: "dieu_muon_hieu",
+      prompt_text: "Điều mình muốn được hiểu mà chưa dễ nói thành lời",
+      status: "published",
+    },
+    {
+      topic_code: "thu_nhap",
+      prompt_text: "Hôm nay có điều gì con muốn bố mẹ hiểu mà chưa nói được?",
+      status: "published",
+    },
+    {
+      topic_code: "ranh_gioi",
+      prompt_text: "Khoảnh khắc nào hôm nay mình thấy được tôn trọng không gian riêng?",
+      status: "published",
+    },
+    {
+      topic_code: "no_luc_cong_nhan",
+      prompt_text: "Một việc mình đã cố gắng gần đây và mong được ghi nhận",
+      status: "published",
+    },
+    {
+      topic_code: "loi_cam_on",
+      prompt_text: "Có lời cảm ơn hoặc xin lỗi nào mình muốn gửi người trong nhà?",
+      status: "published",
+    },
+  ];
+
+  const journalPages = [
+    {
+      page_id: "demo-journal-page-1",
+      topic_code: "dieu_muon_hieu",
+      title: "Mong có khoảng thời gian tự học buổi tối",
+      content: "Hôm nay con muốn viết riêng điều này: con mong có khoảng thời gian tự học buổi tối mà không bị nhắc nhở liên tục.",
+      revision: 1,
+      created_at: new Date(Date.now() - 86400000).toISOString(),
+      updated_at: new Date(Date.now() - 86400000).toISOString(),
+    },
+  ];
+
+  const journalShares = [];
+  const journalPageReplies = [];
+
+  const sharedWithMeJournalPages = [
+    {
+      share_id: "demo-journal-share-1",
+      page_id: "demo-journal-page-shared-1",
+      owner_id: "demo-peer-fixture",
+      title: "Điều bố muốn chia sẻ cùng con",
+      approved_revision: 1,
+      shared_at: new Date(Date.now() - 3600000).toISOString(),
+      revoked: false,
+      page: {
+        page_id: "demo-journal-page-shared-1",
+        topic_code: "dieu_muon_hieu",
+        title: "Điều bố muốn chia sẻ cùng con",
+        content: "Bố luôn mong con được thoải mái và tự tin phát triển theo cách của mình.",
+        revision: 1,
+        created_at: new Date(Date.now() - 3600000).toISOString(),
+        updated_at: new Date(Date.now() - 3600000).toISOString(),
+      },
+    },
+  ];
+
+  const myJournalReplies = [];
+
   /**
    * Giây còn lại của khoảng dừng ĐANG ÁP DỤNG (null khi guard không chặn).
    * Nguồn sự thật: `_deadline_guard` (f06_drafts/services/drafts.py:73-94) —
@@ -1613,6 +1680,254 @@ export function createMockAdapter({ scenario = null } = {}) {
     async activitiesRespond(inviteId, decision) {
       await wait(120);
       return { invite_id: inviteId, status: decision, source: "fixture" };
+    },
+
+    // ----------------- F08: Nhật ký riêng và nhật ký song hành -----------------
+
+    async listJournalPrompts() {
+      await wait(60);
+      return { results: [...defaultJournalPrompts], source: "fixture" };
+    },
+
+    async listJournalPages({ cursor = null, limit = null, search = null } = {}) {
+      await wait(80);
+      let list = [...journalPages];
+      if (search && String(search).trim()) {
+        const q = String(search).trim().toLowerCase();
+        list = list.filter((p) =>
+          (p.title && p.title.toLowerCase().includes(q)) ||
+          (p.content && p.content.toLowerCase().includes(q))
+        );
+      }
+      return {
+        results: list,
+        nextCursor: null,
+        source: "fixture",
+      };
+    },
+
+    async createJournalPage({ topicCode = "", title = "", content } = {}) {
+      await wait(100);
+      if (!content || !String(content).trim()) {
+        throw new ApiError("Nội dung không được để trống.", 400, "http", {
+          code: "input_invalid",
+          details: { field: "content" },
+        });
+      }
+      const page = {
+        page_id: `demo-page-${Date.now()}`,
+        topic_code: topicCode || null,
+        title: (title || "").trim(),
+        content: String(content).trim(),
+        revision: 1,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        source: "fixture",
+      };
+      journalPages.unshift(page);
+      return page;
+    },
+
+    async getJournalPage(pageId) {
+      await wait(80);
+      const found = journalPages.find((p) => p.page_id === pageId);
+      if (!found) {
+        throw new ApiError("Không tìm thấy trang nhật ký.", 404, "http", {
+          code: "not_found",
+          details: { reason: "page_not_found" },
+        });
+      }
+      return { ...found };
+    },
+
+    async editJournalPage(pageId, { title, content, expectedRevision } = {}) {
+      await wait(100);
+      const found = journalPages.find((p) => p.page_id === pageId);
+      if (!found) {
+        throw new ApiError("Không tìm thấy trang nhật ký.", 404, "http", {
+          code: "not_found",
+          details: { reason: "page_not_found" },
+        });
+      }
+      if (expectedRevision !== undefined && expectedRevision !== null && expectedRevision !== found.revision) {
+        throw new ApiError("Trang nhật ký đã được sửa từ nơi khác.", 409, "http", {
+          code: "revision_conflict",
+          details: {
+            reason: "page_changed_elsewhere",
+            expected: expectedRevision,
+            current: found.revision,
+          },
+        });
+      }
+      if (title !== undefined) found.title = (title || "").trim();
+      if (content !== undefined) found.content = String(content).trim();
+      found.revision += 1;
+      found.updated_at = new Date().toISOString();
+      return { ...found };
+    },
+
+    async deleteJournalPage(pageId) {
+      await wait(100);
+      const idx = journalPages.findIndex((p) => p.page_id === pageId);
+      if (idx !== -1) {
+        journalPages.splice(idx, 1);
+      }
+      for (let i = journalShares.length - 1; i >= 0; i--) {
+        if (journalShares[i].page_id === pageId) journalShares.splice(i, 1);
+      }
+      for (let i = journalPageReplies.length - 1; i >= 0; i--) {
+        if (journalPageReplies[i].page_id === pageId) journalPageReplies.splice(i, 1);
+      }
+      return { page_id: pageId, deleted: true, source: "fixture" };
+    },
+
+    async listJournalPageShares(pageId) {
+      await wait(80);
+      return {
+        results: journalShares.filter((s) => s.page_id === pageId && !s.revoked),
+        source: "fixture",
+      };
+    },
+
+    async shareJournalPage(pageId, { recipientId, expectedRevision = null } = {}) {
+      await wait(120);
+      const found = journalPages.find((p) => p.page_id === pageId);
+      if (!found) {
+        throw new ApiError("Không tìm thấy trang nhật ký.", 404, "http", {
+          code: "not_found",
+          details: { reason: "page_not_found" },
+        });
+      }
+      if (expectedRevision !== null && expectedRevision !== undefined && expectedRevision !== found.revision) {
+        throw new ApiError("Bản xem trước đã cũ. Vui lòng xem lại bản mới nhất.", 409, "http", {
+          code: "stale_revision",
+          details: { reason: "stale_revision", current_revision: found.revision },
+        });
+      }
+      const existing = journalShares.find(
+        (s) => s.page_id === pageId && s.recipient_id === recipientId && s.approved_revision === found.revision
+      );
+      if (existing && existing.revoked) {
+        throw new ApiError(
+          "Bạn đã thu hồi quyền xem ở phiên bản này. Để chia sẻ lại, hãy sửa trang sang bản mới.",
+          400,
+          "http",
+          { code: "input_invalid", details: { reason: "reshare_after_revoke_requires_edit" } }
+        );
+      }
+      const share = {
+        share_id: `demo-share-${Date.now()}`,
+        page_id: pageId,
+        recipient_id: recipientId,
+        approved_revision: found.revision,
+        shared_at: new Date().toISOString(),
+        revoked: false,
+        source: "fixture",
+      };
+      journalShares.push(share);
+      return share;
+    },
+
+    async revokeJournalShare(shareId) {
+      await wait(100);
+      const found = journalShares.find((s) => s.share_id === shareId);
+      if (found) {
+        found.revoked = true;
+      }
+      return { share_id: shareId, revoked: true, source: "fixture" };
+    },
+
+    async listJournalPageReplies(pageId) {
+      await wait(80);
+      return {
+        results: journalPageReplies.filter((r) => r.page_id === pageId),
+        source: "fixture",
+      };
+    },
+
+    async listSharedJournalPages() {
+      await wait(80);
+      return {
+        results: sharedWithMeJournalPages
+          .filter((s) => !s.revoked)
+          .map((s) => ({
+            share_id: s.share_id,
+            page_id: s.page_id,
+            owner_id: s.owner_id,
+            title: s.title || (s.page && s.page.title) || "",
+            approved_revision: s.approved_revision,
+            shared_at: s.shared_at,
+          })),
+        source: "fixture",
+      };
+    },
+
+    async getSharedJournalPage(shareId) {
+      await wait(100);
+      const found = sharedWithMeJournalPages.find((s) => s.share_id === shareId && !s.revoked);
+      if (!found) {
+        throw new ApiError("Trang này không còn xem được.", 404, "http", {
+          code: "not_found",
+          details: { reason: "share_not_found" },
+        });
+      }
+      return {
+        share_id: found.share_id,
+        owner_id: found.owner_id,
+        shared_at: found.shared_at,
+        page: { ...found.page },
+        source: "fixture",
+      };
+    },
+
+    async replySharedJournalPage(shareId, { body } = {}) {
+      await wait(120);
+      if (!body || !String(body).trim()) {
+        throw new ApiError("Nội dung phản hồi không được để trống.", 400, "http", {
+          code: "input_invalid",
+          details: { field: "body" },
+        });
+      }
+      const found = sharedWithMeJournalPages.find((s) => s.share_id === shareId && !s.revoked);
+      if (!found) {
+        throw new ApiError("Trang này không còn xem được.", 404, "http", {
+          code: "not_found",
+          details: { reason: "share_not_found" },
+        });
+      }
+      const text = String(body).trim();
+      const reply = {
+        reply_id: `demo-reply-${Date.now()}`,
+        share_id: shareId,
+        page_id: found.page_id,
+        body: text,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        source: "fixture",
+      };
+      const myIdx = myJournalReplies.findIndex((r) => r.share_id === shareId);
+      if (myIdx !== -1) {
+        myJournalReplies[myIdx].body = text;
+        myJournalReplies[myIdx].updated_at = reply.updated_at;
+      } else {
+        myJournalReplies.push(reply);
+      }
+      const pageReplyIdx = journalPageReplies.findIndex((r) => r.page_id === found.page_id);
+      if (pageReplyIdx !== -1) {
+        journalPageReplies[pageReplyIdx].body = text;
+        journalPageReplies[pageReplyIdx].updated_at = reply.updated_at;
+      } else {
+        journalPageReplies.push(reply);
+      }
+      return reply;
+    },
+
+    async listMyJournalReplies() {
+      await wait(80);
+      return {
+        results: [...myJournalReplies],
+        source: "fixture",
+      };
     },
   };
 }
