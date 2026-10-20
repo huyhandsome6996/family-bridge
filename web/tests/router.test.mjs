@@ -84,7 +84,8 @@ const PORTED_META = [
   ["/help", "help", { requiresRole: false }],
   ["/login", "f01-login", { requiresRole: false }],
   ["/consent", "f01-consent", { requiresRole: false }],
-  ["/connect", "f01-connect", { requiresRole: false }],
+  // Stitch port (stitch-ui-2): /connect là trang app — requiresRole như diary.
+  ["/connect", "f01-connect", { requiresRole: true }],
   // Task 3-c: /privacy-items — meta giữ NGUYÊN mini (items.js copy y hệt mini
   // NGOẠI TRỪ 2 chuỗi thông báo: web/tests/qa-web-invariants quét toàn bộ
   // web/src cấm copy "Đã gửi/Đã lưu nháp/Đã lưu/Đã chia sẻ" không có miễn

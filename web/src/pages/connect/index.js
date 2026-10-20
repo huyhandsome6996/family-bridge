@@ -1,26 +1,41 @@
-// F01 — Kết nối người đồng hành: tạo mã mời, KIỂM TRA ĐÚNG NGƯỜI trước khi
-// đồng ý, xác nhận hai phía, danh sách lời mời, hủy lời mời, hủy kết nối
-// (có xác nhận), làm mới thủ công.
+// F01 — "Người đồng hành" (Stitch port 2026-10, tham chiếu
+// connect_01_ng_i_ng_h_nh_active_prelinked: head breadcrumb + Làm mới,
+// grid 8/4, thẻ cặp đồng hành active prelinked, banner an toàn).
 //
-// Luồng: A tạo mã -> B nhập mã + KIỂM TRA (preview: ai tạo mã?) -> B đồng ý
-// -> A đối chiếu tên người nhập mã rồi xác nhận -> backend kích hoạt.
+// BẤT BIẾN GIỮ NGUYÊN từ bản thật 1026 dòng (KHÔNG thay bằng dữ liệu minh họa):
+// - Làm mới qua adapter THẬT (listConnections/listInvites, bounded A09);
+// - Hủy kết nối: dialog xác nhận + revoke API thật; mất response (timeout/
+//   stale_session) → kết quả CHƯA XÁC ĐỊNH, KHÔNG tự retry (A10);
+// - Skeleton khi tải, empty state, error state + Thử lại;
+// - Lời mời hai phía (tạo mã / nhập mã / kiểm tra đúng người / xác nhận /
+//   hủy / từ chối) — luồng phụ, chỉ dùng khi người phụ trách yêu cầu thêm;
+// - Tên tự khai báo (getMyProfile/updateMyProfile) để đối chiếu đúng người;
+// - KHÔNG polling, KHÔNG toast giả thành công (toast "refresh" và "thông báo
+//   đã chuyển đến ban phụ trách" của prototype là FAKE — không port), KHÔNG
+//   icon chuông/avatar/menu chết.
 //
-// Review fixes ghi nhớ ở đây:
-// - "XÁC NHẬN ĐÚNG NGƯỜI": hai bên xem tên TỰ KHAI BÁO của nhau (nhãn rõ:
-//   không phải danh tính Zalo đã xác minh) trước khi chấp nhận/xác nhận/hủy
-//   kết nối. Không xin số điện thoại/GPS, không ép quyền tên/avatar Zalo.
-// - "PHỤC HỒI SAU LỖI MẠNG": refresh lỗi KHÔNG phá ô nhập mã; Thử lại thành
-//   công khôi phục đúng trạng thái (giữ mã đã gõ), không tự replay thao tác ghi.
-// - "MÃ MỜI HẾT HIỆU LỰC": mã vừa tạo luôn được đối chiếu với trạng thái
-//   backend theo invite_id; mã canceled/expired/đã active không còn hiển thị
-//   như còn dùng được; mã còn hợp lệ KHÔNG bị mất sau một refresh bình thường.
-// KHÔNG polling tự động (chỉ nút Làm mới); không tự gửi lại thao tác ghi khi
-// mất response — hiển thị "chưa xác định" và cho làm mới.
+// Prelinked: cặp do người phụ trách lớp cấp và kích hoạt SẴN — trang KHÔNG
+// yêu cầu mã mời; empty state hướng Làm mới + liên hệ người phụ trách lớp,
+// không đẩy luồng mã mời lên làm chính.
+//
+// LỖI ĐƯỢC XỬ LÝ RIÊNG (73bf129): backend ConnectionListView có guard nuốt
+// exception → trả 200 rỗng. Trang không được coi danh sách rỗng là chắc chắn
+// khi máy chủ suy giảm: khi listConnections trả rỗng, probe /ready — nếu
+// không "ok" → hiển thị TRẠNG THÁI LỖI + Thử lại (không bao giờ nói
+// "bạn chưa có cặp" dựa trên dữ liệu không tin cậy được).
+// Giới hạn được ghi nhận trung thực: probe /ready chỉ soi được suy giảm
+// toàn cục (DB chết/migration lỗi — đúng các nguyên nhân thực tế của guard);
+// exception cục bộ khi DB vẫn sống thì 200-rỗng về mặt kỹ thuật là không
+// thể phân biệt từ client — cần backend sửa guard trả 5xx (đã BÁO CÁO, không
+// tự sửa package dùng chung). Empty state vẫn giữ hướng dẫn liên hệ người
+// phụ trách lớp cho trường hợp bất định này.
+import "../../styles/pages-connect.css";
+
 import { h } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import {
   createButton, createCard, createDialog, createEmptyState, createErrorState,
-  createInput, createSkeleton, createStatusBadge, createTopBar,
+  createIcon, createInput, createSkeleton, createStatusBadge,
 } from "../../components/index.js";
 
 let markRenderCancelled = () => {};
@@ -127,9 +142,11 @@ function mutationOutcomeText(error, { what = "yêu cầu" } = {}) {
 
 export const page = {
   id: "f01-connect",
-  title: "Kết nối người đồng hành",
-  requiresRole: false,
-  showBottomNav: false,
+  title: "Người đồng hành",
+  requiresRole: true,
+  requiresAuth: true, // dữ liệu phiên lớp học — guard router dẫn về /login
+  showBottomNav: true,
+  chrome: "app", // bọc trong app-shell web desktop (router M1)
 
   render(ctx) {
     let cancelled = false;
@@ -153,58 +170,173 @@ export const page = {
       }
     };
 
-    const root = h("div", { class: "fb-page", dataset: { page: "f01-connect" } });
-
-    root.appendChild(
-      createTopBar({
-        title: "Kết nối người đồng hành",
-        showBack: true,
-        onBack: () => ctx.navigate(ctx.store.getState().role ? "/home" : "/profile"),
-      }),
-    );
-
-    const body = h("div", { class: "fb-page__body" });
-    root.appendChild(body);
+    const root = h("div", { class: "fb-conn", dataset: { page: "f01-connect" } });
 
     const state = ctx.store.getState();
     const demo = Boolean(state.demoMode);
 
     if (!demo && !hasLiveSession()) {
       ctx.navigate("/login?reason=expired");
-      root.appendChild(h("div", { class: "fb-page__body" }));
       return root;
     }
 
-    body.appendChild(
-      h("p", { class: "fb-page__lead" },
-        "Hai bên cùng xác nhận mới tạo được kết nối: một bên tạo mã mời, bên kia nhập mã và " +
-        "KIỂM TRA đúng người trước khi đồng ý, người tạo mã đối chiếu lại rồi xác nhận cuối cùng. " +
-        "Kết nối không cho phép đọc nhật ký hay nội dung riêng của nhau — mọi mục chia sẻ vẫn " +
-        "do bạn quyết định.",
+    // ---- head: breadcrumb + tiêu đề + lead + Làm mới ----
+    const head = h("header", { class: "fb-conn__head" });
+    const headRow = h("div", { class: "fb-conn__head-row" });
+    const headText = h("div", { class: "fb-conn__head-text" });
+
+    const crumb = h("nav", { class: "fb-conn__crumb", "aria-label": "Vị trí trang" });
+    crumb.appendChild(h("a", { href: "#/home" }, "Trang chủ"));
+    crumb.appendChild(createIcon({ name: "chevron_right", size: 14 }));
+    crumb.appendChild(h("span", { class: "fb-conn__crumb-current", "aria-current": "page" }, "Người đồng hành"));
+    headText.appendChild(crumb);
+    headText.appendChild(h("h1", { class: "fb-conn__title" }, "Người đồng hành"));
+    headText.appendChild(
+      h("p", { class: "fb-conn__lead" },
+        "Cặp đồng hành được người phụ trách lớp cấp và kích hoạt sẵn. Bạn vẫn tự quyết " +
+        "định nội dung muốn chia sẻ — từng mục một.",
       ),
     );
+    headRow.appendChild(headText);
+
+    const headActions = h("div", { class: "fb-conn__head-actions" });
+    const refreshButton = createButton({
+      label: "Làm mới",
+      variant: "ghost",
+      ariaLabel: "Cập nhật lại trạng thái liên kết",
+      onClick: () => refresh({}),
+    });
+    headActions.appendChild(refreshButton);
+    headRow.appendChild(headActions);
+    head.appendChild(headRow);
+    root.appendChild(head);
+
+    // ---- grid 8/4 ----
+    const grid = h("div", { class: "fb-conn__grid" });
+    root.appendChild(grid);
+
+    const primary = h("div", { class: "fb-conn__primary" });
+    const sideCol = h("div", { class: "fb-conn__col" });
+    grid.appendChild(primary);
+    grid.appendChild(sideCol);
+
+    // Banner an toàn (copy trung thực — không "bảo mật tuyệt đối")
+    const banner = h("section", { class: "fb-conn__banner" });
+    const bannerIcon = h("span", { class: "fb-conn__banner-icon", "aria-hidden": "true" });
+    bannerIcon.appendChild(createIcon({ name: "verified_user", size: 22 }));
+    banner.appendChild(bannerIcon);
+    banner.appendChild(
+      h("div", {},
+        h("div", { class: "fb-conn__banner-title" }, "Không gian an toàn & minh bạch"),
+        h("p", { class: "fb-conn__banner-text" },
+          "Kết nối không mở quyền xem nội dung riêng của nhau. Mọi dòng chia sẻ chỉ đến " +
+          "người đồng hành khi bạn chủ động gửi.",
+        ),
+      ),
+    );
+    primary.appendChild(banner);
 
     // ---- vùng trạng thái chung ----
     const noticeLine = h("p", { class: "fb-page__note", role: "status" });
     function notify(text) { noticeLine.textContent = text || ""; }
 
-    // ---- tên gọi tự khai báo ----
-    const nameArea = h("section", {});
     // ---- danh sách kết nối đang hoạt động ----
-    const connectionsArea = h("section", {});
-    // ---- tạo mã mời ----
+    const connectionsArea = h("section", { class: "fb-conn__section", "aria-label": "Kết nối đang hoạt động" });
+    // ---- tạo mã mời (luồng phụ) ----
     const inviteArea = h("section", {});
     // ---- nhập mã ----
     const claimArea = h("section", {});
     // ---- danh sách lời mời ----
     const invitesArea = h("section", {});
+    // ---- tên gọi tự khai báo (cột phụ) ----
+    const nameArea = h("section", {});
 
-    body.appendChild(nameArea);
-    body.appendChild(connectionsArea);
-    body.appendChild(noticeLine);
-    body.appendChild(inviteArea);
-    body.appendChild(claimArea);
-    body.appendChild(invitesArea);
+    primary.appendChild(connectionsArea);
+    primary.appendChild(noticeLine);
+
+    const inviteWrap = h("section", { class: "fb-conn__section" });
+    inviteWrap.appendChild(h("h2", { class: "fb-page__heading" }, "Kết nối khác bằng lời mời"));
+    inviteWrap.appendChild(
+      h("p", { class: "fb-page__note" },
+        "Chỉ dùng khi người phụ trách lớp yêu cầu ghép nối bổ sung. Cặp đồng hành hiện " +
+        "tại vẫn giữ nguyên.",
+      ),
+    );
+    inviteWrap.appendChild(inviteArea);
+    primary.appendChild(inviteWrap);
+
+    const claimWrap = h("section", { class: "fb-conn__section" });
+    claimWrap.appendChild(h("h2", { class: "fb-page__heading" }, "Nhập mã mời bạn nhận được"));
+    claimWrap.appendChild(claimArea);
+    primary.appendChild(claimWrap);
+
+    primary.appendChild(invitesArea);
+
+    // Cột phụ (4/12) — "Quyền riêng tư & Lựa chọn" (tham chiếu Stitch
+    // connect_01). Copy trung thực: ranh giới thật của hệ thống, KHÔNG
+    // "bảo mật tuyệt đối", KHÔNG "xác thực bởi trường", KHÔNG dữ liệu tài
+    // khoản bịa. Mọi liên kết dẫn tới trang thật (#/privacy, #/help).
+    const privacyAside = h("section", {
+      class: "fb-conn__aside-card",
+      "aria-labelledby": "fb-conn-privacy-title",
+    });
+    const asideHead = h("div", { class: "fb-conn__aside-head" });
+    const asideHeadIcon = h("span", { class: "fb-conn__aside-head-icon", "aria-hidden": "true" });
+    asideHeadIcon.appendChild(createIcon({ name: "shield_person", size: 20 }));
+    asideHead.appendChild(asideHeadIcon);
+    asideHead.appendChild(
+      h("h2", { class: "fb-conn__aside-title", id: "fb-conn-privacy-title" },
+        "Quyền riêng tư & Lựa chọn"),
+    );
+    privacyAside.appendChild(asideHead);
+
+    const privacyPoints = [
+      {
+        icon: "lock",
+        title: "Kết nối không mở quyền xem tự do",
+        text: "Người đồng hành không thể xem nhật ký riêng tư, cảm xúc cá nhân hay những thư bạn chưa chủ động gửi.",
+      },
+      {
+        icon: "send",
+        title: "Chia sẻ theo từng mục riêng",
+        text: "Mỗi dòng chia sẻ chỉ đến người đồng hành khi bạn chủ động gửi — từng mục một, có thể thu hồi riêng.",
+      },
+      {
+        icon: "tune",
+        title: "Toàn quyền thu hồi",
+        text: "Bạn có thể xem và thu hồi từng quyền đã cấp bất cứ lúc nào trong Riêng tư & đồng ý.",
+      },
+    ];
+    for (const point of privacyPoints) {
+      const row = h("div", { class: "fb-conn__point" });
+      const pointIcon = h("span", { class: "fb-conn__point-icon", "aria-hidden": "true" });
+      pointIcon.appendChild(createIcon({ name: point.icon, size: 15 }));
+      row.appendChild(pointIcon);
+      row.appendChild(
+        h("div", {},
+          h("div", { class: "fb-conn__point-title" }, point.title),
+          h("p", { class: "fb-conn__point-text" }, point.text),
+        ),
+      );
+      privacyAside.appendChild(row);
+    }
+
+    const asideLinks = h("div", { class: "fb-conn__aside-links" });
+    asideLinks.appendChild(
+      h("a", { class: "fb-conn__aside-link", href: "#/privacy" },
+        h("span", {}, "Riêng tư & đồng ý"),
+        createIcon({ name: "arrow_forward", size: 16 }),
+      ),
+    );
+    asideLinks.appendChild(
+      h("a", { class: "fb-conn__aside-link fb-conn__aside-link--muted", href: "#/help" },
+        h("span", {}, "Hướng dẫn & Trợ giúp"),
+        createIcon({ name: "arrow_forward", size: 16 }),
+      ),
+    );
+    privacyAside.appendChild(asideLinks);
+    sideCol.appendChild(nameArea);
+    sideCol.appendChild(privacyAside);
 
     const busyOps = new Set();
     function isBusy(op) { return busyOps.has(op); }
@@ -229,7 +361,7 @@ export const page = {
     }
 
     // ------------------------------------------------------------------
-    // Tên gọi tự khai báo (để hai bên đối chiếu đúng người)
+    // Tên gọi tự khai báo (để hai bên kiểm tra đúng người)
     // ------------------------------------------------------------------
     const nameState = { value: "", loaded: false, dirty: false };
 
@@ -273,7 +405,7 @@ export const page = {
       saveRef.current = saveButton;
       nameArea.appendChild(
         createCard({
-          title: "Để hai bên kiểm tra đúng người",
+          title: "Tên gọi để kiểm tra đúng người",
           description: SELF_DECLARED_NOTE +
             " Không xin số điện thoại, vị trí hay ép quyền tên/avatar.",
           children: [nameField, saveButton],
@@ -643,7 +775,7 @@ export const page = {
             try {
               await ctx.adapter.cancelInvite(invite.invite_id);
               if (cancelled) return;
-              notify("Đã hủy lời mời.");
+              notify("Lời mời đã được hủy.");
               await refresh({ silent: true });
             } catch (error) {
               if (cancelled) return;
@@ -673,7 +805,7 @@ export const page = {
             try {
               await ctx.adapter.cancelInvite(invite.invite_id);
               if (cancelled) return;
-              notify("Đã hủy lời mời.");
+              notify("Lời mời đã được hủy.");
               await refresh({ silent: true });
             } catch (error) {
               if (cancelled) return;
@@ -693,7 +825,7 @@ export const page = {
             try {
               await ctx.adapter.declineInvite(invite.invite_id);
               if (cancelled) return;
-              notify("Đã từ chối lời mời.");
+              notify("Lời mời đã bị từ chối.");
               await refresh({ silent: true });
             } catch (error) {
               if (cancelled) return;
@@ -773,20 +905,165 @@ export const page = {
     }
 
     // ------------------------------------------------------------------
-    // Kết nối đang hoạt động
+    // Kết nối đang hoạt động — thẻ "Người đồng hành" (Stitch prelinked)
     // ------------------------------------------------------------------
+    function overviewField(label, value) {
+      const field = h("div", { class: "fb-conn__overview-field" });
+      field.appendChild(h("span", { class: "fb-conn__overview-label" }, label));
+      field.appendChild(h("span", { class: "fb-conn__overview-value" }, value));
+      return field;
+    }
+
+    function companionCard(connection) {
+      const kind = RELATIONSHIP_LABELS[connection.relationship_kind]
+        || connection.relationship_kind
+        || "Không rõ";
+      const displayName = connection.counterpart && connection.counterpart.display_name
+        ? String(connection.counterpart.display_name)
+        : "";
+      const initial = displayName.trim().charAt(0).toUpperCase() || "•";
+      const isActive = connection.status === "active";
+      const statusLabel = isActive ? "Đã kết nối" : (connection.status || "Không rõ");
+
+      const card = h("section", { class: "fb-conn__card", "aria-label": "Cặp đồng hành" });
+      // Nền tonal trang trí (markup tĩnh, không dữ liệu người dùng)
+      card.appendChild(h("span", { class: "fb-conn__card-glow", "aria-hidden": "true" }));
+
+      // Top bar: trạng thái thật của kết nối
+      const cardTop = h("div", { class: "fb-conn__card-top" });
+      cardTop.appendChild(createStatusBadge({
+        tone: isActive ? "success" : "neutral",
+        label: statusLabel,
+      }));
+      card.appendChild(cardTop);
+
+      // Hồ sơ người đồng hành — CHỈ dữ liệu API trả (tên hiển thị), fallback
+      // trung tính khi thiếu; KHÔNG tên/online/last-seen bịa.
+      const profile = h("div", { class: "fb-conn__profile" });
+      const avatarCol = h("div", { class: "fb-conn__avatar-col" });
+      avatarCol.appendChild(h("span", { class: "fb-conn__avatar", "aria-hidden": "true" }, initial));
+      profile.appendChild(avatarCol);
+      const meta = h("div", { class: "fb-conn__meta" });
+      const nameRow = h("div", { class: "fb-conn__name-row" });
+      nameRow.appendChild(h("h3", { class: "fb-conn__name" }, displayName || "Chưa đặt tên gọi"));
+      nameRow.appendChild(h("span", { class: "fb-conn__role-chip" }, kind));
+      meta.appendChild(nameRow);
+      meta.appendChild(
+        h("p", { class: "fb-conn__source" },
+          createIcon({ name: "family_restroom", size: 16 }),
+          h("span", {}, displayName
+            ? "Tên do người đồng hành tự khai báo — chưa phải danh tính đã xác minh."
+            : "Người này chưa đặt tên gọi — hãy hỏi trực tiếp để chắc chắn đúng người."),
+        ),
+      );
+      profile.appendChild(meta);
+      card.appendChild(profile);
+
+      // Box tổng quan đọc-only (dữ liệu thật từ API)
+      const overview = h("div", { class: "fb-conn__overview" });
+      overview.appendChild(overviewField("Người đồng hành", displayName || "Chưa đặt tên gọi"));
+      overview.appendChild(overviewField("Loại kết nối", kind));
+      overview.appendChild(overviewField("Trạng thái", statusLabel));
+      card.appendChild(overview);
+      if (typeof connection.generation === "number") {
+        card.appendChild(
+          h("p", { class: "fb-conn__generation" },
+            `Thế hệ kết nối (generation): ${connection.generation}.`),
+        );
+      }
+
+      // Hành động chính — liên kết đến các màn thật
+      const actionsRow = h("div", { class: "fb-conn__card-actions" });
+      actionsRow.appendChild(
+        h("a", { class: "fb-btn fb-btn--primary", href: "#/mailbox" }, "Mở hộp thư"),
+      );
+      actionsRow.appendChild(
+        h("a", { class: "fb-btn fb-btn--ghost", href: "#/privacy" }, "Quản lý chia sẻ"),
+      );
+      card.appendChild(actionsRow);
+
+      // Chân thẻ: ranh giới + hủy kết nối (dialog thật + revoke API thật)
+      const cardFooter = h("div", { class: "fb-conn__card-footer" });
+      cardFooter.appendChild(
+        h("span", { class: "fb-conn__footer-note" },
+          createIcon({ name: "info", size: 16 }),
+          h("span", {}, "Tùy chọn kết nối"),
+        ),
+      );
+      const footerSide = h("div", { class: "fb-conn__footer-side" });
+      const revokeRef = { current: null };
+      const revokeButton = h("button", {
+        class: "fb-conn__unlink",
+        type: "button",
+        onclick: guarded(`revoke-${connection.connection_id}`, revokeRef, async () => {
+          const dialog = trackDialog(createDialog({
+            title: "Hủy kết nối cặp đồng hành này?",
+            message:
+              `Bạn sắp hủy kết nối với: ${counterpartLabel(connection.counterpart)}. ` +
+              "Sau khi hủy, các quyền chia sẻ dựa trên kết nối này mất hiệu lực NGAY và " +
+              "KHÔNG tự hồi sinh. Muốn kết nối lại, người phụ trách lớp phải cấp và ghép " +
+              "nối lại cặp mới — hãy cân nhắc kỹ trước khi xác nhận.",
+            actions: [
+              {
+                label: "Giữ kết nối",
+                variant: "ghost",
+                onClick: () => dialog.close(),
+              },
+              {
+                label: "Hủy kết nối",
+                variant: "danger",
+                onClick: () => {
+                  dialog.close();
+                  // A08: request thật đi qua cùng một guarded op — busy
+                  // guard bao trùm cả thời gian request chạy.
+                  guarded(`revoke-${connection.connection_id}`, revokeRef,
+                    () => revokeNow(connection))();
+                },
+              },
+            ],
+          }));
+        }),
+      }, "Hủy kết nối cặp này…");
+      revokeRef.current = revokeButton;
+      footerSide.appendChild(revokeButton);
+      cardFooter.appendChild(footerSide);
+      card.appendChild(cardFooter);
+
+      return card;
+    }
+
     function renderConnections(connections, { hasMore = false, onLoadMore = null } = {}) {
       connectionsArea.replaceChildren();
       connectionsArea.appendChild(
         h("h2", { class: "fb-page__heading" }, "Kết nối đang hoạt động"),
       );
+      // 73bf129: backend có thể nuốt exception của ConnectionListView thành
+      // 200 rỗng — khi probe ready không "ok", danh sách rỗng KHÔNG tin cậy.
+      if (lastData.connDegraded) {
+        connectionsArea.appendChild(
+          createErrorState({
+            title: "Chưa xác định được trạng thái kết nối",
+            description:
+              "Máy chủ đang phản hồi không ổn định nên danh sách người đồng hành chưa thể " +
+              "tin cậy — danh sách rỗng lúc này CÓ THỂ do lỗi máy chủ, không phải do bạn " +
+              "chưa có cặp. Vui lòng thử lại khi hệ thống ổn định.",
+            retryLabel: "Thử lại",
+            onRetry: () => refresh({}),
+          }),
+        );
+        return;
+      }
       if (!connections.length) {
+        // Prelinked: cặp do người phụ trách cấp sẵn — hướng Làm mới + liên hệ
+        // người phụ trách lớp, KHÔNG đẩy luồng mã mời làm chính.
         connectionsArea.appendChild(
           createEmptyState({
-            title: "Chưa kết nối với ai",
+            title: "Chưa thấy người đồng hành? Nhấn Làm mới hoặc liên hệ người phụ trách lớp",
             description:
-              "Tạo mã mời để mời con/người thân kết nối, hoặc nhập mã mời bạn nhận được.",
-            action: null,
+              "Cặp đồng hành được người phụ trách lớp cấp và kích hoạt sẵn. Nếu bạn chưa " +
+              "thấy ai, hãy bấm Làm mới để tải trạng thái mới nhất, hoặc liên hệ người " +
+              "phụ trách lớp để được ghép nối.",
+            action: { label: "Làm mới", onClick: () => refresh({}) },
           }),
         );
         return;
@@ -794,52 +1071,17 @@ export const page = {
       // A09: toàn bộ trang đã tải đều hiển thị (không slice); trang tiếp theo
       // qua nút “Xem thêm”.
       for (const connection of connections) {
-        const kind = RELATIONSHIP_LABELS[connection.relationship_kind]
-          || connection.relationship_kind;
-        const revokeRef = { current: null };
-        const revokeButton = createButton({
-          label: "Hủy kết nối",
-          variant: "danger",
-          onClick: guarded(`revoke-${connection.connection_id}`, revokeRef, async () => {
-            const dialog = trackDialog(createDialog({
-              title: "Hủy kết nối này?",
-              message:
-                `Bạn sắp hủy kết nối với: ${counterpartLabel(connection.counterpart)}. ` +
-                "Sau khi hủy, các quyền chia sẻ dựa trên kết nối này mất hiệu lực và " +
-                "không tự hồi sinh. Muốn kết nối lại, hai bên phải tạo và xác nhận một " +
-                "lời mời mới.",
-              actions: [
-                {
-                  label: "Giữ kết nối",
-                  variant: "ghost",
-                  onClick: () => dialog.close(),
-                },
-                {
-                  label: "Hủy kết nối",
-                  variant: "danger",
-                  onClick: () => {
-                    dialog.close();
-                    // A08: request thật đi qua cùng một guarded op — busy
-                    // guard bao trùm cả thời gian request chạy.
-                    guarded(`revoke-${connection.connection_id}`, revokeRef,
-                      () => revokeNow(connection))();
-                  },
-                },
-              ],
-            }));
-          }),
+        connectionsArea.appendChild(companionCard(connection));
+      }
+      if (hasMore && onLoadMore) {
+        const moreRef = { current: null };
+        const moreButton = createButton({
+          label: "Xem thêm kết nối",
+          variant: "ghost",
+          onClick: guarded("connections-more", moreRef, onLoadMore),
         });
-        revokeRef.current = revokeButton;
-        connectionsArea.appendChild(
-          createCard({
-            title: kind,
-            description:
-              `Người đồng hành: ${counterpartLabel(connection.counterpart)}. ` +
-              `Trạng thái: ${connection.status === "active" ? "đang hoạt động" : connection.status} ` +
-              `· thế hệ kết nối (generation): ${connection.generation}.`,
-            children: revokeButton,
-          }),
-        );
+        moreRef.current = moreButton;
+        connectionsArea.appendChild(moreButton);
       }
     }
 
@@ -850,7 +1092,7 @@ export const page = {
       try {
         const result = await ctx.adapter.revokeConnection(connection.connection_id);
         if (cancelled) return;
-        notify(result && result.note ? result.note : "Đã hủy kết nối.");
+        notify(result && result.note ? result.note : "Kết nối đã được hủy.");
         await refresh({ silent: true });
       } catch (error) {
         if (cancelled) return;
@@ -867,17 +1109,12 @@ export const page = {
     // ------------------------------------------------------------------
     // Làm mới (thủ công, không polling)
     // ------------------------------------------------------------------
-    const refreshButton = createButton({
-      label: "Làm mới",
-      variant: "ghost",
-      onClick: () => refresh({}),
-    });
-
     let lastData = {
       connections: [],
       invites: [],
       connCursor: null,
       invCursor: null,
+      connDegraded: false,
     };
 
     /**
@@ -944,19 +1181,19 @@ export const page = {
 
     async function loadMoreConnections() {
       if (!lastData.connCursor || cancelled) return;
-      const page = await ctx.adapter.listConnections({ cursor: lastData.connCursor });
+      const pageData = await ctx.adapter.listConnections({ cursor: lastData.connCursor });
       if (cancelled) return;
-      lastData.connections = lastData.connections.concat(page.results || []);
-      lastData.connCursor = page.nextCursor || null;
+      lastData.connections = lastData.connections.concat(pageData.results || []);
+      lastData.connCursor = pageData.nextCursor || null;
       paint();
     }
 
     async function loadMoreInvites() {
       if (!lastData.invCursor || cancelled) return;
-      const page = await ctx.adapter.listInvites({ cursor: lastData.invCursor });
+      const pageData = await ctx.adapter.listInvites({ cursor: lastData.invCursor });
       if (cancelled) return;
-      lastData.invites = lastData.invites.concat(page.results || []);
-      lastData.invCursor = page.nextCursor || null;
+      lastData.invites = lastData.invites.concat(pageData.results || []);
+      lastData.invCursor = pageData.nextCursor || null;
       paint();
     }
 
@@ -981,7 +1218,23 @@ export const page = {
           invites: invitesPage.results || [],
           connCursor: connectionsPage.nextCursor || null,
           invCursor: invitesPage.nextCursor || null,
+          connDegraded: false,
         };
+        // 73bf129 — guard nuốt exception ở backend ConnectionListView trả về
+        // 200 rỗng: danh sách rỗng phải được ĐỐI CHỨNG trước khi báo "chưa có
+        // cặp". Probe /ready (nhẹ, chỉ chạy khi danh sách rỗng): nếu máy chủ
+        // không "ok" → coi danh sách là KHÔNG TIN CẬY → error state + Thử
+        // lại, tuyệt đối không trình bày như "bạn chưa có người đồng hành".
+        if (!lastData.connections.length) {
+          let ready = "unknown";
+          try {
+            ready = await ctx.adapter.getBackendReady();
+          } catch {
+            ready = "unreachable";
+          }
+          if (cancelled || thisRun !== runId) return;
+          if (ready !== "ok") lastData.connDegraded = true;
+        }
         paint();
       } catch (error) {
         if (cancelled || thisRun !== runId) return;
@@ -1008,10 +1261,6 @@ export const page = {
     }
 
     // Khởi tạo
-    body.insertBefore(
-      h("div", { class: "fb-page__aside" }, refreshButton),
-      connectionsArea,
-    );
     renderNameCard();
     renderClaimSection();
     loadName();

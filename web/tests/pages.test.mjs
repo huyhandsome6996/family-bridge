@@ -171,7 +171,9 @@ describe("Page contract (shape) — 13 trang port", () => {
     ["home", { id: "u08-home", title: "Trang chủ", requiresRole: true, showBottomNav: true }],
     ["login", { id: "f01-login", title: "Đăng nhập", requiresRole: false, showBottomNav: false }],
     ["consent", { id: "f01-consent", title: "Đồng ý & quyền riêng tư", requiresRole: false, showBottomNav: false }],
-    ["connect", { id: "f01-connect", title: "Kết nối người đồng hành", requiresRole: false, showBottomNav: false }],
+    // Stitch port (stitch-ui-2): /connect trở thành trang app (requiresRole +
+    // bottom-nav như diary); title theo tham chiếu "Người đồng hành".
+    ["connect", { id: "f01-connect", title: "Người đồng hành", requiresRole: true, showBottomNav: true }],
     ["companion", { id: "companion", title: "Đồng hành", requiresRole: true, showBottomNav: true, requiresAuth: true, chrome: "app" }],
     ["diary", { id: "diary", title: "Nhật ký", requiresRole: true, showBottomNav: true }],
     ["profile", { id: "profile", title: "Cá nhân", requiresRole: true, showBottomNav: true }],
@@ -274,38 +276,47 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("U04 role-select: 2 vai trò + ghi chú không tạo tài khoản", () => {
+  it("U04 role-select: 2 góc nhìn + ghi chú xem trước không tạo tài khoản", () => {
     const { ctx } = makeCtx({});
     const { host, el } = mount(pages.roleSelect, ctx);
     const text = textOf(el);
-    assert.ok(text.includes("Bạn muốn xem giao diện của ai?"));
-    assert.ok(text.includes("Con (học sinh THPT)"));
-    assert.ok(text.includes("Người chăm sóc"));
-    assert.ok(text.includes("Đây là chế độ xem trước giao diện, chưa tạo tài khoản hay phiên đăng nhập."));
+    // Stitch port (stitch-ui-2): radio-card 2 góc nhìn, copy preview-only.
+    assert.ok(text.includes("Bạn muốn xem từ góc nhìn nào?"));
+    assert.ok(text.includes("Học sinh THPT"));
+    assert.ok(text.includes("Phụ huynh – người chăm sóc"));
+    assert.ok(text.includes("Xem trước không tạo tài khoản, không đăng nhập và không gửi dữ liệu ra máy chủ."));
     unmount(host);
   });
 
-  it("U04 role-select: bấm vai trò -> setRole thật + navigate('/home')", async () => {
-    // Mount 1: student (page có chống bấm đôi — mỗi lần navigate là instance mới)
+  it("U04 role-select: chọn radio -> setRole in-memory, KHÔNG auto-advance; CTA dẫn /login", async () => {
+    // Mount 1: student — chọn radio KHÔNG điều hướng; CTA mở luồng thật /login.
     const first = makeCtx({});
     const mounted = mount(pages.roleSelect, first.ctx);
-    const studentBtn = findButton(mounted.el, "Xem giao diện của Con");
-    assert.ok(studentBtn, "thiếu nút vai trò học sinh");
-    studentBtn.click();
+    const cta = findButton(mounted.el, "Đăng nhập để dùng thật");
+    assert.ok(cta, "CTA 'Đăng nhập để dùng thật' phải tồn tại");
+    assert.ok(cta.disabled, "chưa chọn góc nhìn thì CTA phải disabled (không precheck)");
+    const studentInput = mounted.el.querySelector('input[value="student"]');
+    assert.ok(studentInput, "phải có radio góc nhìn học sinh");
+    studentInput.checked = true;
+    studentInput.dispatchEvent(new Event("change"));
     await wait(20);
     assert.equal(getState().role, "student");
-    assert.ok(first.navigateCalls.includes("/home"));
+    assert.ok(!first.navigateCalls.includes("/home"), "chọn radio không được auto-advance");
+    assert.ok(!cta.disabled, "đã chọn thì CTA mở");
+    cta.click();
+    assert.ok(first.navigateCalls.includes("/login"), "CTA phải dẫn sang /login");
     unmount(mounted.host);
 
     // Mount 2: caregiver
     const second = makeCtx({});
     const mounted2 = mount(pages.roleSelect, second.ctx);
-    const caregiverBtn = findButton(mounted2.el, "Xem giao diện của Người chăm sóc");
-    assert.ok(caregiverBtn, "thiếu nút vai trò người chăm sóc");
-    caregiverBtn.click();
+    const caregiverInput = mounted2.el.querySelector('input[value="caregiver"]');
+    assert.ok(caregiverInput, "phải có radio góc nhìn người chăm sóc");
+    caregiverInput.checked = true;
+    caregiverInput.dispatchEvent(new Event("change"));
     await wait(20);
     assert.equal(getState().role, "caregiver");
-    assert.ok(second.navigateCalls.includes("/home"));
+    assert.equal(second.navigateCalls.length, 0, "chọn radio không điều hướng");
 
     resetState();
     unmount(mounted2.host);
@@ -587,6 +598,146 @@ describe("Login web (f01): form mã tài khoản + mật khẩu", () => {
       restore();
       clearSession();
     }
+  });
+});
+
+describe("Connect (F01 — stitch-ui-2): phân biệt rỗng THẬT / lỗi máy chủ / chưa đăng nhập", () => {
+  // Adapter web giả lập đúng biên dạng production: listConnections ném lỗi
+  // khi máy chủ lỗi (KHÔNG nuốt), getBackendReady trả 'ok' | 'unavailable'.
+  function connectAdapter({ rows, ready = "ok", failLists = false } = {}) {
+    return {
+      mode: "web",
+      listConnections: async () => {
+        if (failLists) {
+          throw new ApiError("Kết nối quá thời gian chờ. Vui lòng thử lại.", 0, "timeout");
+        }
+        return { results: rows, nextCursor: null };
+      },
+      listInvites: async () => ({ results: [], nextCursor: null }),
+      getBackendReady: async () => ready,
+      getMyProfile: async () => ({ display_name: "" }),
+    };
+  }
+
+  function withSession() {
+    clearSession();
+    setSession({ token: "t-connect", userId: "u-1", expiresAt: Date.now() + 3600_000 });
+  }
+
+  it("(c) chưa đăng nhập (production): dẫn về /login?reason=expired, không render dữ liệu", () => {
+    clearSession();
+    const { ctx, navigateCalls } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: connectAdapter({ rows: [] }),
+    });
+    const { host, el } = mount(pages.connect, ctx);
+    assert.ok(
+      navigateCalls.includes("/login?reason=expired"),
+      "không có phiên sống phải đá về login, không render danh sách",
+    );
+    unmount(host);
+  });
+
+  it("(a) rỗng THẬT (ready=ok): empty state prelinked + Làm mới, không bịa cặp", () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: connectAdapter({ rows: [] }),
+    });
+    const { host, el } = mount(pages.connect, ctx);
+    return wait(60).then(() => {
+      const text = textOf(el);
+      assert.ok(
+        text.includes("Chưa thấy người đồng hành? Nhấn Làm mới hoặc liên hệ người phụ trách lớp"),
+        `empty state prelinked phải có — thấy: ${text.slice(0, 220)}`,
+      );
+      assert.ok(findButton(el, "Làm mới"), "empty state phải có nút Làm mới");
+      assert.ok(!text.includes("Dữ liệu minh họa"), "production không được hiện dữ liệu bịa");
+      clearSession();
+      unmount(host);
+    });
+  });
+
+  it("(b) 200 rỗng + ready KHÔNG ok (guard 73bf129): trạng thái LỖI + Thử lại — không trình bày như 'chưa có cặp'", () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: connectAdapter({ rows: [], ready: "unavailable" }),
+    });
+    const { host, el } = mount(pages.connect, ctx);
+    return wait(60).then(() => {
+      const text = textOf(el);
+      assert.ok(
+        text.includes("Chưa xác định được trạng thái kết nối"),
+        `degraded phải vào error state — thấy: ${text.slice(0, 220)}`,
+      );
+      assert.ok(findButton(el, "Thử lại"), "degraded phải có nút Thử lại");
+      assert.ok(
+        !text.includes("Chưa thấy người đồng hành"),
+        "danh sách KHÔNG tin cậy không được render như rỗng thật",
+      );
+      clearSession();
+      unmount(host);
+    });
+  });
+
+  it("(b) listConnections ném lỗi (timeout): ErrorState + Thử lại, không fallback rỗng", () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: connectAdapter({ rows: [], failLists: true }),
+    });
+    const { host, el } = mount(pages.connect, ctx);
+    return wait(60).then(() => {
+      const text = textOf(el);
+      assert.ok(
+        text.includes("Không tải được dữ liệu kết nối"),
+        `lỗi list phải vào error state — thấy: ${text.slice(0, 220)}`,
+      );
+      assert.ok(findButton(el, "Thử lại"));
+      assert.ok(text.includes("Kết nối quá thời gian chờ"), "thông điệp timeout phải hiển thị");
+      clearSession();
+      unmount(host);
+    });
+  });
+
+  it("có cặp (API thật): thẻ người đồng hành chỉ dữ liệu API + hủy kết nối qua dialog, không fake online", () => {
+    withSession();
+    const { ctx } = makeCtx({
+      demo: false,
+      role: "student",
+      adapter: connectAdapter({
+        rows: [{
+          connection_id: "c1",
+          other_party_id: "uuid-peer",
+          relationship_kind: "primary",
+          generation: 1,
+          status: "active",
+          counterpart: { display_name: "Mẹ Nam" },
+        }],
+      }),
+    });
+    const { host, el } = mount(pages.connect, ctx);
+    return wait(60).then(() => {
+      const text = textOf(el);
+      assert.ok(text.includes("Mẹ Nam"), "tên hiển thị từ API phải hiện");
+      assert.ok(
+        text.includes("tự khai báo") || text.includes("chưa phải danh tính đã xác minh"),
+        "phải ghi rõ tên tự khai báo, chưa xác minh",
+      );
+      assert.ok(text.includes("Đã kết nối"), "trạng thái thật từ API phải hiện");
+      assert.ok(findButton(el, "Hủy kết nối cặp này…"), "phải có nút hủy kết nối thật");
+      assert.ok(el.querySelector("a[href='#/mailbox']"), "phải có lối mở hộp thư");
+      assert.ok(!/online/i.test(text), "không được bịa badge online");
+      assert.ok(!text.includes("lần hoạt động"), "không được bịa last-seen");
+      assert.ok(!text.includes("Kênh bảo mật gia đình"), "copy over-claim của prototype bị cấm");
+      clearSession();
+      unmount(host);
+    });
   });
 });
 
