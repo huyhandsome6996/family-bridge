@@ -1,0 +1,987 @@
+/* ============================================================
+   pages-how-to-use.css — "Cách sử dụng" công khai (U02) port từ
+   Stitch references/stitch-original/.../howto_01_c_ch_d_ng_family_
+   bridge_desktop_1120px/ (code.html + screen.png — desktop 1120px:
+   sidebar mục lục 1/3 + luồng bước 2/3 + FAQ). Tái biểu diễn bằng
+   token repo, KHÔNG Tailwind/CDN. Class prefix riêng "fb-ht-".
+   Motion: chỉ transform/opacity 120–200ms (base.css tắt khi
+   prefers-reduced-motion).
+   ============================================================ */
+
+/* ---- Canvas trang công khai: bỏ cap 480px của .fb-page ---- */
+.fb-page.fb-ht-page {
+  max-width: none;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------- Header công khai (định nghĩa giống pages-welcome.css) ---------- */
+.fb-pub-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--fb-z-top-bar);
+  background: rgba(255, 248, 246, 0.95);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--fb-border);
+}
+
+.fb-pub-header__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--fb-space-4);
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-3);
+  flex-wrap: wrap;
+}
+
+.fb-pub-header__brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  min-height: 44px;
+  text-decoration: none;
+  color: var(--fb-text);
+  border-radius: var(--fb-radius-control);
+}
+
+.fb-pub-header__brand-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.fb-pub-header__brand-name {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.fb-pub-header__brand-tag {
+  font-size: 11px;
+  color: var(--fb-outline-text);
+}
+
+.fb-pub-header__nav {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-1);
+}
+
+.fb-pub-header__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: var(--fb-radius-control);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  color: var(--fb-text-secondary);
+  transition: opacity var(--fb-transition-quick) ease;
+}
+
+.fb-pub-header__link:hover {
+  color: var(--fb-text);
+  background: var(--fb-surface-low);
+}
+
+.fb-pub-header__link--active {
+  color: var(--fb-primary);
+  background: var(--fb-surface-container);
+  font-weight: 600;
+}
+
+.fb-pub-header__login {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 var(--fb-space-4);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-cta);
+  color: var(--fb-on-cta);
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--fb-shadow-sm);
+  transition: opacity var(--fb-transition-quick) ease,
+    transform var(--fb-transition-quick) ease;
+}
+
+.fb-pub-header__login:hover { background: var(--fb-cta-hover); }
+.fb-pub-header__login:active { transform: scale(0.98); }
+
+@media (max-width: 767px) {
+  .fb-pub-header__nav {
+    display: none; /* footer vẫn giữ đủ link (theo reference) */
+  }
+}
+
+/* ---------- Main 1120px ---------- */
+.fb-ht-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: var(--fb-space-6) var(--fb-space-4) var(--fb-space-8);
+}
+
+@media (min-width: 1024px) {
+  .fb-ht-main { padding: 40px 32px 64px; }
+}
+
+/* ---------- Intro ---------- */
+.fb-ht-intro > * + * {
+  margin-top: var(--fb-space-3);
+  margin-bottom: 0;
+}
+
+.fb-ht-intro { margin-bottom: var(--fb-space-8); }
+
+.fb-ht-intro__pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  padding: 5px 12px;
+  border-radius: 9999px;
+  background: var(--fb-surface-low);
+  border: 1px solid var(--fb-border);
+  color: var(--fb-primary);
+  font-size: 12px;
+  font-weight: 600;
+  max-width: 100%;
+}
+
+.fb-ht-intro h1 {
+  font-size: clamp(28px, 4vw, 40px);
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fb-text);
+  margin-top: var(--fb-space-3);
+}
+
+.fb-ht-intro__lead {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fb-text-secondary);
+  max-width: 65ch;
+}
+
+@media (min-width: 640px) {
+  .fb-ht-intro__lead { font-size: 18px; }
+}
+
+/* ---------- Grid: mục lục (4) + bước (8) ---------- */
+.fb-ht-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--fb-space-6);
+  align-items: start;
+}
+
+@media (min-width: 1024px) {
+  .fb-ht-layout {
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 32px 48px;
+  }
+  .fb-ht-aside { grid-column: span 4; }
+  .fb-ht-steps { grid-column: span 8; }
+}
+
+.fb-ht-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-6);
+}
+
+@media (min-width: 1024px) {
+  .fb-ht-aside {
+    position: sticky;
+    top: 96px;
+  }
+}
+
+.fb-ht-aside > * + * { margin-top: 0; }
+
+/* ---- Mục lục ---- */
+.fb-ht-toc {
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-group);
+  padding: 20px;
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-ht-toc__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+  margin-bottom: var(--fb-space-4);
+}
+
+.fb-ht-toc__title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fb-outline-text);
+}
+
+.fb-ht-toc__count {
+  font-size: 11px;
+  color: var(--fb-text-secondary);
+  background: var(--fb-surface-low);
+  border-radius: var(--fb-radius-control);
+  padding: 2px 8px;
+}
+
+.fb-ht-toc__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fb-ht-toc__item + .fb-ht-toc__item--faq {
+  margin-top: var(--fb-space-2);
+  padding-top: var(--fb-space-2);
+  border-top: 1px solid rgba(221, 192, 186, 0.5);
+}
+
+.fb-ht-toc__link {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 0;
+  border-radius: var(--fb-radius-control);
+  background: transparent;
+  color: var(--fb-text-secondary);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: opacity var(--fb-transition-quick) ease,
+    transform var(--fb-transition-quick) ease;
+}
+
+.fb-ht-toc__link:hover {
+  color: var(--fb-text);
+  background: var(--fb-surface-low);
+}
+
+.fb-ht-toc__link:active { transform: scale(0.99); }
+
+.fb-ht-toc__num {
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  background: var(--fb-surface-low);
+  border: 1px solid rgba(221, 192, 186, 0.6);
+  color: var(--fb-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-ht-toc__link--active {
+  color: var(--fb-primary);
+  font-weight: 600;
+  background: rgba(255, 226, 220, 0.55);
+}
+
+.fb-ht-toc__link--active .fb-ht-toc__num {
+  background: var(--fb-primary);
+  border-color: var(--fb-primary);
+  color: var(--fb-on-primary);
+}
+
+.fb-ht-toc__faq-icon {
+  color: rgba(157, 61, 39, 0.8);
+  flex-shrink: 0;
+}
+
+/* ---- Thẻ cam kết riêng tư trong aside ---- */
+.fb-ht-privacy {
+  background: var(--fb-surface-low);
+  border: 1px solid rgba(221, 192, 186, 0.8);
+  border-radius: var(--fb-radius-group);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-ht-privacy__top {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-3);
+}
+
+.fb-ht-privacy__icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface);
+  border: 1px solid rgba(221, 192, 186, 0.6);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-ht-privacy__title {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.4;
+  color: var(--fb-text);
+}
+
+.fb-ht-privacy__text {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-privacy__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+  padding-top: var(--fb-space-2);
+  border-top: 1px solid rgba(221, 192, 186, 0.4);
+  font-size: 12px;
+}
+
+.fb-ht-privacy__foot-label { color: var(--fb-text-secondary); }
+
+.fb-ht-privacy__foot-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  color: var(--fb-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.fb-ht-privacy__foot-link:hover { text-decoration: underline; }
+
+/* ---------- Bước (step cards) ---------- */
+.fb-ht-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-8);
+  min-width: 0;
+}
+
+.fb-ht-step {
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-6);
+  box-shadow: var(--fb-shadow-sm);
+  scroll-margin-top: 88px;
+}
+
+@media (min-width: 640px) {
+  .fb-ht-step { padding: var(--fb-space-8); }
+}
+
+.fb-ht-step__inner {
+  display: flex;
+  gap: var(--fb-space-4);
+  align-items: stretch;
+}
+
+@media (min-width: 640px) {
+  .fb-ht-step__inner { gap: 20px; }
+}
+
+.fb-ht-step__rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.fb-ht-step__num {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-container);
+  border: 1px solid rgba(157, 61, 39, 0.2);
+  color: var(--fb-primary);
+  font-size: 16px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-ht-step--first .fb-ht-step__num {
+  background: var(--fb-primary);
+  border-color: var(--fb-primary);
+  color: var(--fb-on-primary);
+}
+
+.fb-ht-step__line {
+  width: 2px;
+  flex: 1;
+  background: rgba(221, 192, 186, 0.6);
+  margin: var(--fb-space-2) 0;
+}
+
+.fb-ht-step--last .fb-ht-step__line { display: none; }
+
+.fb-ht-step__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-ht-step__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fb-space-2);
+}
+
+.fb-ht-chip {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 10px;
+  border-radius: 9999px;
+  background: var(--fb-surface-low);
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-step__time {
+  font-size: 12px;
+  color: var(--fb-outline-text);
+}
+
+.fb-ht-step__title {
+  font-size: 20px;
+  line-height: 1.35;
+  font-weight: 700;
+  color: var(--fb-text);
+}
+
+@media (min-width: 640px) {
+  .fb-ht-step__title { font-size: 24px; line-height: 1.3; }
+}
+
+.fb-ht-step__desc {
+  font-size: 16px;
+  line-height: 1.65;
+  color: var(--fb-text-secondary);
+}
+
+/* ---- Hộp lưu ý (guidance) ---- */
+.fb-ht-box {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-low);
+  border: 1px solid rgba(221, 192, 186, 0.8);
+  min-width: 0;
+}
+
+.fb-ht-box__head {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fb-text);
+}
+
+.fb-ht-box__head .fb-icon { color: var(--fb-primary); }
+
+.fb-ht-box__list {
+  margin: var(--fb-space-2) 0 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* ---- Hộp xem trước kết nối (step 2) ---- */
+.fb-ht-connect {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-low);
+  border: 1px solid rgba(221, 192, 186, 0.8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+@media (min-width: 640px) {
+  .fb-ht-connect {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.fb-ht-connect__who {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  min-width: 0;
+}
+
+.fb-ht-connect__avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--fb-surface-high);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.fb-ht-connect__name-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fb-text);
+}
+
+.fb-ht-connect__badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--fb-success-bg);
+  color: var(--fb-success);
+}
+
+.fb-ht-connect__sub {
+  font-size: 12px;
+  color: var(--fb-text-secondary); /* trên nền surface-low: outline-text chỉ đạt ~4.3:1 */
+}
+
+.fb-ht-connect__hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-note {
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fb-outline-text);
+  font-style: italic;
+  margin: 0;
+}
+
+/* ---- Lưới cách mở lời (step 3) ---- */
+.fb-ht-modes {
+  margin-top: var(--fb-space-2);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--fb-space-3);
+}
+
+@media (min-width: 640px) {
+  .fb-ht-modes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.fb-ht-mode {
+  padding: 14px;
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid rgba(221, 192, 186, 0.7);
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-ht-mode__icon {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-container);
+  color: var(--fb-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--fb-space-2);
+}
+
+.fb-ht-mode__title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fb-text);
+  margin-bottom: 4px;
+}
+
+.fb-ht-mode__text {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-ai-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  padding: 10px 12px;
+  border-radius: var(--fb-radius-control);
+  background: rgba(255, 233, 229, 0.5);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-ai-note .fb-icon {
+  color: var(--fb-primary);
+  margin-top: 1px;
+}
+
+/* ---- Hộp hành trình 4 tuần (step 4) ---- */
+.fb-ht-journey {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-low);
+  border: 1px solid rgba(221, 192, 186, 0.8);
+}
+
+.fb-ht-journey__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+  margin-bottom: var(--fb-space-3);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--fb-text);
+}
+
+.fb-ht-journey__head span:last-child {
+  color: var(--fb-text-secondary);
+  font-weight: 400;
+}
+
+.fb-ht-journey__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--fb-space-2);
+}
+
+@media (min-width: 640px) {
+  .fb-ht-journey__grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+
+.fb-ht-journey__cell {
+  padding: 10px;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface);
+  border: 1px solid rgba(221, 192, 186, 0.6);
+  text-align: center;
+  min-width: 0;
+}
+
+.fb-ht-journey__week {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fb-primary);
+}
+
+.fb-ht-journey__theme {
+  display: block;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--fb-text-secondary);
+  margin-top: 2px;
+}
+
+/* ---------- FAQ (details/summary thuần) ---------- */
+.fb-ht-faq {
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-6);
+  box-shadow: var(--fb-shadow-sm);
+  scroll-margin-top: 88px;
+}
+
+@media (min-width: 640px) {
+  .fb-ht-faq { padding: var(--fb-space-8); }
+}
+
+.fb-ht-faq__eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fb-primary);
+}
+
+.fb-ht-faq h2 {
+  margin-top: 4px;
+  font-size: var(--fb-fs-headline-lg);
+  line-height: var(--fb-lh-headline-lg);
+  font-weight: 700;
+  color: var(--fb-text);
+}
+
+.fb-ht-faq__list {
+  margin-top: var(--fb-space-6);
+  border-top: 1px solid rgba(221, 192, 186, 0.6);
+}
+
+.fb-ht-faq__item {
+  border-bottom: 1px solid rgba(221, 192, 186, 0.6);
+  padding: 14px 0;
+}
+
+.fb-ht-faq__q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-4);
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-ht-faq__q::-webkit-details-marker { display: none; }
+
+.fb-ht-faq__q:hover { color: var(--fb-primary); }
+
+.fb-ht-faq__chev {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--fb-surface-low);
+  color: var(--fb-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform var(--fb-transition-base) ease;
+}
+
+.fb-ht-faq__item[open] .fb-ht-faq__chev { transform: rotate(180deg); }
+
+.fb-ht-faq__a {
+  margin-top: 10px;
+  padding-right: var(--fb-space-6);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--fb-text-secondary);
+}
+
+@media (min-width: 640px) {
+  .fb-ht-faq__a { font-size: 15px; }
+}
+
+/* ---------- Banner CTA cuối ---------- */
+.fb-ht-cta {
+  margin-top: var(--fb-space-8);
+  background: rgba(255, 233, 229, 0.6);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-group);
+  padding: var(--fb-space-6);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fb-space-4);
+  box-shadow: var(--fb-shadow-sm);
+}
+
+@media (min-width: 640px) {
+  .fb-ht-cta {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--fb-space-8);
+  }
+}
+
+.fb-ht-cta__text { max-width: 48ch; }
+
+.fb-ht-cta__text h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--fb-text);
+}
+
+.fb-ht-cta__text p {
+  margin-top: 6px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-cta__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .fb-ht-cta__actions {
+    flex-direction: row;
+    align-items: center;
+    width: auto;
+  }
+}
+
+.fb-ht-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-2);
+  min-height: 48px;
+  border-radius: var(--fb-radius-control);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity var(--fb-transition-quick) ease,
+    transform var(--fb-transition-quick) ease;
+}
+
+.fb-ht-btn:active { transform: scale(0.98); }
+
+.fb-ht-btn--primary {
+  border: 0;
+  padding: 0 var(--fb-space-6);
+  background: var(--fb-cta);
+  color: var(--fb-on-cta);
+  box-shadow: var(--fb-shadow-sm);
+}
+
+.fb-ht-btn--primary:hover { background: var(--fb-cta-hover); }
+
+.fb-ht-btn--secondary {
+  padding: 0 var(--fb-space-4);
+  border: 1px solid var(--fb-border);
+  background: var(--fb-surface);
+  color: var(--fb-text-secondary);
+}
+
+.fb-ht-btn--secondary:hover {
+  background: var(--fb-bg);
+  color: var(--fb-text);
+}
+
+/* ---------- Footer công khai (định nghĩa giống pages-welcome.css) ---------- */
+.fb-pub-footer {
+  background: var(--fb-surface);
+  border-top: 1px solid var(--fb-border);
+  padding: var(--fb-space-8) 0;
+}
+
+.fb-pub-footer__inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-6);
+}
+
+@media (min-width: 768px) {
+  .fb-pub-footer__inner {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+}
+
+.fb-pub-footer__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+}
+
+.fb-pub-footer__brand-name {
+  font-weight: 600;
+  color: var(--fb-text);
+  font-size: 14px;
+}
+
+.fb-pub-footer__brand-sub {
+  color: var(--fb-outline-text);
+  font-size: 13px;
+  margin-left: var(--fb-space-2);
+}
+
+.fb-pub-footer__nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--fb-space-2) var(--fb-space-6);
+  font-size: 14px;
+}
+
+.fb-pub-footer__nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--fb-text-secondary);
+  text-decoration: none;
+  transition: opacity var(--fb-transition-quick) ease;
+}
+
+.fb-pub-footer__nav a:hover { color: var(--fb-primary); }
+
+.fb-pub-footer__note {
+  max-width: 1120px;
+  margin: var(--fb-space-6) auto 0;
+  padding: var(--fb-space-6) var(--fb-space-4) 0;
+  border-top: 1px solid rgba(221, 192, 186, 0.5);
+}
+
+.fb-pub-footer__note p {
+  font-size: 12px;
+  color: var(--fb-outline-text);
+  line-height: 1.55;
+}

@@ -250,15 +250,22 @@ describe("Render không throw + copy bắt buộc", () => {
     unmount(host);
   });
 
-  it("U02 how-to-use: 4 bước + ghi chú demo + CTA 'Tiếp tục' về đăng nhập", () => {
+  it("U02 how-to-use (prelinked): 4 bước + ghi chú demo + CTA 'Tiếp tục' về đăng nhập", () => {
     const { ctx, navigateCalls } = makeCtx({});
     const { host, el } = mount(pages.howToUse, ctx);
     const text = textOf(el);
-    // Port web: bước 1 là đăng nhập mã tài khoản (không Zalo host).
-    for (const step of ["Đăng nhập bằng mã tài khoản", "mã mời", "thẻ cảm xúc và hộp thư", "Đồng hành 4 tuần tự nguyện"]) {
+    // Port web: bước 1 là đăng nhập mã tài khoản (không Zalo host). Stitch
+    // 20/10: luồng tài khoản được cấp sẵn — cặp ghép sẵn KHÔNG cần mã mời.
+    for (const step of ["Đăng nhập bằng mã tài khoản", "mã mời", "thẻ cảm xúc và hộp thư", "Nhật ký và cảm xúc là của riêng bạn"]) {
       assert.ok(text.includes(step), `thiếu bước/copy: ${step}`);
     }
-    assert.ok(text.includes("Cả hai bên đều phải đồng ý thì kết nối mới được tạo"));
+    // Cặp ghép sẵn bởi người phụ trách; chỉ LỜI MỜI THAM GIA HOẠT ĐỘNG mới
+    // cần hai bên đồng ý (không còn bước "kết nối bằng mã mời").
+    assert.ok(text.includes("không cần nhập mã mời"), "phải nêu rõ cặp ghép sẵn, không cần mã mời");
+    assert.ok(
+      text.includes("lời mời cần cả hai bên đồng ý thì cặp hoạt động mới bắt đầu"),
+      "lời mời tham gia hoạt động phải nêu cần hai bên đồng ý",
+    );
     assert.ok(text.includes("Chế độ xem trước (?demo=1) dùng dữ liệu minh họa, không tạo phiên thật."));
     const cta = findButton(el, "Tiếp tục");
     assert.ok(cta, "thiếu CTA Tiếp tục");
