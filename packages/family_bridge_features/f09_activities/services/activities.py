@@ -127,6 +127,19 @@ class ActivityService:
         reader = registry.get_content_reader()
         if reader is None:
             raise ModuleUnavailable({"reason": "content_reader_unwired"})
+        # R3-analog of F02: progress rows and invites PIN (content_key,
+        # content_revision). When newer releases push that exact revision
+        # out of the bounded catalog window (50), the pin must STILL be
+        # resolvable — providers MAY expose an exact single-row getter.
+        # Fallback stays the bounded catalog scan (<=50) for test doubles.
+        getter = getattr(reader, "get_published", None)
+        if callable(getter):
+            raw = getter(content_key=str(content_key), revision=int(revision))
+            card = _safe_content(raw) if raw is not None else None
+            if (card and card["content_key"] == str(content_key)
+                    and card["revision"] == int(revision)):
+                return card
+            raise NotFound({"reason": "content_not_published"})
         for raw in (reader.list_published(limit=50) or []):
             card = _safe_content(raw)
             if (card and card["content_key"] == str(content_key)

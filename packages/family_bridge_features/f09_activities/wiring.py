@@ -78,6 +78,51 @@ class PublishedContentActivityReader:
             out.append(card)
         return out
 
+    def get_published(self, *, content_key: str,
+                      revision: int) -> Optional[Dict[str, Any]]:
+        """Exact (content_key, revision) lookup — at most ONE candidate row.
+
+        R3 parity with F02's get_program: progress rows and invites pin
+        (content_key, content_revision); when newer releases push that pin
+        out of the bounded list window, the pinned revision must remain
+        readable through this bounded single-row path (no unbounded scan,
+        no history download). Retired rows never surface from here."""
+        from family_bridge_features.admin_core.models import (
+            CONTENT_PUBLISHED, ContentItem,
+        )
+        key = str(content_key or "").strip()
+        if not (1 <= len(key) <= 64):
+            return None
+        if isinstance(revision, bool) or not isinstance(revision, int):
+            return None
+        item = (ContentItem.objects
+                .filter(content_key=key, revision=int(revision),
+                        status=CONTENT_PUBLISHED)
+                .order_by("-id").first())
+        if item is None:
+            return None
+        try:
+            body = json.loads(item.body or "")
+        except (ValueError, TypeError):
+            return None  # fail closed: malformed release never surfaces
+        if not isinstance(body, dict):
+            return None
+        card: Dict[str, Any] = {
+            "content_key": key,
+            "kind": str(item.kind)[:32],
+            "title": str(item.title)[:120],
+            "body": body,
+            "audience": str(item.audience)[:16],
+            "revision": int(item.revision),
+            "status": str(item.status),
+            "published_at": item.published_at.isoformat()
+            if item.published_at else None,
+        }
+        minutes = _source_minutes(body)
+        if minutes is not None:
+            card["minutes"] = minutes
+        return card
+
 
 class F01ConnectionReader:
     """Same lazy-import idiom as F16/F02 wiring — F01 rows read, never mutated."""

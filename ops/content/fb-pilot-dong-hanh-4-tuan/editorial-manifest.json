@@ -1,0 +1,174 @@
+{
+  "catalog_id": "family-bridge-real-content-2026-10-20",
+  "authoring_note": "Nội dung được biên soạn cho nhiệm vụ này; không tuyên bố đã được chuyên gia/thầy duyệt hoặc đã phát hành. Cần preview/review/publish theo quyền thật trước khi người dùng truy cập.",
+  "items": [
+    {
+      "content_key": "fb-pilot-w1-goi-ten-cam-xuc",
+      "week_no": 1,
+      "minutes": 5,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w1-lang-nghe-doi-vai",
+      "week_no": 1,
+      "minutes": 6,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w1-cau-hoi-mo",
+      "week_no": 1,
+      "minutes": 8,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w1-khoang-tra-nho",
+      "week_no": 1,
+      "minutes": 10,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w2-ghi-nhan-cu-the",
+      "week_no": 2,
+      "minutes": 8,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w2-bua-an-nhe-nhang",
+      "week_no": 2,
+      "minutes": 20,
+      "mode": "joint_optional",
+      "image": "assets/illustrations/activity-family-dinner.jpg"
+    },
+    {
+      "content_key": "fb-pilot-w2-so-thich-cua-minh",
+      "week_no": 2,
+      "minutes": 15,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w2-di-dao-hoac-ngoi-canh",
+      "week_no": 2,
+      "minutes": 15,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w3-hoi-truoc-khi-xem",
+      "week_no": 3,
+      "minutes": 5,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w3-mot-ranh-gioi-nho",
+      "week_no": 3,
+      "minutes": 10,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w3-hen-mot-khoang-noi",
+      "week_no": 3,
+      "minutes": 7,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w3-tin-hieu-can-nghi",
+      "week_no": 3,
+      "minutes": 5,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w4-cam-on-mot-dieu",
+      "week_no": 4,
+      "minutes": 8,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w4-xin-loi-co-trach-nhiem",
+      "week_no": 4,
+      "minutes": 8,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w4-viec-nho-tiep-tuc",
+      "week_no": 4,
+      "minutes": 10,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w4-thoa-uoc-tu-nguyen",
+      "week_no": 4,
+      "minutes": 15,
+      "mode": "joint_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w1-lesson-cam-xuc-khong-la-diem",
+      "week_no": 1,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w1-lesson-nghe-truoc-khuyen-sau",
+      "week_no": 1,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w2-lesson-no-luc-cua-minh",
+      "week_no": 2,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w2-lesson-ghi-nhan-khong-so-sanh",
+      "week_no": 2,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w3-lesson-noi-nhu-cau-rieng",
+      "week_no": 3,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w3-lesson-xin-phep-ton-trong",
+      "week_no": 3,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w4-lesson-cam-on-khong-ap-luc",
+      "week_no": 4,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    },
+    {
+      "content_key": "fb-pilot-w4-lesson-xin-loi-khong-doi-tha-thu",
+      "week_no": 4,
+      "minutes": 1,
+      "mode": "read_only_optional",
+      "image": null
+    }
+  ]
+}

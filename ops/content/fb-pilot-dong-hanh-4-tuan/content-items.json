@@ -1,0 +1,508 @@
+{
+  "schema_version": 1,
+  "catalog_id": "family-bridge-real-content-2026-10-20",
+  "purpose": "Nội dung hoạt động thật cho HS/PH trải nghiệm; không là dữ liệu hành vi minh họa.",
+  "items": [
+    {
+      "content_key": "fb-pilot-dong-hanh-4-tuan",
+      "kind": "f02_program",
+      "title": "Bốn tuần lắng nghe và gần nhau hơn",
+      "audience": "neutral",
+      "body": {
+        "weeks": [
+          {
+            "week_no": 1,
+            "title": "Nhận diện cảm xúc và Tiếng lòng chưa nói",
+            "goals": [
+              "Thử gọi tên cảm xúc bằng từ của mình",
+              "Luyện nghe hết một lượt, không phán xét"
+            ],
+            "student_guide": "Chọn một cảm giác muốn hiểu thêm. Có thể viết riêng trên giấy, không cần nộp hay kể nguyên nhân. Khi muốn mở lời, chọn một hoạt động nhẹ và hỏi người đồng hành có sẵn sàng không.",
+            "caregiver_guide": "Dành một khoảng ngắn để nghe mà không hỏi dồn hoặc vội khuyên. Tự gọi tên cảm xúc của mình; tôn trọng lựa chọn chưa chia sẻ của con.",
+            "joint_activity_keys": [
+              "fb-pilot-w1-goi-ten-cam-xuc",
+              "fb-pilot-w1-lang-nghe-doi-vai",
+              "fb-pilot-w1-cau-hoi-mo",
+              "fb-pilot-w1-khoang-tra-nho"
+            ]
+          },
+          {
+            "week_no": 2,
+            "title": "Giảm so sánh và Bản sắc riêng",
+            "goals": [
+              "Ghi nhận một nỗ lực cụ thể",
+              "Tìm một khoảng hiện diện phù hợp cho cả hai"
+            ],
+            "student_guide": "Nhìn lại một việc nhỏ mình đã thử hoặc một sở thích muốn giới thiệu. Bạn không phải chứng minh mình tốt hơn ai. Chọn hoạt động hợp điều kiện và có thể bỏ qua.",
+            "caregiver_guide": "Ghi nhận điều mình trực tiếp thấy con đã cố gắng. Tránh so sánh với bạn bè, anh chị em; có thể cùng con khám phá một sở thích hoặc sinh hoạt nhẹ.",
+            "joint_activity_keys": [
+              "fb-pilot-w2-ghi-nhan-cu-the",
+              "fb-pilot-w2-bua-an-nhe-nhang",
+              "fb-pilot-w2-so-thich-cua-minh",
+              "fb-pilot-w2-di-dao-hoac-ngoi-canh"
+            ]
+          },
+          {
+            "week_no": 3,
+            "title": "Ranh giới riêng tư và niềm tin",
+            "goals": [
+              "Tập hỏi trước khi xem hoặc kể lại",
+              "Nói rõ một ranh giới sinh hoạt tự nguyện"
+            ],
+            "student_guide": "Chọn một nhu cầu riêng tư cụ thể muốn nói. Không cần mở điện thoại hay nhật ký để giải thích. Điều chưa sẵn sàng có thể để lại cho lần khác.",
+            "caregiver_guide": "Hỏi cụ thể trước khi xem hoặc chia sẻ điều thuộc về con. Chấp nhận câu trả lời chưa sẵn sàng; thống nhất một ranh giới mà cả hai thấy khả thi.",
+            "joint_activity_keys": [
+              "fb-pilot-w3-hoi-truoc-khi-xem",
+              "fb-pilot-w3-mot-ranh-gioi-nho",
+              "fb-pilot-w3-hen-mot-khoang-noi",
+              "fb-pilot-w3-tin-hieu-can-nghi"
+            ]
+          },
+          {
+            "week_no": 4,
+            "title": "Cảm ơn, xin lỗi và Thỏa ước gia đình mới",
+            "goals": [
+              "Nói một lời cảm ơn hoặc xin lỗi nếu muốn",
+              "Cùng chọn từ một đến ba cam kết khả thi"
+            ],
+            "student_guide": "Chọn điều nhỏ bạn thật sự muốn nói, không cần gửi ngay. Nếu muốn có thỏa ước, đọc và tự xác nhận đúng phiên bản bằng tài khoản của mình; có thể chưa tham gia.",
+            "caregiver_guide": "Thử cảm ơn hoặc nhận trách nhiệm một cách cụ thể, không yêu cầu con đáp lại. Chỉ đề xuất cam kết cả hai tự nguyện; không ký, đồng ý hay ghi tiến độ thay con.",
+            "joint_activity_keys": [
+              "fb-pilot-w4-cam-on-mot-dieu",
+              "fb-pilot-w4-xin-loi-co-trach-nhiem",
+              "fb-pilot-w4-viec-nho-tiep-tuc",
+              "fb-pilot-w4-thoa-uoc-tu-nguyen"
+            ]
+          }
+        ],
+        "agreement": {
+          "revision": 1,
+          "title": "Thỏa ước gia đình tự nguyện",
+          "commitments": [
+            "Hỏi xem người kia đã sẵn sàng trước khi bắt đầu chuyện quan trọng.",
+            "Lắng nghe hết một lượt và hỏi trước khi đưa lời khuyên.",
+            "Ghi nhận nỗ lực cụ thể, không so sánh với người khác.",
+            "Hỏi trước khi xem hoặc chia sẻ thông tin riêng của nhau.",
+            "Chọn một khoảng trò chuyện nhỏ và có thể cùng điều chỉnh khi cần."
+          ]
+        }
+      }
+    },
+    {
+      "content_key": "fb-pilot-w1-goi-ten-cam-xuc",
+      "kind": "activity",
+      "title": "Một từ cho cảm xúc hôm nay",
+      "audience": "joint",
+      "body": {
+        "goal": "Tập gọi tên cảm xúc mà không chấm điểm hay phán xét.",
+        "steps": [
+          "Hai bên cùng chọn một thời điểm yên tĩnh; mỗi người có thể chỉ lắng nghe hoặc bỏ qua.",
+          "Mỗi người chọn một từ mô tả cảm giác hiện tại, chẳng hạn vui, mệt hoặc bối rối. Không phải kể nguyên nhân.",
+          "Người nghe hỏi: “Bạn muốn mình chỉ nghe hay cùng nghĩ cách?” và tôn trọng câu trả lời.",
+          "Kết thúc bằng một nhu cầu nhỏ có thể nói ra, hoặc giữ riêng trong sổ giấy.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 5
+      }
+    },
+    {
+      "content_key": "fb-pilot-w1-lang-nghe-doi-vai",
+      "kind": "activity",
+      "title": "Sáu phút lắng nghe đổi vai",
+      "audience": "joint",
+      "body": {
+        "goal": "Trải nghiệm nghe hết một lượt mà không vội sửa hay khuyên.",
+        "steps": [
+          "Hỏi nhau có sẵn sàng dành khoảng sáu phút không; có thể hẹn lúc khác.",
+          "Người thứ nhất kể một chuyện bình thường trong hai phút; người kia không ngắt lời.",
+          "Người nghe nói lại một ý mình hiểu và hỏi có đúng không, rồi đổi vai.",
+          "Mỗi người chọn một điều muốn người kia nhớ; không cần ghi hay gửi nội dung cuộc trò chuyện.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 6
+      }
+    },
+    {
+      "content_key": "fb-pilot-w1-cau-hoi-mo",
+      "kind": "activity",
+      "title": "Một câu hỏi dễ mở lời",
+      "audience": "joint",
+      "body": {
+        "goal": "Bắt đầu từ sự tò mò tôn trọng thay cho hỏi dồn.",
+        "steps": [
+          "Cùng chọn câu hỏi nhẹ: “Dạo này điều gì làm bạn thấy dễ chịu?” hoặc một chủ đề cả hai thích.",
+          "Người được hỏi tự chọn trả lời ngắn, đổi câu hỏi hoặc bỏ qua.",
+          "Người nghe dùng một câu hỏi tiếp mở, tránh tra hỏi điểm số, điện thoại hay bí mật.",
+          "Cảm ơn vì khoảng thời gian đã dành cho nhau, dù câu chuyện rất ngắn.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 8
+      }
+    },
+    {
+      "content_key": "fb-pilot-w1-khoang-tra-nho",
+      "kind": "activity",
+      "title": "Một khoảng trà hoặc nước cùng nhau",
+      "audience": "joint",
+      "body": {
+        "goal": "Tạo một khoảng ở bên nhau không cần có chuyện quan trọng.",
+        "steps": [
+          "Chọn nước uống sẵn có, không cần mua đồ; có thể thay bằng ngồi cạnh nhau ở nơi dễ chịu.",
+          "Hỏi xem cả hai có muốn đặt điện thoại sang bên trong khoảng này không, không ép đưa điện thoại.",
+          "Mỗi người kể một chi tiết bình thường trong ngày; im lặng cũng được.",
+          "Kết thúc khi một người muốn nghỉ, không đánh giá buổi trò chuyện thành công hay thất bại.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 10
+      }
+    },
+    {
+      "content_key": "fb-pilot-w2-ghi-nhan-cu-the",
+      "kind": "activity",
+      "title": "Ghi nhận một nỗ lực cụ thể",
+      "audience": "joint",
+      "body": {
+        "goal": "Nhận ra cố gắng của nhau mà không so sánh với người khác.",
+        "steps": [
+          "Mỗi người nghĩ về một việc nhỏ của người kia mà mình trực tiếp quan sát được.",
+          "Nói theo mẫu gợi ý: “Mình thấy bạn đã…; mình trân trọng điều đó vì…”. Không cần dùng đúng mẫu.",
+          "Người nhận có thể chỉ nói cảm ơn, không cần hứa cố hơn hay đáp lễ.",
+          "Nếu muốn ghi lại, dùng sổ riêng; không đăng lên mạng hay chia sẻ cho người khác khi chưa hỏi.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 8
+      }
+    },
+    {
+      "content_key": "fb-pilot-w2-bua-an-nhe-nhang",
+      "kind": "activity",
+      "title": "Một bữa ăn ít xao nhãng",
+      "audience": "joint",
+      "body": {
+        "goal": "Có thời gian hiện diện cùng nhau trong sinh hoạt thường ngày.",
+        "steps": [
+          "Chọn một phần bữa ăn phù hợp, có thể chỉ năm phút; không cần chuẩn bị món đặc biệt.",
+          "Thống nhất tự nguyện giảm xao nhãng, vẫn giữ cách liên lạc cần thiết nếu có việc gấp.",
+          "Mỗi người gợi một chủ đề nhẹ như món ăn, âm nhạc hay một điều mới biết; tránh kiểm tra kết quả học tập.",
+          "Nếu không ăn cùng được, thay bằng cuộc gọi ngắn thuận tiện cho cả hai.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 20
+      }
+    },
+    {
+      "content_key": "fb-pilot-w2-so-thich-cua-minh",
+      "kind": "activity",
+      "title": "Mời nhau bước vào một sở thích",
+      "audience": "joint",
+      "body": {
+        "goal": "Hiểu điều người kia thích mà không bắt phải thích giống nhau.",
+        "steps": [
+          "Một người chọn sở thích có thể giới thiệu an toàn tại nhà: bài hát, sách, trò chơi hoặc cây cảnh.",
+          "Chia sẻ một phần nhỏ; hỏi trước khi mở nội dung hoặc dùng thiết bị của người kia.",
+          "Người nghe nói một điều mình tò mò, không chê bai hay so sở thích với người khác.",
+          "Đổi vai nếu cả hai muốn; không cần gửi ảnh hoặc bằng chứng đã tham gia.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 15
+      }
+    },
+    {
+      "content_key": "fb-pilot-w2-di-dao-hoac-ngoi-canh",
+      "kind": "activity",
+      "title": "Đi dạo hoặc ngồi cạnh nhau",
+      "audience": "joint",
+      "body": {
+        "goal": "Tạo một khoảng kết nối linh hoạt với sức khỏe và điều kiện mỗi gia đình.",
+        "steps": [
+          "Chọn nơi quen thuộc, an toàn và thời điểm phù hợp; có thể ngồi trong nhà thay cho đi bộ.",
+          "Thống nhất chỉ nói chuyện nhẹ hoặc cùng quan sát xung quanh; không bắt buộc nói liên tục.",
+          "Mỗi người có thể nói một điều muốn thử trong tuần mà không cần được chấm điểm.",
+          "Dừng nếu mệt hoặc không thoải mái. Không bật theo dõi vị trí, chụp ảnh hay ghi âm để chứng minh.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 15
+      }
+    },
+    {
+      "content_key": "fb-pilot-w3-hoi-truoc-khi-xem",
+      "kind": "activity",
+      "title": "Hỏi trước khi xem hoặc kể lại",
+      "audience": "joint",
+      "body": {
+        "goal": "Luyện xin phép một cách cụ thể và chấp nhận lời từ chối.",
+        "steps": [
+          "Chọn tình huống giả định trung tính: xem một bức ảnh hoặc kể lại một chuyện không riêng tư.",
+          "Người hỏi nói rõ muốn xem/chia sẻ điều gì và cho ai; không yêu cầu mở điện thoại thật.",
+          "Người kia tập nói đồng ý, chưa sẵn sàng hoặc không; lời từ chối không cần biện minh.",
+          "Cùng chọn một câu hỏi xin phép muốn dùng trong sinh hoạt hằng ngày.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 5
+      }
+    },
+    {
+      "content_key": "fb-pilot-w3-mot-ranh-gioi-nho",
+      "kind": "activity",
+      "title": "Thống nhất một ranh giới nhỏ",
+      "audience": "joint",
+      "body": {
+        "goal": "Nói rõ nhu cầu riêng tư mà không biến thành tranh luận đúng sai.",
+        "steps": [
+          "Mỗi người tự chọn một ranh giới sinh hoạt nhẹ, chẳng hạn gõ cửa trước khi vào hoặc hỏi trước khi mượn đồ.",
+          "Nói “Mình cần…” thay cho quy kết tính cách của người kia.",
+          "Chỉ ghi điều cả hai đều thấy phù hợp; điều chưa đồng ý để mở, không ép xác nhận.",
+          "Có thể viết riêng trên giấy. Không dùng hoạt động để yêu cầu mật khẩu hoặc quyền đọc nhật ký.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 10
+      }
+    },
+    {
+      "content_key": "fb-pilot-w3-hen-mot-khoang-noi",
+      "kind": "activity",
+      "title": "Hẹn một khoảng để trò chuyện",
+      "audience": "joint",
+      "body": {
+        "goal": "Giảm áp lực phải phản hồi ngay mọi lúc.",
+        "steps": [
+          "Mỗi người nói một khoảng thời gian thường thuận tiện cho việc trò chuyện.",
+          "Chọn một khoảng ngắn trong tuần và một cách báo muốn đổi hẹn.",
+          "Thống nhất có thể chưa sẵn sàng nói và có thể hẹn lại, không suy im lặng là từ chối tình cảm.",
+          "Đây là thỏa thuận sinh hoạt tự nguyện, không tạo lịch hẹn chuyên môn hoặc gửi nhắc tự động.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 7
+      }
+    },
+    {
+      "content_key": "fb-pilot-w3-tin-hieu-can-nghi",
+      "kind": "activity",
+      "title": "Một câu báo mình cần nghỉ",
+      "audience": "joint",
+      "body": {
+        "goal": "Tìm cách tạm dừng cuộc trò chuyện mà vẫn tôn trọng nhau.",
+        "steps": [
+          "Cùng chọn một câu ngắn, ví dụ “Mình cần nghỉ một chút rồi nói tiếp”.",
+          "Thử nói câu đó trong tình huống giả định bình thường, không tái hiện cuộc cãi vã.",
+          "Người nghe phản hồi rằng có thể tạm dừng; không yêu cầu giải thích ngay.",
+          "Khi nói tiếp, hỏi lại cả hai có sẵn sàng không. Hoạt động không đổi cơ chế tạm dừng năm phút của nháp thư trong ứng dụng.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 5
+      }
+    },
+    {
+      "content_key": "fb-pilot-w4-cam-on-mot-dieu",
+      "kind": "activity",
+      "title": "Cảm ơn một điều cụ thể",
+      "audience": "joint",
+      "body": {
+        "goal": "Diễn đạt sự trân trọng mà không kèm yêu cầu đáp lại.",
+        "steps": [
+          "Chọn một việc nhỏ người kia đã làm, không cần chọn chuyện sâu kín.",
+          "Nói hoặc tự viết một lời cảm ơn ngắn theo cách xưng hô quen thuộc.",
+          "Nếu muốn gửi trong ứng dụng, tự chọn người nhận, đọc lại và xác nhận; viết trên giấy cũng được.",
+          "Người nhận không bị yêu cầu trả lời, tha thứ hoặc kể thêm chuyện riêng.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 8
+      }
+    },
+    {
+      "content_key": "fb-pilot-w4-xin-loi-co-trach-nhiem",
+      "kind": "activity",
+      "title": "Một lời xin lỗi có trách nhiệm",
+      "audience": "joint",
+      "body": {
+        "goal": "Tập nhận phần việc của mình mà không đòi người kia phải tha thứ.",
+        "steps": [
+          "Chọn một tình huống sinh hoạt nhỏ mà bạn tự thấy mình cần nhận trách nhiệm; có thể bỏ qua bài này.",
+          "Nêu việc cụ thể, ảnh hưởng mình hiểu được và điều mình muốn làm khác; tránh thêm “nhưng tại bạn”.",
+          "Người nghe được chọn nghe, đọc sau hoặc chưa phản hồi; không ép xin lỗi hai chiều.",
+          "Nếu cuộc trao đổi gây bất an, dừng lại và dùng trang Trợ giúp khi cần; không biến hoạt động thành hòa giải bắt buộc.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 8
+      }
+    },
+    {
+      "content_key": "fb-pilot-w4-viec-nho-tiep-tuc",
+      "kind": "activity",
+      "title": "Chọn một việc nhỏ muốn tiếp tục",
+      "audience": "joint",
+      "body": {
+        "goal": "Giữ lại một thói quen khả thi sau hành trình.",
+        "steps": [
+          "Mỗi người chọn một việc mình thấy có ích, chẳng hạn nghe trọn một lượt hoặc hỏi trước khi mượn đồ.",
+          "Thống nhất việc nhỏ đến mức có thể làm trong điều kiện hiện tại, không đặt chỉ tiêu cảm xúc hay điểm số.",
+          "Nói rõ ai làm, khi nào thuận tiện và cách xem lại nếu không còn phù hợp.",
+          "Nếu chưa tìm được điều chung, mỗi người giữ lựa chọn riêng; không tự đánh dấu hoàn tất chương trình.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 10
+      }
+    },
+    {
+      "content_key": "fb-pilot-w4-thoa-uoc-tu-nguyen",
+      "kind": "activity",
+      "title": "Cùng đọc và chọn thỏa ước gia đình",
+      "audience": "joint",
+      "body": {
+        "goal": "Chuẩn bị một thỏa ước tự nguyện, rõ ràng và có xác nhận riêng từng người.",
+        "steps": [
+          "Cùng đọc gợi ý thỏa ước trong mục Đồng hành; chọn từ một đến ba cam kết thực tế.",
+          "Chỉ giữ điều cả hai cùng muốn làm; có thể chưa đề xuất thỏa ước nếu chưa sẵn sàng.",
+          "Khi thao tác trong app, mỗi người tự xem và xác nhận cùng một phiên bản bằng tài khoản của mình; người đề xuất không ký thay người kia.",
+          "Đây là cam kết sinh hoạt tự nguyện, không phải hợp đồng pháp lý. Hoàn thành hoạt động không tự xác nhận thỏa ước.",
+          "Có thể bỏ qua hoặc dừng bất cứ lúc nào. Nếu chủ đề làm bạn không thoải mái, chọn chuyện trung tính; không cần giải thích hay nộp ghi chép."
+        ],
+        "share": "Lời mời và phản hồi tham gia có thể được hai bên xem. Ghi chú riêng không tự gửi; chỉ chia sẻ nội dung bạn chủ động chọn và xác nhận.",
+        "minutes": 15
+      }
+    },
+    {
+      "content_key": "fb-pilot-w1-lesson-cam-xuc-khong-la-diem",
+      "kind": "micro_lesson",
+      "title": "Cảm xúc không phải điểm số",
+      "audience": "student",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Cảm giác dễ chịu hoặc khó chịu đều có thể xuất hiện. Bạn không cần sửa cảm xúc để được dùng ứng dụng.",
+          "Thử gọi tên một cảm giác bằng từ của mình; chưa gọi tên được cũng không sao.",
+          "Giữ ghi chú cho mình, hoặc chỉ chia sẻ phần bạn muốn sau khi đọc lại."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w1-lesson-nghe-truoc-khuyen-sau",
+      "kind": "micro_lesson",
+      "title": "Nghe trước, hỏi trước khi khuyên",
+      "audience": "caregiver",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Nghe hết một lượt trước khi đưa lời khuyên. Không cần tìm giải pháp ngay.",
+          "Có thể hỏi: “Con muốn bố/mẹ nghe thôi hay cùng nghĩ cách?”.",
+          "Nếu con chưa muốn kể, tôn trọng và để ngỏ một thời điểm khác."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w2-lesson-no-luc-cua-minh",
+      "kind": "micro_lesson",
+      "title": "Nhìn thấy nỗ lực của mình",
+      "audience": "student",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Chọn một việc nhỏ bạn đã thử, không cần so với bạn bè hoặc anh chị em.",
+          "Bạn có thể ghi một câu về điều đã học được, kể cả khi kết quả chưa như ý.",
+          "Ghi nhận là để hiểu mình, không phải để tạo thành tích trong ứng dụng."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w2-lesson-ghi-nhan-khong-so-sanh",
+      "kind": "micro_lesson",
+      "title": "Ghi nhận mà không so sánh",
+      "audience": "caregiver",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Mô tả việc bạn đã quan sát thay vì nhận xét toàn bộ con người.",
+          "Thử: “Mẹ thấy con đã thử lại bài khó” thay cho “Sao không giỏi như bạn?”.",
+          "Không biến lời khen thành điều kiện để con phải đạt kết quả cao hơn."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w3-lesson-noi-nhu-cau-rieng",
+      "kind": "micro_lesson",
+      "title": "Nói một nhu cầu riêng tư",
+      "audience": "student",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Bạn có thể nói nhu cầu cụ thể: được gõ cửa trước khi vào, hoặc được hỏi trước khi kể lại chuyện của mình.",
+          "Một nhu cầu không buộc bạn phải đưa mật khẩu, ảnh chụp hay nhật ký để chứng minh.",
+          "Có thể chọn cách viết trên giấy hoặc nói sau khi đã sẵn sàng."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w3-lesson-xin-phep-ton-trong",
+      "kind": "micro_lesson",
+      "title": "Xin phép và tôn trọng câu trả lời",
+      "audience": "caregiver",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Hỏi rõ bạn muốn xem điều gì hoặc kể cho ai, thay vì xin một quyền xem tất cả.",
+          "Nếu người kia chưa đồng ý, đừng coi đó tự động là giấu giếm hay thiếu tin tưởng.",
+          "Kết nối trong ứng dụng không cấp quyền đọc nội dung riêng của nhau."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w4-lesson-cam-on-khong-ap-luc",
+      "kind": "micro_lesson",
+      "title": "Cảm ơn không tạo nghĩa vụ",
+      "audience": "student",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Một lời cảm ơn có thể rất ngắn và nhắc một việc cụ thể.",
+          "Bạn không phải chia sẻ chuyện riêng để lời cảm ơn có giá trị.",
+          "Người nhận có thể đọc sau; không cần đòi một phản hồi ngay."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    },
+    {
+      "content_key": "fb-pilot-w4-lesson-xin-loi-khong-doi-tha-thu",
+      "kind": "micro_lesson",
+      "title": "Xin lỗi mà không đòi tha thứ",
+      "audience": "caregiver",
+      "body": {
+        "goal": "Một gợi ý đọc trong khoảng một phút; không phải bài kiểm tra hay tư vấn chuyên môn.",
+        "steps": [
+          "Nói rõ việc của mình, ảnh hưởng mình hiểu được và điều định thay đổi.",
+          "Tránh kéo thêm lỗi của con vào cùng lời xin lỗi.",
+          "Cho người nghe thời gian và quyền chưa phản hồi; một lời xin lỗi không xóa ngay cảm xúc của họ."
+        ],
+        "share": "Bài học là nội dung hướng dẫn chung; không tự thu thập câu trả lời hoặc gửi phản hồi.",
+        "minutes": 1
+      }
+    }
+  ]
+}
