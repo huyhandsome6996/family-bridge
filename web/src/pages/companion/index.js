@@ -34,6 +34,8 @@
 //   cùng revision; lời mời F09 hai chiều, không ai tick hộ ai.
 // - Mọi mutation hiển thị lỗi thật, chặn bấm lặp, không tự retry; phản hồi
 //   của phiên cũ không cập nhật UI của phiên mới.
+import "../../styles/pages-companion.css";
+
 import { h, clear } from "../../app/dom.js";
 import {
   getSessionGeneration,
@@ -47,7 +49,9 @@ import {
   createDemoBanner,
   createEmptyState,
   createErrorState,
+  createSheet,
   createSkeleton,
+  createIcon,
   createTopBar,
 } from "../../components/index.js";
 
@@ -323,6 +327,235 @@ function programPreviewNodes(program) {
   return nodes;
 }
 
+/* ------------------ Bài đọc 1 phút (micro_lesson, chỉ ĐỌC) ------------------ */
+
+/** Thời lượng CÓ NGUỒN của bài đọc: item.minutes (catalog) hoặc body.minutes;
+ * thiếu nguồn → null (UI không bịa số). Giống nguyên tắc R06 của hoạt động. */
+function microLessonMinutes(item, body) {
+  if (item && Number.isInteger(item.minutes) && item.minutes >= 1) {
+    return item.minutes;
+  }
+  if (body && Number.isInteger(body.minutes) && body.minutes >= 1) {
+    return body.minutes;
+  }
+  return null;
+}
+
+function microLessonMinutesText(minutes) {
+  if (minutes === null) return null;
+  return minutes === 1 ? "khoảng 1 phút" : `khoảng ${minutes} phút`;
+}
+
+/** Lọc bài đọc client-side: published mới nhất mỗi content_key (R01) + đúng
+ * kind=micro_lesson + audience ∈ {role, neutral}. Gọi catalog KHÔNG truyền
+ * audience, vì: (1) vai trò đọc từ store — ở web đăng nhập thật role do MÁY
+ * CHỦ trả (login setRole(result.role)), nhưng role-select xem trước cũng đặt
+ * role phía client nên không ép máy chủ lọc theo giá trị client; (2) bộ lọc
+ * audience phía backend còn giữ cả "joint" (services/activities.py) — client
+ * lọc {role, neutral} loại đúng cả joint vì bài đọc KHÔNG phải hoạt động
+ * chung. Kết quả đọc THUẦN TÚY client, không ghi gì lên máy chủ. */
+function filterMicroLessons(catalogRows, role) {
+  const allowedAudience = new Set([role, "neutral"].filter(Boolean));
+  const latest = buildActivityMeta(catalogRows);
+  return Object.values(latest).filter((card) => {
+    if (!card) return false;
+    if (card.kind && card.kind !== "micro_lesson") return false;
+    const audience = card.audience ? String(card.audience) : "";
+    return allowedAudience.has(audience);
+  });
+}
+
+function isOfflineNow() {
+  return typeof navigator !== "undefined" && navigator.onLine === false;
+}
+
+/** Sheet đọc bài: mục tiêu + các bước đánh số + phạm vi chia sẻ + thời lượng
+ * có nguồn. Toàn bộ text từ backend render qua h()/textContent (R06) —
+ * KHÔNG bao giờ innerHTML dữ liệu JSON. Sheet chỉ ĐỌC: không mutation. */
+function openMicroLessonSheet(item, body, minutes, { openSheets }) {
+  const content = [];
+  if (body.goal) {
+    content.push(h("p", { class: "fb-lessons__goal" }, `Mục tiêu: ${body.goal}`));
+  }
+  if (Array.isArray(body.steps) && body.steps.length) {
+    content.push(h("p", { class: "fb-care__kicker" }, "Các bước:"));
+    const steps = h("ol", { class: "fb-lessons__steps" });
+    body.steps.forEach((step) => {
+      steps.appendChild(h("li", { class: "fb-lessons__step" }, String(step)));
+    });
+    content.push(steps);
+  }
+  if (body.share) {
+    content.push(
+      h("p", { class: "fb-lessons__share" }, `Phạm vi chia sẻ: ${body.share}`),
+    );
+  }
+  if (!body.goal && !(Array.isArray(body.steps) && body.steps.length)
+    && !body.share) {
+    content.push(
+      h("p", { class: "fb-lessons__goal" },
+        "Bài đọc này chưa có nội dung từng bước trong bản đã phát hành."),
+    );
+  }
+  const minutesText = microLessonMinutesText(minutes);
+  content.push(
+    h("p", { class: "fb-lessons__note" },
+      minutesText
+        ? `Thời lượng: ${minutesText} (nguồn: nội dung đã phát hành).`
+        : "Thời lượng: chưa được cung cấp trong nội dung đã phát hành."),
+  );
+  content.push(
+    h("p", { class: "fb-lessons__note" },
+      "Bài đọc chỉ để đọc — không phải hoạt động chung, không có tiến độ, "
+      + "không gửi gì lên máy chủ."),
+  );
+
+  const sheet = createSheet({
+    title: item && item.title ? String(item.title) : "Bài đọc ngắn",
+    content,
+    onClose: () => {
+      if (openSheets) openSheets.delete(sheet);
+    },
+  });
+  if (openSheets) openSheets.add(sheet);
+  return sheet;
+}
+
+function microLessonCard(item, { openSheets }) {
+  const body = parseActivityBody(item.body);
+  const minutes = microLessonMinutes(item, body);
+  const card = h("article", { class: "fb-lessons__card" });
+  const head = h("div", { class: "fb-lessons__head" });
+  head.appendChild(
+    h("h4", { class: "fb-lessons__title" },
+      item && item.title ? String(item.title) : "Bài đọc ngắn"),
+  );
+  const minutesText = microLessonMinutesText(minutes);
+  if (minutesText) {
+    head.appendChild(h("span", { class: "fb-chip" }, minutesText));
+  }
+  card.appendChild(head);
+  if (body.goal) {
+    card.appendChild(h("p", { class: "fb-lessons__goal" }, String(body.goal)));
+  }
+  card.appendChild(createButton({
+    label: "Đọc bài ngắn",
+    variant: "ghost",
+    onClick: () => openMicroLessonSheet(item, body, minutes, { openSheets }),
+  }));
+  return card;
+}
+
+function microLessonOfflineState() {
+  const box = h("div", { class: "fb-lessons__state" });
+  const icon = h("span", { class: "fb-lessons__state-icon", "aria-hidden": "true" });
+  icon.appendChild(createIcon({ name: "wifi_off", size: 20 }));
+  box.appendChild(
+    h("p", {}, icon,
+      " Mất kết nối mạng — bài đọc cần máy chủ nên tạm khóa. Quay lại trang "
+      + "này khi mạng ổn định nhé."),
+  );
+  const retry = createButton({ label: "Thử lại", variant: "ghost", onClick: () => {} });
+  retry.disabled = true; // offline: khóa nút trung thực (không polling — DSA-10)
+  retry.title = "Mất kết nối mạng";
+  box.appendChild(retry);
+  return box;
+}
+
+function microLessonErrorState(error, onRetry) {
+  const box = h("div", { class: "fb-lessons__state" });
+  const icon = h("span", { class: "fb-lessons__state-icon", "aria-hidden": "true" });
+  icon.appendChild(createIcon({ name: "cloud_off", size: 20 }));
+  const kind = error && error.kind;
+  let reason = "có lỗi không xác định";
+  if (kind === "network") reason = "mất kết nối mạng";
+  else if (kind === "timeout") reason = "máy chủ phản hồi quá lâu";
+  else if (kind === "configuration") {
+    reason = "ứng dụng cấu hình chưa đúng (thiếu địa chỉ máy chủ)";
+  } else if (kind === "invalid_response") reason = "phản hồi máy chủ không đọc được";
+  else if (error && error.status) reason = `máy chủ từ chối (mã ${error.status})`;
+  box.appendChild(
+    h("p", {}, icon,
+      ` Chưa tải được danh sách bài đọc vì ${reason}. Bạn chủ động thử lại nhé.`),
+  );
+  box.appendChild(createButton({
+    label: "Thử lại", variant: "ghost", onClick: onRetry,
+  }));
+  return box;
+}
+
+/** Section "Bài đọc 1 phút": tải catalog kind=micro_lesson, render skeleton →
+ * thẻ bài đọc / rỗng trung thực / lỗi thử lại / khóa khi offline. Chỉ GET —
+ * KHÔNG tạo invite/progress, KHÔNG thêm joint_activity_keys. */
+function microLessonSection(ctx, { role, openSheets }) {
+  const section = h("section", {
+    class: "fb-scard fb-lessons",
+    dataset: { microLessons: "1" },
+  });
+  section.appendChild(
+    h("div", { class: "fb-sec__row" },
+      h("h3", { class: "fb-scard__title" }, "Bài đọc 1 phút"),
+    ),
+  );
+  section.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      "Đọc nhanh cho riêng bạn — không phải hoạt động chung: không cần mời "
+      + "ai, không có tiến độ, và trang chỉ đọc nên không ghi lại gì lên "
+      + "máy chủ."),
+  );
+
+  const area = h("div", { class: "fb-lessons__area" });
+  section.appendChild(area);
+
+  let attempt = 0;
+  const load = () => {
+    attempt += 1;
+    const thisAttempt = attempt;
+    const capturedUserId = getUserId();
+    clear(area);
+    if (isOfflineNow()) {
+      area.appendChild(microLessonOfflineState());
+      return;
+    }
+    area.appendChild(createSkeleton({ variant: "card", count: 2 }));
+    area.appendChild(
+      h("p", { class: "fb-lessons__note", role: "status" }, "Đang tải bài đọc…"));
+    Promise.resolve()
+      .then(() => ctx.adapter.activitiesCatalog({ kind: "micro_lesson" }))
+      .then((data) => {
+        if (thisAttempt !== attempt) return;
+        if (hasLiveSession() && getUserId() !== capturedUserId) return;
+        const rows = data && Array.isArray(data.results) ? data.results : [];
+        const lessons = filterMicroLessons(rows, role);
+        if (!lessons.length) {
+          clear(area);
+          area.appendChild(createEmptyState({
+            title: "Chưa có bài đọc nào được phát hành",
+            description:
+              "Bài đọc ngắn sẽ xuất hiện ở đây sau khi nội dung được duyệt và "
+              + "phát hành. Trong lúc chờ, mọi tính năng khác vẫn dùng bình "
+              + "thường.",
+          }));
+          return;
+        }
+        clear(area);
+        const grid = h("div", { class: "fb-lessons__grid" });
+        lessons.forEach((lesson) => {
+          grid.appendChild(microLessonCard(lesson, { openSheets }));
+        });
+        area.appendChild(grid);
+      })
+      .catch((error) => {
+        if (thisAttempt !== attempt) return;
+        if (hasLiveSession() && getUserId() !== capturedUserId) return;
+        clear(area);
+        area.appendChild(microLessonErrorState(error, load));
+      });
+  };
+  load();
+  return section;
+}
+
 export const page = {
   id: "companion",
   title: "Đồng hành",
@@ -345,9 +578,15 @@ export const page = {
 
     let cancelled = false;
     let runId = 0;
+    // Sheet "Bài đọc 1 phút" gắn vào document.body — đóng THẬT khi rời trang.
+    const openSheets = new Set();
     cleanupFn = () => {
       cancelled = true;
       runId += 1;
+      for (const sheet of openSheets) {
+        try { sheet.close(); } catch { /* đã đóng */ }
+      }
+      openSheets.clear();
       root.querySelectorAll(".fb-sheet, .fb-overlay, .fb-sheet-root, "
         + ".fb-dialog-root").forEach((el) => el.remove());
     };
@@ -429,7 +668,7 @@ export const page = {
             renderLoadError(body, ctx, load);
             return;
           }
-          renderCompanion(body, ctx, { demo, role, data, load });
+          renderCompanion(body, ctx, { demo, role, data, load, openSheets });
         })
         .catch((error) => {
           if (cancelled || thisRun !== runId) return;
@@ -459,7 +698,7 @@ page.destroy = destroy;
 
 /* ------------------------------ Render chính ------------------------------ */
 
-function renderCompanion(body, ctx, { demo, role, data, load }) {
+function renderCompanion(body, ctx, { demo, role, data, load, openSheets }) {
   clear(body);
   const weeks = data && data.weeks && Array.isArray(data.weeks.weeks)
     ? data.weeks : null;
@@ -469,7 +708,7 @@ function renderCompanion(body, ctx, { demo, role, data, load }) {
 
   const enrollment = data && data.enrollment;
   if (!enrollment) {
-    renderNotEnrolled(body, ctx, { load });
+    renderNotEnrolled(body, ctx, { load, role, openSheets });
     return;
   }
 
@@ -518,6 +757,9 @@ function renderCompanion(body, ctx, { demo, role, data, load }) {
     }));
   });
 
+  // stitch-ui-3: mục "Bài đọc 1 phút" — CHỈ ĐỌC, độc lập tiến độ/lời mời.
+  body.appendChild(microLessonSection(ctx, { role, openSheets }));
+
   body.appendChild(renderAgreementCard(ctx, {
     agreement: data.agreement, weeks, load, note,
   }));
@@ -528,7 +770,7 @@ function renderCompanion(body, ctx, { demo, role, data, load }) {
   body.appendChild(renderOptOutCard(ctx, { enrollment, load, note }));
 }
 
-function renderNotEnrolled(body, ctx, { load }) {
+function renderNotEnrolled(body, ctx, { load, role, openSheets }) {
   // Chưa tham gia: đọc catalog đã publish — tham gia là thao tác tường minh.
   const note = h("p", { class: "fb-page__note", role: "status" });
   note.dataset.companionNote = "1";
@@ -550,6 +792,9 @@ function renderNotEnrolled(body, ctx, { load }) {
         body.appendChild(h("p", { class: "fb-page__note" },
           "Bạn hoàn toàn có thể dùng sổ giấy — app không bắt buộc ghi mọi "
           + "thứ vào máy, và không đọc sổ giấy của bạn."));
+        // stitch-ui-3: bài đọc 1 phút vẫn đọc được cả khi chưa tham gia
+        // chương trình — chỉ đọc, không phụ thuộc enrollment.
+        body.appendChild(microLessonSection(ctx, { role, openSheets }));
         return;
       }
       body.appendChild(h("h2", { class: "fb-sec__greeting" },
@@ -599,6 +844,8 @@ function renderNotEnrolled(body, ctx, { load }) {
         card.appendChild(actions);
         body.appendChild(card);
       });
+      // stitch-ui-3: mục "Bài đọc 1 phút" — chỉ đọc, không phụ thuộc enrollment.
+      body.appendChild(microLessonSection(ctx, { role, openSheets }));
     })
     .catch((error) => {
       if (error && error.status === 401) {

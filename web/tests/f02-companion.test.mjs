@@ -792,3 +792,175 @@ describe("QA 19/10 R04 web — mutation trung thực (lỗi thật, không tự 
     }
   });
 });
+
+/* ---------------- Bài đọc 1 phút (micro_lesson — chỉ ĐỌC) ----------------
+ * stitch-ui-3: mục đọc nhanh trên /companion, tải qua activitiesCatalog
+ * ({kind:"micro_lesson"}) của adapter CÓ SẴN, lọc client theo {role, neutral},
+ * KHÔNG đụng lời mời/tiến độ/joint_activity_keys, KHÔNG ghi gì lên máy chủ. */
+
+const LESSON_STUDENT = {
+  content_key: "doc-student-1", kind: "micro_lesson", revision: 1,
+  title: "Một phút gọi tên cảm xúc", audience: "student",
+  status: "published", minutes: 1,
+  body: {
+    goal: "Gọi tên cảm xúc hiện tại của bạn",
+    steps: ["Dừng lại một nhịp thở", "Gọi tên cảm giác bạn đang có"],
+    share: "Chỉ bạn thấy — không tự gửi cho ai",
+  },
+};
+
+const LESSON_NEUTRAL = {
+  content_key: "doc-neutral-1", kind: "micro_lesson", revision: 1,
+  title: "Một phút thở chậm cho cả nhà", audience: "neutral",
+  status: "published", minutes: 1,
+  body: { goal: "Thở chậm cùng nhau", steps: ["Hít 4 nhịp", "Thở ra 6 nhịp"] },
+};
+
+const LESSON_CAREGIVER = {
+  content_key: "doc-caregiver-1", kind: "micro_lesson", revision: 1,
+  title: "Một phút lắng nghe không phán xét", audience: "caregiver",
+  status: "published", minutes: 1,
+  body: { goal: "Nghe trước khi góp ý", steps: ["Im lặng 60 giây"] },
+};
+
+const LESSON_JOINT = {
+  content_key: "doc-joint-1", kind: "micro_lesson", revision: 1,
+  title: "Bài đọc chung hai người (không được hiện)", audience: "joint",
+  status: "published", minutes: 1,
+  body: { goal: "G", steps: ["S"] },
+};
+
+/** Adapter cho mục bài đọc: ghi lại MỌI call catalog kind=micro_lesson để
+ * kiểm tra trang KHÔNG truyền audience và KHÔNG kèm mutation nào. */
+function makeLessonsAdapter({ lessons = [], activityRows = [], failFirst = false } = {}) {
+  const adapter = makeAdapter({ enrolled: true, activityCatalog: activityRows });
+  const lessonsCalls = [];
+  let failed = false;
+  adapter.activitiesCatalog = async (params = {}) => {
+    if (params && params.kind === "micro_lesson") {
+      lessonsCalls.push({ ...params });
+      if (failFirst && !failed) {
+        failed = true;
+        throw { status: 0, kind: "network" };
+      }
+      return { results: lessons };
+    }
+    return { results: activityRows };
+  };
+  adapter.lessonsCalls = lessonsCalls;
+  return adapter;
+}
+
+describe("Bài đọc 1 phút (stitch-ui-3) — chỉ ĐỌC qua activitiesCatalog", () => {
+  it("render từ máy chủ + lọc {role, neutral}; KHÔNG truyền audience; không mutation", async () => {
+    clearSession();
+    liveSession();
+    const adapter = makeLessonsAdapter({
+      lessons: [LESSON_STUDENT, LESSON_NEUTRAL, LESSON_CAREGIVER, LESSON_JOINT],
+      activityRows: [activityRow({ revision: 2 })],
+    });
+    const { ctx } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(80);
+      const text = textOf(host);
+      assert.ok(text.includes("Bài đọc 1 phút"), "thiếu section Bài đọc 1 phút");
+      assert.ok(text.includes("Một phút gọi tên cảm xúc"),
+        "bài đọc audience=student phải hiện với role student");
+      assert.ok(text.includes("Một phút thở chậm cho cả nhà"),
+        "bài đọc audience=neutral phải hiện với mọi vai trò");
+      assert.ok(text.includes("khoảng 1 phút"),
+        "minutes=1 phải hiển thị 'khoảng 1 phút' (có nguồn)");
+      assert.ok(!text.includes("Một phút lắng nghe không phán xét"),
+        "bài đọc caregiver KHÔNG hiện cho student");
+      assert.ok(!text.includes("Bài đọc chung hai người (không được hiện)"),
+        "bài đọc audience=joint KHÔNG hiện (không phải hoạt động chung)");
+      assert.deepEqual(adapter.lessonsCalls, [{ kind: "micro_lesson" }],
+        "chỉ được gọi catalog kind=micro_lesson, KHÔNG truyền audience");
+      assert.equal(adapter.calls.invite.length, 0, "đọc bài KHÔNG mời ai");
+      assert.equal(adapter.calls.progress.length, 0, "đọc bài KHÔNG ghi tiến độ");
+      assert.equal(adapter.calls.enroll.length, 0, "đọc bài KHÔNG ghi danh");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("sheet đọc bài: mục tiêu + các bước đánh số + phạm vi chia sẻ, không ghi gì", async () => {
+    clearSession();
+    liveSession();
+    const adapter = makeLessonsAdapter({ lessons: [LESSON_STUDENT] });
+    const { ctx } = makeCtx({ role: "student", adapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(80);
+      const readBtn = findButton(host, "Đọc bài ngắn");
+      assert.ok(readBtn, "mỗi bài đọc phải có nút mở bài");
+      readBtn.click();
+      await wait(20);
+      const sheet = document.querySelector(".fb-sheet-root .fb-sheet");
+      assert.ok(sheet, "đọc bài phải mở sheet role=dialog");
+      assert.equal(sheet.getAttribute("role"), "dialog");
+      const sheetText = textOf(sheet);
+      assert.ok(sheetText.includes("Một phút gọi tên cảm xúc"),
+        "sheet phải có tiêu đề bài đọc");
+      assert.ok(sheetText.includes("Mục tiêu: Gọi tên cảm xúc hiện tại của bạn"));
+      assert.ok(sheetText.includes("Dừng lại một nhịp thở"),
+        "các bước phải render từng dòng");
+      assert.ok(sheetText.includes("Phạm vi chia sẻ: Chỉ bạn thấy — không tự gửi cho ai"));
+      assert.ok(sheetText.includes("Thời lượng: khoảng 1 phút"),
+        "thời lượng phải có nguồn (nội dung đã phát hành)");
+      assert.ok(sheetText.includes("không gửi gì lên máy chủ"),
+        "phải nói rõ hành động chỉ đọc");
+      assert.equal(adapter.calls.invite.length, 0);
+      assert.equal(adapter.calls.progress.length, 0);
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+  });
+
+  it("catalog rỗng → empty trung thực; lỗi → thông điệp + Thử lại gọi lại catalog", async () => {
+    clearSession();
+    liveSession();
+    const emptyAdapter = makeLessonsAdapter({ lessons: [] });
+    const { ctx } = makeCtx({ role: "student", adapter: emptyAdapter });
+    const { host } = mount(companionPage, ctx);
+    try {
+      await wait(80);
+      assert.ok(textOf(host).includes("Chưa có bài đọc nào được phát hành"),
+        "catalog rỗng phải là empty state trung thực");
+    } finally {
+      unmount(host);
+      clearSession();
+    }
+
+    clearSession();
+    liveSession();
+    const errorAdapter = makeLessonsAdapter({
+      lessons: [LESSON_STUDENT], failFirst: true,
+    });
+    const { ctx: ctx2 } = makeCtx({ role: "student", adapter: errorAdapter });
+    const { host: host2 } = mount(companionPage, ctx2);
+    try {
+      await wait(80);
+      const section = host2.querySelector("[data-micro-lessons]");
+      assert.ok(section, "phải có section bài đọc");
+      assert.ok(textOf(section).includes("Chưa tải được danh sách bài đọc"),
+        "lỗi phải nói thẳng, không fallback dữ liệu giả");
+      assert.ok(!textOf(section).includes("Một phút gọi tên cảm xúc"),
+        "lỗi thì không được render bài đọc");
+      const retry = findButton(section, "Thử lại");
+      assert.ok(retry, "phải có nút Thử lại (chủ động)");
+      retry.click();
+      await wait(40);
+      assert.equal(errorAdapter.lessonsCalls.length, 2,
+        "Thử lại phải gọi lại catalog đúng 1 lần nữa");
+      assert.ok(textOf(section).includes("Một phút gọi tên cảm xúc"),
+        "sau khi thử lại thành công, bài đọc phải hiện");
+    } finally {
+      unmount(host2);
+      clearSession();
+    }
+  });
+});

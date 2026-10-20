@@ -1,0 +1,136 @@
+/* ============================================================
+   pages-companion.css — trang "Đồng hành" (F02, #/companion)
+   stitch-ui-3: bổ sung mục "Bài đọc 1 phút" (micro_lesson, chỉ ĐỌC).
+
+   FILE MỚI — KHÔNG đụng styles/*.css hiện có. Chỉ dùng token --fb-*
+   (tokens.css); motion chỉ transform/opacity/background 150–200ms
+   (global prefers-reduced-motion trong base.css tự tắt).
+
+   Toàn bộ logic F02 (enroll/tuần/tiến độ/thỏa ước/lời mời) GIỮ NGUYÊN —
+   CSS này chỉ thêm class cho mục bài đọc; không thay class cũ được pin.
+   ============================================================ */
+
+/* ------------------------ Mục "Bài đọc 1 phút" ------------------------ */
+
+/* Ghi chú PHẠM VI HẸP của riêng mục bài đọc: dùng class riêng .fb-lessons__note
+   (KHÔNG style toàn cục .fb-page__note — class đó dùng ở 18 trang khác và
+   hiện chưa có base style; style toàn cục từ file của 1 trang sẽ rò rỉ
+   thay đổi hình ảnh các trang không thuộc phạm vi bàn giao). */
+.fb-lessons__note {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: var(--fb-lh-body-sm);
+  color: var(--fb-text-secondary);
+  overflow-wrap: break-word;
+}
+
+/* Section gốc dùng .fb-scard (thẻ trắng Stitch) + class riêng bên dưới. */
+.fb-lessons__area {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+  min-width: 0;
+}
+
+.fb-lessons__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--fb-space-3);
+}
+
+@media (min-width: 768px) {
+  .fb-lessons__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.fb-lessons__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  background: var(--fb-surface-low);
+  border-radius: var(--fb-radius-control);
+  padding: var(--fb-space-4);
+  min-width: 0;
+}
+
+.fb-lessons__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.fb-lessons__title {
+  margin: 0;
+  font-size: var(--fb-fs-body);
+  line-height: 1.4;
+  font-weight: 600;
+  color: var(--fb-text);
+  overflow-wrap: break-word;
+}
+
+.fb-lessons__goal {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  overflow-wrap: break-word;
+}
+
+/* Trạng thái phụ (loading/empty/error/offline) của mục bài đọc */
+.fb-lessons__state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+}
+
+.fb-lessons__state p {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  overflow-wrap: break-word;
+}
+
+.fb-lessons__state-icon {
+  color: var(--fb-primary);
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* Nội dung bài đọc trong sheet: các bước đánh số có nguồn (published) */
+.fb-lessons__steps {
+  margin: 0;
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text);
+}
+
+.fb-lessons__step {
+  padding-left: var(--fb-space-1);
+  overflow-wrap: break-word;
+}
+
+.fb-lessons__step::marker {
+  color: var(--fb-primary);
+  font-weight: 600;
+}
+
+.fb-lessons__share {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  overflow-wrap: break-word;
+}
