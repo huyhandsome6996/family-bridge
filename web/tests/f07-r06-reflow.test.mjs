@@ -32,7 +32,7 @@ const { setSession } = await import("../src/core/session.js");
 
 describe("R06 CSS reflow — mood grid (components.css)", () => {
   it("grid dùng minmax(0, 1fr) — nội dung không đẩy rộng lưới", () => {
-    const css = readFileSync(cssPath, "utf8");
+    const css = readFileSync(cssPath, "utf8").replace(/\r\n/g, "\n");
     assert.ok(
       css.includes(".fb-mood-grid--4 {\n  grid-template-columns: repeat(4, minmax(0, 1fr));"),
       "fb-mood-grid--4 phải dùng minmax(0, 1fr) (R06)",

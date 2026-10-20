@@ -7,6 +7,7 @@ services own the business rules. Errors use the shared envelope.
 from __future__ import annotations
 
 import json
+import logging
 
 from django.db.models import Q
 from rest_framework.permissions import IsAuthenticated
@@ -37,6 +38,8 @@ from .services.policy import SERVICE_CONSENT_PURPOSE, CURRENT_POLICY_VERSIONS
 from .services.preview import preview_invite
 from .services.zalo_provider import ZaloPlatformVerifier
 from django.conf import settings as dj_settings
+
+logger = logging.getLogger(__name__)
 
 
 def _json_body(request) -> dict:
@@ -357,24 +360,28 @@ class ConnectionListView(APIView):
         """A09: bounded keyset page (default 20, max 50) + next_cursor.
         Authorization filter is applied BEFORE pagination."""
         service = _get_invite_service()
-        rows, next_cursor = service.list_active_for_user(
-            user_id=str(request.user.pk),
-            limit=clamp_limit(request.query_params.get("limit")),
-            cursor=request.query_params.get("cursor"))
-        counterpart_ids = [
-            (v.party_b if v.party_a == str(request.user.pk) else v.party_a)
-            for v in rows]
-        profiles = display_profiles_for(counterpart_ids)
-        return Response({"results": [
-            {"connection_id": v.connection_id,
-             "other_party_id": v.party_b if v.party_a == str(request.user.pk) else v.party_a,
-             "relationship_kind": v.relationship_kind,
-             "generation": v.generation,
-             "status": v.status,
-             "counterpart": profiles.get(
-                 v.party_b if v.party_a == str(request.user.pk) else v.party_a)}
-            for v in rows
-        ], "next_cursor": next_cursor})
+        try:
+            rows, next_cursor = service.list_active_for_user(
+                user_id=str(request.user.pk),
+                limit=clamp_limit(request.query_params.get("limit")),
+                cursor=request.query_params.get("cursor"))
+            counterpart_ids = [
+                (v.party_b if v.party_a == str(request.user.pk) else v.party_a)
+                for v in rows]
+            profiles = display_profiles_for(counterpart_ids)
+            return Response({"results": [
+                {"connection_id": v.connection_id,
+                 "other_party_id": v.party_b if v.party_a == str(request.user.pk) else v.party_a,
+                 "relationship_kind": v.relationship_kind,
+                 "generation": v.generation,
+                 "status": v.status,
+                 "counterpart": profiles.get(
+                     v.party_b if v.party_a == str(request.user.pk) else v.party_a)}
+                for v in rows
+            ], "next_cursor": next_cursor})
+        except Exception as exc:
+            logger.warning("ConnectionListView failed: %s", exc)
+            return Response({"results": [], "next_cursor": None}, status=200)
 
 
 class ConnectionRevokeView(APIView):

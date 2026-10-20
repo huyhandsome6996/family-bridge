@@ -31,8 +31,6 @@ USER appuser
 EXPOSE 8000
 
 # Start Gunicorn server binding to Render-injected $PORT (default 8000).
-# Database migration is NOT performed here. Run migrations from your local machine
-# against the remote MySQL DB before the first deploy.
-# See docs/handover/blueprint-deployment-guide.md for the complete migration procedure.
-CMD ["sh", "-c", "exec gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 60"]
+# Automatically runs database migrations on startup before Gunicorn binds.
+CMD ["sh", "-c", "python backend/manage.py migrate --noinput && exec gunicorn --chdir backend config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 2 --timeout 60"]
 
