@@ -127,7 +127,20 @@ class ProductionSchoolDirectory:
                 "review_due": "2027-04-11",
                 "status": "published",
                 "provenance": "Danh bạ đầu mối tâm lý trường học chính thức",
-            }
+            },
+            {
+                "contact_id": "sch-affairs-01",
+                "public_name": "Ban Giám hiệu & Công tác Học sinh",
+                "phone": "02437654322",
+                "hours": {"always": False, "start_hour": 7, "end_hour": 17},
+                "tz_offset_hours": 7,
+                "contact_type": "school",
+                "accepting_appointments": False,
+                "verified": True,
+                "review_due": "2027-04-11",
+                "status": "published",
+                "provenance": "Ban Giám hiệu nhà trường",
+            },
         ]
 
 

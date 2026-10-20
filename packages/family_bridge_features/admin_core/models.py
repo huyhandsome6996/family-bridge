@@ -41,9 +41,12 @@ CAP_DASHBOARD_READ = "dashboard.read"
 # giam scope_ref = class_ref cu the; grant "global" mo rong moi lop.
 # So huu nghiep vu: f16_classroom.services.admin_provision.
 CAP_CLASSROOM_PROVISION = "classroom.provision"
+CAP_APPOINTMENT_HANDLE = "appointment.handle"
+CAP_APPOINTMENT_ASSIGN = "appointment.assign"
 KNOWN_CAPABILITIES = (CAP_CONTENT_MANAGE, CAP_CONTENT_PUBLISH, CAP_CAPS_GRANT,
                       CAP_SETTINGS_MANAGE, CAP_AUDIT_READ, CAP_DASHBOARD_READ,
-                      CAP_CLASSROOM_PROVISION)
+                      CAP_CLASSROOM_PROVISION, CAP_APPOINTMENT_HANDLE,
+                      CAP_APPOINTMENT_ASSIGN)
 
 CONTENT_DRAFT = "draft"
 CONTENT_PUBLISHED = "published"

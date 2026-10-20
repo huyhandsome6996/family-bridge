@@ -71,6 +71,79 @@ export function createMockAdapter({ scenario = null } = {}) {
   // Yêu cầu xóa demo (trạng thái trong bộ nhớ adapter, giống dữ liệu thật).
   let deletionRequest = null;
 
+  // F11 fixtures (US-022 & US-035 demo)
+  const supporterRoles = [
+    {
+      role_id: "demo-role-1",
+      supporter_id: "demo-supporter-1",
+      supporter_name: "Cô Nguyễn Thị Mai — Giáo viên cố vấn",
+      relationship_kind: "teacher",
+      status: "active",
+      can_contact: true,
+      invited_at: new Date(Date.now() - 3 * 86400000).toISOString(),
+    },
+  ];
+
+  const supporterCommitments = [
+    {
+      role_id: "demo-commitment-1",
+      student_id: "demo-student-1",
+      student_name: "Học sinh Nguyễn Văn An",
+      relationship_kind: "counselor",
+      status: "pending",
+      invited_at: new Date(Date.now() - 86400000).toISOString(),
+    },
+  ];
+
+  // F12 fixtures (US-038 & US-046 demo)
+  const schoolDirectory = [
+    {
+      contact_id: "sch-counselor-01",
+      public_name: "Phòng Tham vấn Học đường — THPT Nguyễn Du",
+      phone: "02437654321",
+      operating_hours: { always: false, start_hour: 8, end_hour: 17 },
+      role_title: "Chuyên viên tư vấn tâm lý",
+      verified: true,
+      status: "verified",
+      accepting_appointments: true,
+      provenance: "Danh bạ đầu mối tâm lý trường học chính thức",
+    },
+    {
+      contact_id: "sch-affairs-01",
+      public_name: "Ban Giám hiệu & Công tác Học sinh",
+      phone: "02437654322",
+      operating_hours: { always: false, start_hour: 7, end_hour: 17 },
+      role_title: "Phụ trách công tác học sinh",
+      verified: true,
+      status: "verified",
+      accepting_appointments: false,
+      provenance: "Ban Giám hiệu nhà trường",
+    },
+  ];
+
+  const appointmentRequests = [
+    {
+      request_id: "demo-req-1",
+      topic: "hoc_tap",
+      note: "Em muốn trao đổi về định hướng chọn ngành và phương pháp học tập.",
+      status: "slot_proposed",
+      created_at: new Date(Date.now() - 86400000).toISOString(),
+      slots: [
+        {
+          id: "slot-demo-1",
+          slot_id: "slot-demo-1",
+          start_at: new Date(Date.now() + 86400000).toISOString(),
+          startAt: new Date(Date.now() + 86400000).toISOString(),
+          end_at: new Date(Date.now() + 86400000 + 1800000).toISOString(),
+          endAt: new Date(Date.now() + 86400000 + 1800000).toISOString(),
+          status: "proposed",
+          location_note: "Phòng Tham vấn P.204",
+          locationNote: "Phòng Tham vấn P.204",
+        },
+      ],
+    },
+  ];
+
   /**
    * Giây còn lại của khoảng dừng ĐANG ÁP DỤNG (null khi guard không chặn).
    * Nguồn sự thật: `_deadline_guard` (f06_drafts/services/drafts.py:73-94) —
@@ -1314,73 +1387,152 @@ export function createMockAdapter({ scenario = null } = {}) {
     // ---- F11 mock ----
     async listSupporterRoles() {
       await wait(100);
-      return [];
+      return [...supporterRoles];
     },
     async inviteSupporter({ supporterId, relationshipKind } = {}) {
       await wait(100);
-      return { role_id: "mock-role-1", supporter_id: supporterId, relationship_kind: relationshipKind, status: "pending" };
+      const role = {
+        role_id: `mock-role-${Date.now()}`,
+        supporter_id: supporterId,
+        supporter_name: "Người hỗ trợ (minh họa)",
+        relationship_kind: relationshipKind || "family",
+        status: "pending",
+        can_contact: false,
+        invited_at: new Date().toISOString(),
+      };
+      supporterRoles.push(role);
+      return role;
     },
     async respondSupporterRole({ roleId, decision } = {}) {
       await wait(100);
+      const c = supporterCommitments.find((item) => item.role_id === roleId);
+      if (c) {
+        c.status = decision === "accept" ? "active" : "declined";
+      }
       return { role_id: roleId, status: decision === "accept" ? "active" : "declined" };
     },
     async revokeSupporterRole({ roleId } = {}) {
       await wait(100);
+      const r = supporterRoles.find((item) => item.role_id === roleId);
+      if (r) r.status = "revoked";
+      const c = supporterCommitments.find((item) => item.role_id === roleId);
+      if (c) c.status = "revoked";
       return { role_id: roleId, status: "revoked" };
     },
     async contactSupporter({ roleId, body, key } = {}) {
       await wait(100);
-      return { message_id: "mock-msg-1", role_id: roleId, state: "sent" };
+      if (!key) {
+        throw new ApiError("Thiếu khóa lượt gửi (dữ liệu minh họa).", 0, "configuration");
+      }
+      return { message_id: `mock-msg-${Date.now()}`, role_id: roleId, state: "sent" };
     },
     async listSupporterCommitments() {
       await wait(100);
-      return [];
+      return [...supporterCommitments];
     },
 
     // ---- F12 mock ----
     async getSchoolDirectory() {
       await wait(100);
-      return [];
+      return [...schoolDirectory];
     },
     async listAppointmentRequests() {
       await wait(100);
-      return [];
+      return [...appointmentRequests];
     },
     async createAppointmentRequest({ topic, note = "" } = {}) {
       await wait(100);
-      return { request_id: "mock-req-1", topic, note, status: "submitted" };
+      const req = {
+        request_id: `mock-req-${Date.now()}`,
+        topic,
+        note,
+        status: "submitted",
+        created_at: new Date().toISOString(),
+        slots: [],
+      };
+      appointmentRequests.push(req);
+      return req;
     },
     async getAppointmentRequest(requestId) {
       await wait(100);
-      return { request_id: requestId, status: "submitted", slots: [] };
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      return found ? { ...found } : { request_id: requestId, status: "submitted", slots: [] };
     },
     async claimAppointmentRequest(requestId) {
       await wait(100);
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      if (found) {
+        found.status = "assigned";
+      }
       return { request_id: requestId, status: "assigned" };
     },
-    async proposeAppointmentSlot({ requestId, startAt } = {}) {
+    async proposeAppointmentSlot({ requestId, startAt, endAt = null, locationNote = "" } = {}) {
       await wait(100);
-      return { slot_id: "mock-slot-1", request_id: requestId, start_at: startAt, status: "proposed" };
+      const slot = {
+        id: `mock-slot-${Date.now()}`,
+        slot_id: `mock-slot-${Date.now()}`,
+        request_id: requestId,
+        start_at: startAt,
+        startAt,
+        end_at: endAt || new Date(new Date(startAt).getTime() + 1800000).toISOString(),
+        endAt: endAt || new Date(new Date(startAt).getTime() + 1800000).toISOString(),
+        status: "proposed",
+        location_note: locationNote || "Phòng tư vấn học đường",
+        locationNote: locationNote || "Phòng tư vấn học đường",
+      };
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      if (found) {
+        found.status = "slot_proposed";
+        if (!Array.isArray(found.slots)) found.slots = [];
+        found.slots.unshift(slot);
+      }
+      return slot;
     },
     async acceptAppointmentSlot({ requestId, slotId } = {}) {
       await wait(100);
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      if (found) {
+        found.status = "scheduled";
+      }
       return { request_id: requestId, slot_id: slotId, status: "scheduled" };
     },
     async declineAppointmentSlot({ requestId, slotId } = {}) {
       await wait(100);
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      if (found) {
+        found.status = "assigned";
+      }
       return { request_id: requestId, slot_id: slotId, status: "assigned" };
     },
     async cancelAppointmentRequest(requestId) {
       await wait(100);
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      if (found) {
+        found.status = "cancelled";
+      }
       return { request_id: requestId, status: "cancelled" };
     },
     async completeAppointmentRequest(requestId) {
       await wait(100);
+      const found = appointmentRequests.find((r) => r.request_id === requestId);
+      if (found) {
+        found.status = "completed";
+      }
       return { request_id: requestId, status: "completed" };
     },
     async getAppointmentQueue() {
       await wait(100);
-      return [];
+      return [
+        {
+          request_id: "queue-req-1",
+          topic: "tinh_cam",
+          note: "Học sinh muốn gặp trao đổi tâm lý học đường.",
+          status: "submitted",
+          has_handler: false,
+          created_at: new Date(Date.now() - 3600000).toISOString(),
+          slots: [],
+        },
+      ];
     },
 
 

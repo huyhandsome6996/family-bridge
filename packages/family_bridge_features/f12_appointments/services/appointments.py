@@ -122,6 +122,14 @@ class AppointmentService:
             return True
         return False
 
+    def _serialize_request(self, row: AppointmentRequest, *,
+                           include_note: bool) -> Dict[str, Any]:
+        view = row.view(include_note=include_note)
+        slots_list = list(row.slots.all())
+        slots_list.sort(key=lambda s: s.created_at, reverse=True)
+        view["slots"] = [slot.view() for slot in slots_list[:5]]
+        return view
+
     def get_request(self, *, request_id: str, viewer_id: str,
                     include_note: bool = True) -> Dict[str, Any]:
         staff = _staff_directory()
@@ -133,16 +141,13 @@ class AppointmentService:
                                    and staff.has_capability(viewer_id))
         is_requester = str(request.requester_id) == str(viewer_id)
         can_see_note = include_note and (is_requester or is_assigned_handler)
-        view = request.view(include_note=can_see_note)
-        view["slots"] = [slot.view() for slot in
-                         request.slots.order_by("-created_at")[:5]]
-        return view
+        return self._serialize_request(request, include_note=can_see_note)
 
     def list_own(self, *, requester_id: str):
         _staff_directory()
         rows = AppointmentRequest.objects.filter(
-            requester_id=str(requester_id)).order_by("-updated_at")[:20]
-        return [row.view(include_note=True) for row in rows]
+            requester_id=str(requester_id)).prefetch_related("slots").order_by("-updated_at")[:20]
+        return [self._serialize_request(row, include_note=True) for row in rows]
 
     def queue_for_handler(self, *, handler_id: str):
         staff = _staff_directory()
@@ -151,11 +156,11 @@ class AppointmentService:
         assigned = AppointmentRequest.objects.filter(
             handler_id=str(handler_id),
             status__in=(STATUS_ASSIGNED, STATUS_SLOT_PROPOSED,
-                        STATUS_SCHEDULED)).order_by("-updated_at")[:20]
+                        STATUS_SCHEDULED)).prefetch_related("slots").order_by("-updated_at")[:20]
         unassigned = AppointmentRequest.objects.filter(
-            status=STATUS_SUBMITTED).order_by("-created_at")[:20]
-        results = [row.view(include_note=True) for row in assigned]
-        results.extend([row.view(include_note=False) for row in unassigned])
+            status=STATUS_SUBMITTED).prefetch_related("slots").order_by("-created_at")[:20]
+        results = [self._serialize_request(row, include_note=True) for row in assigned]
+        results.extend([self._serialize_request(row, include_note=False) for row in unassigned])
         return results
 
     @transaction.atomic

@@ -108,7 +108,17 @@ class MessageTransportService:
             connection = reader.active_connection_between(
                 user_a=str(sender_id), user_b=str(recipient_id))
             if connection is None:
-                raise NotAuthorized({"reason": "no_active_connection"})
+                from django.db.models import Q
+                from family_bridge_features.f11_supporters.models import (
+                    STATUS_ACTIVE, SupporterRole,
+                )
+                has_active_supporter = SupporterRole.objects.filter(
+                    Q(student_id=str(sender_id), supporter_id=str(recipient_id)) |
+                    Q(student_id=str(recipient_id), supporter_id=str(sender_id)),
+                    status=STATUS_ACTIVE,
+                ).exists()
+                if not has_active_supporter:
+                    raise NotAuthorized({"reason": "no_active_connection"})
 
         # Reply context (shared-item replies) — fail closed when unwired.
         context_item_type = ""

@@ -26,8 +26,18 @@
  */
 
 // 1. Cấu hình Endpoint API linh hoạt
-const DEFAULT_DIRECTORY_API_URL = "https://family-bridge-api.onrender.com/api/v1/appointments/directory";
-const DEFAULT_REQUESTS_API_URL = "https://family-bridge-api.onrender.com/api/v1/appointments/requests";
+export const DEFAULT_BACKEND_BASE = "https://family-bridge-backend.onrender.com";
+const DEFAULT_DIRECTORY_API_URL = `${DEFAULT_BACKEND_BASE}/api/v1/appointments/directory`;
+const DEFAULT_REQUESTS_API_URL = `${DEFAULT_BACKEND_BASE}/api/v1/appointments/requests`;
+
+export function getAuthHeaders() {
+  const token =
+    (typeof window !== "undefined" &&
+      (window.__FB_SESSION_TOKEN__ ||
+        (window.__FB_SESSION__ && window.__FB_SESSION__.token))) ||
+    "";
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
 
 export function getDirectoryApiUrl() {
   if (typeof window !== "undefined" && window.__APPOINTMENTS_DIRECTORY_URL__) {
@@ -40,7 +50,11 @@ export function getDirectoryApiUrl() {
   } catch {
     // Trường hợp chạy ngoài môi trường bundler
   }
-  return DEFAULT_DIRECTORY_API_URL;
+  const base =
+    (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+    (typeof window !== "undefined" && window.__FB_API_BASE__) ||
+    DEFAULT_BACKEND_BASE;
+  return `${base.replace(/\/+$/, "")}/api/v1/appointments/directory`;
 }
 
 export function getRequestsApiUrl() {
@@ -54,7 +68,11 @@ export function getRequestsApiUrl() {
   } catch {
     // Trường hợp chạy ngoài môi trường bundler
   }
-  return DEFAULT_REQUESTS_API_URL;
+  const base =
+    (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+    (typeof window !== "undefined" && window.__FB_API_BASE__) ||
+    DEFAULT_BACKEND_BASE;
+  return `${base.replace(/\/+$/, "")}/api/v1/appointments/requests`;
 }
 
 // 2. Nhãn hiển thị chuẩn
@@ -277,7 +295,7 @@ export async function fetchDirectory() {
   const url = getDirectoryApiUrl();
   const res = await fetch(url, {
     method: "GET",
-    headers: { "Accept": "application/json" },
+    headers: { "Accept": "application/json", ...getAuthHeaders() },
   });
   if (!res.ok) {
     throw new Error(`Lỗi tải danh bạ: HTTP ${res.status}`);
@@ -290,7 +308,7 @@ export async function fetchRequests() {
   const url = getRequestsApiUrl();
   const res = await fetch(url, {
     method: "GET",
-    headers: { "Accept": "application/json" },
+    headers: { "Accept": "application/json", ...getAuthHeaders() },
   });
   if (!res.ok) {
     throw new Error(`Lỗi tải danh sách yêu cầu: HTTP ${res.status}`);
@@ -311,6 +329,7 @@ export async function submitAppointmentRequest(topic, note) {
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify(payload),
   });
@@ -340,6 +359,7 @@ export async function acceptProposedSlot(requestId, slotId) {
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({}),
   });
@@ -369,6 +389,7 @@ export async function declineProposedSlot(requestId, slotId) {
     headers: {
       "Content-Type": "application/json",
       "Accept": "application/json",
+      ...getAuthHeaders(),
     },
     body: JSON.stringify({}),
   });

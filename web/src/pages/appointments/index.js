@@ -5,6 +5,7 @@
 // 3. Giữ trung thực gate scheduling_no_staff khi chưa có nhân sự tiếp nhận.
 
 import { h, clear } from "../../app/dom.js";
+import { hasLiveSession } from "../../core/session.js";
 import {
   createCard,
   createButton,
@@ -13,6 +14,7 @@ import {
   createSkeleton,
   createIcon,
   createStatusBadge,
+  createDemoBanner,
 } from "../../components/index.js";
 
 const TOPIC_LABELS = {
@@ -25,10 +27,31 @@ const STATUS_LABELS = {
   submitted: "Đang chờ tiếp nhận",
   assigned: "Đã có người tiếp nhận",
   slot_proposed: "Có đề xuất thời gian",
+  proposed: "Có đề xuất thời gian",
   scheduled: "Đã chốt lịch hẹn",
   completed: "Đã hoàn thành",
   cancelled: "Đã hủy",
+  declined: "Từ chối",
 };
+
+function statusTone(status) {
+  switch (status) {
+    case "scheduled":
+    case "completed":
+      return "success";
+    case "slot_proposed":
+    case "proposed":
+      return "info";
+    case "submitted":
+    case "assigned":
+    case "pending":
+      return "warning";
+    case "cancelled":
+    case "declined":
+    default:
+      return "neutral";
+  }
+}
 
 function sanitizePhone(raw) {
   if (!raw || typeof raw !== "string") return "";
@@ -53,6 +76,19 @@ function formatDateTimeVN(iso) {
   }
 }
 
+function isSchedulingNoStaffError(err) {
+  return Boolean(
+    err &&
+      ((err.details && err.details.reason === "scheduling_no_staff") ||
+        (err.data && err.data.reason === "scheduling_no_staff") ||
+        err.code === "module_unavailable" ||
+        (err.details && err.details.code === "scheduling_no_staff")),
+  );
+}
+
+let activeOverlays = [];
+let pageCleanup = null;
+
 export const page = {
   id: "appointments",
   title: "Lịch hẹn & Đầu mối trường",
@@ -62,9 +98,37 @@ export const page = {
   showBottomNav: true,
 
   render(ctx) {
+    let cancelled = false;
+
+    pageCleanup = () => {
+      cancelled = true;
+      activeOverlays.forEach((el) => {
+        if (el && typeof el.remove === "function") el.remove();
+      });
+      activeOverlays = [];
+    };
+
     const root = h("div", { class: "fb-page fb-page--web", dataset: { page: "appointments" } });
     const body = h("div", { class: "fb-page__body" });
     root.appendChild(body);
+
+    const state = (ctx.store && typeof ctx.store.getState === "function") ? ctx.store.getState() : {};
+    const demo = Boolean(state.demoMode);
+
+    if (!demo && typeof ctx.adapter?.hasLiveSession === "function" && !ctx.adapter.hasLiveSession() && !hasLiveSession()) {
+      body.appendChild(
+        createEmptyState({
+          title: "Cần đăng nhập để sử dụng lịch hẹn",
+          description: "Đăng nhập để xem danh bạ nhà trường và đặt lịch hẹn trao đổi riêng.",
+          action: { label: "Đăng nhập", onClick: () => ctx.navigate("/login") },
+        }),
+      );
+      return root;
+    }
+
+    if (demo) {
+      body.appendChild(createDemoBanner({ onExit: () => ctx.exitDemo() }));
+    }
 
     body.appendChild(h("h2", { class: "fb-page__heading" }, "Đầu mối trường & Lịch hẹn"));
     body.appendChild(
@@ -82,7 +146,7 @@ export const page = {
       h(
         "div",
         { class: "fb-signal-safety__row" },
-        createIcon({ name: "school", size: 18 }),
+        createIcon({ name: "history_edu", size: 18 }),
         h(
           "p",
           {},
@@ -97,22 +161,27 @@ export const page = {
     const mainContainer = h("div", { id: "appointments-main" });
     body.appendChild(mainContainer);
 
-    let cancelled = false;
-
     function refresh() {
       clear(mainContainer);
       mainContainer.appendChild(createSkeleton({ variant: "card", count: 2 }));
       mainContainer.appendChild(h("p", { class: "fb-status" }, "Đang tải dữ liệu…"));
 
       Promise.all([
-        Promise.resolve().then(() => ctx.adapter.getSchoolDirectory()).catch(() => []),
+        Promise.resolve().then(() => ctx.adapter.getSchoolDirectory()).catch((e) => {
+          if (e && e.status === 401) throw e;
+          return [];
+        }),
         Promise.resolve().then(() => ctx.adapter.listAppointmentRequests()).catch((e) => {
-          if (e && e.data && e.data.reason === "scheduling_no_staff") {
+          if (e && e.status === 401) throw e;
+          if (isSchedulingNoStaffError(e)) {
             return { schedulingDisabled: true };
           }
           return [];
         }),
-        Promise.resolve().then(() => ctx.adapter.getAppointmentQueue()).catch(() => []),
+        Promise.resolve().then(() => ctx.adapter.getAppointmentQueue()).catch((e) => {
+          if (e && e.status === 401) throw e;
+          return [];
+        }),
       ])
         .then(([directory, requestsResult, queue]) => {
           if (cancelled) return;
@@ -138,6 +207,10 @@ export const page = {
         })
         .catch((err) => {
           if (cancelled) return;
+          if (err && err.status === 401) {
+            ctx.navigate("/login?reason=expired");
+            return;
+          }
           clear(mainContainer);
           mainContainer.appendChild(
             createErrorState({
@@ -152,6 +225,11 @@ export const page = {
 
     refresh();
     return root;
+  },
+
+  destroy() {
+    if (typeof pageCleanup === "function") pageCleanup();
+    pageCleanup = null;
   },
 };
 
@@ -174,7 +252,7 @@ function renderDirectorySection(container, contacts) {
 }
 
 function createContactItem(contact) {
-  const isVerified = contact.status === "verified";
+  const isVerified = contact.verified === true || contact.status === "verified";
   const rawPhone = contact.phone || "";
   const phoneClean = sanitizePhone(rawPhone);
   const hasPhone = Boolean(isVerified && phoneClean);
@@ -188,12 +266,20 @@ function createContactItem(contact) {
     ? "Trực 24/7"
     : (contact.operating_hours && contact.operating_hours.start_hour !== undefined)
       ? `${contact.operating_hours.start_hour}:00 - ${contact.operating_hours.end_hour}:00`
-      : "Giờ hành chính";
+      : (contact.hours && contact.hours.always)
+        ? "Trực 24/7"
+        : (contact.hours && contact.hours.start_hour !== undefined)
+          ? `${contact.hours.start_hour}:00 - ${contact.hours.end_hour}:00`
+          : "Giờ hành chính";
 
   const info = h("div", {},
     h("h4", { style: "margin: 0;" }, contact.public_name || "Đầu mối trường"),
-    h("p", { class: "fb-page__note", style: "margin: var(--fb-space-1) 0 0;" },
-      `Thời gian: ${hoursText} • ${isVerified ? "Đã xác minh" : "Chờ xác minh"}`
+    h("div", { style: "display: flex; gap: var(--fb-space-2); align-items: center; margin-top: var(--fb-space-1);" },
+      createStatusBadge({
+        label: isVerified ? "Đã xác minh" : "Chờ xác minh",
+        tone: isVerified ? "success" : "neutral",
+      }),
+      h("span", { class: "fb-page__note" }, `Thời gian: ${hoursText}`),
     ),
   );
 
@@ -201,12 +287,12 @@ function createContactItem(contact) {
   if (hasPhone) {
     action.appendChild(
       h("a", {
-        class: "fb-button fb-button--primary",
+        class: "fb-btn fb-btn--primary",
         href: `tel:${phoneClean}`,
         role: "button",
         style: "display: inline-flex; align-items: center; gap: var(--fb-space-2); text-decoration: none;",
       },
-        createIcon({ name: "phone", size: 16 }),
+        createIcon({ name: "call", size: 16 }),
         h("span", {}, `Gọi ${contact.phone}`),
       ),
     );
@@ -262,6 +348,7 @@ function renderSchedulingSection(container, ctx, { requests, isSchedulingDisable
 }
 
 function createRequestItem(req, ctx, refresh) {
+  const reqId = req.request_id || req.id;
   const el = h("div", {
     class: "fb-list__item",
     style: "padding: var(--fb-space-3) 0; border-bottom: 1px solid var(--fb-color-border);",
@@ -270,7 +357,7 @@ function createRequestItem(req, ctx, refresh) {
   const header = h("div", { style: "display: flex; justify-content: space-between; align-items: center;" },
     h("h4", { style: "margin: 0;" }, TOPIC_LABELS[req.topic] || req.topic),
     createStatusBadge({
-      status: req.status === "scheduled" ? "verified" : (req.status === "cancelled" ? "declined" : "pending"),
+      tone: statusTone(req.status),
       label: STATUS_LABELS[req.status] || req.status,
     }),
   );
@@ -285,38 +372,51 @@ function createRequestItem(req, ctx, refresh) {
   );
   el.appendChild(meta);
 
-  // Nút hành động theo trạng thái
-  const actions = h("div", { style: "display: flex; gap: var(--fb-space-2); margin-top: var(--fb-space-2);" });
+  // Hiển thị khung giờ được đề xuất (nếu có)
+  const slots = Array.isArray(req.slots) ? req.slots : [];
+  const proposedSlot = slots.find((s) => s.status === "proposed" || !s.status);
 
-  if (req.status === "slot_proposed" && req.slots && req.slots.length > 0) {
-    const slot = req.slots[0];
+  if ((req.status === "slot_proposed" || req.status === "proposed") && proposedSlot) {
+    const slotId = proposedSlot.slot_id || proposedSlot.id;
+    const slotTimeStr = formatDateTimeVN(proposedSlot.start_at || proposedSlot.startAt);
+    const locNote = proposedSlot.location_note || proposedSlot.locationNote;
+
     const slotBox = h("div", {
       style: "background: var(--fb-color-bg-secondary, #f8f9fa); padding: var(--fb-space-3); border-radius: var(--fb-radius-md); margin-top: var(--fb-space-2);",
     },
-      h("p", { style: "font-weight: 600; margin: 0 0 var(--fb-space-2);" },
-        `Thời gian đề xuất: ${formatDateTimeVN(slot.start_at)}`
+      h("p", { style: "font-weight: 600; margin: 0 0 var(--fb-space-1);" },
+        `Thời gian đề xuất: ${slotTimeStr}`
       ),
+      locNote ? h("p", { class: "fb-page__note", style: "margin: 0 0 var(--fb-space-2);" }, `Địa điểm: ${locNote}`) : null,
       h("div", { style: "display: flex; gap: var(--fb-space-2);" },
         createButton({
-          label: "Đồng ý giờ này",
+          label: "Chấp nhận lịch",
           variant: "primary",
           onClick: async () => {
             try {
-              await ctx.adapter.acceptAppointmentSlot({ requestId: req.request_id, slotId: slot.slot_id });
+              await ctx.adapter.acceptAppointmentSlot({ requestId: reqId, slotId });
               refresh();
             } catch (err) {
+              if (err && err.status === 401) {
+                ctx.navigate("/login?reason=expired");
+                return;
+              }
               alert("Không thể chấp nhận: " + (err.message || "Lỗi máy chủ"));
             }
           },
         }),
         createButton({
           label: "Từ chối",
-          variant: "secondary",
+          variant: "ghost",
           onClick: async () => {
             try {
-              await ctx.adapter.declineAppointmentSlot({ requestId: req.request_id, slotId: slot.slot_id });
+              await ctx.adapter.declineAppointmentSlot({ requestId: reqId, slotId });
               refresh();
             } catch (err) {
+              if (err && err.status === 401) {
+                ctx.navigate("/login?reason=expired");
+                return;
+              }
               alert("Lỗi: " + (err.message || "Không thể từ chối"));
             }
           },
@@ -326,17 +426,24 @@ function createRequestItem(req, ctx, refresh) {
     el.appendChild(slotBox);
   }
 
+  // Nút hành động theo trạng thái
+  const actions = h("div", { style: "display: flex; gap: var(--fb-space-2); margin-top: var(--fb-space-2);" });
+
   if (req.status !== "completed" && req.status !== "cancelled") {
     actions.appendChild(
       createButton({
         label: "Hủy yêu cầu",
-        variant: "secondary",
+        variant: "ghost",
         onClick: async () => {
           if (!confirm("Bạn có chắc muốn hủy yêu cầu này?")) return;
           try {
-            await ctx.adapter.cancelAppointmentRequest(req.request_id);
+            await ctx.adapter.cancelAppointmentRequest(reqId);
             refresh();
           } catch (e) {
+            if (e && e.status === 401) {
+              ctx.navigate("/login?reason=expired");
+              return;
+            }
             alert("Lỗi hủy yêu cầu: " + (e.message || "Lỗi máy chủ"));
           }
         },
@@ -353,20 +460,37 @@ function createRequestForm(ctx, refresh) {
     style: "display: flex; flex-direction: column; gap: var(--fb-space-3); margin-top: var(--fb-space-2);",
   });
 
+  const feedbackContainer = h("div", {});
+  form.appendChild(feedbackContainer);
+
   form.onsubmit = async (e) => {
     e.preventDefault();
+    clear(feedbackContainer);
     const topic = form.querySelector("#req-topic").value;
     const note = form.querySelector("#req-note").value.trim();
 
     try {
       await ctx.adapter.createAppointmentRequest({ topic, note });
-      alert("Yêu cầu hẹn gặp đã được chuyển tới nhà trường.");
+      feedbackContainer.appendChild(
+        h("div", { class: "fb-status fb-status--success", style: "margin-bottom: var(--fb-space-2);" },
+          h("span", {}, "Yêu cầu hẹn gặp đã được chuyển tới nhà trường."),
+        ),
+      );
+      form.querySelector("#req-note").value = "";
       refresh();
     } catch (err) {
-      if (err && err.data && err.data.reason === "scheduling_no_staff") {
-        alert("Hiện chưa có nhân sự tiếp nhận lịch hẹn. Vui lòng thử lại sau.");
+      if (err && err.status === 401) {
+        ctx.navigate("/login?reason=expired");
+        return;
+      }
+      if (isSchedulingNoStaffError(err)) {
+        refresh();
       } else {
-        alert("Không thể gửi yêu cầu: " + (err.message || "Lỗi máy chủ"));
+        feedbackContainer.appendChild(
+          h("div", { class: "fb-status fb-status--error", style: "margin-bottom: var(--fb-space-2);" },
+            h("span", {}, "Không thể gửi yêu cầu: " + (err.message || "Lỗi máy chủ")),
+          ),
+        );
       }
     }
   };
@@ -421,6 +545,7 @@ function renderQueueSection(container, ctx, queue, refresh) {
 }
 
 function createQueueItem(req, ctx, refresh) {
+  const reqId = req.request_id || req.id;
   const el = h("div", {
     class: "fb-list__item",
     style: "padding: var(--fb-space-3) 0; border-bottom: 1px solid var(--fb-color-border);",
@@ -429,7 +554,10 @@ function createQueueItem(req, ctx, refresh) {
   el.appendChild(
     h("div", { style: "display: flex; justify-content: space-between; align-items: center;" },
       h("h4", { style: "margin: 0;" }, `Yêu cầu: ${TOPIC_LABELS[req.topic] || req.topic}`),
-      createStatusBadge({ status: "pending", label: STATUS_LABELS[req.status] || req.status }),
+      createStatusBadge({
+        tone: statusTone(req.status),
+        label: STATUS_LABELS[req.status] || req.status,
+      }),
     ),
   );
 
@@ -446,9 +574,13 @@ function createQueueItem(req, ctx, refresh) {
         variant: "primary",
         onClick: async () => {
           try {
-            await ctx.adapter.claimAppointmentRequest(req.request_id);
+            await ctx.adapter.claimAppointmentRequest(reqId);
             refresh();
           } catch (e) {
+            if (e && e.status === 401) {
+              ctx.navigate("/login?reason=expired");
+              return;
+            }
             alert("Không thể tiếp nhận: " + (e.message || "Lỗi máy chủ"));
           }
         },
@@ -461,16 +593,7 @@ function createQueueItem(req, ctx, refresh) {
       createButton({
         label: "Đề xuất giờ hẹn",
         variant: "primary",
-        onClick: async () => {
-          const raw = prompt("Nhập thời gian đề xuất (ISO format, ví dụ: 2026-10-25T09:00:00Z):");
-          if (!raw) return;
-          try {
-            await ctx.adapter.proposeAppointmentSlot({ requestId: req.request_id, startAt: raw });
-            refresh();
-          } catch (e) {
-            alert("Lỗi đề xuất giờ: " + (e.message || "Định dạng thời gian không hợp lệ"));
-          }
-        },
+        onClick: () => openProposeSlotModal(req, ctx, refresh),
       }),
     );
   }
@@ -482,9 +605,13 @@ function createQueueItem(req, ctx, refresh) {
         variant: "primary",
         onClick: async () => {
           try {
-            await ctx.adapter.completeAppointmentRequest(req.request_id);
+            await ctx.adapter.completeAppointmentRequest(reqId);
             refresh();
           } catch (e) {
+            if (e && e.status === 401) {
+              ctx.navigate("/login?reason=expired");
+              return;
+            }
             alert("Lỗi: " + (e.message || "Lỗi máy chủ"));
           }
         },
@@ -495,3 +622,116 @@ function createQueueItem(req, ctx, refresh) {
   el.appendChild(actions);
   return el;
 }
+
+function openProposeSlotModal(req, ctx, refresh) {
+  const overlay = h("div", {
+    class: "fb-overlay",
+    style: "position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: var(--fb-space-4);",
+  });
+  activeOverlays.push(overlay);
+
+  const modal = h("div", {
+    class: "fb-card",
+    style: "max-width: 480px; width: 100%; max-height: 90vh; overflow-y: auto; background: white; padding: var(--fb-space-4); border-radius: var(--fb-radius-lg);",
+  });
+  overlay.appendChild(modal);
+
+  modal.appendChild(h("h3", { style: "margin-top: 0;" }, "Đề xuất thời gian hẹn gặp"));
+  modal.appendChild(
+    h("p", { class: "fb-page__note" }, "Chọn ngày, giờ và địa điểm phòng gặp để học sinh xác nhận."),
+  );
+
+  const form = h("form", { style: "display: flex; flex-direction: column; gap: var(--fb-space-3); margin-top: var(--fb-space-2);" });
+
+  const dtGroup = h("div", {},
+    h("label", { for: "slot-datetime", style: "display: block; font-weight: 600; margin-bottom: var(--fb-space-1);" }, "Thời gian bắt đầu:"),
+    h("input", {
+      id: "slot-datetime",
+      type: "datetime-local",
+      class: "fb-input",
+      required: true,
+      style: "width: 100%; padding: var(--fb-space-2); border-radius: var(--fb-radius-md); border: 1px solid var(--fb-color-border);",
+    }),
+  );
+  form.appendChild(dtGroup);
+
+  const durGroup = h("div", {},
+    h("label", { for: "slot-duration", style: "display: block; font-weight: 600; margin-bottom: var(--fb-space-1);" }, "Thời lượng (phút):"),
+    h("input", {
+      id: "slot-duration",
+      type: "number",
+      class: "fb-input",
+      value: "30",
+      min: "15",
+      max: "180",
+      style: "width: 100%; padding: var(--fb-space-2); border-radius: var(--fb-radius-md); border: 1px solid var(--fb-color-border);",
+    }),
+  );
+  form.appendChild(durGroup);
+
+  const locGroup = h("div", {},
+    h("label", { for: "slot-location", style: "display: block; font-weight: 600; margin-bottom: var(--fb-space-1);" }, "Địa điểm / Phòng gặp:"),
+    h("input", {
+      id: "slot-location",
+      type: "text",
+      class: "fb-input",
+      placeholder: "Ví dụ: Phòng Tham vấn P.204",
+      value: "Phòng Tham vấn học đường",
+      style: "width: 100%; padding: var(--fb-space-2); border-radius: var(--fb-radius-md); border: 1px solid var(--fb-color-border);",
+    }),
+  );
+  form.appendChild(locGroup);
+
+  const btnRow = h("div", { style: "display: flex; gap: var(--fb-space-2); justify-content: flex-end; margin-top: var(--fb-space-3);" });
+
+  const cancelBtn = createButton({
+    label: "Hủy",
+    variant: "ghost",
+    onClick: () => {
+      overlay.remove();
+      activeOverlays = activeOverlays.filter((o) => o !== overlay);
+    },
+  });
+
+  const submitBtn = createButton({
+    label: "Gửi đề xuất",
+    variant: "primary",
+    type: "submit",
+  });
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const dtVal = form.querySelector("#slot-datetime").value;
+    if (!dtVal) return;
+    const startAt = new Date(dtVal).toISOString();
+    const durMins = parseInt(form.querySelector("#slot-duration").value, 10) || 30;
+    const endAt = new Date(new Date(dtVal).getTime() + durMins * 60000).toISOString();
+    const locationNote = form.querySelector("#slot-location").value.trim();
+
+    try {
+      await ctx.adapter.proposeAppointmentSlot({
+        requestId: req.request_id || req.id,
+        startAt,
+        endAt,
+        locationNote,
+      });
+      overlay.remove();
+      activeOverlays = activeOverlays.filter((o) => o !== overlay);
+      refresh();
+    } catch (err) {
+      if (err && err.status === 401) {
+        ctx.navigate("/login?reason=expired");
+        return;
+      }
+      alert("Lỗi đề xuất giờ: " + (err.message || "Lỗi máy chủ"));
+    }
+  };
+
+  btnRow.appendChild(cancelBtn);
+  btnRow.appendChild(submitBtn);
+  form.appendChild(btnRow);
+  modal.appendChild(form);
+
+  document.body.appendChild(overlay);
+}
+

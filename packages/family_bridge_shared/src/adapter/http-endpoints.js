@@ -1133,12 +1133,20 @@ export function createHttpEndpoints({
 
     async contactSupporter({ roleId, body, key } = {}) {
       requireBaseUrl();
-      if (!key) throw new ApiError("Thiếu idempotency key", 400, "client");
-      const data = await authed(() => request(`/api/v1/supporters/roles/${encodeURIComponent(roleId)}/contact`, {
-        method: "POST",
-        headers: { "X-Idempotency-Key": key },
-        body: { body },
-      }));
+      if (!key) {
+        throw new ApiError(
+          "contactSupporter requires an explicit caller-supplied idempotency key.",
+          0,
+          "configuration",
+        );
+      }
+      const data = await authed(() =>
+        request(`/api/v1/supporters/roles/${encodeURIComponent(roleId)}/contact`, {
+          method: "POST",
+          idempotencyKey: key,
+          body: { body },
+        }),
+      );
       return data;
     },
 

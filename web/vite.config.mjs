@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 // __APP_VERSION__ — nhúng phiên bản package.json vào bundle (hiện ở sidebar
@@ -23,5 +24,12 @@ export default defineConfig({
     target: "es2020",
     cssTarget: "safari13.1",
     modulePreload: false,
+    rollupOptions: {
+      input: {
+        main: resolve(import.meta.dirname, "index.html"),
+        f11_supporters: resolve(import.meta.dirname, "f11_supporters.html"),
+        f12_appointments: resolve(import.meta.dirname, "f12_appointments.html"),
+      },
+    },
   },
 });

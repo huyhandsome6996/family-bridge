@@ -27,13 +27,26 @@ export const RELATION_LABELS = {
   family: "Người thân",
 };
 
-export const DEFAULT_SUPPORTERS_API_BASE = "/api/v1/supporters";
+export const DEFAULT_BACKEND_BASE = "https://family-bridge-backend.onrender.com";
 
 export function getSupportersApiBase() {
   if (typeof window !== "undefined" && window.__SUPPORTERS_API_BASE__) {
     return window.__SUPPORTERS_API_BASE__;
   }
-  return DEFAULT_SUPPORTERS_API_BASE;
+  const base =
+    (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_API_BASE_URL) ||
+    (typeof window !== "undefined" && window.__FB_API_BASE__) ||
+    DEFAULT_BACKEND_BASE;
+  return `${base.replace(/\/+$/, "")}/api/v1/supporters`;
+}
+
+export function getAuthHeaders() {
+  const token =
+    (typeof window !== "undefined" &&
+      (window.__FB_SESSION_TOKEN__ ||
+        (window.__FB_SESSION__ && window.__FB_SESSION__.token))) ||
+    "";
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 function showStatus(type, message) {
@@ -74,7 +87,7 @@ export async function loadSupporters() {
 
   try {
     const res = await fetch(`${getSupportersApiBase()}/roles`, {
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     });
 
     if (!res.ok) {
@@ -187,10 +200,18 @@ export async function sendContactMessage() {
   try {
     // DTO tối thiểu: CHỈ chứa body
     const payload = { body: text };
+    const idempotencyKey =
+      (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function")
+        ? crypto.randomUUID()
+        : `web-sup-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
     const res = await fetch(`${getSupportersApiBase()}/roles/${activeContactRoleId}/contact`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "X-Idempotency-Key": idempotencyKey,
+        ...getAuthHeaders(),
+      },
       body: JSON.stringify(payload),
     });
 
@@ -198,7 +219,7 @@ export async function sendContactMessage() {
       throw new Error(`Mã lỗi máy chủ: ${res.status}`);
     }
 
-    showStatus("success", "Đã gửi lời nhắn thành công. Điểm tựa sẽ xem khi có thể.");
+    showStatus("success", "Gửi lời nhắn thành công. Điểm tựa sẽ xem khi có thể.");
     closeContactSection();
 
     // Hiển thị phần gợi ý sau khi gửi
@@ -217,7 +238,7 @@ export async function revokeSupporter(roleId) {
   try {
     const res = await fetch(`${getSupportersApiBase()}/roles/${roleId}/revoke`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...getAuthHeaders() },
     });
 
     if (!res.ok) {
