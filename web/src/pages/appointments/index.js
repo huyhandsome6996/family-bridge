@@ -92,8 +92,8 @@ let pageCleanup = null;
 export const page = {
   id: "appointments",
   title: "Lịch hẹn & Đầu mối trường",
-  requiresRole: true,
-  requiresAuth: true,
+  requiresRole: false,
+  requiresAuth: false,
   chrome: "app",
   showBottomNav: true,
 
@@ -115,7 +115,7 @@ export const page = {
     const state = (ctx.store && typeof ctx.store.getState === "function") ? ctx.store.getState() : {};
     const demo = Boolean(state.demoMode);
 
-    if (!demo && typeof ctx.adapter?.hasLiveSession === "function" && !ctx.adapter.hasLiveSession() && !hasLiveSession()) {
+    if (!demo && !hasLiveSession()) {
       body.appendChild(
         createEmptyState({
           title: "Cần đăng nhập để sử dụng lịch hẹn",

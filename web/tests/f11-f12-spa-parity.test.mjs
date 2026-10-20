@@ -216,4 +216,57 @@ describe("F11 & F12 Web SPA Parity & Robustness", () => {
     }
     host.remove();
   });
+
+  it("F11: route alias /suppoters and /supporter resolve to supporters page", async () => {
+    const { routes, findRoute } = await import("../src/app/router.js");
+    assert.ok(routes["/supporters"], "has /supporters");
+    assert.ok(routes["/appointments"], "has /appointments");
+
+    const match1 = findRoute("/suppoters");
+    assert.ok(match1, "findRoute resolves /suppoters");
+    const mod1 = await match1.loader();
+    assert.equal(mod1.page.id, "supporters");
+
+    const match2 = findRoute("/appointment");
+    assert.ok(match2, "findRoute resolves /appointment");
+    const mod2 = await match2.loader();
+    assert.equal(mod2.page.id, "appointments");
+  });
+
+  it("F11/F12: isDemoModeRequested recognizes demo=1 in window.location.hash", async () => {
+    const { isDemoModeRequested } = await import("../src/core/config.js");
+
+    window.location.search = "";
+    window.location.hash = "#/supporters?demo=1";
+    assert.equal(isDemoModeRequested(), true);
+
+    window.location.hash = "#/suppoters?demo=true";
+    assert.equal(isDemoModeRequested(), true);
+
+    window.location.hash = "#/supporters";
+    assert.equal(isDemoModeRequested(), false);
+  });
+
+  it("F11: supportersPage unauthenticated without demo shows login empty state", async () => {
+    clearSession();
+    const { ctx } = makeCtx({ demo: false, role: null });
+
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+
+    const el = supportersPage.render(ctx);
+    host.appendChild(el);
+
+    const text = host.textContent;
+    assert.ok(
+      text.includes("Cần đăng nhập để sử dụng điểm tựa dự phòng"),
+      "shows honest in-page auth gate"
+    );
+    assert.ok(host.querySelector("button"), "has login action button");
+
+    if (typeof supportersPage.destroy === "function") {
+      supportersPage.destroy();
+    }
+    host.remove();
+  });
 });

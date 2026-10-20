@@ -54,9 +54,19 @@ export function assertApiBaseUrlConfigured(baseUrl = getApiBaseUrl()) {
  */
 export function isDemoModeRequested() {
   try {
-    const params = new URLSearchParams(window.location.search);
-    const flag = params.get("demo");
-    return flag === "1" || flag === "true";
+    if (typeof window === "undefined" || !window.location) return false;
+    const searchParams = new URLSearchParams(window.location.search);
+    const searchFlag = searchParams.get("demo");
+    if (searchFlag === "1" || searchFlag === "true") return true;
+
+    const hash = window.location.hash || "";
+    const qIndex = hash.indexOf("?");
+    if (qIndex !== -1) {
+      const hashParams = new URLSearchParams(hash.slice(qIndex + 1));
+      const hashFlag = hashParams.get("demo");
+      if (hashFlag === "1" || hashFlag === "true") return true;
+    }
+    return false;
   } catch {
     return false;
   }

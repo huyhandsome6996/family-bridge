@@ -104,9 +104,21 @@ export function navigate(path) {
   }
 }
 
-/** Tìm loader cho path: exact trước, pattern ":param" sau. */
-function findRoute(path) {
+const ROUTE_ALIASES = {
+  "/suppoters": "/supporters",
+  "/supporter": "/supporters",
+  "/diem-tua": "/supporters",
+  "/appointment": "/appointments",
+  "/lich-hen": "/appointments",
+};
+
+/** Tìm loader cho path: exact trước, alias rồi pattern ":param" sau. */
+export function findRoute(path) {
   if (routes[path]) return { loader: routes[path], pathParams: null };
+  const canonical = ROUTE_ALIASES[path];
+  if (canonical && routes[canonical]) {
+    return { loader: routes[canonical], pathParams: null };
+  }
   for (const [pattern, loader] of Object.entries(routes)) {
     if (!pattern.includes(":")) continue;
     const pathParams = matchPattern(pattern, path);
@@ -176,7 +188,14 @@ export function createRouter({ root, ctx }) {
 
     // 2) requiresAuth TRƯỚC requiresRole: web không có phiên sống → login.
     //    Demo mode là phiên xem trước minh họa — cho qua (không redirect).
-    const demoMode = Boolean(ctx.store.getState().demoMode);
+    const isDemoParam = params.get("demo") === "1" || params.get("demo") === "true";
+    if (isDemoParam && typeof ctx.store?.getState === "function" && !ctx.store.getState().demoMode) {
+      ctx.store.getState().demoMode = true;
+      if (typeof ctx.rebuildAdapter === "function") {
+        ctx.rebuildAdapter(null);
+      }
+    }
+    const demoMode = Boolean(ctx.store.getState().demoMode) || isDemoParam;
     if (page.requiresAuth && !demoMode && !hasLiveSession()) {
       navigate("/login?reason=expired");
       return;
