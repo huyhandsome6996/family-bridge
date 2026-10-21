@@ -22,7 +22,7 @@ services:
     branch: main
     dockerfilePath: ./Dockerfile
     dockerContext: .
-    autoDeployTrigger: 'off'
+    autoDeployTrigger: commit
     healthCheckPath: /api/v1/health/
     envVars:
       - key: DJANGO_ENV
