@@ -203,7 +203,9 @@ test("page contract: id/chrome/requiresRole + render trả HTMLElement", () => {
   assert.equal(page.requiresRole, true);
   assert.equal(page.requiresAuth, true);
   assert.equal(page.chrome, "app");
-  assert.equal(page.showBottomNav, true, "hợp đồng trang native (page-core cũ: false)");
+  // Handoff Stitch 21/10 (DESIGN.md §5): tab dưới CHỈ ở 5 trang cấp một
+  // (home/companion/mailbox/diary/profile). /privacy là trang phụ → false.
+  assert.equal(page.showBottomNav, false, "trang phụ không gắn tab dưới (DESIGN.md §5)");
   const { host, el } = mount(ctxOf(privacyAdapter({})));
   assert.ok(el instanceof HTMLElement);
   assert.equal(el.dataset.page, "privacy");

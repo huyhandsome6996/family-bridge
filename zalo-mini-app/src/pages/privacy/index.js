@@ -48,7 +48,7 @@ import { h, clear } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import {
   createButton, createCard, createDialog, createEmptyState, createErrorState,
-  createDemoBanner, createSkeleton,
+  createDemoBanner, createIcon, createSkeleton,
 } from "../../components/index.js";
 
 // item_type thật từ grant registry F15 (F07/F08); loại lạ → hiện nguyên mã.
@@ -154,7 +154,7 @@ export const page = {
   title: "Riêng tư & đồng ý",
   requiresRole: true,
   requiresAuth: true, // dữ liệu riêng tư theo phiên (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app", // bọc trong app-shell web desktop (router M1)
 
   render(ctx) {
@@ -333,6 +333,21 @@ function renderPrivacy(body, ctx, { demo, overview, consents, deletionPage, stat
       + "máy chủ ghi rõ yêu cầu chưa hoàn tất.",
     ),
   );
+
+  // Đầu mối trợ giúp (frame M21 có hotline — BỎ số; dẫn tới trang Trợ giúp
+  // luôn truy cập được, không bị khóa theo bất kỳ trạng thái nào).
+  body.appendChild(
+    h("section", { class: "fbc-help-pointer" },
+      h("span", { class: "fbc-help-pointer__icon", "aria-hidden": "true" },
+        createIcon({ name: "support_agent", size: 20 })),
+      h("span", { class: "fbc-help-pointer__text" },
+        h("span", { class: "fbc-help-pointer__title" }, "Cần trợ giúp hoặc tư vấn độc lập?"),
+        h("span", { class: "fbc-help-pointer__hint" },
+          "Danh bạ đầu mối được duyệt hiển thị tại trang Trợ giúp."),
+      ),
+      h("a", { class: "fb-btn fb-btn--ghost", href: "#/help" }, "Tìm trợ giúp"),
+    ),
+  );
 }
 
 /* ---------------------------- (1) Đang chia sẻ ----------------------------- */
@@ -387,11 +402,11 @@ function renderGrantsCard(ctx, overview, state, reload, openDialogs) {
 
   function grantRow(grant) {
     const row = h("div", {
-      class: "fb-field",
+      class: "fbc-share-row",
       dataset: { shareId: grant.share_id || "" }, // share_id theo từng item (cursor v2)
     });
     row.appendChild(
-      h("p", {},
+      h("p", { class: "fbc-share-row__status" },
         h("strong", {}, itemTypeLabel(grant.item_type)),
         grant.revoked ? " — đã thu hồi" : " — đang chia sẻ",
       ),
@@ -404,9 +419,11 @@ function renderGrantsCard(ctx, overview, state, reload, openDialogs) {
         onClick: () => {
           if (state.revokeBusy) return; // một mutation riêng tư tại một thời điểm
           const dialog = createDialog({
-            title: "Thu hồi chia sẻ mục này?",
+            // Xác nhận ĐÚNG PHẠM VI theo frame M21: nêu đúng mục + hậu quả thật.
+            title: `Thu hồi chia sẻ "${itemTypeLabel(grant.item_type)}"?`,
             message:
-              "Người nhận sẽ không đọc được mục này nữa từ lần đọc kế tiếp. "
+              "Bạn sắp thu hồi đúng mục này cho người nhận trong kết nối hiện có. "
+              + "Người nhận sẽ không đọc được mục này nữa từ lần đọc kế tiếp. "
               + "Bản sao đã lưu ngoài ứng dụng (ví dụ ảnh chụp màn hình) không thu hồi được.",
             actions: [
               { label: "Giữ nguyên", variant: "ghost", onClick: () => {} },
@@ -579,18 +596,22 @@ function renderDeletionCard(ctx, state, reload, openDialogs, deletionPage) {
     ),
   );
 
+  // Checklist phạm vi theo allowlist backend (DeletionRequest.CATEGORIES).
+  const catList = h("div", { class: "fbc-cat-list" });
   DELETION_CATEGORIES.forEach(({ key, label }) => {
     const id = `fb-privacy-cat-${key}`;
     const checkbox = h("input", {
-      type: "checkbox", id, value: key, style: "margin-right:8px",
+      type: "checkbox", id, value: key,
     });
     checkboxes.set(key, checkbox);
-    wrap.appendChild(
-      h("div", { class: "fb-field" },
-        h("label", { for: id }, checkbox, label),
+    catList.appendChild(
+      h("label", { class: "fbc-cat", for: id },
+        checkbox,
+        h("span", {}, label),
       ),
     );
   });
+  wrap.appendChild(catList);
 
   const submit = createButton({
     label: "Gửi yêu cầu xóa dữ liệu",
@@ -965,9 +986,9 @@ function renderConsentsCard(ctx, consents, reload, openDialogs) {
   ["service", "ai_processing", "research"].forEach((purpose) => {
     const config = CONSENT_PURPOSES[purpose];
     const record = consents.find((item) => item && item.purpose === purpose) || null;
-    const row = h("div", { class: "fb-field" });
+    const row = h("div", { class: "fbc-share-row" });
     row.appendChild(
-      h("p", {},
+      h("p", { class: "fbc-share-row__status" },
         h("strong", {}, config.label),
         ` — ${consentStatusLabel(record)}`,
       ),

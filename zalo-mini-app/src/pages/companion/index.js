@@ -1,4 +1,7 @@
-// Companion — Chương trình "Đồng hành bốn tuần" (F02, US-036/US-044).
+// M07 — Companion — Chương trình "Đồng hành bốn tuần" (F02, US-036/US-044).
+// Stitch handoff 2026-10-21 (m07_*): chỉ thay DA UI — kicker chip, badge số
+// tuần, header thỏa ước; toàn bộ logic catalog/weeks/progress/agreement,
+// nhãn nút và data-companion-note giữ nguyên cho test + hành vi thật.
 // Bản THẬT: đọc catalog/weeks/progress/agreement từ adapter (server), không
 // còn WEEKS hardcode, không còn "Sắp có" theo tiến độ — mọi tuần đã publish
 // đều xem được (tự nguyện, không khóa tuần).
@@ -46,6 +49,7 @@ import {
   createDemoBanner,
   createEmptyState,
   createErrorState,
+  createIcon,
   createSkeleton,
   createTopBar,
 } from "../../components/index.js";
@@ -337,16 +341,25 @@ function renderCompanion(body, ctx, { demo, role, data, load }) {
     return;
   }
 
-  body.appendChild(h("h2", { class: "fb-page__heading" },
-    "Chương trình Đồng hành bốn tuần"));
-  body.appendChild(
+  // Header theo frame m07 (đang hoạt động): kicker + tiêu đề + mô tả + rev.
+  const head = h("header", { class: "fb-cp__head" });
+  head.appendChild(
+    h("span", { class: "fb-cp__kicker" },
+      createIcon({ name: "spa", size: 16 }),
+      "Chương trình tự nguyện",
+    ),
+  );
+  head.appendChild(h("h2", { class: "fb-page__heading" },
+    "Đồng hành bốn tuần"));
+  head.appendChild(
     h("p", { class: "fb-page__note" },
       "Tự nguyện hoàn toàn: bạn có thể xem bất kỳ tuần nào, bỏ qua, hoặc quay "
       + "lại sau. Tiến độ chỉ mình bạn thấy — không xếp hạng, không trách móc.",
     ),
   );
-  body.appendChild(h("p", { class: "fb-page__note" },
+  head.appendChild(h("p", { class: "fb-page__note fb-cp__rev" },
     `Phiên bản nội dung đang theo: rev ${weeks.pinned_revision}.`));
+  body.appendChild(head);
 
   const suggested = weeks.suggested_week;
   // Danh mục F09 thật: content_key -> {revision,title,minutes,...}. Lời mời
@@ -421,13 +434,17 @@ function renderNotEnrolled(body, ctx, { load }) {
         renderPaperNote(body, null);
         return;
       }
-      body.appendChild(h("h2", { class: "fb-page__heading" },
-        "Chương trình Đồng hành bốn tuần"));
       body.appendChild(
-        h("p", { class: "fb-page__note" },
-          "Lộ trình bốn tuần tự nguyện cho bạn và người đồng hành. Xem trước "
-          + "miễn phí — tham gia là một nút bấm, và bạn có thể nghỉ bất cứ lúc "
-          + "nào mà không mất gì.",
+        h("header", { class: "fb-cp__head" },
+          h("span", { class: "fb-cp__kicker" },
+            createIcon({ name: "spa", size: 16 }),
+            "Chương trình tự nguyện",
+          ),
+          h("h2", { class: "fb-page__heading" }, "Đồng hành bốn tuần"),
+          h("p", { class: "fb-page__note" },
+            "Lộ trình bốn tuần tự nguyện cho bạn và người đồng hành. Xem trước "
+            + "miễn phí — tham gia là một nút bấm, và bạn có thể nghỉ bất cứ lúc "
+            + "nào mà không mất gì."),
         ),
       );
       body.appendChild(note);
@@ -655,14 +672,19 @@ function renderActivityDetail(meta) {
 function renderWeekCard(ctx, { week, role, suggested, invites, activityMeta,
   otherPartyId, load, note }) {
   const isSuggested = suggested === week.week_no;
-  const card = h("section", { class: "fb-scard" });
+  const card = h("section", { class: "fb-scard fb-cp-week" });
   const head = h("div", { class: "fb-sec__row" });
+  // Vòng số tuần trang trí (aria-hidden) — tiêu đề vẫn giữ nguyên văn
+  // "Tuần N — Title" trong h2 để trình đọc màn hình/test đọc đúng.
+  const badge = h("span", { class: "fb-cp-week__badge", "aria-hidden": "true" },
+    String(week.week_no));
+  head.appendChild(badge);
   head.appendChild(
     h("h2", { class: "fb-scard__title" }, `Tuần ${week.week_no} — ${week.title}`),
   );
   if (isSuggested) {
     head.appendChild(
-      h("span", { class: "fb-chip" }, "Gợi ý tuần này"),
+      h("span", { class: "fb-chip fb-chip--safety" }, "Gợi ý tuần này"),
     );
   }
   card.appendChild(head);
@@ -867,7 +889,7 @@ function onRespond(ctx, inviteId, decision, { load, note, button }) {
 /* ------------------------------ Thỏa ước ------------------------------ */
 
 function renderAgreementCard(ctx, { agreement, weeks, load, note }) {
-  const card = h("section", { class: "fb-scard" });
+  const card = h("section", { class: "fb-scard fb-cp-pact" });
   const template = agreement && agreement.agreement_template
     ? agreement.agreement_template : (weeks.agreement || null);
   const instance = agreement && agreement.agreement ? agreement.agreement : null;
@@ -879,14 +901,19 @@ function renderAgreementCard(ctx, { agreement, weeks, load, note }) {
     || (instance && instance.status === "proposed" ? instance : null);
   const currentRow = effective || pending || instance;
 
-  card.appendChild(
-    h("div", { class: "fb-sec__row" },
-      h("h2", { class: "fb-scard__title" }, "Thỏa ước gia đình mới (tuần 4)"),
-      h("span", { class: "fb-chip" },
-        currentRow ? agreementStatusLabel(currentRow.status)
-          : "Chưa có đề xuất"),
-    ),
+  const pactHead = h("div", { class: "fb-sec__row" });
+  const pactIcon = h("span", { class: "fb-cp-pact__icon", "aria-hidden": "true" });
+  pactIcon.appendChild(createIcon({ name: "favorite", size: 20 }));
+  pactHead.appendChild(pactIcon);
+  pactHead.appendChild(
+    h("h2", { class: "fb-scard__title" }, "Thỏa ước gia đình mới (tuần 4)"),
   );
+  pactHead.appendChild(
+    h("span", { class: "fb-chip" },
+      currentRow ? agreementStatusLabel(currentRow.status)
+        : "Chưa có đề xuất"),
+  );
+  card.appendChild(pactHead);
   const commitments = effective && Array.isArray(effective.commitments)
     && effective.commitments.length
     ? effective.commitments

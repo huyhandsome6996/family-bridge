@@ -55,7 +55,7 @@ export const page = {
   title: "Xác nhận ghép nối",
   requiresRole: true,
   requiresAuth: true, // phiên lớp học là điều kiện bắt buộc (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app",
 
   render(ctx) {
@@ -151,6 +151,19 @@ function renderProposals(body, ctx, { demo, proposals, load }) {
   breadcrumb.appendChild(h("span", { class: "fb-breadcrumb__sep", "aria-hidden": "true" }, "›"));
   breadcrumb.appendChild(h("span", { class: "fb-breadcrumb__current" }, "Xác nhận ghép nối"));
   body.appendChild(breadcrumb);
+
+  // Header trang theo frame M18 (kicker + tiêu đề; không nhét tên lớp/trường —
+  // identity bug Stitch đã loại theo DESIGN-REVIEW).
+  body.appendChild(
+    h("header", { class: "fb-sec" },
+      h("div", { class: "fb-sec__row" },
+        h("span", { class: "fb-journey__kicker" }, "Đề xuất ghép nối tự nguyện"),
+      ),
+      h("h1", { class: "fb-sec__greeting" }, "Xác nhận ghép nối"),
+      h("p", { class: "fb-sec__sub" },
+        "Kết nối chỉ mở khi cả hai bên cùng xác nhận trên thiết bị của mình."),
+    ),
+  );
 
   if (!proposals.length) {
     body.appendChild(
@@ -555,9 +568,59 @@ function renderConnectedInner() {
       "Kết nối đã được xác nhận hai phía. Không gian trao đổi giữa hai người đã mở.",
     ),
   );
+  // Frame M18 (cặp đã ACTIVE): nói rõ KHÔNG cần xác nhận lại tại đây —
+  // tránh bắt người dùng xác nhận lại một cặp đã hoạt động.
+  wrap.appendChild(
+    h("p", { class: "fb-page__note" },
+      "Cặp kết nối này đã được kích hoạt. Bạn không cần thực hiện thêm thao tác "
+      + "xác nhận nào tại trang này.",
+    ),
+  );
   wrap.appendChild(
     h("div", { class: "fb-compose__pause-buttons" },
       h("a", { class: "fb-btn fb-btn--primary", href: "#/home" }, "Về trang chủ"),
+    ),
+  );
+  // Tiện ích sẵn sàng (frame M18) — CHỈ link tới route thật đang có.
+  wrap.appendChild(h("p", { class: "fbc-group-title" }, "Tính năng sẵn sàng trải nghiệm"));
+  wrap.appendChild(
+    h("div", { class: "fbc-menu" },
+      h("a", { class: "fbc-menu__row", href: "#/signal" },
+        h("span", { class: "fbc-menu__icon", "aria-hidden": "true" },
+          createIcon({ name: "hearing", size: 20 })),
+        h("span", { class: "fbc-menu__text" },
+          h("span", { class: "fbc-menu__label" }, "Tín hiệu cần được lắng nghe"),
+          h("span", { class: "fbc-menu__hint" }, "Gửi và nhận tín hiệu khi cần được nghe")),
+        h("span", { class: "fbc-menu__chevron", "aria-hidden": "true" },
+          createIcon({ name: "chevron_right", size: 20 })),
+      ),
+      h("a", { class: "fbc-menu__row", href: "#/mailbox" },
+        h("span", { class: "fbc-menu__icon", "aria-hidden": "true" },
+          createIcon({ name: "mail", size: 20 })),
+        h("span", { class: "fbc-menu__text" },
+          h("span", { class: "fbc-menu__label" }, "Thư cảm xúc & Hộp thư"),
+          h("span", { class: "fbc-menu__hint" }, "Những lời khó nói trực tiếp")),
+        h("span", { class: "fbc-menu__chevron", "aria-hidden": "true" },
+          createIcon({ name: "chevron_right", size: 20 })),
+      ),
+      h("a", { class: "fbc-menu__row", href: "#/companion" },
+        h("span", { class: "fbc-menu__icon", "aria-hidden": "true" },
+          createIcon({ name: "auto_stories", size: 20 })),
+        h("span", { class: "fbc-menu__text" },
+          h("span", { class: "fbc-menu__label" }, "Đồng hành bốn tuần"),
+          h("span", { class: "fbc-menu__hint" }, "Chương trình gợi mở tương tác, tự nguyện")),
+        h("span", { class: "fbc-menu__chevron", "aria-hidden": "true" },
+          createIcon({ name: "chevron_right", size: 20 })),
+      ),
+      h("a", { class: "fbc-menu__row", href: "#/connect" },
+        h("span", { class: "fbc-menu__icon", "aria-hidden": "true" },
+          createIcon({ name: "group", size: 20 })),
+        h("span", { class: "fbc-menu__text" },
+          h("span", { class: "fbc-menu__label" }, "Quản lý kết nối"),
+          h("span", { class: "fbc-menu__hint" }, "Trang Người đồng hành — hủy kết nối khi cần")),
+        h("span", { class: "fbc-menu__chevron", "aria-hidden": "true" },
+          createIcon({ name: "chevron_right", size: 20 })),
+      ),
     ),
   );
   return wrap;

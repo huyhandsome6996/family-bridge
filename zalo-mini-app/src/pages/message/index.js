@@ -248,24 +248,38 @@ function renderLoadError(body, error) {
   );
 }
 
-/* ------------------------------ Màn chi tiết (w15) ------------------------------ */
+/* ------------------------------ Màn chi tiết (M09 Stitch) ------------------------------ */
+// Bố cục frame m09_c_th_nh_n_ph_n_h_i: thanh back + tiêu đề -> dải meta
+// (loại thư + thời điểm, người gửi/nhận + ghi chú riêng tư) -> thẻ thư giấy
+// (kicker, tiêu đề, thân thư, ghi chú tôn trọng nhịp độ) -> vạch phân cách
+// -> khối phản hồi (mẫu nhanh, AI, textarea, CTA) -> ghi chú an toàn.
+// Deviation với frame (ghi báo cáo Task 4): bỏ khối "Design Spec"; giữ limit
+// 4000 ký tự thật (frame mock "0/400"); thời điểm chỉ hiện theo dữ liệu
+// máy chủ; AI KHÔNG mở sẵn panel — luôn qua nút + consent hiện hành.
 
 function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   clear(body);
   if (demo) body.appendChild(createDemoBanner());
 
-  body.appendChild(
-    h("a", { class: "fb-breadcrumb__link", href: "#/mailbox" }, "← Quay lại Hộp thư"),
-  );
-
   const messageId = String((thread && thread.message_id) || "");
   const direction = thread && (thread.direction === "sent" || thread.direction === "received") ? thread.direction : null;
   const counterpartyId = String((thread && thread.counterparty_id) || "");
+
+  // ---- Thanh điều hướng: một lối về Hộp thư + tên màn (không hai chrome) ----
+  const topBar = h("header", { class: "fb-msg-top" },
+    h("a", { class: "fb-msg-top__back", href: "#/mailbox" },
+      createIcon({ name: "arrow_back_ios_new", size: 18 }),
+      h("span", {}, "← Quay lại Hộp thư"),
+    ),
+    h("h1", { class: "fb-msg-top__title" }, "Chi tiết thư"),
+  );
+  body.appendChild(topBar);
 
   // R04 / T10: Dữ liệu thiếu hoặc direction không hợp lệ -> fail-closed, không tự suy ra received
   if (!direction || !messageId || !counterpartyId) {
     body.appendChild(
       h("section", { class: "fb-scard fb-msg-invalid" },
+        createIcon({ name: "error", size: 22, className: "fb-msg-invalid__icon" }),
         h("p", { class: "fb-page__note", role: "status" },
           "Dữ liệu thư không hợp lệ hoặc thiếu thông tin người nhận/gửi. Vui lòng quay lại Hộp thư và thử lại.")
       )
@@ -277,27 +291,60 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
     || "Thành viên Family Bridge";
   const kindLabel = KIND_LABELS[String((thread && thread.kind) || "")] || "Thư";
 
-  // ---- Đầu thư: tiêu đề + thông tin thật từ máy chủ ----
-  const head = h("header", { class: "fb-sec" });
-  head.appendChild(
-    h("div", { class: "fb-sec__row" },
-      h("span", { class: "fb-journey__kicker" }, kindLabel),
+  // ---- Dải meta: loại thư + thời điểm thật từ máy chủ (không bịa giờ) ----
+  const meta = h("section", { class: "fb-msg-meta" });
+  const metaTop = h("div", { class: "fb-msg-meta__row" });
+  metaTop.appendChild(
+    h("span", { class: "fb-msg-meta__kind" },
+      createIcon({ name: "mail", size: 16 }),
+      h("span", {}, kindLabel),
     ),
   );
-  head.appendChild(h("h1", { class: "fb-sec__greeting" }, String((thread && thread.title) || "(Không có tiêu đề)")));
-  head.appendChild(
-    h("p", { class: "fb-sec__sub" },
-      `${direction === "sent" ? "Thư bạn gửi tới" : "Thư bạn nhận từ"} ${counterpartyName}`),
-  );
   const time = timeLabelFull(thread && thread.created_at);
-  if (time) head.appendChild(h("p", { class: "fb-sec__sub" }, `Thời điểm: ${time}`));
-  if (thread && thread.reply_to) {
-    head.appendChild(h("p", { class: "fb-sec__sub" }, "Là lời hồi âm cho một thư khác trong hộp thư."));
+  if (time) {
+    metaTop.appendChild(
+      h("span", { class: "fb-msg-meta__time" },
+        createIcon({ name: "timer", size: 14 }),
+        h("span", {}, time),
+      ),
+    );
   }
-  body.appendChild(head);
+  meta.appendChild(metaTop);
+  const who = h("div", { class: "fb-msg-meta__who" });
+  who.appendChild(
+    h("span", { class: "fb-msg-meta__avatar", "aria-hidden": "true" },
+      createIcon({ name: direction === "sent" ? "drafts" : "favorite", size: 20, fill: true }),
+    ),
+  );
+  const whoText = h("div", { class: "fb-msg-meta__who-text" });
+  whoText.appendChild(
+    h("p", { class: "fb-msg-meta__name" },
+      `${direction === "sent" ? "Gửi đến" : "Từ"}: ${counterpartyName}`),
+  );
+  whoText.appendChild(
+    h("p", { class: "fb-msg-meta__note" },
+      thread && thread.reply_to
+        ? "Là lời hồi âm cho một thư khác trong hộp thư. Không có trạng thái đã xem."
+        : "Không gian thư riêng tư • Không có trạng thái đã xem"),
+  );
+  who.appendChild(whoText);
+  meta.appendChild(who);
+  body.appendChild(meta);
 
-  // ---- Nội dung thư: một bong bóng căn theo hướng gửi/nhận (textContent) ----
-  const threadCard = h("section", { class: "fb-scard fb-msg-thread" });
+  // ---- Thẻ thư giấy: kicker + tiêu đề + thân (bong bóng theo hướng) ----
+  const threadCard = h("article", { class: "fb-scard fb-msg-thread" });
+  const letterHead = h("div", { class: "fb-msg-letter__head" });
+  letterHead.appendChild(
+    h("span", { class: "fb-msg-letter__kicker" },
+      direction === "sent" ? "Bức thư bạn gửi đi" : "Bức thư nhận được"),
+  );
+  letterHead.appendChild(
+    createIcon({ name: "spa", size: 20, className: "fb-msg-letter__flora" }),
+  );
+  threadCard.appendChild(letterHead);
+  threadCard.appendChild(
+    h("h2", { class: "fb-msg-letter__title" }, String((thread && thread.title) || "(Không có tiêu đề)")),
+  );
   const bubble = h("div", {
     class: `fb-msg-bubble ${direction === "sent" ? "fb-msg-bubble--sent" : "fb-msg-bubble--received"}`,
   });
@@ -311,15 +358,39 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   );
   threadCard.appendChild(bubble);
   threadCard.appendChild(
-    h("p", { class: "fb-sec__sub" },
-      "Hệ thống không theo dõi việc xem thư của người nhận — không có xác nhận xem ở hai chiều."),
+    h("p", { class: "fb-msg-letter__note" },
+      "Dành thời gian suy ngẫm — hệ thống không theo dõi việc xem thư, không có xác nhận xem ở hai chiều."),
   );
   body.appendChild(threadCard);
 
+  // Vạch phân cách ấm giữa thư và khu phản hồi (frame m09 chính).
+  body.appendChild(
+    h("div", { class: "fb-msg-divider", "aria-hidden": "true" },
+      h("span", {}, ""),
+      createIcon({ name: "edit_note", size: 16 }),
+      h("span", {}, ""),
+    ),
+  );
+
   // R01 / T01 / T05: Thư gửi đi (direction === "sent") -> KHÔNG render composer, KHÔNG AI, KHÔNG gửi
   if (direction === "sent") {
+    // Frame m09_th_g_i_kh_ng_ph_n_h_i: thư đã gửi — không có composer/AI,
+    // ghi chú chờ hồi âm không áp lực + lối gửi thư mới + lối trợ giúp.
     const sentNotice = h("section", { class: "fb-scard fb-msg-sent-notice" },
-      h("p", { class: "fb-sec__sub" }, "Đây là thư bạn đã gửi đi. Bạn có thể xem lại nội dung tại đây.")
+      h("p", { class: "fb-msg-sent-notice__title" }, "Đây là thư bạn đã gửi đi. Bạn có thể xem lại nội dung tại đây."),
+      h("p", { class: "fb-sec__sub" },
+        "Đang chờ hồi âm từ người nhận — mỗi người cần thời gian để lắng nghe. "
+        + "Không có thông báo hối thúc hay áp lực trả lời ngay."),
+      h("div", { class: "fb-msg-sent-notice__actions" },
+        h("a", { class: "fb-btn fb-btn--primary", href: "#/compose" },
+          createIcon({ name: "edit_note", size: 18 }),
+          h("span", {}, "Gửi thêm lời nhắn mới"),
+        ),
+        h("a", { class: "fb-btn fb-btn--ghost", href: "#/help" },
+          createIcon({ name: "support_agent", size: 18 }),
+          h("span", {}, "Tìm trợ giúp"),
+        ),
+      ),
     );
     body.appendChild(sentNotice);
     return;
@@ -327,12 +398,23 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
 
   // ---- Khung phản hồi: CHỈ dành cho thư nhận (direction === "received") ----
   const composeCard = h("section", { class: "fb-scard fb-msg-compose" });
-  composeCard.appendChild(h("h2", { class: "fb-scard__title" }, "Phản hồi thư này"));
+  composeCard.appendChild(h("h2", { class: "fb-scard__title" }, `Gửi lời hồi âm đến ${counterpartyName}`));
   composeCard.appendChild(
     h("p", { class: "fb-sec__sub" }, "Không áp lực trả lời ngay — bạn hoàn toàn chủ động thời điểm và nội dung."),
   );
 
   const chipsWrap = h("div", { class: "fb-msg-chips" });
+  const chipsHead = h("div", { class: "fb-msg-chips__head" });
+  chipsHead.appendChild(
+    h("span", { class: "fb-msg-chips__label" },
+      createIcon({ name: "tips_and_updates", size: 18, className: "fb-stitch-primary-icon" }),
+      h("span", {}, "Mẫu trả lời nhanh"),
+    ),
+  );
+  chipsHead.appendChild(
+    h("span", { class: "fb-msg-chips__note" }, "Chỉ điền vào ô soạn thảo"),
+  );
+  composeCard.appendChild(chipsHead);
   const chipsNote = h("p", { class: "fb-sec__sub", role: "status" }, "");
   composeCard.appendChild(chipsWrap);
   composeCard.appendChild(chipsNote);
@@ -345,6 +427,9 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
     placeholder: "Viết lời phản hồi của bạn…",
   });
   composeCard.appendChild(textarea);
+  composeCard.appendChild(
+    h("p", { class: "fb-msg-counter" }, `Giới hạn ${BODY_MAX.toLocaleString("vi-VN")} ký tự — phản hồi chỉ gửi khi bạn bấm nút bên dưới.`),
+  );
 
   const aiSlot = h("div", { class: "fb-msg-ai" });
   composeCard.appendChild(aiSlot);
@@ -359,6 +444,20 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   composeCard.appendChild(sendBtn);
   composeCard.appendChild(statusNote);
   body.appendChild(composeCard);
+
+  // Ghi chú an toàn (frame m09 chính — bỏ "Design Spec" mock): phản hồi tự
+  // nguyện, không chỉ báo "Đang soạn"/"Đã đọc" ở hai chiều.
+  body.appendChild(
+    h("section", { class: "fb-msg-safety" },
+      createIcon({ name: "verified_user", size: 20, className: "fb-stitch-primary-icon" }),
+      h("div", {},
+        h("p", { class: "fb-msg-safety__title" }, "Ghi chú an toàn & tôn trọng"),
+        h("p", { class: "fb-msg-safety__text" },
+          "Phản hồi hoàn toàn tự nguyện. Người nhận không thấy chỉ báo "
+          + "“Đang soạn” hay “Đã đọc” — mỗi bên giữ nhịp độ riêng của mình."),
+      ),
+    ),
+  );
 
   const sending = { busy: false };
 

@@ -1,21 +1,37 @@
-// U01 — Welcome (Stitch upgrade 2026-10): tái tạo màn chào theo
-// docs/design/stitch-reference/u01_ch_o_m_ng_family_bridge/ (screen.png +
-// code.html là chuẩn đối chiếu).
+// M01 — Chào mừng (Stitch handoff 2026-10-21). Frame tham chiếu:
+// m01_ch_o_m_ng_390px + m01_ch_o_m_ng_320px_ch_l_n (code.html chỉ tham khảo
+// bố cục — đã loại Design Spec/handoff, hotline "111", "miễn phí 24/7",
+// claim "riêng tư tuyệt đối" theo DESIGN-REVIEW.md).
 //
 // Ràng buộc giữ nguyên từ nền tảng:
 // - KHÔNG gọi getUserInfo/SDK ở màn mở đầu (không xin quyền nào, không tự
 //   dựng đăng nhập Zalo ở đây) — đăng nhập đi qua /login với adapter.
-// - CTA "Tiếp tục với Zalo" dẫn đúng luồng thật: /login (trong Zalo có
-//   đăng nhập im lặng một lần từ main.js; ngoài Zalo hiện hướng dẫn).
-// - Liên kết trợ giúp LUÔN hiển thị, không phụ thuộc vai trò/kết nối.
-// Ngoại lệ copy so với prototype (ghi trong docs/design/stitch-ui-upgrade/):
-// - "Hơn 1,200 gia đình…" chưa có bằng chứng -> caption trung tính.
-// - "Tổng đài 111" chưa có nguồn được duyệt -> dẫn về trang Trợ giúp trong app
-//   (nguồn liên hệ được xác minh ở đó), không gọi tel: trực tiếp.
-// - Micro-copy chân trang không thay thế cổng đồng ý (consent gate riêng).
+// - CTA dẫn đúng luồng thật: /login (trong Zalo có đăng nhập im lặng một lần
+//   từ main.js; ngoài Zalo hiện hướng dẫn). Không form mật khẩu ở đây.
+// - Liên kết trợ giúp LUÔN hiển thị, không phụ thuộc vai trò/kết nối;
+//   dẫn về trang Trợ giúp (nguồn liên hệ được xác minh ở đó), không tel:.
 import { h } from "../../app/dom.js";
 import { createButton, createLogo, createIcon } from "../../components/index.js";
 import heroTeaUrl from "../../assets/illustrations/hero-welcome-tea.jpg";
+
+/** Hàng tính năng của frame M01 (390px): icon + tiêu đề + mô tả ngắn. */
+const FEATURES = [
+  {
+    icon: "style",
+    title: "Thẻ cảm xúc & lời nhắn",
+    text: "Bày tỏ nhẹ nhàng khi chưa sẵn sàng nói trực tiếp. Bạn luôn xem trước toàn bộ nội dung và tự bấm gửi.",
+  },
+  {
+    icon: "hourglass_top",
+    title: "Khoảng dừng 300 giây",
+    text: "Tùy chọn 5 phút để bình tĩnh xem lại trước khi gửi. Hết giờ thư vẫn là bản nháp — không bao giờ tự gửi.",
+  },
+  {
+    icon: "spa",
+    title: "Đồng hành tự nguyện",
+    text: "Lộ trình 4 tuần gợi ý mỗi tuần một việc nhỏ. Tham gia, nghỉ hay quay lại đều do bạn quyết định.",
+  },
+];
 
 export const page = {
   id: "u01-welcome",
@@ -26,35 +42,30 @@ export const page = {
   render(ctx) {
     const root = h("div", { class: "fb-page", dataset: { page: "u01-welcome" } });
 
-    // Pill thông báo phiên thử nghiệm
-    root.appendChild(
-      h("div", { class: "fb-welcome__pill-row" },
-        h("span", { class: "fb-chip fb-chip--high" },
-          createIcon({ name: "verified_user", size: 16, className: "fb-welcome__pill-icon" }),
-          "Phiên bản thử nghiệm dành cho học sinh & phụ huynh THPT",
-        ),
+    // Hàng thương hiệu đầu trang (frame M01: logo + tên + chip "Zalo Mini App")
+    const brandRow = h("div", { class: "fb-wm-brand" });
+    brandRow.appendChild(createLogo({ size: "md" }));
+    brandRow.appendChild(
+      h("div", { class: "fb-wm-brand__text" },
+        h("span", { class: "fb-wm-brand__name" }, "Family Bridge"),
+        h("span", { class: "fb-wm-brand__host" }, "Zalo Mini App"),
       ),
     );
+    root.appendChild(brandRow);
 
-    // Thẻ hero: logo thật + brand + headline + mô tả
-    const hero = h("div", { class: "fb-welcome__hero" });
-    const glow = h("div", { class: "fb-logo-glow" });
-    glow.appendChild(createLogo({ size: "lg" }));
-    hero.appendChild(glow);
-    hero.appendChild(h("span", { class: "fb-brand-label" }, "Family Bridge"));
+    // Hero: headline + mô tả + ảnh minh họa (asset local, caption trung tính)
+    const hero = h("div", { class: "fb-wm-hero" });
     hero.appendChild(
-      h("h1", { class: "fb-welcome__title" }, "Mở lời nhẹ nhàng, gần nhau hơn"),
+      h("h1", { class: "fb-wm-hero__title" }, "Mở lời nhẹ nhàng, gần nhau hơn"),
     );
     hero.appendChild(
-      h("p", { class: "fb-welcome__desc" },
-        "Cầu nối hỗ trợ giao tiếp và kết nối yêu thương giữa học sinh THPT và gia đình qua hành trình 4 tuần thấu hiểu. Hoàn toàn tự nguyện, tôn trọng sự riêng tư và ranh giới cá nhân.",
+      h("p", { class: "fb-wm-hero__desc" },
+        "Cầu nối giúp học sinh THPT và người thân lắng nghe tâm tư của nhau "
+        + "mà không có áp lực phán xét. Mọi mục chia sẻ đều do bạn chủ động quyết định.",
       ),
     );
-    root.appendChild(hero);
-
-    // Ảnh minh họa + overlay caption trung tính (không dùng số liệu chưa kiểm chứng)
-    root.appendChild(
-      h("figure", { class: "fb-photo fb-welcome__photo" },
+    hero.appendChild(
+      h("figure", { class: "fb-photo fb-wm-hero__photo" },
         h("img", {
           src: heroTeaUrl,
           alt: "Mẹ và con trò chuyện bên tách trà trên ban công, ánh sáng ấm dịu",
@@ -65,67 +76,85 @@ export const page = {
         }),
         h("figcaption", { class: "fb-photo__overlay" },
           h("span", { class: "fb-photo__caption fb-photo__caption--plain" },
-            createIcon({ name: "favorite", size: 16, className: "fb-welcome__heart" }),
+            createIcon({ name: "favorite", size: 16, className: "fb-wm-hero__heart" }),
             " Không gian riêng tư cho gia đình bạn",
           ),
         ),
       ),
     );
+    root.appendChild(hero);
 
-    // Thẻ cam kết bảo mật & ranh giới
-    const commitment = h("div", { class: "fb-welcome__commit" });
-    const shieldCircle = h("span", { class: "fb-welcome__shield", "aria-hidden": "true" });
+    // Ba hàng tính năng theo frame M01 390px
+    const features = h("div", { class: "fb-wm-features" });
+    FEATURES.forEach(({ icon, title, text }) => {
+      const row = h("div", { class: "fb-wm-feature" });
+      const circle = h("span", { class: "fb-wm-feature__icon", "aria-hidden": "true" });
+      circle.appendChild(createIcon({ name: icon, size: 22 }));
+      row.appendChild(circle);
+      row.appendChild(
+        h("div", { class: "fb-wm-feature__body" },
+          h("h2", { class: "fb-wm-feature__title" }, title),
+          h("p", { class: "fb-wm-feature__text" }, text),
+        ),
+      );
+      features.appendChild(row);
+    });
+    root.appendChild(features);
+
+    // Thẻ cam kết bảo mật & ranh giới (giữ copy trung thực có sẵn)
+    const commitment = h("div", { class: "fb-wm-commit" });
+    const shieldCircle = h("span", { class: "fb-wm-commit__shield", "aria-hidden": "true" });
     shieldCircle.appendChild(createIcon({ name: "shield", size: 20, fill: true }));
     commitment.appendChild(shieldCircle);
-    const commitBody = h("div", { class: "fb-welcome__commit-body" });
+    const commitBody = h("div", { class: "fb-wm-commit__body" });
     commitBody.appendChild(
-      h("div", { class: "fb-welcome__commit-head" },
-        h("span", { class: "fb-welcome__commit-title" }, "Cam kết bảo mật & ranh giới"),
+      h("div", { class: "fb-wm-commit__head" },
+        h("span", { class: "fb-wm-commit__title" }, "Cam kết bảo mật & ranh giới"),
         h("span", { class: "fb-chip fb-chip--safety" }, "An toàn"),
       ),
     );
     commitBody.appendChild(
-      h("p", { class: "fb-welcome__commit-text" },
+      h("p", { class: "fb-wm-commit__text" },
         "Không chia sẻ tự động nhật ký, không phán xét, không áp lực điểm số.",
       ),
     );
     commitBody.appendChild(
-      h("div", { class: "fb-welcome__commit-chips" },
+      h("div", { class: "fb-wm-commit__chips" },
         h("span", { class: "fb-chip fb-chip--low" },
           createIcon({ name: "lock", size: 14 }), "Chỉ mình bạn"),
         h("span", { class: "fb-chip fb-chip--low" },
-          createIcon({ name: "timer", size: 14, className: "fb-welcome__chip-timer" }),
+          createIcon({ name: "timer", size: 14 }),
           "Quyền suy ngẫm 5 phút"),
       ),
     );
     commitment.appendChild(commitBody);
     root.appendChild(commitment);
 
-    // CTA chính + hành động phụ
-    const actions = h("div", { class: "fb-welcome__actions" });
+    // CTA chính + hành động phụ (frame: "Bắt đầu" → luồng đăng nhập thật)
+    const actions = h("div", { class: "fb-wm-actions" });
     const loginCta = h("button", {
-      class: "fb-btn fb-btn--cta fb-btn--lg fb-welcome__cta",
+      class: "fb-btn fb-btn--cta fb-btn--lg fb-wm-actions__cta",
       type: "button",
       onclick: () => ctx.navigate("/login"),
     });
     loginCta.appendChild(
-      createIcon({ name: "arrow_forward", size: 20, className: "fb-welcome__cta-icon" }),
+      createIcon({ name: "arrow_forward", size: 20, className: "fb-wm-actions__cta-icon" }),
     );
     loginCta.appendChild(h("span", {}, "Tiếp tục để đăng nhập"));
     actions.appendChild(loginCta);
     actions.appendChild(
-      h("div", { class: "fb-welcome__links" },
+      h("div", { class: "fb-wm-links" },
         h("button", {
-          class: "fb-welcome__how",
+          class: "fb-wm-links__how",
           type: "button",
           onclick: () => ctx.navigate("/how-to-use"),
         },
-          createIcon({ name: "info", size: 18 }),
-          h("span", {}, "Tìm hiểu cách Family Bridge hoạt động"),
+          createIcon({ name: "menu_book", size: 18 }),
+          h("span", {}, "Xem cách Family Bridge hoạt động"),
         ),
-        h("a", { class: "fb-welcome__help", href: "#/help" },
-          createIcon({ name: "phone_in_talk", size: 18, fill: true }),
-          h("span", {}, "Tìm trợ giúp khẩn cấp & tâm lý"),
+        h("a", { class: "fb-wm-links__help", href: "#/help" },
+          createIcon({ name: "support_agent", size: 18 }),
+          h("span", {}, "Tìm trợ giúp học đường & tâm lý"),
         ),
       ),
     );
@@ -133,7 +162,7 @@ export const page = {
 
     // Micro-copy: KHÔNG thay thế cổng đồng ý (consent) — chỉ nêu cam kết chung.
     root.appendChild(
-      h("p", { class: "fb-welcome__micro" },
+      h("p", { class: "fb-wm-micro" },
         "Family Bridge tôn trọng sự riêng tư của bạn. Mỗi mục chia sẻ đều do bạn chủ động quyết định và có thể thu hồi bất kỳ lúc nào.",
       ),
     );

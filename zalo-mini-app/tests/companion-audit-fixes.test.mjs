@@ -576,7 +576,9 @@ describe("BUG-F02-02: 401 swallowed in parallel GETs & session handling", () => 
     try {
       await wait(60);
       assert.equal(navigateCalls.length, 0, "không được điều hướng login khi lỗi non-401");
-      assert.match(textOf(host), /Chương trình Đồng hành bốn tuần/,
+      // Stitch handoff 21/10 (M07): heading tách eyebrow "Chương trình tự
+      // nguyện" + h2 "Đồng hành bốn tuần" — assertion cập nhật theo copy mới.
+      assert.match(textOf(host), /Đồng hành bốn tuần/,
         "vẫn hiển thị nội dung chương trình tuần dùng được");
     } finally {
       unmount(host);

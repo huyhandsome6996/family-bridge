@@ -1,4 +1,8 @@
-// F01 — Đồng ý theo từng mục đích, từng phiên bản chính sách (WF-17).
+// M04 — Đồng ý theo từng mục đích, từng phiên bản chính sách (WF-17).
+// Stitch handoff 2026-10-21 (m04_ng_ch_a_ch_n / m04_ng_ch_n_b_t_bu_c /
+// m04_ng_l_i_l_u_k_t_n_i): card checkbox 44px, chip Bắt buộc/Tùy chọn,
+// gợi ý "Cần chấp nhận Điều khoản sử dụng" dưới CTA khi chưa đủ điều kiện,
+// lỗi lưu hiện banner riêng mà KHÔNG mất lựa chọn đã tick.
 // Không tự precheck lựa chọn nào; chỉ đánh dấu lại những mục người dùng ĐÃ
 // chấp nhận trước đó cho đúng phiên bản hiện hành (khôi phục trạng thái thật).
 // Đăng nhập không bao giờ tự hiểu là đã đồng ý.
@@ -6,7 +10,7 @@ import { h } from "../../app/dom.js";
 import { getSessionGeneration, hasLiveSession } from "../../core/session.js";
 import { CONSENT_ORDER, POLICY_PURPOSES } from "../../core/policy.js";
 import {
-  createButton, createCard, createErrorState, createSkeleton, createTopBar,
+  createButton, createErrorState, createIcon, createSkeleton, createTopBar,
 } from "../../components/index.js";
 
 let markRenderCancelled = () => {};
@@ -46,18 +50,24 @@ export const page = {
       return root;
     }
 
-    body.appendChild(
-      h("h2", { class: "fb-page__heading" }, "Bạn đồng ý điều gì?"),
+    // Header theo frame M04: kicker + tiêu đề + mô tả trung thực
+    const head = h("header", { class: "fb-consent__head" });
+    head.appendChild(
+      h("span", { class: "fb-consent__kicker" },
+        createIcon({ name: "shield_person", size: 16 }),
+        "Minh bạch & quyền riêng tư",
+      ),
     );
-
-    const intro = h(
-      "p", { class: "fb-page__lead" },
-      "Mỗi mục đích sử dụng cần một sự đồng ý riêng. Bạn chỉ chọn những gì bạn muốn; " +
-      "từ chối mục tùy chọn không ảnh hưởng việc dùng ứng dụng.",
+    head.appendChild(h("h2", { class: "fb-consent__heading" }, "Bạn đồng ý điều gì?"));
+    head.appendChild(
+      h("p", { class: "fb-consent__sub" },
+        "Mỗi mục đích sử dụng cần một sự đồng ý riêng. Bạn chỉ chọn những gì bạn muốn; " +
+        "từ chối mục tùy chọn không ảnh hưởng việc dùng ứng dụng.",
+      ),
     );
-    body.appendChild(intro);
+    body.appendChild(head);
 
-    const formArea = h("div", {});
+    const formArea = h("div", { class: "fb-consent__list" });
     body.appendChild(formArea);
 
     const checkboxes = new Map(); // purpose -> input element
@@ -73,6 +83,47 @@ export const page = {
       onClick: () => submit(),
     });
 
+    // Gợi ý hiển thị khi CTA còn khóa (frame m04_chưa_chọn). Node thêm/gỡ
+    // khỏi DOM theo trạng thái — không dùng hidden để text không lẫn vào
+    // textContent khi điều kiện không còn đúng.
+    let requiredHint = null;
+    function syncRequiredHint(serviceChecked) {
+      if (!serviceChecked && !requiredHint) {
+        requiredHint = h("p", { class: "fb-consent__required-hint" },
+          createIcon({ name: "info", size: 15, className: "fb-consent__required-hint-icon" }),
+          "Cần chấp nhận Điều khoản sử dụng để tiếp tục.",
+        );
+        const parent = continueButton.parentNode;
+        if (parent) parent.insertBefore(requiredHint, continueButton.nextSibling);
+      } else if (serviceChecked && requiredHint) {
+        if (requiredHint.parentNode) requiredHint.parentNode.removeChild(requiredHint);
+        requiredHint = null;
+      }
+    }
+
+    // Banner lỗi lưu (frame m04_lỗi_lưu): các checkbox GIỮ NGUYÊN lựa chọn —
+    // logic submit dưới đây không reset form. Không gắn role="status" (slot
+    // status duy nhất của trang là submitStatus bên dưới, test A01 dựa vào đó).
+    let saveErrorCard = null;
+    function showSaveError(title, text) {
+      hideSaveError();
+      saveErrorCard = h("div", { class: "fb-consent__save-error", role: "alert" },
+        createIcon({ name: "error", size: 20, className: "fb-consent__save-error-icon" }),
+        h("div", { class: "fb-consent__save-error-body" },
+          h("strong", {}, title),
+          h("p", {}, text),
+        ),
+      );
+      const parent = continueButton.parentNode;
+      if (parent) parent.insertBefore(saveErrorCard, continueButton);
+    }
+    function hideSaveError() {
+      if (saveErrorCard) {
+        if (saveErrorCard.parentNode) saveErrorCard.parentNode.removeChild(saveErrorCard);
+        saveErrorCard = null;
+      }
+    }
+
     function syncContinueState() {
       const serviceChecked = checkboxes.get("service")
         ? checkboxes.get("service").checked : false;
@@ -80,6 +131,7 @@ export const page = {
       continueButton.title = serviceChecked
         ? ""
         : "Cần chấp nhận Điều khoản sử dụng để tiếp tục.";
+      syncRequiredHint(serviceChecked);
     }
 
     function renderForm() {
@@ -89,29 +141,40 @@ export const page = {
         const checkbox = h("input", {
           type: "checkbox",
           id: `fb-consent-${config.purpose}`,
-          class: "fb-input",
-          style: "width:auto;margin-right:8px;",
-          onChange: () => syncContinueState(),
+          class: "fb-consent__checkbox",
+          onChange: () => {
+            hideSaveError();
+            syncContinueState();
+          },
         });
         checkbox.checked = restoredAccepted.get(config.purpose) === true; // không precheck; chỉ khôi phục lựa chọn cũ đúng phiên bản
         checkboxes.set(config.purpose, checkbox);
 
         const noteText = recordedNotes.get(config.purpose);
+        const item = h("div", { class: "fb-consent__item" });
         const label = h("label", {
+          class: "fb-consent__label",
           for: `fb-consent-${config.purpose}`,
-          style: "display:flex;align-items:flex-start;gap:4px;",
         },
-        checkbox,
-        h("span", {},
-          h("strong", {}, config.title + (config.required ? " (bắt buộc)" : " (tùy chọn)")),
-          h("br"),
-          config.description,
-          noteText ? h("span", { class: "fb-page__note" }, noteText) : null,
-        ),
+          checkbox,
+          h("span", { class: "fb-consent__box", "aria-hidden": "true" },
+            createIcon({ name: "check_circle", size: 20, className: "fb-consent__box-icon" }),
+          ),
+          h("span", { class: "fb-consent__content" },
+            h("span", { class: "fb-consent__title-row" },
+              h("strong", { class: "fb-consent__title" }, config.title),
+              h("span", {
+                class: `fb-chip ${config.required ? "fb-consent__chip--required" : "fb-consent__chip--optional"}`,
+              }, config.required ? "Bắt buộc" : "Tùy chọn"),
+            ),
+            h("p", { class: "fb-consent__desc" }, config.description),
+            noteText
+              ? h("span", { class: "fb-consent__note" }, noteText)
+              : null,
+          ),
         );
-        formArea.appendChild(
-          createCard({ title: null, description: null, children: label }),
-        );
+        item.appendChild(label);
+        formArea.appendChild(item);
       }
       syncContinueState();
     }
@@ -155,7 +218,7 @@ export const page = {
         });
     }
 
-    const submitStatus = h("p", { class: "fb-page__note", role: "status" });
+    const submitStatus = h("p", { class: "fb-consent__status fb-page__note", role: "status" });
 
     function setCheckboxesDisabled(disabled) {
       for (const checkbox of checkboxes.values()) {
@@ -166,6 +229,7 @@ export const page = {
     async function submit() {
       if (submitting) return;
       submitting = true;
+      hideSaveError();
       syncContinueState();
       continueButton.disabled = true;
       // A01: chốt actor + SNAPSHOT lựa chọn NGAY LÚC BẤM. Mọi mutation sau
@@ -202,9 +266,13 @@ export const page = {
           submitting = false;
           setCheckboxesDisabled(false);
           syncContinueState();
-          submitStatus.textContent = error && error.kind === "timeout"
-            ? "Không đọc được trạng thái đồng ý (quá thời gian chờ). Chưa ghi gì — vui lòng thử lại."
-            : "Không đọc được trạng thái đồng ý. Chưa ghi gì — vui lòng thử lại.";
+          showSaveError(
+            "Không đọc được trạng thái đồng ý",
+            error && error.kind === "timeout"
+              ? "Kết nối quá thời gian chờ. Chưa ghi gì — lựa chọn của bạn vẫn giữ nguyên, vui lòng thử lại."
+              : "Không kết nối được máy chủ. Chưa ghi gì — lựa chọn của bạn vẫn giữ nguyên, vui lòng thử lại.",
+          );
+          submitStatus.textContent = "Chưa ghi gì — các lựa chọn của bạn vẫn được giữ nguyên.";
           return;
         }
         for (const item of decisions) {
@@ -241,11 +309,21 @@ export const page = {
         // A01/A10: kết quả ghi chưa xác định (mất response: timeout/network/
         // stale khi phiên còn) không được báo chắc chắn thất bại hay tự
         // replay — mời kiểm tra lại; submit sau đó đối chiếu trước khi ghi.
-        submitStatus.textContent =
-          error && (error.kind === "timeout" || error.kind === "network"
-            || error.kind === "stale_session")
-            ? "Kết quả ghi CHƯA XÁC ĐỊNH (máy chủ có thể đã nhận). Bấm Xác nhận lại sau khi kiểm tra, lựa chọn của bạn sẽ được đối chiếu trước khi ghi."
-            : "Không ghi nhận được đồng ý. Vui lòng thử lại.";
+        if (error && (error.kind === "timeout" || error.kind === "network"
+          || error.kind === "stale_session")) {
+          showSaveError(
+            "Kết quả ghi CHƯA XÁC ĐỊNH",
+            "Máy chủ có thể đã nhận. Lựa chọn của bạn vẫn giữ nguyên — bấm Xác nhận và tiếp tục sau khi kiểm tra, hệ thống sẽ đối chiếu trước khi ghi.",
+          );
+          submitStatus.textContent =
+            "Kết quả ghi CHƯA XÁC ĐỊNH (máy chủ có thể đã nhận). Bấm Xác nhận lại sau khi kiểm tra, lựa chọn của bạn sẽ được đối chiếu trước khi ghi.";
+        } else {
+          showSaveError(
+            "Không ghi nhận được đồng ý",
+            "Lựa chọn của bạn vẫn giữ nguyên. Vui lòng thử lại.",
+          );
+          submitStatus.textContent = "Không ghi nhận được đồng ý. Vui lòng thử lại.";
+        }
       }
     }
 
@@ -253,9 +331,17 @@ export const page = {
     body.appendChild(submitStatus);
     body.appendChild(
       h("p", { class: "fb-page__note" },
-        "Việc thu hồi từng sự đồng ý sẽ nằm trong phần Cá nhân khi tính năng " +
-        "quản lý quyền riêng tư (F15) được kích hoạt trên bản này. Thu hồi khi " +
-        "có sẽ không xóa dữ liệu đã ghi trong sổ cái mà đánh dấu không còn hiệu lực.",
+        "Bạn có thể xem và rút lại từng lựa chọn đồng ý bất cứ lúc nào trong Cài đặt & Riêng tư. "
+        + "Thu hồi không xóa dữ liệu đã ghi trong sổ cái mà đánh dấu không còn hiệu lực.",
+      ),
+    );
+
+    body.appendChild(
+      h("p", { class: "fb-page__aside" },
+        h("a", { href: "#/help" },
+          createIcon({ name: "support_agent", size: 16 }),
+          " Tìm trợ giúp học đường & tâm lý",
+        ),
       ),
     );
 

@@ -504,6 +504,12 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
   });
   syncCounter(); // đếm đúng cả khi tải lại bản nháp đã có nội dung
   editor.appendChild(ui.textarea);
+  // Frame m10: nhãn giới hạn thật của backend (frame mock ghi "4.000" dưới
+  // dạng mock 400 — dùng số thật 4000 theo f06 _content_fields).
+  editor.appendChild(
+    h("p", { class: "fb-compose__limit-hint" },
+      `Tối đa ${BODY_MAX.toLocaleString("vi-VN")} ký tự • bản nháp chỉ nằm trên máy chủ, chưa gửi cho ai`),
+  );
 
   // w12: ghi chú niêm phong — hiện khi trạng thái paused (refreshPauseUi).
   ui.sealedNote = h("p", { class: "fb-compose__sealed-note", hidden: true },
@@ -683,6 +689,14 @@ function renderCompose(body, ctx, { connections, draft, listServerTimeIso, aiEna
     ),
   );
   sideCol.appendChild(helpCard);
+
+  // ---- Bố cục mobile theo frame m10_so_n_th_c_m_x_c: AI ngay dưới vùng
+  // soạn, CTA xem trước tiếp theo, khối khoảng dừng sau cùng; thẻ đang
+  // chọn + trợ giúp ở cụm phụ. appendChild trên node đã gắn = DI CHUYỂN
+  // (không nhân bản) — mọi tham chiếu ui.* vẫn hợp lệ.
+  mainCol.appendChild(aiCard);
+  mainCol.appendChild(footer);
+  mainCol.appendChild(pauseCard);
 
   // ---- Khởi tạo trạng thái hiển thị ----
   refreshRecipientUi(state, ui);

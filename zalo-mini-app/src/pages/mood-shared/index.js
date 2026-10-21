@@ -19,7 +19,7 @@ export const page = {
   title: "Được chia sẻ với bạn",
   requiresRole: true,
   requiresAuth: true, // dữ liệu chia sẻ theo phiên (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app",
 
   render(ctx) {

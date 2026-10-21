@@ -20,7 +20,7 @@ import { h } from "../../app/dom.js";
 import { hasLiveSession } from "../../core/session.js";
 import {
   createButton, createCard, createDialog, createEmptyState, createErrorState,
-  createInput, createSkeleton, createStatusBadge, createTopBar,
+  createIcon, createInput, createSkeleton, createStatusBadge, createTopBar,
 } from "../../components/index.js";
 
 let markRenderCancelled = () => {};
@@ -175,12 +175,20 @@ export const page = {
       return root;
     }
 
+    // Banner tin cậy theo frame M17 (không tuyên bố mã hóa/E2EE — chỉ những
+    // gì contract thật bảo đảm: hai phía xác nhận, chia sẻ từng mục).
     body.appendChild(
-      h("p", { class: "fb-page__lead" },
-        "Hai bên cùng xác nhận mới tạo được kết nối: một bên tạo mã mời, bên kia nhập mã và " +
-        "KIỂM TRA đúng người trước khi đồng ý, người tạo mã đối chiếu lại rồi xác nhận cuối cùng. " +
-        "Kết nối không cho phép đọc nhật ký hay nội dung riêng của nhau — mọi mục chia sẻ vẫn " +
-        "do bạn quyết định.",
+      h("section", { class: "fbc-banner" },
+        h("span", { class: "fbc-banner__icon", "aria-hidden": "true" },
+          createIcon({ name: "diversity_1", size: 20 })),
+        h("div", { class: "fbc-banner__body" },
+          h("h2", { class: "fbc-banner__title" }, "Kết nối hai phía, hoàn toàn tự nguyện"),
+          h("p", { class: "fbc-banner__text" },
+            "Một bên tạo mã mời, bên kia nhập mã và KIỂM TRA đúng người trước khi " +
+            "đồng ý; người tạo mã đối chiếu rồi xác nhận cuối cùng. Kết nối không " +
+            "cho phép đọc nhật ký hay nội dung riêng của nhau — mọi mục chia sẻ " +
+            "vẫn do bạn quyết định."),
+        ),
       ),
     );
 
@@ -192,19 +200,69 @@ export const page = {
     const nameArea = h("section", {});
     // ---- danh sách kết nối đang hoạt động ----
     const connectionsArea = h("section", {});
-    // ---- tạo mã mời ----
+    // ---- tạo mã mời (Cách 1) ----
     const inviteArea = h("section", {});
-    // ---- nhập mã ----
+    // ---- nhập mã (Cách 2) ----
     const claimArea = h("section", {});
     // ---- danh sách lời mời ----
     const invitesArea = h("section", {});
 
-    body.appendChild(nameArea);
+    // Thứ tự nội dung theo frame M17: banner → kết nối → Cách 1/Cách 2 →
+    // tên gọi để đối chiếu → lời mời gần đây → FAQ riêng tư → đầu mối trợ giúp.
     body.appendChild(connectionsArea);
     body.appendChild(noticeLine);
     body.appendChild(inviteArea);
     body.appendChild(claimArea);
+    body.appendChild(nameArea);
     body.appendChild(invitesArea);
+
+    // ---- FAQ riêng tư (frame M17 — nội dung khớp contract thật) ----
+    body.appendChild(
+      h("section", { class: "fbc-faq" },
+        h("h2", { class: "fb-page__heading" }, "Giải đáp về sự riêng tư"),
+        h("details", { class: "fbc-acc" },
+          h("summary", { class: "fbc-acc__summary" },
+            "Người đồng hành có đọc được mọi tâm sự của mình không?",
+            h("span", { class: "fbc-acc__chevron", "aria-hidden": "true" },
+              createIcon({ name: "expand_more", size: 20 }))),
+          h("div", { class: "fbc-acc__body" },
+            h("p", {},
+              h("strong", {}, "Không. "),
+              "Mặc định mọi ghi chép là “Chỉ mình tôi”. Chỉ những mục bạn chủ động " +
+              "bấm chia sẻ mới được người kia xem, và bạn có thể thu hồi từng mục " +
+              "trong trang Riêng tư & đồng ý bất cứ lúc nào."),
+          ),
+        ),
+        h("details", { class: "fbc-acc" },
+          h("summary", { class: "fbc-acc__summary" },
+            "Có thể ngắt kết nối bất cứ lúc nào không?",
+            h("span", { class: "fbc-acc__chevron", "aria-hidden": "true" },
+              createIcon({ name: "expand_more", size: 20 }))),
+          h("div", { class: "fbc-acc__body" },
+            h("p", {},
+              h("strong", {}, "Có. "),
+              "Hủy kết nối làm các quyền chia sẻ dựa trên kết nối mất hiệu lực và " +
+              "không tự hồi sinh. Muốn kết nối lại, hai bên phải tạo và xác nhận " +
+              "một lời mời mới."),
+          ),
+        ),
+      ),
+    );
+
+    // ---- đầu mối trợ giúp độc lập (frame M17 có hotline — BỎ số điện thoại,
+    // thay bằng link tới trang Trợ giúp luôn truy cập được) ----
+    body.appendChild(
+      h("section", { class: "fbc-help-pointer" },
+        h("span", { class: "fbc-help-pointer__icon", "aria-hidden": "true" },
+          createIcon({ name: "support_agent", size: 20 })),
+        h("span", { class: "fbc-help-pointer__text" },
+          h("span", { class: "fbc-help-pointer__title" }, "Cần người ngoài gia đình để tâm sự?"),
+          h("span", { class: "fbc-help-pointer__hint" },
+            "Đầu mối hỗ trợ được duyệt sẽ hiển thị tại trang Trợ giúp."),
+        ),
+        h("a", { class: "fb-btn fb-btn--ghost", href: "#/help" }, "Tìm trợ giúp"),
+      ),
+    );
 
     const busyOps = new Set();
     function isBusy(op) { return busyOps.has(op); }
@@ -306,10 +364,7 @@ export const page = {
 
     function showCreatedInvite(created) {
       inviteArea.replaceChildren();
-      const codeText = h("p", {
-        class: "fb-page__title",
-        style: "font-family:monospace;font-size:24px;letter-spacing:3px;",
-      }, created.code);
+      const codeText = h("p", { class: "fbc-code" }, created.code);
       inviteArea.appendChild(
         createCard({
           title: "Mã mời của bạn",
@@ -403,7 +458,7 @@ export const page = {
       createRef.current = createButtonEl;
       inviteArea.appendChild(
         createCard({
-          title: "Mời người đồng hành kết nối",
+          title: "Cách 1 — Chủ động mời: tạo mã cho người thân",
           description:
             "Tạo mã mời 12 ký tự rồi chuyển cho con/người thân nhập trong ứng dụng. " +
             "Mã chỉ hiển thị một lần và có thời hạn 7 ngày.",
@@ -569,7 +624,7 @@ export const page = {
       checkRef.current = checkButton;
       claimArea.appendChild(
         createCard({
-          title: "Đã nhận được mã mời?",
+          title: "Cách 2 — Đã có mã: kiểm tra đúng người trước khi đồng ý",
           description:
             "Nhập mã mời gồm 12 ký tự mà bên kia chuyển cho bạn. Bạn sẽ thấy " +
             "ai tạo mã trước khi quyết định đồng ý.",
@@ -1007,11 +1062,10 @@ export const page = {
       }
     }
 
-    // Khởi tạo
-    body.insertBefore(
-      h("div", { class: "fb-page__aside" }, refreshButton),
-      connectionsArea,
-    );
+    // Khởi tạo — thanh công cụ Làm mới đặt sát danh sách kết nối (không
+    // polling: chỉ làm mới thủ công theo A08/A10).
+    const toolbar = h("div", { class: "fbc-toolbar" }, refreshButton);
+    body.insertBefore(toolbar, connectionsArea);
     renderNameCard();
     renderClaimSection();
     loadName();

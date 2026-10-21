@@ -73,7 +73,7 @@ export const page = {
   title: "Thư viện thẻ cảm xúc",
   requiresRole: true,
   requiresAuth: true, // catalog thẻ là dữ liệu phiên lớp học (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app", // bọc trong app-shell web desktop (router M1)
 
   render(ctx) {
@@ -187,18 +187,18 @@ function renderCards(body, ctx, data) {
   breadcrumb.appendChild(h("span", { class: "fb-breadcrumb__current" }, "Thư viện thẻ cảm xúc"));
   body.appendChild(breadcrumb);
 
-  // ---- Header (w10) — KHÔNG tiền tố nội bộ "W10 •" ----
+  // ---- Header (M11 Stitch) — KHÔNG tiền tố nội bộ "W10 •" ----
   const header = h("header", { class: "fb-sec" });
   header.appendChild(
     h("div", { class: "fb-sec__row" },
-      h("span", { class: "fb-journey__kicker" }, "Không gian an toàn • Tôn trọng mọi xúc cảm"),
+      h("span", { class: "fb-journey__kicker" }, "Cầu nối yêu thương • Không có cảm xúc đúng hay sai"),
     ),
   );
-  header.appendChild(h("h1", { class: "fb-sec__greeting" }, "Thư viện thẻ cảm xúc mở lời"));
+  header.appendChild(h("h1", { class: "fb-sec__greeting" }, "Thư viện thẻ cảm xúc"));
   header.appendChild(
     h("p", { class: "fb-sec__sub" },
-      "Những mẫu câu và thẻ chạm giúp bạn diễn đạt những điều khó cất thành lời một cách "
-      + "nhẹ nhàng, an toàn. Ở đây không có cảm xúc đúng hay sai — mọi trạng thái của bạn "
+      "Chọn lời gần với điều bạn muốn nói. Những mẫu câu và thẻ chạm giúp bạn diễn đạt "
+      + "những điều khó cất thành lời một cách nhẹ nhàng, an toàn — mọi trạng thái của bạn "
       + "đều xứng đáng được lắng nghe.",
     ),
   );
@@ -321,7 +321,7 @@ function renderCardTile(card, ctx, data) {
   );
   foot.appendChild(
     h("span", { class: "fb-cards-tile__cta" },
-      "Chọn mẫu này",
+      "Chạm để xem & gửi thẻ",
       createIcon({ name: "arrow_forward", size: 16 }),
     ),
   );
@@ -392,19 +392,21 @@ function openSendSheet(ctx, card, data) {
     type: "button",
     disabled: true,
     onclick: () => onPreview(),
-  }, "Xem trước");
+  }, "Xem trước nội dung");
 
   function refreshPreviewButton() {
     previewBtn.disabled = !preview.recipientId;
   }
 
   const content = h("div", { class: "fb-cards-sheet" },
-    h("p", { class: "fb-sec__sub" },
-      `Thẻ: “${String(card.title || "")}” (nhóm ${groupLabel(card.group_code)})`,
+    h("div", { class: "fb-cards-sheet__intro" },
+      h("span", { class: "fb-chip" }, groupLabel(card.group_code)),
+      h("p", { class: "fb-cards-sheet__intro-note" },
+        "Chia sẻ điều bạn ấp ủ bằng sự chân thành và dịu dàng."),
     ),
     h("div", { class: "fb-compose__preview-body" }, String(card.body || "")),
     h("div", { class: "fb-field" },
-      h("label", { class: "fb-field__label", for: selectId }, "Gửi đến"),
+      h("label", { class: "fb-field__label", for: selectId }, "Gửi đến ai trong gia đình? (Chỉ chọn 1 người)"),
       select,
       activeConnections.length
         ? h("p", { class: "fb-field__hint" },
@@ -413,11 +415,28 @@ function openSendSheet(ctx, card, data) {
           "Chưa có kết nối đang hoạt động — hãy kết nối với người đồng hành trước."),
     ),
     h("div", { class: "fb-field" },
-      h("label", { class: "fb-field__label", for: noteId }, "Lời nhắn của bạn kèm thẻ (không bắt buộc)"),
+      h("label", { class: "fb-field__label", for: noteId }, "Lời ghi kèm của bạn (Tùy chọn)"),
       note,
       noteCounter,
+      h("p", { class: "fb-field__hint" },
+        "Viết thêm vài dòng nếu bạn muốn chia sẻ cụ thể hơn bối cảnh của mình."),
     ),
-    previewBtn,
+    h("p", { class: "fb-cards-sheet__privacy" },
+      createIcon({ name: "lock", size: 14 }),
+      h("span", {}, "Chỉ người nhận đọc được thẻ và lời ghi kèm."),
+    ),
+    h("p", { class: "fb-cards-sheet__next-step" },
+      createIcon({ name: "verified_user", size: 14, className: "fb-stitch-primary-icon" }),
+      h("span", {}, "Bạn sẽ xem lại toàn bộ nội dung trước khi quyết định gửi đi."),
+    ),
+    h("div", { class: "fb-compose__pause-buttons" },
+      previewBtn,
+      createButton({
+        label: "Để sau, chưa gửi",
+        variant: "ghost",
+        onClick: () => sheet.remove(),
+      }),
+    ),
     previewBox,
     errorBox,
   );
@@ -467,11 +486,11 @@ function openSendSheet(ctx, card, data) {
           ),
         );
         previewBtn.disabled = false;
-        previewBtn.textContent = "Xem trước";
+        previewBtn.textContent = "Xem trước nội dung";
       })
       .catch((error) => {
         previewBtn.disabled = false;
-        previewBtn.textContent = "Xem trước";
+        previewBtn.textContent = "Xem trước nội dung";
         clear(errorBox);
         errorBox.appendChild(
           h("p", { class: "fb-compose__sheet-error", role: "alert" },

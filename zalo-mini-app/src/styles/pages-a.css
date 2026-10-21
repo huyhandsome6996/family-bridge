@@ -1,4 +1,637 @@
 /* ============================================================
-   pages-a.css — style riêng cho nhóm màn do Agent B sở hữu.
-   CHỈ chứa style bề mặt trang (không đụng token/component chung).
+   pages-a.css — nhóm màn M01–M08 (handoff Stitch 21/10)
+   M01 welcome · M02 how-to-use · M03 login · M04 consent ·
+   M05 role-select · M06 home · M07 companion · M08 mailbox
+   Bố cục theo frame Stitch; màu/chữ CHỈ qua token --fb-*;
+   touch ≥44px (CTA 48px); body 16px; một cột 320–430px.
    ============================================================ */
+
+/* ---------- Nguyên dụng chung cho trang (generic primitives) ---------- */
+.fb-page__heading {
+  margin: 0;
+  font-size: var(--fb-fs-headline-md);
+  line-height: var(--fb-lh-headline-md);
+  font-weight: 600;
+  letter-spacing: -0.005em;
+  color: var(--fb-text);
+}
+
+.fb-page__lead {
+  margin: var(--fb-space-2) 0 0;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body);
+  line-height: 1.55;
+}
+
+.fb-page__note {
+  margin: var(--fb-space-3) 0 0;
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+.fb-page__aside {
+  margin-top: var(--fb-space-4);
+  color: var(--fb-outline-text);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+/* ---------- M01 — Chào mừng (fb-wm-*) ---------- */
+.fb-wm-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  min-height: 44px;
+}
+
+.fb-wm-brand__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-wm-brand__name {
+  font-size: var(--fb-fs-headline-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+  line-height: 1.2;
+}
+
+.fb-wm-brand__host {
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-outline-text);
+  line-height: var(--fb-lh-label-sm);
+}
+
+.fb-wm-hero {
+  margin-top: var(--fb-space-4);
+  padding: var(--fb-space-6) var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+}
+
+.fb-wm-hero__title {
+  margin: 0;
+  font-size: var(--fb-fs-headline-lg);
+  line-height: var(--fb-lh-headline-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+  text-wrap: balance;
+}
+
+.fb-wm-hero__desc {
+  margin: var(--fb-space-2) 0 0;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body);
+  line-height: 1.55;
+}
+
+.fb-wm-hero__photo {
+  margin: var(--fb-space-4) 0 0;
+  border-radius: var(--fb-radius-control);
+  overflow: hidden;
+}
+
+.fb-wm-hero__photo img {
+  width: 100%;
+  height: auto;
+  display: block;
+  object-fit: cover;
+}
+
+.fb-wm-hero__heart { color: var(--fb-brand); }
+
+.fb-wm-features {
+  margin-top: var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-wm-feature {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+}
+
+.fb-wm-feature__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fb-primary-fixed);
+  color: var(--fb-brand);
+}
+
+.fb-wm-feature__body { min-width: 0; }
+
+.fb-wm-feature__title {
+  margin: 0;
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+  line-height: 1.4;
+}
+
+.fb-wm-feature__text {
+  margin: 2px 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-wm-commit {
+  margin-top: var(--fb-space-4);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-tertiary-fixed);
+  border: 1px solid var(--fb-tertiary-fixed-dim);
+}
+
+.fb-wm-commit__shield {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--fb-surface);
+  color: var(--fb-brand);
+}
+
+.fb-wm-commit__body { margin-top: var(--fb-space-2); }
+
+.fb-wm-commit__head { display: flex; flex-direction: column; gap: 2px; }
+
+.fb-wm-commit__title {
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-on-tertiary-fixed);
+}
+
+.fb-wm-commit__text {
+  margin: var(--fb-space-2) 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-on-tertiary-fixed);
+}
+
+.fb-wm-commit__chips {
+  margin-top: var(--fb-space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+}
+
+.fb-wm-actions {
+  margin-top: var(--fb-space-6);
+  display: flex;
+  flex-direction: column;
+}
+
+.fb-wm-actions__cta {
+  width: 100%;
+  min-height: var(--fb-touch-target-lg, 48px);
+}
+
+.fb-wm-actions__cta-icon { vertical-align: -4px; }
+
+.fb-wm-links {
+  margin-top: var(--fb-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+}
+
+.fb-wm-links__how,
+.fb-wm-links__help {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-1);
+  min-height: 44px;
+  padding: 0 var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.fb-wm-links__how:hover,
+.fb-wm-links__help:hover { background: var(--fb-surface-container); }
+
+.fb-wm-micro {
+  margin: var(--fb-space-4) 0 0;
+  text-align: center;
+  color: var(--fb-outline-text);
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+}
+
+/* ---------- Kicker dùng chung (M01/M06/M07…) ---------- */
+.fb-care__kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  color: var(--fb-brand);
+  line-height: var(--fb-lh-label-sm);
+}
+
+/* ---------- M02 — Cách dùng (fb-htu-*) ---------- */
+.fb-htu__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+}
+
+.fb-htu__kicker {
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  color: var(--fb-brand);
+}
+
+.fb-htu__heading {
+  margin: 0;
+  font-size: var(--fb-fs-headline-lg);
+  line-height: var(--fb-lh-headline-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-htu__sub {
+  margin: var(--fb-space-2) 0 0;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body);
+  line-height: 1.55;
+}
+
+.fb-htu-step {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+  margin-top: var(--fb-space-4);
+}
+
+.fb-htu-step__card {
+  display: flex;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+}
+
+.fb-htu-step__n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fb-primary);
+  color: var(--fb-on-primary);
+  font-size: var(--fb-fs-label-lg);
+  font-weight: 700;
+}
+
+.fb-htu-step__title {
+  margin: 0;
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-htu-step__desc {
+  margin: 4px 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-htu-step__ways {
+  margin: var(--fb-space-2) 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.fb-htu-step__way {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-htu-commit {
+  margin-top: var(--fb-space-4);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-low);
+  border: 1px dashed var(--fb-hairline-strong);
+}
+
+.fb-htu-commit__title {
+  margin: 0 0 var(--fb-space-2);
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-htu-commit__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  padding: 6px 0;
+}
+
+.fb-htu-commit__icon-circle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fb-primary-fixed);
+  color: var(--fb-brand);
+}
+
+.fb-htu-commit__item-title {
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-htu-commit__item-text {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* ---------- M03 — Đăng nhập: ghi chú vai trò ---------- */
+.fb-cred__role-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  margin-top: var(--fb-space-3);
+}
+
+.fb-cred__role-note-icon {
+  color: var(--fb-outline-text);
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.fb-cred__role-note p {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* ---------- M04 — Đồng ý và quyền riêng tư (fb-consent__*) ---------- */
+.fb-consent__box {
+  margin-top: var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+
+.fb-consent__kicker {
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  color: var(--fb-brand);
+}
+
+.fb-consent__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+}
+
+.fb-consent__title {
+  margin: 0;
+  font-size: var(--fb-fs-headline-md);
+  line-height: var(--fb-lh-headline-md);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-consent__sub {
+  margin: var(--fb-space-2) 0 0;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+.fb-consent__content {
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+}
+
+.fb-consent__head { display: flex; flex-direction: column; gap: 4px; }
+
+.fb-consent__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-2) 0;
+  border-top: 1px solid var(--fb-hairline);
+}
+
+.fb-consent__item:first-of-type { border-top: none; }
+
+.fb-consent__checkbox {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--fb-success);
+}
+
+.fb-consent__label {
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+  line-height: 1.45;
+}
+
+.fb-consent__desc {
+  margin: 2px 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.fb-consent__list {
+  margin: var(--fb-space-2) 0 0;
+  padding-left: 18px;
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.6;
+}
+
+.fb-consent__note {
+  margin: var(--fb-space-3) 0 0;
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  color: var(--fb-text-secondary);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+.fb-consent__required-hint {
+  color: var(--fb-warning);
+  font-weight: 600;
+}
+
+.fb-consent__save-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-2);
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-error-bg);
+  color: var(--fb-error);
+}
+
+.fb-consent__save-error-body {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+}
+
+/* ---------- M05 — Chọn vai trò xem trước (fb-rs-*) ---------- */
+.fb-rs__links {
+  margin-top: var(--fb-space-4);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+}
+
+.fb-rs__link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.fb-rs__link:hover { background: var(--fb-surface-container); }
+
+.fb-rs-card {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--fb-transition-quick);
+}
+
+.fb-rs-card:hover { background: var(--fb-surface-low); }
+
+.fb-rs-card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+}
+
+.fb-rs-card__headtext {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-rs-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-primary-fixed);
+  color: var(--fb-brand);
+}
+
+.fb-rs-card__title {
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-rs-card__desc {
+  margin: var(--fb-space-2) 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* ---------- M07 — Đồng hành (fb-cp-*) ---------- */
+.fb-cp__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fb-cp__kicker {
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  color: var(--fb-brand);
+}
+
+.fb-cp-week__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--fb-surface-high);
+  color: var(--fb-on-secondary-fixed-variant);
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+}
+
+.fb-cp-pact__icon { color: var(--fb-brand); }
+
+/* ---------- M08 — Hộp thư: hàng tiêu đề + badge ---------- */
+.fb-mx__title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-2);
+}
+
+/* ---------- M04 bổ sung: heading mục đồng ý ---------- */
+.fb-consent__heading {
+  margin: var(--fb-space-4) 0 0;
+  font-size: var(--fb-fs-headline-sm);
+  line-height: var(--fb-lh-headline-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+}

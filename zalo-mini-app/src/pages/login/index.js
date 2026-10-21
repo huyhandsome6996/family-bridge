@@ -1,7 +1,12 @@
-// F01 — Đăng nhập: giải thích → đang đăng nhập → thành công / thất bại / thử lại.
+// F01/M03 — Đăng nhập: giải thích → đang đăng nhập → thành công / thất bại / thử lại.
+// Stitch handoff 2026-10-21 (m03_ng_nh_p_b_ng_m_t_i_kho_n + m03_tr_ng_th_i_
+// ng_nh_p_x_l_l_i): form mã tài khoản HS/PH + mật khẩu; vai trò do máy chủ
+// xác định; lỗi hiển thị inline ngay dưới form (không toast che CTA).
+// ĐÃ LOẠI theo DESIGN-REVIEW: SĐT/OTP, "đã liên kết Zalo", số lần thử/chốt
+// khóa giả, bàn phím/status bar vẽ trong trang, khối Spec Note.
 // Zalo thật (isZaloHost): giữ nguyên đường SDK (không đổi hành vi).
-// Host WEB (Task 2 Render): form mã tài khoản + mật khẩu (w02 Stitch) —
-// đăng nhập /auth/class-session qua adapter, capabilities probe trung thực.
+// Host WEB: form mã tài khoản + mật khẩu — đăng nhập /auth/class-session
+// qua adapter, capabilities probe trung thực.
 // Demo (?demo=1): phiên fixture có nhãn dữ liệu minh họa, không phải phiên thật.
 import { h } from "../../app/dom.js";
 import { isZaloHost, getTestBuildLabel } from "../../core/config.js";
@@ -11,6 +16,7 @@ import { loginErrorMessage } from "../../core/login-error.js";
 import logoLockupUrl from "../../assets/logo/logo-lockup-transparent.png";
 import {
   createButton, createCard, createStatusBadge, createTopBar, createLogo,
+  createIcon,
 } from "../../components/index.js";
 import {
   createCredentialForm, createLocalClassDisabledCard,
@@ -233,8 +239,8 @@ function renderCredentialLogin({ ctx, proceedAfterLogin, cancelled }) {
   brand.appendChild(brandMiddle);
 
   const brandFoot = h("div", { class: "fb-cred__brand-foot" });
-  brandFoot.appendChild(h("span", {}, "Đợt trải nghiệm nội bộ có bảo hộ"));
-  brandFoot.appendChild(h("span", { class: "fb-cred__brand-version" }, "Pilot"));
+  brandFoot.appendChild(h("span", {}, "Dành cho học sinh & người chăm sóc"));
+  brandFoot.appendChild(h("span", { class: "fb-cred__brand-version" }, "Bản thử nghiệm"));
   brand.appendChild(brandFoot);
 
   // ---- Form panel (Stitch w02 phải) ----
@@ -261,6 +267,17 @@ function renderCredentialLogin({ ctx, proceedAfterLogin, cancelled }) {
   });
   formSlot.appendChild(cred.form);
   panel.appendChild(formSlot);
+
+  // Frame M03: ghi chú vai trò — đúng hợp đồng (role do máy chủ trả sau khi
+  // đăng nhập, xem proceedAfterLogin/setRole ở trên).
+  panel.appendChild(
+    h("div", { class: "fb-cred__role-note" },
+      createIcon({ name: "info", size: 18, className: "fb-cred__role-note-icon" }),
+      h("p", {},
+        "Vai trò (Học sinh / Người chăm sóc) được máy chủ lớp học xác định " +
+        "tự động ngay sau khi đăng nhập — bạn không cần tự chọn."),
+    ),
+  );
 
   panel.appendChild(
     h("div", { class: "fb-cred__notice" },

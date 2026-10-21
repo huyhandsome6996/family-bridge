@@ -74,7 +74,7 @@ export const page = {
   title: "Cài đặt",
   requiresRole: true,
   requiresAuth: true, // cài đặt thao tác trên phiên lớp học (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app", // bọc trong app-shell web desktop (router M1)
 
   render(ctx) {
@@ -172,6 +172,11 @@ function renderSettings(body, ctx, { demo, currentName, capabilities, openDialog
   if (demo) body.appendChild(createDemoBanner());
   const settingsCaps = (capabilities && capabilities.settings) || {};
 
+  // Nhóm mục theo frame M20 (đánh dấu nhóm, không phải sheet giả).
+  body.appendChild(
+    h("h2", { class: "fbc-group-title" }, "Thông tin đăng nhập & Tài khoản"),
+  );
+
   // ---- (1) Tên hiển thị: lớp → re-auth mật khẩu; Zalo → PUT /auth/me ----
   const sessionNow = getSession();
   body.appendChild(renderDisplayNameCard(ctx, currentName, {
@@ -189,6 +194,9 @@ function renderSettings(body, ctx, { demo, currentName, capabilities, openDialog
   }));
 
   // ---- (4) Riêng tư & đồng ý → #/privacy ----
+  body.appendChild(
+    h("h2", { class: "fbc-group-title" }, "Quyền riêng tư & Phiên"),
+  );
   body.appendChild(
     createCard({
       title: "Riêng tư",
@@ -211,20 +219,21 @@ function renderSettings(body, ctx, { demo, currentName, capabilities, openDialog
 
 function renderDisplayNameCard(ctx, currentName, { isClassLogin }) {
   const status = h("p", { class: "fb-page__note", role: "status", "aria-live": "polite" });
+  // Tài khoản lớp (HS/PH): đổi tên là thay đổi nhạy cảm → xác thực lại bằng
+  // mật khẩu hiện tại (hợp đồng Task 19: POST /auth/class-display-name).
+  // Tài khoản Zalo: không có mật khẩu dùng được → giữ PUT /auth/me.
   const nameField = h("input", {
     class: "fb-input",
     type: "text",
+    id: "fb-settings-name",
     value: currentName || "",
     maxlength: "80",
     placeholder: "Tên bạn muốn người đồng hành thấy",
     "aria-label": "Tên hiển thị mới",
   });
-  // Tài khoản lớp (HS/PH): đổi tên là thay đổi nhạy cảm → xác thực lại bằng
-  // mật khẩu hiện tại (hợp đồng Task 19: POST /auth/class-display-name).
-  // Tài khoản Zalo: không có mật khẩu dùng được → giữ PUT /auth/me.
   const passwordField = isClassLogin
     ? h("input", {
-      class: "fb-input", type: "password",
+      class: "fb-input", type: "password", id: "fb-settings-name-pw",
       autocomplete: "current-password",
       placeholder: "Mật khẩu hiện tại (xác thực lại)",
       "aria-label": "Mật khẩu hiện tại để xác thực lại khi đổi tên",
@@ -283,8 +292,20 @@ function renderDisplayNameCard(ctx, currentName, { isClassLogin }) {
   }
 
   const fields = passwordField
-    ? h("div", { class: "fb-field" }, nameField, passwordField, saveBtn, status)
-    : h("div", { class: "fb-field" }, nameField, saveBtn, status);
+    ? h("div", { class: "fb-field" },
+      h("label", { class: "fb-field__label", for: "fb-settings-name" }, "Tên hiển thị mới"),
+      nameField,
+      h("label", { class: "fb-field__label", for: "fb-settings-name-pw" },
+        "Mật khẩu hiện tại (xác thực lại)"),
+      passwordField,
+      h("p", { class: "fb-field__hint" },
+        "Đổi tên là thay đổi nhạy cảm — cần xác thực lại bằng mật khẩu hiện tại " +
+        "để tránh người khác tự ý đổi khi mượn máy."),
+      saveBtn, status)
+    : h("div", { class: "fb-field" },
+      h("label", { class: "fb-field__label", for: "fb-settings-name" }, "Tên hiển thị mới"),
+      nameField,
+      saveBtn, status);
 
   return createCard({
     title: "Tên hiển thị",
@@ -319,15 +340,18 @@ function renderPasswordCard(ctx, { disabledByServer }) {
     }
 
     const current = h("input", {
-      class: "fb-input", type: "password", autocomplete: "current-password",
+      class: "fb-input", type: "password", id: "fb-settings-pw-current",
+      autocomplete: "current-password",
       placeholder: "Mật khẩu hiện tại", "aria-label": "Mật khẩu hiện tại",
     });
     const next = h("input", {
-      class: "fb-input", type: "password", autocomplete: "new-password",
+      class: "fb-input", type: "password", id: "fb-settings-pw-next",
+      autocomplete: "new-password",
       placeholder: "Mật khẩu mới", "aria-label": "Mật khẩu mới",
     });
     const confirm = h("input", {
-      class: "fb-input", type: "password", autocomplete: "new-password",
+      class: "fb-input", type: "password", id: "fb-settings-pw-confirm",
+      autocomplete: "new-password",
       placeholder: "Nhập lại mật khẩu mới", "aria-label": "Nhập lại mật khẩu mới",
     });
     const submit = createButton({
@@ -385,7 +409,19 @@ function renderPasswordCard(ctx, { disabledByServer }) {
         .then(() => { if (!disabled) submit.disabled = false; });
     }
 
-    wrap.appendChild(h("div", { class: "fb-field" }, current, next, confirm, submit, note, messages));
+    wrap.appendChild(
+      h("div", { class: "fb-field" },
+        h("label", { class: "fb-field__label", for: "fb-settings-pw-current" }, "Mật khẩu hiện tại"),
+        current,
+        h("label", { class: "fb-field__label", for: "fb-settings-pw-next" }, "Mật khẩu mới"),
+        next,
+        h("p", { class: "fb-field__hint" },
+          "Máy chủ kiểm tra độ mạnh của mật khẩu mới và trả lại yêu cầu cụ thể " +
+          "nếu chưa đạt — ứng dụng không tự đặt quy tắc riêng."),
+        h("label", { class: "fb-field__label", for: "fb-settings-pw-confirm" }, "Nhập lại mật khẩu mới"),
+        confirm,
+        submit, note, messages),
+    );
   }
 
   return createCard({
@@ -424,11 +460,12 @@ function renderClassCodeCard(ctx, { disabledByServer }) {
     }
 
     const currentPassword = h("input", {
-      class: "fb-input", type: "password", autocomplete: "current-password",
+      class: "fb-input", type: "password", id: "fb-settings-code-pw",
+      autocomplete: "current-password",
       placeholder: "Mật khẩu hiện tại", "aria-label": "Mật khẩu hiện tại để đổi mã",
     });
     const newCode = h("input", {
-      class: "fb-input", type: "text", autocomplete: "off",
+      class: "fb-input", type: "text", id: "fb-settings-code-new", autocomplete: "off",
       placeholder: "Mã mới (3–16 chữ cái/số)", "aria-label": "Mã đăng nhập mới",
       maxlength: "16",
     });
@@ -475,7 +512,12 @@ function renderClassCodeCard(ctx, { disabledByServer }) {
     }
 
     wrap.appendChild(
-      h("div", { class: "fb-field" }, currentPassword, newCode, submit, note),
+      h("div", { class: "fb-field" },
+        h("label", { class: "fb-field__label", for: "fb-settings-code-pw" }, "Mật khẩu hiện tại"),
+        currentPassword,
+        h("label", { class: "fb-field__label", for: "fb-settings-code-new" }, "Mã đăng nhập mới"),
+        newCode,
+        submit, note),
     );
   }
 

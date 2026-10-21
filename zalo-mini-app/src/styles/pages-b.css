@@ -1,4 +1,292 @@
 /* ============================================================
-   pages-b.css — style riêng cho nhóm màn do Agent C sở hữu.
-   CHỈ chứa style bề mặt trang (không đụng token/component chung).
+   pages-b.css — nhóm màn M09–M16 (handoff Stitch 21/10)
+   M09 message · M10 compose · M11 cards · M12 signal ·
+   M13 mood · M14 mood-shared · M15 diary (trang chờ) · M16 privacy-items
+   Bố cục theo frame Stitch; màu CHỈ qua token --fb-*; touch ≥44px;
+   textarea là diện tích chính màn soạn; không fixed CTA đè nội dung.
    ============================================================ */
+
+/* ---------- M09 — Chi tiết thư (fb-msg-*) ---------- */
+.fb-msg-top {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  margin-bottom: var(--fb-space-3);
+}
+
+.fb-msg-top__back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: var(--fb-radius-control);
+  color: var(--fb-text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.fb-msg-top__back:hover { background: var(--fb-surface-container); }
+
+.fb-msg-top__title {
+  margin: 0;
+  font-size: var(--fb-fs-headline-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fb-msg-meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+}
+
+.fb-msg-meta__row {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  min-width: 0;
+}
+
+.fb-msg-meta__avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: var(--fb-primary-fixed);
+  color: var(--fb-brand);
+  font-weight: 700;
+}
+
+.fb-msg-meta__who {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-msg-meta__who-text,
+.fb-msg-meta__name {
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+  line-height: 1.4;
+}
+
+.fb-msg-meta__kind {
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-outline-text);
+}
+
+.fb-msg-meta__time {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fb-msg-meta__note {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-msg-letter {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+}
+
+.fb-msg-letter__head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--fb-space-2);
+}
+
+.fb-msg-letter__kicker {
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+  color: var(--fb-brand);
+}
+
+.fb-msg-letter__title {
+  margin: 0;
+  font-size: var(--fb-fs-headline-sm);
+  line-height: var(--fb-lh-headline-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+  overflow-wrap: anywhere;
+}
+
+.fb-msg-letter__note {
+  margin: var(--fb-space-2) 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-msg-divider {
+  margin: var(--fb-space-4) 0;
+  border: none;
+  border-top: 1px solid var(--fb-hairline);
+}
+
+.fb-msg-counter {
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-outline-text);
+  text-align: right;
+}
+
+.fb-msg-chips {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fb-msg-chips__head {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-msg-chips__label {
+  font-size: var(--fb-fs-body-sm);
+  color: var(--fb-text-secondary);
+  line-height: 1.55;
+}
+
+.fb-msg-chips__note {
+  margin: 0;
+  font-size: var(--fb-fs-label-sm);
+  line-height: var(--fb-lh-label-sm);
+  color: var(--fb-outline-text);
+}
+
+.fb-msg-safety {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+}
+
+.fb-msg-safety__title {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fb-msg-safety__text {
+  margin: 4px 0 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-msg-sent-notice__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+}
+
+.fb-msg-sent-notice__title {
+  margin: 0 0 var(--fb-space-2);
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+/* ---------- M10 — Soạn thư: ghi chú giới hạn ký tự ---------- */
+.fb-compose__limit-hint {
+  margin-top: 4px;
+  text-align: right;
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-outline-text);
+}
+
+/* ---------- M11 — Thẻ cảm xúc: sheet giới thiệu ---------- */
+.fb-cards-sheet__intro {
+  margin: 0 0 var(--fb-space-2);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text);
+}
+
+.fb-cards-sheet__intro-note {
+  margin: 0 0 var(--fb-space-2);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-cards-sheet__next-step {
+  margin: var(--fb-space-2) 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fb-cards-sheet__privacy {
+  margin: 0 0 var(--fb-space-2);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* ---------- M12 — Tín hiệu (mở rộng theo frame) ---------- */
+.fb-signal-need__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.fb-signal-need__desc {
+  margin: 0;
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.5;
+  color: var(--fb-text-secondary);
+}
+
+.fb-signal-nowait {
+  margin-top: var(--fb-space-3);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* ---------- M13 — Tâm trạng (mở rộng theo frame) ---------- */
+.fb-mood-row__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fb-mood-summary__total {
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-outline-text);
+  flex-shrink: 0;
+}

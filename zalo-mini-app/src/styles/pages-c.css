@@ -1,4 +1,648 @@
 /* ============================================================
-   pages-c.css — style riêng cho nhóm màn do Agent D sở hữu.
-   CHỈ chứa style bề mặt trang (không đụng token/component chung).
+   pages-c.css — style bề mặt nhóm màn M17–M24 (Agent D sở hữu).
+   Phạm vi: connect, proposal, profile, settings, privacy, help,
+   connection-check, not-found.
+   Quy tắc:
+   - CHỈ màu qua var(--fb-*), bo góc/spacing theo thang token.
+   - Mọi rule ĐỀU scope theo [data-page="…"] — không leak sang nhóm khác.
+   - Touch target ≥44px (nút chính 48px), body 16px (global base.css).
+   - Không animation ngoài transition transform/opacity 100–200ms.
    ============================================================ */
+
+/* ----------------------- Khối dùng chung nhóm ----------------------- */
+
+/* Kicker/hesion đầu trang (kéo dài fb-sec có sẵn trong components.css) */
+[data-page="f01-connect"] .fb-page__body,
+[data-page="profile"] .fb-page__body,
+[data-page="help"] .fb-page__body,
+[data-page="not-found"] .fb-page__body,
+[data-page="connection-check"] .fb-page__body {
+  display: block;
+}
+
+/* Tiêu đề nhóm mục (menu list, danh sách) */
+.fbc-group-title {
+  font-size: var(--fb-fs-label-lg);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--fb-outline-text);
+  margin: var(--fb-space-6) 0 var(--fb-space-2);
+}
+
+/* Banner tin cậy mở đầu (M17/M18 — bố cục frame Stitch: icon tròn + 2 dòng) */
+.fbc-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  background: var(--fb-surface-low);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+}
+
+.fbc-banner__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--fb-surface-container);
+  color: var(--fb-brand);
+}
+
+.fbc-banner__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+  min-width: 0;
+}
+
+.fbc-banner__title {
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--fb-text);
+}
+
+.fbc-banner__text {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+/* Thanh công cụ Làm mới (M17) — nút ghost căn phải, không polling */
+.fbc-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: calc(-1 * var(--fb-space-2));
+}
+
+/* --------------------------- Menu list (M19) --------------------------- */
+
+.fbc-menu {
+  display: flex;
+  flex-direction: column;
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+  overflow: hidden;
+}
+
+.fbc-menu__row {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--fb-space-2) var(--fb-space-4);
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--fb-hairline);
+  text-align: left;
+  font: inherit;
+  color: var(--fb-text);
+  cursor: pointer;
+  transition: background var(--fb-transition-quick) ease;
+}
+
+.fbc-menu__row:last-child {
+  border-bottom: 0;
+}
+
+.fbc-menu__row:hover,
+.fbc-menu__row:active {
+  background: var(--fb-surface-container);
+}
+
+.fbc-menu__row:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: -2px;
+}
+
+.fbc-menu__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-container);
+  color: var(--fb-brand);
+}
+
+.fbc-menu__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.fbc-menu__label {
+  font-size: var(--fb-fs-body);
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--fb-text);
+}
+
+.fbc-menu__hint {
+  font-size: var(--fb-fs-label-sm);
+  line-height: 1.4;
+  color: var(--fb-outline-text);
+}
+
+.fbc-menu__chevron {
+  flex: none;
+  color: var(--fb-outline);
+}
+
+/* Danh sách tính năng dạng link (M18 cặp ACTIVE) */
+a.fbc-menu__row {
+  text-decoration: none;
+}
+
+/* ---------------------- Danh sách trạng thái (M17) ---------------------- */
+
+.fbc-invite-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fbc-invite-row__status {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-2);
+  flex-wrap: wrap;
+}
+
+.fbc-invite-row__meta {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+  font-size: var(--fb-fs-body-sm);
+  color: var(--fb-text-secondary);
+}
+
+.fbc-invite-row__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+}
+
+/* Mã mời hiển thị một lần — nền nổi, chữ mono rộng (không QR tự sinh) */
+.fbc-code {
+  display: inline-block;
+  padding: var(--fb-space-2) var(--fb-space-4);
+  background: var(--fb-surface-container);
+  border: 1px solid var(--fb-hairline-strong);
+  border-radius: var(--fb-radius-control);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  font-size: 24px;
+  letter-spacing: 3px;
+  color: var(--fb-primary);
+}
+
+/* --------------------------- FAQ accordion (M17) --------------------------- */
+
+.fbc-acc {
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+  overflow: hidden;
+}
+
+.fbc-acc + .fbc-acc {
+  margin-top: var(--fb-space-2);
+}
+
+.fbc-acc__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-3);
+  min-height: 48px;
+  padding: var(--fb-space-3) var(--fb-space-4);
+  cursor: pointer;
+  list-style: none;
+  font-size: var(--fb-fs-body);
+  font-weight: 500;
+  color: var(--fb-text);
+}
+
+.fbc-acc__summary::-webkit-details-marker {
+  display: none;
+}
+
+.fbc-acc__summary:focus-visible {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: -2px;
+}
+
+.fbc-acc__chevron {
+  flex: none;
+  color: var(--fb-outline-text);
+  transition: transform var(--fb-transition-base) ease;
+}
+
+.fbc-acc[open] .fbc-acc__chevron {
+  transform: rotate(180deg);
+}
+
+.fbc-acc__body {
+  padding: 0 var(--fb-space-4) var(--fb-space-3);
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.6;
+  color: var(--fb-text-secondary);
+}
+
+.fbc-acc__body strong {
+  color: var(--fb-text);
+}
+
+/* ----------------------- Hàng đầu mối trợ giúp (M17/M23/M24) ----------------------- */
+
+.fbc-help-pointer {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  background: var(--fb-surface-container);
+  border-radius: var(--fb-radius-group);
+}
+
+.fbc-help-pointer__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: var(--fb-surface);
+  color: var(--fb-brand);
+}
+
+.fbc-help-pointer__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fbc-help-pointer__title {
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fbc-help-pointer__hint {
+  font-size: var(--fb-fs-label-sm);
+  color: var(--fb-outline-text);
+}
+
+.fbc-help-pointer .fb-btn {
+  flex: none;
+}
+
+/* --------------------------- Checklist (M23) --------------------------- */
+
+.fbc-steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-4);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+}
+
+.fbc-steps__title {
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fbc-steps__row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-3);
+}
+
+.fbc-steps__n {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--fb-surface-container);
+  color: var(--fb-primary);
+  font-size: var(--fb-fs-label-sm);
+  font-weight: 600;
+}
+
+.fbc-steps__text {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  padding-top: 3px;
+}
+
+.fbc-steps__text strong {
+  color: var(--fb-text);
+}
+
+/* ---------------------- Hero trạng thái kiểm tra (M23) ---------------------- */
+
+.fbc-status-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--fb-space-3);
+  text-align: center;
+  padding: var(--fb-space-6) var(--fb-space-4);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+}
+
+.fbc-status-hero__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--fb-surface-container);
+  color: var(--fb-brand);
+}
+
+.fbc-status-hero__icon--success {
+  background: var(--fb-success-bg);
+  color: var(--fb-success);
+}
+
+.fbc-status-hero__desc {
+  font-size: var(--fb-fs-body);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+  max-width: 34ch;
+}
+
+.fbc-status-hero__actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  width: 100%;
+  max-width: 280px;
+  margin-top: var(--fb-space-2);
+}
+
+/* --------------------------- Demo strip (M19/M23) --------------------------- */
+
+.fbc-demo-strip {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-4);
+  border: 1px dashed var(--fb-hairline-strong);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface-low);
+}
+
+.fbc-demo-strip__title {
+  font-size: var(--fb-fs-label-lg);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fbc-demo-strip__note {
+  font-size: var(--fb-fs-label-sm);
+  line-height: 1.5;
+  color: var(--fb-outline-text);
+}
+
+.fbc-demo-strip__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-2);
+}
+
+/* ---------------------- Nhận diện cá nhân (M19) ---------------------- */
+
+.fbc-id {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  background: var(--fb-surface);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+}
+
+.fbc-id__avatar {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 999px;
+  background: var(--fb-primary-fixed);
+  color: var(--fb-primary);
+}
+
+.fbc-id__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fbc-id__name {
+  font-size: var(--fb-font-size-h2);
+  line-height: 1.3;
+  font-weight: 600;
+  color: var(--fb-text);
+  overflow-wrap: anywhere;
+}
+
+.fbc-id__role {
+  font-size: var(--fb-fs-body-sm);
+  color: var(--fb-text-secondary);
+}
+
+/* ---------------------- Checklist phạm vi xóa (M21) ---------------------- */
+
+.fbc-cat-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+  overflow: hidden;
+  background: var(--fb-surface);
+}
+
+.fbc-cat {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-3);
+  min-height: 48px;
+  padding: var(--fb-space-2) var(--fb-space-4);
+  border-bottom: 1px solid var(--fb-hairline);
+  cursor: pointer;
+}
+
+.fbc-cat:last-child {
+  border-bottom: 0;
+}
+
+.fbc-cat:focus-within {
+  outline: 2px solid var(--fb-focus);
+  outline-offset: -2px;
+}
+
+.fbc-cat input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--fb-primary);
+  flex: none;
+}
+
+.fbc-cat span {
+  font-size: var(--fb-fs-body);
+  color: var(--fb-text);
+}
+
+/* Hàng mục chia sẻ / đồng ý (M21) */
+.fbc-share-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+  padding: var(--fb-space-3) 0;
+  border-bottom: 1px solid var(--fb-hairline);
+}
+
+.fbc-share-row:last-child {
+  border-bottom: 0;
+}
+
+.fbc-share-row__status {
+  font-size: var(--fb-fs-body);
+  color: var(--fb-text);
+}
+
+.fbc-share-row__status strong {
+  font-weight: 600;
+}
+
+/* ---------------------- Hàng danh bạ đang xác minh (M22) ---------------------- */
+
+.fbc-contact {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-3) 0;
+  border-bottom: 1px solid var(--fb-hairline);
+}
+
+.fbc-contact:last-child {
+  border-bottom: 0;
+}
+
+.fbc-contact__icon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-container);
+  color: var(--fb-brand);
+}
+
+.fbc-contact__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-1);
+}
+
+.fbc-contact__title {
+  font-size: var(--fb-fs-body);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.fbc-contact__note {
+  font-size: var(--fb-fs-body-sm);
+  line-height: 1.55;
+  color: var(--fb-text-secondary);
+}
+
+.fbc-contact__badge {
+  flex: none;
+  align-self: center;
+}
+
+/* ---------------------- Nhãn mục form (M20) ---------------------- */
+
+[data-page="settings"] .fb-card .fb-field__label,
+[data-page="connect"] .fb-field__label {
+  display: block;
+  font-size: var(--fb-fs-body-sm);
+  font-weight: 600;
+  color: var(--fb-text);
+  margin: var(--fb-space-3) 0 var(--fb-space-1);
+}
+
+[data-page="settings"] .fb-card .fb-field__label:first-child {
+  margin-top: 0;
+}
+
+/* Không gian thở giữa các thẻ form dày (M20) */
+[data-page="settings"] .fb-page__body > * + *,
+[data-page="privacy"] .fb-page__body > * + * {
+  margin-top: var(--fb-space-4);
+}
+
+/* 320px: giảm đệm ngang của các khối đặc thù (frame m24/m22 320px) */
+@media (max-width: 360px) {
+  .fbc-banner,
+  .fbc-help-pointer,
+  .fbc-id,
+  .fbc-status-hero {
+    padding-left: var(--fb-space-3);
+    padding-right: var(--fb-space-3);
+  }
+
+  .fbc-code {
+    font-size: 20px;
+    letter-spacing: 2px;
+  }
+}
+
+/* ---------- Bổ sung tích hợp: FAQ riêng tư (M17) + danh sách đầu mối (M22) ---------- */
+.fbc-faq {
+  margin-top: var(--fb-space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}
+
+.fbc-contact-list {
+  margin-top: var(--fb-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-2);
+}

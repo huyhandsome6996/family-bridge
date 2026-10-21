@@ -331,8 +331,17 @@ function renderHome(body, ctx, data) {
 
   // Production chưa có kết nối: hiện đề xuất ghép đôi từ lớp (nếu có) rồi
   // mời sang /connect — không dựng phần home đã kết nối (trung thực).
+  // Frame m06_chưa_kết_nối: ghi nhận cảm xúc vẫn mở (không khóa gì) + trợ
+  // giúp luôn truy cập được.
   if (!data.connected) {
     renderGreeting(body, { displayName, role: data.role });
+    renderMoodCard(body, ctx, data.role === "student"
+      ? { title: "Cảm xúc hiện tại của bạn", moodResults: data.mood }
+      : {
+        kicker: "Tự chăm sóc bản thân",
+        title: "Ghi nhận cảm xúc của bạn hôm nay",
+        moodResults: data.mood,
+      });
     renderProposalEntry(body, ctx, data.proposals);
     renderNotConnected(body, ctx);
     return;
@@ -580,18 +589,22 @@ function renderMoodCard(body, ctx, { kicker, title, moodResults }) {
 /* ------------------------------ Home học sinh (w08) ------------------------------ */
 
 function renderStudentHome(body, ctx, data) {
-  const peerLabel = renderConnectionCard(body, ctx, data);
-
-  // 1) Cảm xúc lúc này — ghi nhận thật qua F07.
+  // 1) Cảm xúc lúc này — ghi nhận thật qua F07 (frame m06 học sinh: mood
+  //    pills nằm ngay dưới lời chào).
   renderMoodCard(body, ctx, {
     title: "Cảm xúc lúc này",
     moodResults: data.mood,
   });
 
+  const peerLabel = renderConnectionCard(body, ctx, data);
+
   // 2) Hành động mở lời (w08): thẻ cảm xúc / soạn lời / tín hiệu.
   const actions = h("section", { class: "fb-scard" });
   actions.appendChild(
-    h("h2", { class: "fb-scard__title" }, "Mở lời nhẹ nhàng"),
+    h("div", {},
+      h("span", { class: "fb-care__kicker" }, "Không gian an toàn"),
+      h("h2", { class: "fb-scard__title" }, "Mở lời nhẹ nhàng"),
+    ),
   );
   const tiles = h("div", { class: "fb-tiles" });
 
@@ -625,7 +638,9 @@ function renderStudentHome(body, ctx, data) {
   // 3) Hộp thư trao đổi gần đây — metadata thật, không body trong danh sách.
   body.appendChild(renderMailboxPreview(ctx, data));
 
-  // 4) Hành trình 4 tuần — dữ liệu thật từ F02, không gauge.
+  // 4) Hành trình 4 tuần — dữ liệu thật từ F02, không gauge (frame m06 học
+  //    sinh đặt chương trình trước hộp thư; giữ thẻ hộp thư trước vì tin mới
+  //    quan trọng hơn với người dùng — deviaton bố cục đã ghi báo cáo).
   body.appendChild(renderProgramCard(ctx, data));
 
   // 5) Nhật ký riêng tư — dẫn sang trang nhật ký (stub trung thực còn giữ).
@@ -906,6 +921,10 @@ function renderCaregiverHome(body, ctx, data) {
   );
   trust.appendChild(trustRow);
   body.appendChild(trust);
+
+  // 6) Chương trình 4 tuần tự nguyện (frame m06 người chăm sóc) — cùng nguồn
+  //    dữ liệu thật F02, cùng trình bày trung thực với phía học sinh.
+  body.appendChild(renderProgramCard(ctx, data));
 
   body.appendChild(renderHelpBar());
 

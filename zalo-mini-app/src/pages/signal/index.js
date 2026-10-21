@@ -30,12 +30,34 @@ import {
   createSkeleton,
 } from "../../components/index.js";
 
-// Fallback nhãn tiếng Việt khi meta thiếu/mất nhãn (mã theo f10 NEEDS).
+// Fallback nhãn + mô tả tiếng Việt khi meta thiếu/mất nhãn (mã theo f10 NEEDS).
+// Mô tả chỉ gắn cho mã CÓ THẬT trong hợp đồng — mã lạ chỉ hiện nhãn máy chủ.
 const NEED_FALLBACK_LABELS = {
   muon_tro_chuyen: "Một buổi trò chuyện yên tĩnh",
   muon_duoc_o_ben: "Cần có người ở bên cạnh",
   muon_hen_gio: "Hẹn thời điểm trong tuần",
 };
+
+// Frame m12_h_c_sinh_g_i_t_n_hi_u_l_ng_nghe: icon + mô tả ngắn cho từng nhu
+// cầu cố định. Chỉ dùng cho nhu cầu nằm trong allowlist f10.
+const NEED_HINTS = {
+  muon_tro_chuyen: {
+    icon: "forum",
+    text: "Một khoảng không gian riêng tư, không vội vã, chỉ có hai người lắng nghe nhau.",
+  },
+  muon_duoc_o_ben: {
+    icon: "diversity_1",
+    text: "Chỉ cần ngồi cạnh, không nhất thiết phải nói ngay điều gì.",
+  },
+  muon_hen_gio: {
+    icon: "calendar_month",
+    text: "Mong có một lúc thuận tiện khi cả hai đều thoải mái.",
+  },
+};
+
+function needIcon(code) {
+  return (NEED_HINTS[code] && NEED_HINTS[code].icon) || "hearing";
+}
 
 function readState(store) {
   if (store && typeof store.getState === "function") return store.getState();
@@ -79,7 +101,7 @@ export const page = {
   title: "Tín hiệu lắng nghe",
   requiresRole: true,
   requiresAuth: true, // tín hiệu là dữ liệu phiên lớp học (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app", // bọc trong app-shell web desktop (router M1)
 
   render(ctx) {
@@ -269,12 +291,12 @@ function renderStudent(body, ctx, { demo, metaNeeds, connections }) {
   body.appendChild(
     h("header", { class: "fb-sec" },
       h("div", { class: "fb-sec__row" },
-        h("span", { class: "fb-journey__kicker" }, "Không gian kết nối"),
+        h("span", { class: "fb-journey__kicker" }, "Một bước dịu êm để bắt đầu"),
       ),
-      h("h1", { class: "fb-sec__greeting" }, "Con cần được lắng nghe"),
+      h("h1", { class: "fb-sec__greeting" }, "Tín hiệu cần được lắng nghe"),
       h("p", { class: "fb-sec__sub" },
-        "Một tín hiệu ấm áp gửi ngay khi bạn mong muốn có một khoảng thời gian trò chuyện "
-        + "thực tế — không cần nói dông dài hay giải thích trước.",
+        "Khi bạn thấy nặng lòng hoặc muốn người thân có mặt mà chưa biết mở lời thế nào, "
+        + "hãy gửi một tín hiệu nhỏ — không cần nói dông dài hay giải thích trước.",
       ),
     ),
   );
@@ -339,7 +361,7 @@ function renderStudent(body, ctx, { demo, metaNeeds, connections }) {
 
   const needsCard = h("section", { class: "fb-scard" });
   needsCard.appendChild(
-    h("h2", { class: "fb-scard__title" }, "Nhu cầu hiện tại của bạn là gì?"),
+    h("h2", { class: "fb-scard__title" }, "Nhu cầu của bạn lúc này"),
   );
   needsCard.appendChild(h("p", { class: "fb-sec__sub" }, "Chọn một nhu cầu — nội dung tín hiệu do máy chủ soạn sẵn."));
   const needsList = h("div", { class: "fb-signal-needs", role: "group", "aria-label": "Chọn nhu cầu" });
@@ -347,6 +369,7 @@ function renderStudent(body, ctx, { demo, metaNeeds, connections }) {
   needs.forEach((row) => {
     const code = row && row.need ? String(row.need) : "";
     if (!code) return;
+    const hint = NEED_HINTS[code];
     const btn = h("button", {
       class: "fb-signal-need",
       type: "button",
@@ -365,21 +388,40 @@ function renderStudent(body, ctx, { demo, metaNeeds, connections }) {
     });
     btn.appendChild(
       h("span", { class: "fb-signal-need__icon", "aria-hidden": "true" },
-        createIcon({ name: "hearing", size: 20 })),
+        createIcon({ name: needIcon(code), size: 20 })),
     );
-    btn.appendChild(
+    const needText = h("span", { class: "fb-signal-need__text" });
+    needText.appendChild(
       h("span", { class: "fb-signal-need__label" }, needLabel(row)),
     );
+    if (hint) {
+      needText.appendChild(
+        h("span", { class: "fb-signal-need__desc" }, hint.text),
+      );
+    }
+    btn.appendChild(needText);
     needButtons.set(code, btn);
     needsList.appendChild(btn);
   });
   needsCard.appendChild(needsList);
+  // Frame m12: tín hiệu gửi ngay — không nằm trong khoảng dừng 5 phút của
+  // bản nháp (contract: pause chỉ ràng buộc nháp; help + signal không bị khóa).
+  needsCard.appendChild(
+    h("p", { class: "fb-signal-nowait" },
+      createIcon({ name: "send", size: 16 }),
+      h("span", {}, "Tín hiệu được phát ngay sau xác nhận của bạn — không nằm trong khoảng dừng 5 phút của bản nháp."),
+    ),
+  );
   body.appendChild(needsCard);
 
   // ---- Preview (chỉ văn bản do máy chủ render) ----
   const previewCard = h("section", { class: "fb-scard" });
   previewCard.appendChild(
-    h("h2", { class: "fb-scard__title" }, "Xem trước thông điệp người chăm sóc sẽ nhận:"),
+    h("h2", { class: "fb-scard__title" }, "Xem trước tín hiệu trước khi gửi"),
+  );
+  previewCard.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      "Đọc lại thông điệp để chắc chắn đây đúng là điều bạn muốn gửi gắm tới người thân lúc này."),
   );
   const previewBody = h("div", { class: "fb-signal-preview", role: "status" });
   previewCard.appendChild(previewBody);
@@ -551,11 +593,12 @@ function renderCaregiver(body, ctx, { demo, rows, reload }) {
   body.appendChild(
     h("header", { class: "fb-sec" },
       h("div", { class: "fb-sec__row" },
-        h("span", { class: "fb-journey__kicker" }, "Không gian kết nối"),
+        h("span", { class: "fb-journey__kicker" }, "Lời ngỏ thấu cảm"),
       ),
-      h("h1", { class: "fb-sec__greeting" }, "Tín hiệu lắng nghe"),
+      h("h1", { class: "fb-sec__greeting" }, "Tín hiệu cần được lắng nghe"),
       h("p", { class: "fb-sec__sub" },
-        "Các tín hiệu “Con cần được lắng nghe” từ học sinh trong kết nối của bạn.",
+        "Không gian ghi nhận những tín hiệu kết nối tinh tế từ học sinh trong kết nối của bạn. "
+        + "Một cái chạm nhẹ nhàng cũng đủ để con an tâm.",
       ),
     ),
   );

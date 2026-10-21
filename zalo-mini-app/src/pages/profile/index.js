@@ -1,12 +1,16 @@
 // Hub Cá nhân — vai trò XEM TRƯỚC (không phải quyền), trạng thái đăng nhập
-// F01, kết nối hai phía, các mục chưa làm đều disabled kèm lý do, không giả
-// hành động. Logout revoking server-side + dọn state trong memory.
+// F01, kết nối hai phía, menu điều hướng theo frame M19 (chỉ route thật),
+// demo tách biệt bằng banner chuẩn, logout có xác nhận + dọn state thật.
+//
+// Restyle Stitch M19: identity header + menu list nhóm (touch ≥48px), bỏ
+// hotline/số điện thoại, không dashboard giám sát, phiên thật không đổi role.
 import { h } from "../../app/dom.js";
 import {
   getSession, getSessionGeneration, hasLiveSession,
 } from "../../core/session.js";
 import {
-  createButton, createCard, createDialog, createStatusBadge, createTopBar,
+  createButton, createCard, createDialog, createDemoBanner, createIcon,
+  createStatusBadge, createTopBar,
 } from "../../components/index.js";
 
 function readState(store) {
@@ -15,6 +19,19 @@ function readState(store) {
 }
 
 let markRenderCancelled = () => {};
+
+/** Một hàng menu — chỉ dùng cho tính năng CÓ route thật (M19). */
+function menuRow({ icon, label, hint, onClick }) {
+  return h("button", { class: "fbc-menu__row", type: "button", onClick },
+    h("span", { class: "fbc-menu__icon", "aria-hidden": "true" },
+      createIcon({ name: icon, size: 20 })),
+    h("span", { class: "fbc-menu__text" },
+      h("span", { class: "fbc-menu__label" }, label),
+      hint ? h("span", { class: "fbc-menu__hint" }, hint) : null),
+    h("span", { class: "fbc-menu__chevron", "aria-hidden": "true" },
+      createIcon({ name: "chevron_right", size: 20 })),
+  );
+}
 
 export const page = {
   id: "profile",
@@ -45,7 +62,33 @@ export const page = {
 
     const demo = Boolean(state.demoMode);
     const roleLabel = state.role === "caregiver" ? "Người chăm sóc" : "Học sinh";
+    const logged = demo || hasLiveSession();
+    const session = demo ? null : getSession();
 
+    // ---- Demo tách biệt rõ: banner chuẩn ngay đầu trang (M19) ----
+    if (demo) body.appendChild(createDemoBanner());
+
+    // ---- Nhận diện: tên hiển thị (nếu có) + vai trò + trạng thái phiên ----
+    const displayName = (session && session.displayName) || "";
+    body.appendChild(
+      h("section", { class: "fbc-id" },
+        h("span", { class: "fbc-id__avatar", "aria-hidden": "true" },
+          createIcon({ name: "account_circle", size: 28 })),
+        h("span", { class: "fbc-id__text" },
+          h("span", { class: "fbc-id__name" }, displayName || roleLabel),
+          h("span", { class: "fbc-id__role" },
+            demo
+              ? "Bản xem trước với dữ liệu minh họa trong bộ nhớ"
+              : "Tên gọi hiển thị cho người đồng hành — đổi tại Cài đặt"),
+        ),
+        createStatusBadge({
+          tone: demo ? "info" : "success",
+          label: demo ? "Dữ liệu minh họa" : "Đã đăng nhập",
+        }),
+      ),
+    );
+
+    // ---- vai trò XEM TRƯỚC (không phải quyền; phiên thật không đổi role) ----
     body.appendChild(
       createCard({
         title: "Vai trò xem trước",
@@ -61,7 +104,6 @@ export const page = {
     );
 
     // ---- trạng thái đăng nhập (F01) ----
-    const logged = demo || hasLiveSession();
     let logoutSection = null;
     if (demo) {
       body.appendChild(
@@ -72,8 +114,8 @@ export const page = {
           children: createStatusBadge({ tone: "info", label: "Dữ liệu minh họa" }),
         }),
       );
+      logoutSection = "demo";
     } else if (logged) {
-      const session = getSession();
       const expiryText = session && session.expiresAt
         ? new Date(session.expiresAt).toLocaleString("vi-VN", {
           day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
@@ -148,71 +190,67 @@ export const page = {
         : "/login?reason=logged-out-pending");
     }
 
-    // ---- kết nối hai phía (F01) ----
+    // ---- Menu nhóm 1: kết nối & chia sẻ (route thật) ----
+    body.appendChild(h("h2", { class: "fbc-group-title" }, "Kết nối & chia sẻ"));
     body.appendChild(
-      createCard({
-        title: "Kết nối & lời mời",
-        description:
-          "Tạo mã mời, nhập mã mời, xác nhận kết nối hai phía hoặc hủy kết nối. " +
-          "Hủy kết nối làm các quyền chia sẻ dựa trên kết nối mất hiệu lực.",
-        footer: createButton({
-          label: "Quản lý kết nối",
-          variant: "primary",
+      h("div", { class: "fbc-menu" },
+        menuRow({
+          icon: "group",
+          label: "Người đồng hành",
+          hint: "Tạo mã mời, nhập mã, xác nhận hoặc hủy kết nối hai phía",
           onClick: () => ctx.navigate("/connect"),
         }),
-      }),
+        menuRow({
+          icon: "spa",
+          label: "Tâm trạng của mình",
+          hint: "Ghi cảm xúc hôm nay và lịch sử — mặc định chỉ mình bạn",
+          onClick: () => ctx.navigate("/mood"),
+        }),
+        menuRow({
+          icon: "favorite",
+          label: "Được chia sẻ với bạn",
+          hint: "Những mục người đồng hành chủ động gửi mở lòng",
+          onClick: () => ctx.navigate("/mood-shared"),
+        }),
+      ),
     );
 
-    // ---- F07: tâm trạng + chia sẻ từng mục ----
+    // ---- Menu nhóm 2: hệ thống & minh bạch (route thật) ----
+    body.appendChild(h("h2", { class: "fbc-group-title" }, "Hệ thống & minh bạch"));
     body.appendChild(
-      createCard({
-        title: "Tâm trạng & chia sẻ",
-        description:
-          "Ghi cảm xúc hôm nay, xem lịch sử và chia sẻ đúng một mục cho đúng "
-          + "người đồng hành. Mặc định riêng tư — chỉ mình bạn.",
-        children: h("div", { class: "fb-profile__actions" },
-          createButton({
-            label: "Tâm trạng của mình",
-            variant: "primary",
-            onClick: () => ctx.navigate("/mood"),
-          }),
-          createButton({
-            label: "Được chia sẻ với bạn",
-            variant: "secondary",
-            onClick: () => ctx.navigate("/mood-shared"),
-          }),
-        ),
-      }),
+      h("div", { class: "fbc-menu" },
+        menuRow({
+          icon: "shield",
+          label: "Riêng tư & đồng ý",
+          hint: "Quản lý chia sẻ từng mục, yêu cầu xóa dữ liệu và rút đồng ý",
+          onClick: () => ctx.navigate("/privacy"),
+        }),
+        menuRow({
+          icon: "explore",
+          label: "Kiểm tra kết nối máy chủ",
+          hint: "Kiểm tra sức khỏe và trạng thái sẵn sàng của máy chủ",
+          onClick: () => ctx.navigate("/connection-check"),
+        }),
+        menuRow({
+          icon: "support_agent",
+          label: "Tìm trợ giúp",
+          hint: "Đầu mối hỗ trợ — luôn mở cho mọi người",
+          onClick: () => ctx.navigate("/help"),
+        }),
+      ),
     );
 
+    // ---- Cài đặt tài khoản (M20): đổi mật khẩu / mã đăng nhập / tên ----
     body.appendChild(
       createCard({
         title: "Cài đặt",
-        children: h("div", { class: "fb-profile__actions" },
-          createButton({
-            label: "Mở Cài đặt (đổi mật khẩu / mã đăng nhập / tên hiển thị)",
-            variant: "primary",
-            onClick: () => ctx.navigate("/settings"),
-          }),
-          createButton({
-            label: "Riêng tư & đồng ý",
-            variant: "ghost",
-            onClick: () => ctx.navigate("/privacy"),
-          }),
-          h("p", { class: "fb-page__note" },
-            "Quản lý chia sẻ từng mục, yêu cầu xóa dữ liệu và rút đồng ý nằm ở trang Riêng tư & đồng ý.",
-          ),
-          createButton({
-            label: "Kiểm tra kết nối máy chủ",
-            variant: "ghost",
-            onClick: () => ctx.navigate("/connection-check"),
-          }),
-          createButton({
-            label: "Tìm trợ giúp",
-            variant: "ghost",
-            onClick: () => ctx.navigate("/help"),
-          }),
-        ),
+        description:
+          "Đổi tên hiển thị, mật khẩu và mã đăng nhập — mọi thay đổi do máy chủ xác nhận.",
+        footer: createButton({
+          label: "Mở Cài đặt (đổi mật khẩu / mã đăng nhập / tên hiển thị)",
+          variant: "primary",
+          onClick: () => ctx.navigate("/settings"),
+        }),
       }),
     );
 

@@ -1,5 +1,8 @@
-// Hộp thư trao đổi thấu cảm (w14 — Web Render Task 2, M5a).
-// Master (danh sách) + detail (tóm tắt) theo mẫu web desktop Stitch; dữ liệu
+// M08 — Hộp thư trao đổi thấu cảm (w14 → restyle Stitch 2026-10-21).
+// Frame tham chiếu: m08_h_p_th_danh_s_ch_c_chi_ti_t + m08_h_p_th_c_c_trang_
+// thai_ngo_i_l (đã loại khối Handover Spec, "bảo mật tuyệt đối", offline-
+// cache SQLite/IndexedDB theo DESIGN-REVIEW.md — giữ no-polling, no-cache).
+// Master (danh sách) + detail (tóm tắt metadata) theo mẫu; dữ liệu
 // thật qua adapter F05 (packages/family_bridge_features/f05_inbox):
 //
 //   GET /api/v1/messages?cursor&limit
@@ -228,7 +231,16 @@ function renderMailbox(body, ctx, { demo, rows, namesById, nextCursor, selectedI
       h("div", { class: "fb-sec__row" },
         h("span", { class: "fb-journey__kicker" }, "Trao đổi thấu cảm"),
       ),
-      h("h1", { class: "fb-sec__greeting" }, "Hộp thư trao đổi thấu cảm"),
+      h("div", { class: "fb-mx__title-row" },
+        h("h1", { class: "fb-sec__greeting" }, "Hộp thư trao đổi thấu cảm"),
+        h("a", {
+          class: "fb-btn fb-btn--primary fb-btn--md fb-mx__compose",
+          href: "#/compose",
+        },
+          createIcon({ name: "edit_note", size: 18, className: "fb-mx__compose-icon" }),
+          "Soạn thư",
+        ),
+      ),
       h("p", { class: "fb-sec__sub" },
         "Không áp lực trả lời ngay • Chỉ người nhận được cấp quyền mới thấy nội dung",
       ),

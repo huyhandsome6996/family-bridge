@@ -4,6 +4,10 @@
 // (bật rõ ràng) cho phép chọn kịch bản ok/error/timeout qua ctx.rebuildAdapter;
 // production KHÔNG có nút giả lập. destroy() huỷ mọi cập nhật đang chờ.
 //
+// Restyle Stitch M23: hero trạng thái một cột (loading/success/unavailable/
+// lỗi), checklist tự kiểm tra mạng chung trung thực cho lỗi mạng/timeout —
+// KHÔNG latency/TLS/mã HTTP/máy chủ bảo trì khi API không cung cấp nguồn.
+//
 // Phân loại lỗi: CHỈ đọc thuộc tính `kind` của ApiError (không suy loại từ
 // status 0, không dò câu thông báo). Năm loại:
 //   - "timeout"          -> "Kết nối quá thời gian chờ" (AbortError từ timer client).
@@ -15,6 +19,7 @@
 import { h, clear } from "../../app/dom.js";
 import {
   createButton,
+  createIcon,
   createStatusBadge,
   createErrorState,
   createSkeleton,
@@ -34,9 +39,29 @@ const SCENARIOS = [
   { key: "timeout", label: "Giả lập: timeout" },
 ];
 
+// Checklist 3 bước (frame M23) — lời khuyên mạng CHUNG, không chẩn đoán sai:
+// dùng cho mọi trạng thái lỗi để không dính cụm từ "quá thời gian" vào các
+// trạng thái không phải timeout (assertion SC3/SC10).
+const NETWORK_STEPS = [
+  "Kiểm tra sóng Wi-Fi hoặc dữ liệu di động trên điện thoại của bạn.",
+  "Thử mở một trang tin hoặc cửa sổ chat khác trong Zalo để xem mạng có ổn định.",
+  "Khi đường truyền đã ổn định, bấm Thử lại bên dưới để kiểm tra lại kết nối.",
+];
+
 function readState(store) {
   if (store && typeof store.getState === "function") return store.getState();
   return store || {};
+}
+
+function renderSteps() {
+  return h("div", { class: "fbc-steps" },
+    h("p", { class: "fbc-steps__title" }, "3 bước tự kiểm tra nhanh"),
+    NETWORK_STEPS.map((text, index) =>
+      h("div", { class: "fbc-steps__row" },
+        h("span", { class: "fbc-steps__n", "aria-hidden": "true" }, String(index + 1)),
+        h("span", { class: "fbc-steps__text" }, text),
+      )),
+  );
 }
 
 export const page = {
@@ -72,27 +97,44 @@ export const page = {
 
     function renderLoading() {
       clear(body);
-      body.appendChild(createSkeleton({ variant: "card", count: 1 }));
+      body.appendChild(
+        h("div", { class: "fbc-status-hero" },
+          h("span", { class: "fbc-status-hero__icon", "aria-hidden": "true" },
+            createIcon({ name: "timer", size: 28 })),
+          createSkeleton({ variant: "line", count: 1 }),
+        ),
+      );
       body.appendChild(h("p", { role: "status" }, "Đang kiểm tra kết nối với máy chủ…"));
     }
 
     function renderSuccess() {
       clear(body);
-      body.appendChild(h("h2", { class: "fb-page__heading" }, "Kết quả kiểm tra"));
-      body.appendChild(createStatusBadge({ tone: "success", label: "Đã kết nối tới máy chủ" }));
       body.appendChild(
-        h("p", {}, "Máy chủ đang hoạt động bình thường. Bạn có thể quay lại và tiếp tục sử dụng."),
-      );
-      body.appendChild(
-        createButton({
-          label: "Về trang chủ",
-          variant: "ghost",
-          onClick: () => ctx.navigate(homePath),
-        }),
+        h("div", { class: "fbc-status-hero" },
+          h("span", {
+            class: "fbc-status-hero__icon fbc-status-hero__icon--success",
+            "aria-hidden": "true",
+          }, createIcon({ name: "check_circle", size: 28, fill: true })),
+          createStatusBadge({ tone: "success", label: "Đã kết nối tới máy chủ" }),
+          h("p", { class: "fbc-status-hero__desc" },
+            "Máy chủ đang hoạt động bình thường. Bạn có thể quay lại và tiếp tục sử dụng."),
+          h("div", { class: "fbc-status-hero__actions" },
+            createButton({
+              label: "Về trang chủ",
+              variant: "primary",
+              onClick: () => ctx.navigate(homePath),
+            }),
+            createButton({
+              label: "Kiểm tra lại",
+              variant: "ghost",
+              onClick: () => run(),
+            }),
+          ),
+        ),
       );
     }
 
-    function renderFailure({ title, description }) {
+    function renderFailure({ title, description, showSteps = false }) {
       clear(body);
       body.appendChild(
         createErrorState({
@@ -102,6 +144,9 @@ export const page = {
           onRetry: () => run(),
         }),
       );
+      // Checklist chỉ mang tính gợi ý mạng chung — không suy ra nguyên nhân
+      // phía máy chủ (không latency/mã lỗi/bảo trì khi API không nói).
+      if (showSteps) body.appendChild(renderSteps());
     }
 
     function run() {
@@ -133,6 +178,7 @@ export const page = {
             renderFailure({
               title: "Máy chủ chưa sẵn sàng",
               description: "Máy chủ đang chạy nhưng chưa sẵn sàng phục vụ. Vui lòng thử lại sau ít phút.",
+              showSteps: true,
             });
           } else {
             renderFailure({
@@ -143,19 +189,25 @@ export const page = {
         })
         .catch((error) => {
           if (cancelled || current !== runId) return;
-          renderFailure(failureFor(error));
+          const failure = failureFor(error);
+          // Checklist mạng chung cho lỗi MẠNG/TIMEOUT thật (kind từ ApiError —
+          // không dò message; lỗi khác vẫn chỉ hiện trạng thái lỗi thuần).
+          const kind = errorKind(error);
+          renderFailure({ ...failure, showSteps: kind === "network" || kind === "timeout" });
         });
     }
 
     // Bảng kịch bản demo — chỉ hiển thị khi demo mode bật rõ ràng.
     if (state.demoMode) {
-      const demoPanel = h("div", { class: "fb-conncheck__demo" },
-        h("p", { class: "fb-page__note" },
-          "Bạn đang ở chế độ xem trước. Chọn kịch bản để thử các trạng thái của màn này:",
-        ),
+      const demoPanel = h("div", { class: "fbc-demo-strip" },
+        h("p", { class: "fbc-demo-strip__title" }, "Chế độ xem trước"),
+        h("p", { class: "fbc-demo-strip__note" },
+          "Bạn đang ở chế độ dữ liệu minh họa. Chọn kịch bản để thử các trạng thái của màn này."),
+        h("div", { class: "fbc-demo-strip__actions" }),
       );
+      const actions = demoPanel.querySelector(".fbc-demo-strip__actions");
       for (const scenario of SCENARIOS) {
-        demoPanel.appendChild(
+        actions.appendChild(
           createButton({
             label: scenario.label,
             variant: "ghost",
@@ -170,6 +222,20 @@ export const page = {
       }
       root.appendChild(demoPanel);
     }
+
+    // Trợ giúp luôn truy cập được (frame M23) — link tĩnh tới #/help.
+    root.appendChild(
+      h("section", { class: "fbc-help-pointer" },
+        h("span", { class: "fbc-help-pointer__icon", "aria-hidden": "true" },
+          createIcon({ name: "support_agent", size: 20 })),
+        h("span", { class: "fbc-help-pointer__text" },
+          h("span", { class: "fbc-help-pointer__title" }, "Gặp khó khăn khác?"),
+          h("span", { class: "fbc-help-pointer__hint" },
+            "Trang Tìm trợ giúp luôn mở, không cần đăng nhập."),
+        ),
+        h("a", { class: "fb-btn fb-btn--ghost", href: "#/help" }, "Tìm trợ giúp"),
+      ),
+    );
 
     run();
     return root;

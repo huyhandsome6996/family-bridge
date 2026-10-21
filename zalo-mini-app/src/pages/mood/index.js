@@ -68,7 +68,7 @@ export const page = {
   title: "Tâm trạng của mình",
   requiresRole: true,
   requiresAuth: true, // dữ liệu riêng theo phiên (router M1)
-  showBottomNav: true,
+  showBottomNav: false, // trang phụ — tab dưới chỉ ở 5 trang cấp một (DESIGN.md §5)
   chrome: "app",
 
   render(ctx) {
@@ -155,9 +155,16 @@ page.destroy = destroy;
 
 /* ------------------------------- Editor ---------------------------------- */
 
+// Frame m13_t_m_tr_ng_c_a_m_nh: câu hỏi mở + chip riêng tư — KHÔNG gắn nhãn
+// tốt/xấu cho cảm xúc (DESIGN.md §7: màu chức năng không đánh giá cảm xúc).
 function renderEditorCard(ctx, state) {
-  const card = h("section", { class: "fb-scard" });
-  card.appendChild(h("h2", { class: "fb-scard__title" }, "Cảm xúc hôm nay"));
+  const card = h("section", { class: "fb-scard fb-mood-editor" });
+  card.appendChild(
+    h("div", { class: "fb-sec__row" },
+      h("span", { class: "fb-journey__kicker" }, "Nhật ký riêng tư của bạn"),
+    ),
+  );
+  card.appendChild(h("h2", { class: "fb-scard__title" }, "Bạn đang cảm thấy thế nào?"));
   card.appendChild(h("p", { class: "fb-sec__sub" },
     "Không có cảm xúc nào là đúng hay sai. Đây là nhật ký của riêng bạn."));
 
@@ -352,27 +359,39 @@ function loadSummary(ctx, state, card) {
   const lc = state._lc;
   const gen = lc.generation;
   clear(card);
-  card.appendChild(h("h2", { class: "fb-scard__title" }, "Chút hơn 3 tháng qua"));
-  card.appendChild(h("p", { class: "fb-sec__sub" },
-    "Đếm mô tả cho riêng bạn — không điểm, không xếp hạng, không so sánh."));
-  const list = h("ul", { class: "fb-list" });
+  card.appendChild(
+    h("div", { class: "fb-sec__row" },
+      h("span", { class: "fb-journey__kicker" }, "Mô tả trung tính — không điểm, không so sánh"),
+    ),
+  );
+  card.appendChild(h("h2", { class: "fb-scard__title" }, "90 ngày gần nhất"));
+  // Frame m13: tổng số ngày ghi nhận ĐẾM TỪ DỮ LIỆU máy chủ đã tải —
+  // không streak, không huy hiệu, không áp lực duy trì chuỗi (DESIGN.md §7).
+  const totalDays = h("p", { class: "fb-mood-summary__total", role: "status" });
+  card.appendChild(totalDays);
+  const list = h("ul", { class: "fb-list fb-mood-summary__list" });
   card.appendChild(list);
+  card.appendChild(
+    h("p", { class: "fb-sec__sub" },
+      "Mỗi cảm xúc đều mang thông điệp riêng để lắng nghe bản thân — không chấm điểm, không áp lực duy trì chuỗi."),
+  );
   ctx.adapter.moodSummary(SUMMARY_WINDOW_DAYS)
     .then((data) => {
       if (lc.cancelled || lc.generation !== gen) return;
       const rows = (data && data.results) || [];
-      if (!rows.length) {
-        list.appendChild(h("li", { class: "fb-list__item" },
-          "Chưa có dữ liệu để mô tả."));
-        return;
-      }
+      const sum = rows.reduce((acc, row) => acc + (Number(row && row.count) || 0), 0);
+      totalDays.textContent = sum > 0
+        ? `${sum} ngày đã ghi nhận cảm xúc`
+        : "Chưa có dữ liệu để mô tả.";
+      if (!rows.length) return;
       for (const row of rows) {
-        list.appendChild(h("li", { class: "fb-list__item" },
-          `${row.label}: ${row.count} ngày`));
+        list.appendChild(h("li", { class: "fb-list__item fb-mood-summary__item" },
+          `${row.label} — ${row.count} ngày`));
       }
     })
     .catch(() => {
       if (lc.cancelled || lc.generation !== gen) return;
+      totalDays.textContent = "";
       clear(list);
       list.appendChild(h("li", { class: "fb-list__item" },
         "Chưa tải được thống kê. Thử tải lại trang nhé."));
@@ -466,14 +485,14 @@ function loadHistory(ctx, card, state, { reset = false } = {}) {
 }
 
 function historyRow(ctx, state, entry) {
-  const row = h("li", { class: "fb-list__item" });
-  row.appendChild(h("div", {},
+  const row = h("li", { class: "fb-list__item fb-mood-row" });
+  row.appendChild(h("div", { class: "fb-mood-row__main" },
     h("strong", {}, `${entry.entry_date} — ${entry.emotion_label || entry.emotion}`),
     entry.note ? h("p", { class: "fb-sec__sub" }, entry.note) : null,
-    h("p", { class: "fb-sec__sub" }, `Phiên bản hiện tại: ${entry.revision}`),
+    h("p", { class: "fb-sec__sub fb-mood-row__meta" }, `Phiên bản hiện tại: ${entry.revision}`),
   ));
 
-  const actions = h("div", { class: "fb-sec__row" });
+  const actions = h("div", { class: "fb-sec__row fb-mood-row__actions" });
   actions.appendChild(createButton({
     label: "Sửa mục này", variant: "secondary",
     onClick: () => {
