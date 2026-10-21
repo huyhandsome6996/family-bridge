@@ -61,6 +61,7 @@ export function createCredentialForm({ onLogin } = {}) {
     id: "fb-cred-code",
     type: "text",
     autocomplete: "username",
+    autocapitalize: "characters",
     placeholder: "Ví dụ: HS001 hoặc PH001",
     required: true,
   });

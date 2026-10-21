@@ -107,6 +107,9 @@
   width: 100%;
   min-height: 44px;
   padding: 10px 12px;
+  font-size: 16px;
+  scroll-margin-top: 20px;
+  scroll-margin-bottom: 120px;
   background: var(--fb-surface);
   color: var(--fb-text);
   border: 1px solid var(--fb-hairline-strong);
