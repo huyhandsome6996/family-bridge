@@ -77,6 +77,71 @@ beforeEach(() => {
 });
 
 describe("QA: router hash + not-found", () => {
+  it("login keeps the same focused input and text on repeated host hash events", async () => {
+    domWindow.location.hash = "#/login";
+    const r = freshRouter();
+    r.start();
+    try {
+      assert.ok(await waitFor(() => root.querySelector("#fb-cred-code")));
+      const input = root.querySelector("#fb-cred-code");
+      input.focus();
+      for (const char of "HS001") {
+        input.value += char;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        window.dispatchEvent(new Event("resize"));
+        window.dispatchEvent(new HashChangeEvent("hashchange"));
+        await wait(10);
+        assert.equal(root.querySelector("#fb-cred-code"), input);
+        assert.equal(document.activeElement, input);
+      }
+      assert.equal(input.value, "HS001");
+      navigate("/help");
+      assert.ok(await waitFor(() => root.querySelector('[data-page="help"]')));
+      assert.equal(root.querySelector("#fb-cred-code"), null);
+    } finally { r.stop(); }
+  });
+
+  it("login Next moves focus without submitting; IME composition never authenticates", async () => {
+    const { createCredentialForm } = await import("../src/pages/login/credential-form.js");
+    let calls = 0;
+    const { form } = createCredentialForm({ onLogin: async () => { calls += 1; } });
+    document.body.appendChild(form);
+    const code = form.querySelector("#fb-cred-code");
+    const password = form.querySelector("#fb-cred-password");
+    code.value = "PH001";
+    password.value = "synthetic-only";
+    code.focus();
+    code.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", cancelable: true }));
+    assert.equal(document.activeElement, password);
+    assert.equal(calls, 0);
+    password.dispatchEvent(new Event("compositionstart", { bubbles: true }));
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    assert.equal(calls, 0);
+    password.dispatchEvent(new Event("compositionend", { bubbles: true }));
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    assert.equal(calls, 1);
+  });
+
+  it("password visibility preserves input focus, selection and value", async () => {
+    const { createCredentialForm } = await import("../src/pages/login/credential-form.js");
+    const { form } = createCredentialForm();
+    document.body.appendChild(form);
+    const password = form.querySelector("#fb-cred-password");
+    const eye = form.querySelector(".fb-cred__eye");
+    password.value = "synthetic-only";
+    password.focus();
+    password.setSelectionRange(3, 5);
+    const pointer = new Event("pointerdown", { cancelable: true });
+    eye.dispatchEvent(pointer);
+    assert.equal(pointer.defaultPrevented, true);
+    eye.click();
+    assert.equal(password.type, "text");
+    assert.equal(document.activeElement, password);
+    assert.equal(password.selectionStart, 3);
+    assert.equal(password.selectionEnd, 5);
+    assert.equal(password.value, "synthetic-only");
+  });
+
   it("routes không có '/abc' -> parseHash trả '/abc'", () => {
     domWindow.location.hash = "#/abc";
     assert.equal(routes["/abc"], undefined);

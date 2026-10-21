@@ -93,7 +93,9 @@ export function matchPattern(patternPath, actualPath) {
 export function navigate(path) {
   const target = path.startsWith("#") ? path : `#${path}`;
   if (window.location.hash === target) {
-    window.dispatchEvent(new HashChangeEvent("hashchange"));
+    const event = new HashChangeEvent("hashchange");
+    event.fbRefresh = true; // an explicit app refresh, not a host notification
+    window.dispatchEvent(event);
   } else {
     window.location.hash = target;
   }
@@ -144,8 +146,10 @@ function refreshUnreadBadge(rootEl, adapter, guardToken) {
 export function createRouter({ root, ctx }) {
   let cleanup = null;
   let renderToken = 0; // chặn render cũ ghi đè khi hashchange chồng nhau
+  let renderedHash = null;
 
   async function render() {
+    renderedHash = window.location.hash;
     const token = ++renderToken;
     const guardToken = () => token === renderToken;
     const { path, params } = parseHash();
@@ -210,13 +214,19 @@ export function createRouter({ root, ctx }) {
     cleanup = typeof page.destroy === "function" ? page.destroy : null;
   }
 
+  // A repeated host hash notification must not detach the focused input.
+  // Explicit router.render() still refreshes the page after an auth transition.
+  function onHashChange(event) {
+    if (event.fbRefresh || window.location.hash !== renderedHash) render();
+  }
+
   function start() {
-    window.addEventListener("hashchange", render);
+    window.addEventListener("hashchange", onHashChange);
     render();
   }
 
   function stop() {
-    window.removeEventListener("hashchange", render);
+    window.removeEventListener("hashchange", onHashChange);
     if (cleanup) { try { cleanup(); } catch { /* im lặng khi dừng app */ } }
   }
 

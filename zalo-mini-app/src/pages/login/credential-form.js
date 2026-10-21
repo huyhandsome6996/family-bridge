@@ -1,6 +1,4 @@
-// Màn hình đăng nhập web (mã tài khoản + mật khẩu) — tái tạo card chia đôi
-// w02 Stitch (brand panel + form). CHỈ dùng ở host web (không phải Zalo):
-// Zalo Mini App giữ nguyên đường đăng nhập SDK.
+// Form mã tài khoản + mật khẩu dùng cho cả web và Zalo Mini App.
 //
 // TRUNG THỰC:
 // - Không tự sinh phiên, không demo-fallback; lỗi ném ra hiển thị theo kind/code.
@@ -46,12 +44,13 @@ export function credentialLoginErrorMessage(error) {
  * trang gọi adapter; trả về root element. UI tự quản busy/error.
  */
 export function createCredentialForm({ onLogin } = {}) {
+  let composing = false;
   const form = h("form", {
     class: "fb-cred__form",
     novalidate: true,
     onsubmit: (event) => {
       event.preventDefault();
-      submit();
+      if (!composing) submit();
     },
   });
 
@@ -59,7 +58,12 @@ export function createCredentialForm({ onLogin } = {}) {
   const codeInput = h("input", {
     class: "fb-input fb-cred__input",
     id: "fb-cred-code",
+    name: "username",
     type: "text",
+    inputmode: "text",
+    enterkeyhint: "next",
+    autocorrect: "off",
+    spellcheck: "false",
     autocomplete: "username",
     autocapitalize: "characters",
     placeholder: "Ví dụ: HS001 hoặc PH001",
@@ -81,7 +85,12 @@ export function createCredentialForm({ onLogin } = {}) {
   const passwordInput = h("input", {
     class: "fb-input fb-cred__input fb-cred__input--password",
     id: "fb-cred-password",
+    name: "password",
     type: "password",
+    enterkeyhint: "go",
+    autocapitalize: "none",
+    autocorrect: "off",
+    spellcheck: "false",
     autocomplete: "current-password",
     placeholder: "••••••••",
     required: true,
@@ -91,13 +100,31 @@ export function createCredentialForm({ onLogin } = {}) {
     type: "button",
     "aria-label": "Hiện hoặc ẩn mật khẩu",
     "aria-pressed": "false",
+    // Tapping the eye must not move focus from the password to the button.
+    onpointerdown: (event) => {
+      if (document.activeElement === passwordInput) event.preventDefault();
+    },
     onclick: () => {
+      const restoreFocus = document.activeElement === passwordInput;
+      const start = passwordInput.selectionStart;
+      const end = passwordInput.selectionEnd;
       const shown = passwordInput.type === "text";
       passwordInput.type = shown ? "password" : "text";
       eyeButton.setAttribute("aria-pressed", shown ? "false" : "true");
       eyeButton.textContent = shown ? "Hiện" : "Ẩn";
+      if (restoreFocus) {
+        passwordInput.focus({ preventScroll: true });
+        if (start !== null && end !== null) passwordInput.setSelectionRange(start, end);
+      }
     },
   }, "Hiện");
+  form.addEventListener("compositionstart", () => { composing = true; });
+  form.addEventListener("compositionend", () => { composing = false; });
+  codeInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || event.isComposing || composing || event.keyCode === 229) return;
+    event.preventDefault();
+    passwordInput.focus();
+  });
   passwordField.appendChild(
     h("label", { class: "fb-field__label", for: "fb-cred-password" },
       "Mật khẩu ",
