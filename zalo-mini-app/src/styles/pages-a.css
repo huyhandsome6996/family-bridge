@@ -635,3 +635,96 @@
   font-weight: 600;
   color: var(--fb-text);
 }
+
+/* Browser review: M01 should be a compact dialogue illustration, not a photo hero. */
+.fb-wm-dialogue {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--fb-space-4);
+  padding: var(--fb-space-3);
+  border-radius: var(--fb-radius-control);
+  background: var(--fb-surface-low);
+}
+
+.fb-wm-links__how {
+  border: 0;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* M04: native focusable checkboxes; the entire labelled card is a tap target.
+   Scope avoids the generic consent-summary styles on other screens. */
+[data-page="f01-consent"] .fb-consent__list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+  padding: 0;
+}
+
+[data-page="f01-consent"] .fb-consent__item {
+  display: block;
+  padding: 0;
+  border: 0;
+}
+
+[data-page="f01-consent"] .fb-consent__label {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: var(--fb-space-3);
+  padding: var(--fb-space-4);
+  border: 1px solid var(--fb-hairline);
+  border-radius: var(--fb-radius-group);
+  background: var(--fb-surface);
+  cursor: pointer;
+}
+
+[data-page="f01-consent"] .fb-consent__checkbox {
+  width: 24px;
+  height: 24px;
+  margin: 2px 0 0;
+  accent-color: var(--fb-cta);
+}
+
+[data-page="f01-consent"] .fb-consent__box { display: none; }
+
+[data-page="f01-consent"] .fb-consent__content {
+  display: block;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+[data-page="f01-consent"] .fb-consent__title-row { flex-wrap: wrap; }
+
+[data-page="f01-consent"] .fb-consent__title,
+[data-page="f01-consent"] .fb-consent__desc { font-size: var(--fb-fs-body); }
+
+[data-page="f01-consent"] .fb-consent__desc { font-weight: 400; }
+
+/* M06/M13: four fixed tracks made 320px phones spell words vertically. */
+.fb-page .fb-mood-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.fb-page .fb-mood__label { font-size: var(--fb-fs-body); line-height: 1.5; }
+.fb-page .fb-mood .fb-sec__sub { font-size: var(--fb-fs-body-sm); }
+.fb-page .fb-mood:last-child:nth-child(odd) { grid-column: 1 / -1; }
+
+[data-page="u08-home"] .fb-tiles { grid-template-columns: minmax(0, 1fr); }
+[data-page="u08-home"] .fb-tile {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  column-gap: var(--fb-space-3);
+  text-align: left;
+  align-items: center;
+}
+[data-page="u08-home"] .fb-tile__icon { grid-row: span 2; margin: 0; }
+[data-page="u08-home"] .fb-tile__label { font-size: var(--fb-fs-body); line-height: 1.5; }
+[data-page="u08-home"] .fb-tile__hint { font-size: var(--fb-fs-body-sm); line-height: 1.5; }
+
+/* Text-size stress: flex children must be allowed to reflow inside the phone. */
+.fb-htu-step__card > div { min-width: 0; overflow-wrap: anywhere; }
+.fb-badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.fb-bottom-nav__list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.fb-bottom-nav__entry,
+.fb-bottom-nav__item { min-width: 0; }
+.fb-bottom-nav__label { white-space: normal; overflow-wrap: anywhere; text-align: center; }

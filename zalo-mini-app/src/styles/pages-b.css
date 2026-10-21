@@ -134,6 +134,25 @@
   overflow-wrap: anywhere;
 }
 
+.fb-msg-top__back {
+  min-width: 0;
+  max-width: 100%;
+  flex-shrink: 1;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  justify-content: flex-start;
+}
+.fb-msg-top__back span { min-width: 0; }
+.fb-msg-meta__row,
+.fb-cards-tile__foot { flex-wrap: wrap; }
+.fb-msg-meta__time { margin-left: 0; }
+.fb-cards-tile,
+.fb-cards-tile__cta { min-width: 0; max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
+.fb-compose__help-card > div { flex-direction: column; align-items: stretch !important; }
+.fb-compose__help-card > div > div,
+.fb-compose__help-card .fb-compose__recipient-name { min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.fb-compose__help-card > div > div > div { min-width: 0; }
+
 .fb-msg-letter__note {
   margin: var(--fb-space-2) 0 0;
   font-size: var(--fb-fs-body-sm);
@@ -289,4 +308,31 @@
   font-size: var(--fb-fs-label-sm);
   color: var(--fb-outline-text);
   flex-shrink: 0;
+}
+
+/* M16 had raw browser textarea/select controls despite its Stitch frame. */
+[data-page="f15-items"] .fb-item-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-3);
+}
+[data-page="f15-items"] .fb-textarea {
+  width: 100%;
+  min-height: 160px;
+  resize: vertical;
+}
+[data-page="f15-items"] .fb-input { width: 100%; min-height: 48px; }
+[data-page="f15-items"] .fb-item-content {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--fb-fs-body);
+}
+
+/* The back label must not consume the message title's only line. */
+.fb-msg-top { flex-wrap: wrap; }
+.fb-msg-top__title {
+  flex-basis: 100%;
+  overflow: visible;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }

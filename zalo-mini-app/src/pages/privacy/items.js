@@ -10,14 +10,14 @@ export const page = {
     let cancelled = false, busy = false;
     cancelCurrent = () => { cancelled = true; };
     const api = ctx.privacyApi || createAppApi();
-    const root = h("div", { class: "fb-page" });
+    const root = h("div", { class: "fb-page", dataset: { page: "f15-items" } });
     root.appendChild(createTopBar({ title: "Chia sẻ từng mục", showBack: true, onBack: () => ctx.navigate("/privacy") }));
     const body = h("div", { class: "fb-page__body" }); root.appendChild(body);
     const notice = h("p", { role: "status", "aria-live": "polite" });
     body.appendChild(h("p", {}, "Ghi chép mới là riêng tư. Bạn chọn đúng một trang, xem nội dung và chọn người nhận trước khi chia sẻ. Kết nối không mở toàn bộ nhật ký."));
     body.appendChild(notice);
     const own = h("div"), received = h("div");
-    const content = h("textarea", { maxlength: 4000, rows: 5, "aria-label": "Ghi chép riêng của bạn" });
+    const content = h("textarea", { id: "fb-private-note", class: "fb-textarea", maxlength: 4000, rows: 5, "aria-label": "Ghi chép riêng của bạn" });
     const save = createButton({ label: "Lưu ghi chép riêng", variant: "primary", onClick: () => write(async () => {
       const text = content.value.trim(); if (!text) throw new Error("Hãy nhập nội dung trước khi lưu.");
       await api.post("/api/v1/journal/pages", { body: { content: text, title: "", topic_code: "" } });
@@ -25,7 +25,9 @@ export const page = {
       content.value = ""; notice.textContent = "Đã lưu riêng. Chưa chia sẻ cho ai.";
       await load();
     }) });
-    body.appendChild(createCard({ title: "Ghi chép riêng", children: h("div", {}, content, save) }));
+    body.appendChild(createCard({ title: "Ghi chép riêng", children: h("div", { class: "fb-item-editor" },
+      h("label", { for: "fb-private-note", class: "fb-field__label" }, "Điều bạn muốn ghi lại"),
+      content, h("p", { class: "fb-field__hint" }, "Chỉ mình bạn · tối đa 4.000 ký tự"), save) }));
     body.appendChild(createButton({ label: "Tải lại các mục", variant: "ghost", onClick: () => load() }));
     body.appendChild(createCard({ title: "Các trang của tôi", children: own }));
     body.appendChild(createCard({ title: "Được chia sẻ với tôi", children: received }));
@@ -55,9 +57,9 @@ export const page = {
         if (cancelled || current !== loadId) return;
         own.replaceChildren(); received.replaceChildren();
         for (const row of pages.results || []) {
-          const selector = h("select", { "aria-label": "Chọn người nhận trang này" }, h("option", { value: "" }, "Chọn người nhận"));
+          const selector = h("select", { class: "fb-input", "aria-label": "Chọn người nhận trang này" }, h("option", { value: "" }, "Chọn người nhận"));
           for (const connection of connections.results || []) selector.appendChild(h("option", { value: connection.other_party_id }, connection.counterpart?.display_name || "Người đồng hành (chưa đặt tên)"));
-          const preview = h("p", {}, row.content);
+          const preview = h("p", { class: "fb-item-content" }, row.content);
           const share = createButton({ label: "Xem và xác nhận chia sẻ trang này", variant: "primary", onClick: () => write(async () => {
             const recipient = selector.value; if (!recipient) throw new Error("Hãy chọn người nhận cụ thể.");
             const fresh = await api.get(`/api/v1/journal/pages/${encodeURIComponent(row.page_id)}`);
@@ -68,7 +70,7 @@ export const page = {
             await api.post(`/api/v1/journal/pages/${encodeURIComponent(row.page_id)}/share`, { body: { recipient_id: recipient, expected_revision: fresh.revision } });
             if (!cancelled) notice.textContent = "Đã chia sẻ đúng trang. Những trang khác vẫn riêng tư.";
           }) });
-          own.appendChild(createCard({ title: row.title || "Trang riêng", children: h("div", {}, preview, selector, share) }));
+          own.appendChild(createCard({ title: row.title || "Trang riêng", children: h("div", { class: "fb-item-editor" }, preview, selector, share) }));
         }
         if (!(pages.results || []).length) own.appendChild(h("p", {}, "Chưa có trang riêng."));
         if (pages.next) own.appendChild(h("p", {}, "Đang hiển thị 20 trang gần nhất. Các trang khác vẫn được giữ."));

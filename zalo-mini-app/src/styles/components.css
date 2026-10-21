@@ -25,6 +25,9 @@
   text-align: center;
   text-decoration: none;
   cursor: pointer;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
   /* Chỉ transform/opacity theo contract */
   transition:
     transform var(--fb-transition-quick) ease,
@@ -558,9 +561,9 @@
   font-size: var(--fb-fs-headline-sm);
   font-weight: 600;
   line-height: var(--fb-lh-headline-sm);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 /* ================= Bottom navigation (.fb-bottom-nav) ================= */
@@ -713,6 +716,7 @@
   display: inline-block;
   vertical-align: middle;
   flex-shrink: 0;
+  fill: currentColor;
 }
 
 /* ---- Logo thật (ảnh asset, không còn SVG placeholder) ---- */
@@ -1479,15 +1483,16 @@
   display: flex;
   align-items: center;
   gap: var(--fb-space-1);
-  /* Chừa chỗ capsule Zalo ở góc phải màn hình thật */
-  padding-right: 80px;
+  /* Host chrome has its own area; a fixed 80px reserve clipped mobile titles. */
+  flex: 0 0 auto;
 }
 
 .fb-top-bar__help-pill {
   display: inline-flex;
   align-items: center;
   gap: var(--fb-space-1);
-  min-height: 36px;
+  min-height: 44px;
+  white-space: nowrap;
   padding: 0 var(--fb-space-3);
   border-radius: 9999px;
   background: var(--fb-surface-low);

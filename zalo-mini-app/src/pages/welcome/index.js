@@ -12,7 +12,6 @@
 //   dẫn về trang Trợ giúp (nguồn liên hệ được xác minh ở đó), không tel:.
 import { h } from "../../app/dom.js";
 import { createButton, createLogo, createIcon } from "../../components/index.js";
-import heroTeaUrl from "../../assets/illustrations/hero-welcome-tea.jpg";
 
 /** Hàng tính năng của frame M01 (390px): icon + tiêu đề + mô tả ngắn. */
 const FEATURES = [
@@ -53,7 +52,7 @@ export const page = {
     );
     root.appendChild(brandRow);
 
-    // Hero: headline + mô tả + ảnh minh họa (asset local, caption trung tính)
+    // M01 uses a compact dialogue mark rather than a large stock-photo hero.
     const hero = h("div", { class: "fb-wm-hero" });
     hero.appendChild(
       h("h1", { class: "fb-wm-hero__title" }, "Mở lời nhẹ nhàng, gần nhau hơn"),
@@ -65,21 +64,8 @@ export const page = {
       ),
     );
     hero.appendChild(
-      h("figure", { class: "fb-photo fb-wm-hero__photo" },
-        h("img", {
-          src: heroTeaUrl,
-          alt: "Mẹ và con trò chuyện bên tách trà trên ban công, ánh sáng ấm dịu",
-          width: "1200",
-          height: "655",
-          loading: "eager",
-          decoding: "async",
-        }),
-        h("figcaption", { class: "fb-photo__overlay" },
-          h("span", { class: "fb-photo__caption fb-photo__caption--plain" },
-            createIcon({ name: "favorite", size: 16, className: "fb-wm-hero__heart" }),
-            " Không gian riêng tư cho gia đình bạn",
-          ),
-        ),
+      h("div", { class: "fb-wm-dialogue", "aria-hidden": "true" },
+        createLogo({ size: "lg" }),
       ),
     );
     root.appendChild(hero);

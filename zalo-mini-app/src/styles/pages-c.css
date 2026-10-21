@@ -11,6 +11,7 @@
 
 /* ----------------------- Khối dùng chung nhóm ----------------------- */
 
+
 /* Kicker/hesion đầu trang (kéo dài fb-sec có sẵn trong components.css) */
 [data-page="f01-connect"] .fb-page__body,
 [data-page="profile"] .fb-page__body,
@@ -645,4 +646,17 @@ a.fbc-menu__row {
   display: flex;
   flex-direction: column;
   gap: var(--fb-space-2);
+}
+
+/* Large text must reflow contact badges and help actions, never escape the phone. */
+.fbc-contact { flex-wrap: wrap; }
+.fbc-contact__body { flex: 1 1 140px; }
+.fbc-contact__badge { max-width: 100%; }
+.fbc-help-pointer { flex-wrap: wrap; }
+.fbc-help-pointer .fb-btn {
+  flex: 1 1 100%;
+  max-width: 100%;
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
