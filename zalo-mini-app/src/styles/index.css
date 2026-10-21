@@ -9,5 +9,9 @@
 @import "./tokens.css";
 @import "./base.css";
 @import "./components.css";
-/* Web Render (Task 2): khung web desktop (sidebar + topbar). */
+/* Handoff Stitch 21/10: shell mobile một cột (sidebar desktop đã xoá). */
 @import "./shell.css";
+/* Style bề mặt theo nhóm màn (mỗi agent một file, không đụng file chung). */
+@import "./pages-a.css";
+@import "./pages-b.css";
+@import "./pages-c.css";
