@@ -15,11 +15,12 @@
 //   path và khớp ":param" → gộp vào ctx.params (URLSearchParams + path params).
 // - requiresAuth đứng TRƯỚC requiresRole (phiên sống là điều kiện rộng hơn).
 //   Demo (?demo=1) được coi như phiên xem trước minh họa — không redirect.
-// - chrome: "app" bọc page trong app-shell (sidebar + topbar web); bottom-nav
-//   vẫn được gắn như cũ cho mobile (CSS ẩn ở ≥1024px).
+// - chrome: "app" bọc page trong app-shell mobile MỘT CỘT (handoff Stitch
+//   21/10: bỏ sidebar desktop — Shell Mini App không có khung web); bottom-nav
+//   gắn riêng cho các trang cấp một (page.showBottomNav).
 
 import { clear, h } from "./dom.js";
-import { getSession, hasLiveSession } from "../core/session.js";
+import { hasLiveSession } from "../core/session.js";
 
 export const routes = {
   "/": () => import("../pages/welcome/index.js"),
@@ -110,17 +111,17 @@ function findRoute(path) {
 }
 
 /**
- * Cập nhật badge số thư chưa đọc TRÊN SHELL bằng dữ liệu ĐÃ tải thật.
+ * Cập nhật badge số thư chưa đọc TRÊN BOTTOM-NAV bằng dữ liệu ĐÃ tải thật.
  * Best-effort: lỗi mạng → bỏ badge (không bao giờ hiện số bịa).
- * Chạy tối đa một lần mỗi render; mọi trang chrome "app" đều hưởng.
+ * Chạy tối đa một lần mỗi render; quét [data-nav-badge] trong container.
  */
-function refreshUnreadBadge(shell, adapter, guardToken) {
-  if (!shell || !adapter || typeof adapter.listMessages !== "function") return;
+function refreshUnreadBadge(rootEl, adapter, guardToken) {
+  if (!rootEl || !adapter || typeof adapter.listMessages !== "function") return;
   Promise.resolve()
     .then(() => adapter.listMessages({ limit: 20 }))
     .then((pageData) => {
       if (guardToken() !== true) return; // đã render trang mới — bỏ kết quả cũ
-      const badge = shell.querySelector("[data-nav-badge='mailbox']");
+      const badge = rootEl.querySelector("[data-nav-badge='mailbox']");
       if (!badge) return;
       const rows = (pageData && pageData.results) || [];
       const unread = rows.filter(
@@ -135,7 +136,7 @@ function refreshUnreadBadge(shell, adapter, guardToken) {
     })
     .catch(() => {
       if (guardToken() !== true) return;
-      const badge = shell.querySelector("[data-nav-badge='mailbox']");
+      const badge = rootEl.querySelector("[data-nav-badge='mailbox']");
       if (badge) badge.hidden = true; // lỗi → không badge (trung thực)
     });
 }
@@ -184,24 +185,20 @@ export function createRouter({ root, ctx }) {
     document.title = page.title || "Family Bridge";
     const el = page.render({ ...ctx, params });
 
-    // 3) Chrome: "app" bọc trong app-shell (web); mặc định "bare" giữ nguyên.
+    // 3) Chrome: "app" bọc trong app-shell mobile một cột; mặc định "bare".
     let host = el;
-    let shell = null;
     if (page.chrome === "app") {
       const { createAppShell } = await import("../components/app-shell.js");
       if (token !== renderToken) return;
-      const session = getSession();
-      shell = createAppShell({
-        activePath: path,
-        profile: {
-          displayName: (session && session.displayName) || "Thành viên Family Bridge",
-        },
-        children: [el],
-      });
-      host = shell;
-      refreshUnreadBadge(shell, ctx.adapter, guardToken);
+      host = createAppShell({ children: [el] });
     }
     container.appendChild(host);
+
+    // Badge Hộp thư: quét toàn bộ container (bottom-nav nằm ngoài shell khi
+    // showBottomNav) — số chưa đọc THẬT từ listMessages, lỗi/0 thì ẩn badge.
+    if (page.chrome === "app" || page.showBottomNav) {
+      refreshUnreadBadge(container, ctx.adapter, guardToken);
+    }
 
     if (page.showBottomNav) {
       const { createBottomNav } = await import("../components/bottom-nav.js");

@@ -8,20 +8,13 @@
 export const NAV_ITEMS = [
   { path: "/home", label: "Trang chủ", icon: "home" },
   { path: "/companion", label: "Đồng hành", icon: "companion" },
-  { path: "/mailbox", label: "Hộp thư", icon: "mailbox" },
+  { path: "/mailbox", label: "Hộp thư", icon: "mailbox", badge: "mailbox" },
   { path: "/diary", label: "Nhật ký", icon: "diary" },
   { path: "/profile", label: "Cá nhân", icon: "profile" },
 ];
 
-// Web Render (Task 2): 6 mục sidebar desktop theo thiết kế Stitch w05/w08–w16.
-// Riêng biệt với NAV_ITEMS (bottom-nav mobile ≤1023px). Icon là Material
-// Symbols local (icon.js) — không CDN. Badge Hộp thư chỉ hiện khi CÓ số
-// chưa đọc thật từ dữ liệu đã tải (không bao giờ bịa).
-export const NAV_ITEMS_SIDEBAR = [
-  { path: "/home", label: "Trang chủ", icon: "cottage" },
-  { path: "/companion", label: "Đồng hành", icon: "diversity_1" },
-  { path: "/mailbox", label: "Hộp thư", icon: "mail", badge: "mailbox" },
-  { path: "/diary", label: "Nhật ký & Cảm xúc", icon: "auto_stories" },
-  { path: "/connect", label: "Người đồng hành", icon: "group" },
-  { path: "/settings", label: "Cài đặt & Riêng tư", icon: "shield_person" },
-];
+// Handoff Stitch 21/10: shell Mini App là mobile một cột — không còn sidebar
+// desktop. NAV_ITEMS_SIDEBAR chỉ còn là hằng tham chiếu lịch sử; KHÔNG dùng
+// để dựng UI mới (app-shell mobile không render sidebar). Giữ export để không
+// phá import cũ trong tests; xoá hẳn chỉ khi dẫn chiếu được toàn bộ caller.
+export const NAV_ITEMS_SIDEBAR = NAV_ITEMS;

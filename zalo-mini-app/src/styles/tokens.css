@@ -1,51 +1,56 @@
 /* ============================================================
-   tokens.css — Family Bridge design tokens (US-003 + Stitch UI upgrade)
-   Quy tắc CONTRACTS.md mục 4: giữ nguyên TÊN token. Đợt Stitch UI upgrade
-   (user yêu cầu) cập nhật GIÁ TRỊ theo palette HTML của 4 màn tham chiếu
-   docs/design/stitch-reference/ (code.html) — ngoại lệ được ghi rõ trong
-   docs/design/stitch-ui-upgrade/DESIGN.md §2 và contrast-checks.json.
+   tokens.css — Family Bridge design tokens (US-003 + Stitch handoff M01–M24)
+   Nguồn chuẩn: docs/design/zalo-miniapp-stitch-20261021/DESIGN.md §2 (bảng
+   palette đã chốt trước Stitch, ưu tiên hơn YAML/HTML của export).
+   Quy tắc CONTRACTS.md mục 4: giữ nguyên TÊN token, chỉ cập nhật GIÁ TRỊ.
    Logo giữ màu gốc riêng trong asset ảnh (logo.js) — không đổi hue.
-   Cặp màu chữ đã đo (WCAG, xem contrast-checks.json); 2 deviation nhỏ:
-   - chữ trên nút amber: #6B392E thay #713D32 (4.56:1 so 4.25:1)
-   - micro-copy: --fb-outline-text #856D67 thay #8A726C (4.57:1 so 4.25:1)
+
+   Cặp màu chữ đã đo (WCAG 2.1, relative luminance sRGB):
+   - #713D32 trên #FFF4E8        = 8.01:1  (DESIGN.md §2 — chữ chính)
+   - #FFF4E8 trên #A84733        = 5.36:1  (DESIGN.md §2 — nút chính)
+   - #475569 trên #FFFFFF        = 7.46:1  (chữ phụ trên paper)
+   - #64748B trên #FFFFFF        = 4.75:1  (micro-copy — deviation đã ghi)
+   - #6B392E trên #E4AB56        = 4.56:1  (chữ trên nút amber — deviation)
+   - #FFFFFF trên #C65B43 (brand, icon/chữ lớn ≥24px bold) = 3.62:1 AA-large
    ============================================================ */
 
 :root {
   /* --- Màu thương hiệu / vai trò màu (tên giữ nguyên theo contract) --- */
-  --fb-primary: #9D3D27;          /* Stitch primary — CTA, nhãn nhấn */
-  --fb-accent: #E4AB56;           /* giữ nguyên — nút amber trong Stitch */
-  --fb-bg: #FFF8F6;               /* Stitch surface */
-  --fb-text: #360F07;             /* Stitch on-surface */
-  --fb-text-secondary: #56423E;   /* Stitch on-surface-variant */
-  --fb-surface: #FFFFFF;          /* card trắng */
-  --fb-cta: #9D3D27;              /* CTA chính = primary trong Stitch */
-  --fb-on-cta: #FFFFFF;
+  --fb-primary: #A84733;          /* Accessible Action — nút chính/focus */
+  --fb-brand: #C65B43;            /* Terracotta Brand — nhận diện, icon */
+  --fb-accent: #E4AB56;           /* Warm Gold — điểm nhỏ nhấn nhận diện */
+  --fb-bg: #FFF4E8;               /* Warm Canvas — nền sáng ấm, dùng tiết chế */
+  --fb-text: #713D32;             /* Cocoa Text — chữ chính trên nền sáng */
+  --fb-text-secondary: #475569;   /* Slate Secondary — mô tả phụ */
+  --fb-surface: #FFFFFF;          /* Paper Surface — vùng đọc/viết/sheet */
+  --fb-cta: #A84733;              /* CTA chính = Accessible Action */
+  --fb-on-cta: #FFF4E8;           /* chữ trên CTA theo DESIGN.md §2 (5.36:1) */
 
-  /* --- Bậc bề mặt Stitch (surface container tiers) --- */
-  --fb-surface-low: #FFF0EE;      /* surface-container-low */
-  --fb-surface-container: #FFE9E5;/* surface-container */
-  --fb-surface-high: #FFE2DC;     /* surface-container-high */
-  --fb-surface-highest: #FFDAD3;  /* surface-container-highest */
-  --fb-primary-container: #BD543D;
-  --fb-on-primary-container: #FFFBFF;
-  --fb-primary-fixed: #FFDAD2;
-  --fb-primary-fixed-dim: #FFB4A3;
-  --fb-secondary-fixed: #FFDAD3;
-  --fb-on-secondary-fixed: #3E0500;
-  --fb-on-secondary-fixed-variant: #802918;
-  --fb-tertiary-fixed: #FFDDB2;   /* card amber nhạt (U08 tín hiệu) */
-  --fb-on-tertiary-fixed: #291800;
-  --fb-tertiary-fixed-dim: #F7BC65;
-  --fb-on-tertiary-fixed-variant: #624000;
-  --fb-tertiary: #7E5300;
-  --fb-inverse-surface: #502319;  /* gradient/overlay trên ảnh */
-  --fb-inverse-on-surface: #FFEDE9;
-  --fb-outline: #8A726C;          /* viền trang trí (không phải chữ) */
-  --fb-outline-text: #856D67;     /* chữ micro-copy — đạt 4.57:1 */
-  --fb-outline-variant: #DDC0BA;
+  /* --- Bậc bề mặt (tint ấm dẫn từ Warm Canvas, trung tính hơn cũ) --- */
+  --fb-surface-low: #FFF8F0;      /* bề mặt nhấp nhô nhẹ trên canvas */
+  --fb-surface-container: #FDEFE0;/* nền nhóm/hover card */
+  --fb-surface-high: #F8E4CF;     /* nền nổi mạnh hơn (chip active) */
+  --fb-surface-highest: #F1D6BC;  /* nền nổi đậm nhất (pressed) */
+  --fb-primary-container: #C65B43;/* container thương hiệu = Terracotta */
+  --fb-on-primary-container: #FFF4E8;
+  --fb-primary-fixed: #F6D9C8;    /* tint terracotta nhạt (nền role card) */
+  --fb-primary-fixed-dim: #E7B49E;
+  --fb-secondary-fixed: #F1D6BC;
+  --fb-on-secondary-fixed: #4A2013;
+  --fb-on-secondary-fixed-variant: #8C3A21;
+  --fb-tertiary-fixed: #FBE9C9;   /* card gold nhạt (tín hiệu, amber) */
+  --fb-on-tertiary-fixed: #3F2A00;
+  --fb-tertiary-fixed-dim: #EFCB80;
+  --fb-on-tertiary-fixed-variant: #6E500D;
+  --fb-tertiary: #7A5A0F;
+  --fb-inverse-surface: #4A2418;  /* overlay tối trên ảnh/hero */
+  --fb-inverse-on-surface: #FFF4E8;
+  --fb-outline: #94A3B8;          /* viền trang trí (không phải chữ) */
+  --fb-outline-text: #64748B;     /* chữ micro-copy — đạt 4.75:1 */
+  --fb-outline-variant: #CBD5E1;
   --fb-on-amber: #6B392E;         /* chữ trên nút amber — đạt 4.56:1 */
 
-  /* --- Trạng thái (bắt buộc theo contract, giữ nguyên) --- */
+  /* --- Trạng thái (bắt buộc theo contract, khớp DESIGN.md §2) --- */
   --fb-success: #166534;
   --fb-success-bg: #F0FDF4;
   --fb-warning: #92400E;
@@ -55,13 +60,14 @@
   --fb-info: #1E40AF;
   --fb-info-bg: #EFF6FF;
 
-  /* --- Viền + focus (bắt buộc theo contract) --- */
-  --fb-border: #DDC0BA;           /* viền ấm theo outline-variant Stitch */
-  --fb-focus: #9D3D27;
+  /* --- Viền + focus (Control Border #64748B theo DESIGN.md §2) --- */
+  --fb-border: #64748B;           /* ranh giới control, focus rõ ràng */
+  --fb-focus: #A84733;
 
   /* --- Bo góc (bắt buộc theo contract; xl = thẻ Stitch 12px) --- */
   --fb-radius-control: 8px;
   --fb-radius-group: 12px;
+  --fb-radius-sheet: 16px;        /* bo góc trên sheet theo DESIGN.md §4 */
 
   /* --- Spacing thang 4/8/12/16/24/32 --- */
   --fb-space-1: 4px;
@@ -78,8 +84,8 @@
   --fb-font-size-h1: 24px;
   --fb-font-size-h2: 20px;
 
-  /* Thang chữ Stitch (fontSize config trong code.html) */
-  --fb-fs-headline-lg: 24px;      /* headline-lg / headline-lg-mobile */
+  /* Thang chữ (DESIGN.md §3: body/input 16, tiêu đề 20–24, meta 12–14) */
+  --fb-fs-headline-lg: 24px;      /* headline-lg / màn chào */
   --fb-lh-headline-lg: 32px;
   --fb-fs-headline-md: 20px;      /* headline-md */
   --fb-lh-headline-md: 28px;
@@ -94,12 +100,13 @@
   --fb-fs-label-sm: 12px;         /* label-sm / label-md */
   --fb-lh-label-sm: 16px;
 
-  /* --- Bố cục 1 cột, container 480px, touch target ≥44px --- */
-  --fb-container-max: 480px;
+  /* --- Bố cục 1 cột 320–430px (chính 390×844), touch ≥44px/48px mục tiêu --- */
+  --fb-container-max: 430px;
   --fb-touch-target: 44px;
+  --fb-touch-target-lg: 48px;
   --fb-nav-height: 56px;
 
-  /* --- Motion: CHỈ transform/opacity, 100–200ms --- */
+  /* --- Motion: CHỈ transform/opacity, 100–200ms, tôn trọng reduced-motion --- */
   --fb-transition-quick: 120ms;
   --fb-transition-base: 160ms;
 
@@ -109,20 +116,18 @@
   --fb-z-sheet: 60;
   --fb-z-dialog: 70;
 
-  /* --- Phái sinh: hairline ấm, overlay, chữ trên nền primary --- */
-  --fb-hairline: rgba(138, 114, 108, 0.35);
-  --fb-hairline-strong: rgba(138, 114, 108, 0.5);
-  --fb-overlay-bg: rgba(80, 35, 25, 0.5);
-  --fb-on-primary: #FFFFFF; /* trắng trên #9D3D27 = 6.71:1 (contrast-checks) */
+  /* --- Phái sinh: hairline slate, overlay cocoa, chữ trên nền primary --- */
+  --fb-hairline: rgba(100, 116, 139, 0.28);
+  --fb-hairline-strong: rgba(100, 116, 139, 0.45);
+  --fb-overlay-bg: rgba(74, 36, 24, 0.55);
+  --fb-on-primary: #FFF4E8;       /* #FFF4E8 trên #A84733 = 5.36:1 */
 
-  /* --- Bóng Stitch (shadow-sm / header / nav trong prototype) --- */
-  --fb-shadow-sm: 0 1px 2px rgba(113, 61, 50, 0.06), 0 1px 3px rgba(113, 61, 50, 0.08);
+  /* --- Bóng nhẹ (DESIGN.md §4: bóng nhẹ hoặc không bóng) --- */
+  --fb-shadow-sm: 0 1px 2px rgba(113, 61, 50, 0.05), 0 1px 3px rgba(113, 61, 50, 0.07);
   --fb-shadow-header: 0 1px 8px rgba(113, 61, 50, 0.05);
   --fb-shadow-nav: 0 -2px 12px rgba(113, 61, 50, 0.06);
 
-  /* --- Web Render (Task 2): khung web desktop — CHỈ THÊM, không đổi giá trị cũ --- */
-  --fb-sidebar-w: 240px;      /* sidebar Stitch w05/w08 */
-  --fb-header-h: 64px;        /* topbar cao 64px */
-  --fb-content-max: 1280px;   /* nội dung chính không tràn màn rộng */
-  --fb-cta-hover: #7D2612;    /* hover CTA (primary deep trong palette Stitch) */
+  /* --- CTA hover/pressed (đậm hơn #A84733, vẫn ≥5:1 với chữ #FFF4E8) --- */
+  --fb-cta-hover: #8C3A28;
+  --fb-cta-active: #7C3322;
 }

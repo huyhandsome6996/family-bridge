@@ -849,14 +849,16 @@ describe("Web M4 — signal (w16): 3 nhu cầu từ meta, preview -> phát, care
 
 const COMPOSE_SOURCE = () => readFileSync(join(ROOT, "src/pages/compose/index.js"), "utf8");
 
-describe("Web M4 — compose restyle (w11/w12): 2 cột, vòng đếm, niêm phong, AI thật", () => {
-  it("markup có lớp 2 cột .fb-compose-grid + shell.css có rule desktop >=1024px", () => {
+describe("Web M4 — compose restyle (w11/w12): 1 cột, vòng đếm, niêm phong, AI thật", () => {
+  it("markup giữ lớp .fb-compose-grid (1 cột) + shell.css KHÔNG còn rule 2 cột desktop", () => {
+    // Handoff Stitch 21/10 (DESIGN.md §5): Mini App một cột 320–430px — bố cục
+    // 2 cột ≥1024px đã xoá. Assertion đổi từ "có rule desktop" sang "cấm rule".
     const css = readFileSync(join(ROOT, "src/styles/shell.css"), "utf8");
-    assert.ok(css.includes(".fb-compose-grid"), "shell.css phải định nghĩa .fb-compose-grid");
-    const gridRule = css.slice(css.indexOf(".fb-compose-grid"));
-    assert.ok(
-      /@media \(min-width: 1024px\)[\s\S]*\.fb-compose-grid\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\) 340px/.test(css),
-      "2 cột chỉ áp dụng @media (min-width: 1024px)",
+    assert.ok(css.includes(".fb-compose-grid"), "shell.css phải định nghĩa .fb-compose-grid (flex 1 cột)");
+    assert.doesNotMatch(
+      css,
+      /grid-template-columns:\s*minmax\(0, 1fr\)\s+340px/,
+      "cấm tái thêm 2 cột soạn thảo + panel 340px",
     );
   });
 

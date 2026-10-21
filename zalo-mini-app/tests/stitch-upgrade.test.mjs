@@ -122,11 +122,17 @@ describe("Stitch: asset logo chính chủ (PROMPT §4)", () => {
 /* --------------------- 2) Tokens + font bundle cục bộ --------------------- */
 
 describe("Stitch: tokens + font (PROMPT §3/§5)", () => {
-  it("tokens.css chứa palette HTML của màn tham chiếu", () => {
+  it("tokens.css chứa palette chuẩn DESIGN.md handoff 21/10 (bảng màu đã chốt)", () => {
+    // Handoff Stitch 21/10 — DESIGN-REVIEW.md: YAML/HTML của export dùng bảng
+    // màu đỏ-hồng (#9D3D27/#FFF8F6) KHÔNG chuẩn; palette chuẩn theo DESIGN.md
+    // §2 là Warm Canvas/Terracotta/Accessible Action/Cocoa/Slate. Assertion
+    // cập nhật theo bảng đã chốt (giữ nguyên tên token theo CONTRACTS §4).
     const css = readFileSync(join(SRC, "styles/tokens.css"), "utf8");
-    for (const value of ["#9D3D27", "#FFF8F6", "#360F07", "#BD543D", "#FFDDB2", "#FFDAD3", "#56423E"]) {
-      assert.ok(css.includes(value), `thiếu màu Stitch ${value}`);
+    for (const value of ["#A84733", "#C65B43", "#FFF4E8", "#713D32", "#475569", "#64748B", "#E4AB56", "#FFFFFF"]) {
+      assert.ok(css.includes(value), `thiếu màu chuẩn DESIGN.md ${value}`);
     }
+    assert.doesNotMatch(css, /#9D3D27|#FFF8F6|#360F07|#BD543D/,
+      "cấm quay lại palette đỏ-hồng YAML đã bị DESIGN-REVIEW loại");
   });
 
   it("font Be Vietnam Pro bundle cục bộ, không phụ thuộc CDN runtime", () => {

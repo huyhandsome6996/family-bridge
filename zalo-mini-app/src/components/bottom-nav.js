@@ -10,6 +10,10 @@
 // khớp prototype: home / explore / mark_email_unread / menu_book /
 // account_circle. Mỗi item luôn kèm nhãn chữ nên svg aria-hidden. Vùng chạm
 // ≥ 44px (min-height 56px, CSS). Item active: aria-current="page".
+//
+// Handoff Stitch 21/10 (SCREEN-MAP M06/M08): badge số chưa đọc đặt trên tab
+// Hộp thư qua [data-nav-badge="mailbox"] — router chỉ mở badge khi CÓ số
+// chưa đọc THẬT đã tải (hidden mặc định, không bao giờ bịa số).
 import { h } from "../app/dom.js";
 import { NAV_ITEMS } from "../app/nav.js";
 import { createIcon } from "./icon.js";
@@ -55,6 +59,18 @@ export function createBottomNav({ items = NAV_ITEMS, active = "", onNavigate } =
       iconWrap,
       h("span", { class: "fb-bottom-nav__label" }, item.label)
     );
+
+    if (item.badge) {
+      // Badge ẩn mặc định — router chỉ hiện khi số chưa đọc > 0 (dữ liệu thật).
+      link.appendChild(
+        h("span", {
+          class: "fb-bottom-nav__badge",
+          "data-nav-badge": item.badge,
+          "aria-hidden": "true",
+          hidden: true,
+        })
+      );
+    }
 
     list.appendChild(h("li", { class: "fb-bottom-nav__entry" }, link));
   });

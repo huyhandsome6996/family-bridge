@@ -1,296 +1,40 @@
 /* ============================================================
-   shell.css — khung web desktop (Stitch w05/w08–w16, Task 2 Render).
-   Sidebar 240px cố định @≥1024px; <1024px sidebar ẩn, bottom-nav hiện
-   (bottom-nav vẫn do router gắn ngoài shell — CSS ẩn nó ở ≥1024px).
-   Breakpoints: 1024 (sidebar), 768 (nén topbar), 320 (mobile nhỏ).
-   KHÔNG ẩn scrollbar; focus-visible 2px #9D3D27 + offset; touch ≥44px;
-   line-height ≥1.55 cho tiếng Việt.
+   shell.css — khung Mini App mobile MỘT CỘT (handoff Stitch 21/10).
+   Sidebar/topbar desktop đã xoá (IMPLEMENTATION.md §1: shell desktop là
+   điểm cần xử lý tại MINI APP); mỗi trang tự dựng top-bar/app-header,
+   bottom-nav 5 tab do router gắn cho trang cấp một.
+   Mobile-first 320–430px (chính 390×844); focus-visible 2px; touch ≥44px;
+   line-height ≥1.55 cho tiếng Việt; không cuộn ngang toàn trang.
    ============================================================ */
 
-/* ---------- Layout tổng ---------- */
+/* ---------- Layout tổng (mobile một cột) ---------- */
 .fb-shell {
   display: flex;
+  flex-direction: column;
   min-height: 100dvh;
   background: var(--fb-bg);
   color: var(--fb-text);
 }
 
-/* Sidebar: fixed 240px, chỉ hiện @≥1024px */
-.fb-sidebar {
-  display: none;
-  flex-direction: column;
-  gap: var(--fb-space-4);
-  position: fixed;
-  inset: 0 auto 0 0;
-  width: var(--fb-sidebar-w);
-  padding: var(--fb-space-4);
-  background: var(--fb-surface-low);
-  border-right: 1px solid var(--fb-hairline);
-  overflow-y: auto;
-  z-index: 30;
-}
-
-.fb-main {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-width: 0;
-}
-
 .fb-content {
   flex: 1;
   width: 100%;
-  max-width: var(--fb-content-max);
+  max-width: var(--fb-container-max);
   margin: 0 auto;
-  padding: var(--fb-space-4);
-}
-
-/* ---------- Sidebar nội dung ---------- */
-.fb-sidebar__brand {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--fb-space-2);
-}
-
-.fb-sidebar__brand-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 4px 10px;
-  border-radius: 999px;
-  background: var(--fb-surface-container);
-  color: var(--fb-text-secondary);
-  font-size: var(--fb-fs-label-sm);
-  font-weight: 600;
-}
-
-.fb-sidebar__version {
-  font-size: var(--fb-fs-label-sm);
-  color: var(--fb-outline-text);
-}
-
-.fb-sidebar__list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.fb-sidebar__item {
-  display: flex;
-  align-items: center;
-  gap: var(--fb-space-3);
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: var(--fb-radius-control);
-  color: var(--fb-text);
-  text-decoration: none;
-  font-size: var(--fb-fs-body-sm);
-  font-weight: 500;
-  line-height: 1.55;
-  transition: background-color var(--fb-transition-quick), color var(--fb-transition-quick);
-}
-
-.fb-sidebar__item:hover { background: var(--fb-surface-container); }
-.fb-sidebar__item--active {
-  background: var(--fb-surface-high);
-  color: var(--fb-on-secondary-fixed-variant);
-  font-weight: 600;
-}
-
-.fb-sidebar__icon { display: inline-flex; color: var(--fb-primary); }
-
-.fb-sidebar__label { flex: 1; min-width: 0; }
-
-.fb-sidebar__badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--fb-cta);
-  color: var(--fb-on-cta);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.fb-sidebar__badge[hidden] { display: none; }
-
-.fb-sidebar__support {
-  margin-top: auto;
-  padding: var(--fb-space-3);
-  border-radius: var(--fb-radius-group);
-  background: var(--fb-surface-container-lowest, #ffffff);
-  border: 1px solid var(--fb-hairline);
-  display: flex;
-  flex-direction: column;
-  gap: var(--fb-space-2);
-}
-
-.fb-sidebar__support-head {
-  display: flex;
-  align-items: center;
-  gap: var(--fb-space-2);
-}
-
-.fb-sidebar__support-icon { color: var(--fb-primary); }
-.fb-sidebar__support-title { font-weight: 600; font-size: var(--fb-fs-body-sm); }
-
-.fb-sidebar__support-text {
-  margin: 0;
-  font-size: var(--fb-fs-body-sm);
-  color: var(--fb-text-secondary);
-  line-height: 1.55;
-}
-
-.fb-sidebar__support-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 44px;
-  padding: 10px 12px;
-  border-radius: var(--fb-radius-control);
-  background: var(--fb-cta);
-  color: var(--fb-on-cta);
-  font-weight: 600;
-  text-decoration: none;
-  transition: background-color var(--fb-transition-quick);
-}
-
-.fb-sidebar__support-btn:hover { background: var(--fb-cta-hover); }
-
-.fb-sidebar__version-note {
-  margin: 0;
-  font-size: var(--fb-fs-label-sm);
-  color: var(--fb-outline-text);
-}
-
-/* ---------- Topbar ---------- */
-.fb-topbar {
-  position: sticky;
-  top: 0;
-  z-index: 25;
-  height: var(--fb-header-h);
-  display: flex;
-  align-items: center;
-  background: var(--fb-surface);
-  border-bottom: 1px solid var(--fb-hairline);
-  box-shadow: var(--fb-shadow-header);
-}
-
-.fb-topbar__inner {
-  width: 100%;
-  max-width: var(--fb-content-max);
-  margin: 0 auto;
-  padding: 0 var(--fb-space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--fb-space-4);
-}
-
-.fb-topbar__brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--fb-space-2);
-  text-decoration: none;
-  color: var(--fb-text);
-}
-
-.fb-topbar__brand .fb-logo img { height: 32px; width: auto; }
-
-.fb-topbar__app-name {
-  font-weight: 700;
-  font-size: var(--fb-fs-headline-sm);
-}
-
-.fb-topbar__links {
-  display: none; /* <1024px ẩn — bottom-nav/mobile dùng chính */
-  align-items: center;
-  gap: var(--fb-space-4);
-  margin-left: var(--fb-space-6);
-}
-
-.fb-topbar__link {
-  color: var(--fb-text-secondary);
-  text-decoration: none;
-  font-size: var(--fb-fs-body-sm);
-  font-weight: 500;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
-.fb-topbar__link:hover { color: var(--fb-primary); }
-
-.fb-topbar__actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--fb-space-3);
-}
-
-.fb-topbar__cta { min-height: 44px; }
-
-.fb-topbar__user {
-  display: none;
-  align-items: center;
-  gap: var(--fb-space-2);
-  max-width: 220px;
-}
-
-.fb-topbar__avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: 999px;
-  background: var(--fb-primary-fixed-dim);
-  color: var(--fb-on-secondary-fixed-variant);
-  font-weight: 700;
-}
-
-.fb-topbar__user-name {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--fb-fs-body-sm);
-  font-weight: 500;
-}
-
-/* ---------- Breakpoints ---------- */
-@media (min-width: 1024px) {
-  .fb-shell { padding-left: var(--fb-sidebar-w); }
-  .fb-sidebar { display: flex; }
-  .fb-content { padding: var(--fb-space-6) var(--fb-space-8); }
-  .fb-topbar__links { display: flex; }
-  .fb-topbar__user { display: inline-flex; }
-  /* Bottom-nav chỉ là điều hướng mobile — desktop dùng sidebar. */
-  .fb-bottom-nav { display: none; }
-}
-
-@media (max-width: 767px) {
-  .fb-topbar__cta { display: none; } /* chip + liên kết help trong nội dung đủ dùng */
-  .fb-content { padding: var(--fb-space-3); }
-}
-
-@media (max-width: 319px) {
-  .fb-topbar__app-name { display: none; }
+  padding: 0 0 var(--fb-space-4);
 }
 
 /* ---------- Focus visible (a11y) ---------- */
-.fb-sidebar__item:focus-visible,
-.fb-sidebar__support-btn:focus-visible,
-.fb-topbar__link:focus-visible,
-.fb-topbar__cta:focus-visible,
-.fb-topbar__brand:focus-visible {
-  outline: 2px solid #9D3D27;
+.fb-content a:focus-visible,
+.fb-bottom-nav__item:focus-visible {
+  outline: 2px solid var(--fb-focus);
   outline-offset: 2px;
   border-radius: var(--fb-radius-control);
+}
+
+/* Màn rất hẹp: giữ nhịp chữ, không cắt dấu tiếng Việt. */
+@media (max-width: 359px) {
+  .fb-content { padding-left: var(--fb-space-2); padding-right: var(--fb-space-2); }
 }
 
 /* ============================================================
@@ -606,7 +350,6 @@
    transform/opacity.
    ============================================================ */
 
-/* Trang web bọc trong shell: dùng bề ngang desktop, vẫn hẹp đủ đọc. */
 .fb-page--web {
   max-width: 880px;
 }
@@ -1225,40 +968,6 @@
   min-width: 0;
 }
 
-@media (min-width: 1024px) {
-  /* 2 cột CHỈ ở web desktop: soạn thảo trái, panel ngữ cảnh phải. */
-  .fb-compose-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 340px;
-    align-items: start;
-    gap: var(--fb-space-6);
-  }
-
-  /*
-   * N05 (QA 19/10) — adaptive + stress probe large-text 200%:
-   * Mini App chạy trong webview Zalo — khung nội dung bị giới hạn ~480px
-   * KỂ CẢ khi viewport ≥1024px, không đủ chứa cột phụ 340px + cột chính,
-   * nên 2 cột trên sẽ tràn ngang. Override scoped riêng cho trang mini
-   * (.fb-page): ép XẾP DỌC về 1 cột co giãn. Web desktop (markup không có
-   * .fb-page) giữ nguyên 2 cột w11 — không ảnh hưởng parity bố cục web.
-   *
-   * Tiêu chí duyệt stress probe 200% (cỡ chữ phóng ĐÔI, probe ở 390px):
-   *   1) KHÔNG tràn ngang — document.scrollWidth <= viewport width:
-   *      mọi cột co được (minmax(0, 1fr)), chữ trong nút được wrap
-   *      (.fb-compose__pause-btn white-space: normal), không cắt nội dung.
-   *   2) Nút chính (Lưu nháp riêng / Xem trước nội dung / Gửi) vẫn reachable
-   *      bằng CUỘN DỌC — bố cục 1 cột tăng chiều cao theo nội dung, không
-   *      khóa nút sau fold, không overlay che nút.
-   */
-  .fb-page .fb-compose-grid {
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--fb-space-3);
-  }
-  .fb-cards-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .fb-signal-needs { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  .fb-signal-actions { grid-template-columns: auto auto; justify-content: start; }
-}
-
 .fb-compose__ring {
   display: inline-flex;
   flex-shrink: 0;
@@ -1546,14 +1255,6 @@
   top: var(--fb-space-3);
 }
 
-@media (min-width: 1024px) {
-  .fb-mx-grid {
-    grid-template-columns: minmax(0, 7fr) minmax(280px, 3fr);
-  }
-
-  .fb-mx-grid__detail { display: block; }
-}
-
 /* ============ Web M5a — Chi tiết thư w15 (bong bóng + phản hồi) ============ */
 
 .fb-msg-thread {
@@ -1620,7 +1321,6 @@
   flex-direction: column;
   gap: var(--fb-space-2);
 }
-
 
 @media (max-width: 767px) {
   .fb-cred {

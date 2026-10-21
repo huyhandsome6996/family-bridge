@@ -461,19 +461,34 @@ describe("N05: hit-area ≥44x44 (source-level) + adaptive ≥1024 + stress prob
     assert.match(block, /min-height:\s*44px/, "nút 'Làm mới' phải ≥44px (audit: 32px)");
   });
 
-  it("(f4) shell.css: compose container 480px ở ≥1024 không thể chứa 2 cột 340px -> xếp dọc (adaptive)", () => {
+  it("(f4) shell.css: compose luôn 1 cột — cấm quay lại 2 cột desktop 340px", () => {
+    // Handoff Stitch 21/10 (IMPLEMENTATION.md §5, DESIGN.md §5): Mini App là
+    // mobile một cột 320–430px; khối @media ≥1024px 2 cột đã xoá khỏi
+    // shell.css. Assertion đổi từ "có override xếp dọc" sang "không còn 2 cột".
     const shell = read("src/styles/shell.css");
-    assert.ok(
-      /@media \(min-width: 1024px\)[\s\S]*\.fb-page \.fb-compose-grid\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/.test(shell),
-      "phải có override xếp dọc scoped .fb-page .fb-compose-grid ở ≥1024px",
+    assert.ok(shell.includes(".fb-compose-grid"), "shell.css giữ định nghĩa .fb-compose-grid (flex 1 cột)");
+    assert.doesNotMatch(
+      shell,
+      /grid-template-columns:\s*minmax\(0,\s*1fr\)\s+340px/,
+      "cấm tái thêm bố cục 2 cột desktop (soạn trái + panel phải 340px)",
     );
+    // .fb-compose-grid gốc phải là flex 1 cột (không grid 2 cột nền).
+    const gridIdx = shell.indexOf(".fb-compose-grid {");
+    const gridBlock = shell.slice(gridIdx, shell.indexOf("}", gridIdx));
+    assert.match(gridBlock, /flex-direction:\s*column/, "compose luôn xếp dọc");
   });
 
-  it("(f5) comment stress probe large-text 200% phải ghi rõ tiêu chí (không tràn ngang + reachable bằng cuộn)", () => {
-    const shell = read("src/styles/shell.css");
+  it("(f5) stress probe large-text 200%: tiêu chí giữ trong R04/R05 (không tràn ngang + reachable bằng cuộn)", () => {
+    // Tiêu chí stress probe chuyển về design-system.test.mjs (R04/R05):
+    // nút wrap được (white-space: normal) + grid minmax(0,1fr). Assertion ở
+    // đây kiểm tra nguồn vẫn giữ các cấu hình đó sau khi dọn comment desktop.
     const components = read("src/styles/components.css");
-    const both = shell + components;
-    assert.match(both, /200%/, "phải ghi chú stress probe 200%");
-    assert.match(both, /scrollWidth|cuộn dọc/, "tiêu chí: không tràn ngang + reachable bằng cuộn");
+    const aiBtnIdx = components.indexOf(".fb-compose__ai-btn {");
+    assert.ok(aiBtnIdx !== -1, "nút AI vẫn tồn tại");
+    const aiBtnBlock = components.slice(aiBtnIdx, components.indexOf("}", aiBtnIdx));
+    assert.match(aiBtnBlock, /white-space:\s*normal/, "200%: nút phải wrap được");
+    const gridIdx = components.indexOf(".fb-compose__pause-buttons {");
+    const gridBlock = components.slice(gridIdx, components.indexOf("}", gridIdx));
+    assert.match(gridBlock, /minmax\(0,\s*1fr\)/, "cột co được, không tràn ngang");
   });
 });

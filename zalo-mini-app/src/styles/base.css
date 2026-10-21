@@ -17,7 +17,7 @@ body {
   font-family: var(--fb-font-body);
   font-size: var(--fb-font-size-body);
   line-height: var(--fb-line-height-body);
-  color: var(--fb-text); /* #360F07 trên #FFF8F6 = 16.29:1 (contrast-checks.json) */
+  color: var(--fb-text); /* #713D32 trên #FFF4E8 = 8.01:1 (DESIGN.md §2) */
   background: var(--fb-bg);
   /* KHÔNG khóa 100vh cứng: fallback 100vh + 100dvh theo contract mục 4 */
   min-height: 100vh;
