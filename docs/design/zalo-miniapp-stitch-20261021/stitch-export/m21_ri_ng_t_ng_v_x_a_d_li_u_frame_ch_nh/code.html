@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "outline-variant": "#ddc0ba", "on-background": "#360f07", "surface-container-high": "#ffe2dc", "surface-container": "#ffe9e5", "error-container": "#ffdad6", "on-primary-fixed-variant": "#802918", "tertiary": "#6b4600", "tertiary-fixed-dim": "#f7bc65", "inverse-on-surface": "#ffede9", "on-error-container": "#93000a", "on-surface-variant": "#56423e", "secondary-fixed-dim": "#ffb4a3", "inverse-surface": "#502319", "surface-tint": "#9f402d", "on-tertiary": "#ffffff", "on-primary-container": "#ffdcd5", "on-tertiary-fixed-variant": "#624000", "surface": "#fff8f6", "outline": "#89726d", "on-tertiary-fixed": "#291800", "primary": "#89301e", "on-surface": "#360f07", "on-tertiary-container": "#ffdeb4", "surface-container-highest": "#ffdad3", "background": "#fff8f6", "tertiary-container": "#895c09", "surface-container-low": "#fff0ee", "secondary-container": "#ff866b", "on-secondary-fixed": "#3d0600", "on-error": "#ffffff", "on-secondary": "#ffffff", "surface-variant": "#ffdad3", "primary-container": "#a84733", "secondary-fixed": "#ffdad2", "on-primary-fixed": "#3e0500", "primary-fixed": "#ffdad3", "surface-bright": "#fff8f6", "secondary": "#a03f2a", "inverse-primary": "#ffb4a4", "tertiary-fixed": "#ffddb2", "error": "#ba1a1a", "on-primary": "#ffffff", "surface-dim": "#ffcfc5", "on-secondary-fixed-variant": "#812815", "on-secondary-container": "#741f0c", "surface-container-lowest": "#ffffff", "primary-fixed-dim": "#ffb4a4" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "margin": "1rem", "space-xl": "1.5rem", "space-sm": "0.5rem", "space-xs": "0.25rem", "gutter": "1rem", "space-md": "1rem", "space-lg": "1.25rem" }, "fontFamily": { "body-lg": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"] }, "fontSize": { "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }] } } } }</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;font-family:'Be Vietnam Pro',sans-serif;}.pb-safe{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 1rem);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(113,61,50,0.05)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><button aria-label="Quay lại" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:text-primary active:scale-95 transition-all" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-md text-title-md text-on-surface select-none truncate">Riêng Tư &amp; Đồng Ý</h1></div><div class="flex items-center gap-space-xs"><button aria-label="Trợ giúp và hỗ trợ" class="w-11 h-11 flex items-center justify-center rounded-full text-primary hover:text-primary-container active:scale-95 transition-all" type="button"><span class="material-symbols-outlined text-[22px]">help_outline</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface"><div class="flex flex-col w-full pb-safe space-y-space-lg">
+<!-- 1. ĐẦU TRANG & NGUYÊN TẮC (Warm Trust Message Banner) -->
+<section class="flex flex-col gap-space-sm">
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm relative overflow-hidden">
+<div class="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-secondary-fixed/20 pointer-events-none"></div>
+<div class="flex items-start gap-space-sm relative z-10">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[22px]">verified_user</span>
+</div>
+<div class="flex-1 min-w-0">
+<h2 class="font-title-md text-title-md text-on-surface font-semibold">Minh bạch &amp; Chủ quyền cá nhân</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-space-xs leading-relaxed">
+            Bạn luôn nắm quyền quyết định ai được xem từng mảnh ký ức. Từng quyền cấp phép có thể được điều chỉnh hoặc thu hồi bất kỳ khi nào bạn muốn.
+          </p>
+</div>
+</div>
+<div class="mt-space-sm pt-space-xs flex items-center gap-space-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] text-tertiary">info</span>
+<span class="font-metadata text-metadata">Không sử dụng bảng xếp hạng bảo mật tổng quát giả định.</span>
+</div>
+</div>
+</section>
+<!-- 2. NHÓM 1: ĐANG CHIA SẺ (Active Shares) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">share</span>
+<h3 class="font-title-md text-title-md text-on-surface">Đang chia sẻ (3 mục)</h3>
+</div>
+<span class="bg-secondary-fixed text-on-secondary-fixed font-metadata text-metadata px-2.5 py-0.5 rounded-full">Từng phần</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+      Kiểm tra từng nội dung đang mở cho người thân. Không có chế độ "chia sẻ tất cả".
+    </p>
+<!-- Card Active Shares List -->
+<div class="flex flex-col gap-space-sm mt-space-xs">
+<!-- Item 1 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-200" id="share-card-1">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]">sentiment_dissatisfied</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">Lo lắng bài kiểm tra Toán</span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">face</span> Người nhận: <strong class="text-on-surface">Mẹ Lan (Chính)</strong>
+</span>
+</div>
+</div>
+<span class="shrink-0 bg-surface-container-low text-primary px-2 py-0.5 rounded-full font-metadata text-metadata flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
+            Đang xem được
+          </span>
+</div>
+<div class="flex items-center justify-between mt-space-sm pt-space-sm bg-surface-container-low/40 rounded-lg px-space-sm py-1.5">
+<span class="font-metadata text-metadata text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px]">schedule</span> Cấp: 24/10/2023
+          </span>
+<div class="flex items-center gap-space-xs">
+<button class="px-2.5 py-1 rounded-lg text-primary font-metadata text-metadata bg-surface-container hover:bg-surface-container-high active:scale-95 transition-all" onclick="showShareDetail('Lo lắng bài kiểm tra Toán', 'Mẹ Lan', '24/10/2023')" type="button">
+              Xem chi tiết
+            </button>
+<button class="px-2.5 py-1 rounded-lg text-on-primary bg-primary hover:bg-primary-container font-metadata text-metadata active:scale-95 transition-all" onclick="revokeShare('share-card-1', 'Thẻ cảm xúc')" type="button">
+              Thu hồi quyền
+            </button>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-200" id="share-card-2">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-primary shrink-0">
+<span class="material-symbols-outlined text-[20px]">menu_book</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">Ghi chép #03: "Buổi chiều sau giờ thi thử"</span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">face</span> Người nhận: <strong class="text-on-surface">Mẹ Lan</strong>
+</span>
+</div>
+</div>
+<span class="shrink-0 bg-surface-container-low text-primary px-2 py-0.5 rounded-full font-metadata text-metadata flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span>
+            Đang xem được
+          </span>
+</div>
+<div class="flex items-center justify-end mt-space-sm pt-space-xs">
+<button class="px-3 py-1.5 rounded-lg text-primary bg-surface-container hover:bg-surface-container-high font-label-md text-label-md active:scale-95 transition-all flex items-center gap-1" onclick="revokeShare('share-card-2', 'Trang ghi chép #03')" type="button">
+<span class="material-symbols-outlined text-[16px]">lock_reset</span>
+            Thu hồi quyền
+          </button>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-200" id="share-card-3">
+<div class="flex items-start justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm min-w-0">
+<div class="w-9 h-9 rounded-lg bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[20px]">hearing</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">Tín hiệu lắng nghe #08</span>
+<span class="font-caption text-caption text-on-surface-variant flex items-center gap-1 mt-0.5">
+<span class="material-symbols-outlined text-[14px]">person</span> Người nhận: <strong class="text-on-surface">Bố Hoàng (Dự phòng)</strong>
+</span>
+</div>
+</div>
+<span class="shrink-0 bg-surface-container text-on-surface-variant px-2 py-0.5 rounded-full font-metadata text-metadata flex items-center gap-1">
+<span class="material-symbols-outlined text-[13px] text-primary">done_all</span>
+            Đã đọc
+          </span>
+</div>
+<div class="flex items-center justify-end mt-space-sm pt-space-xs">
+<button class="px-3 py-1.5 rounded-lg text-primary bg-surface-container hover:bg-surface-container-high font-label-md text-label-md active:scale-95 transition-all flex items-center gap-1" onclick="revokeShare('share-card-3', 'Tín hiệu lắng nghe #08')" type="button">
+<span class="material-symbols-outlined text-[16px]">lock_reset</span>
+            Thu hồi quyền
+          </button>
+</div>
+</div>
+</div>
+<!-- Navigation jump buttons -->
+<div class="flex flex-col gap-space-xs mt-space-xs">
+<a class="flex items-center justify-between p-space-sm bg-surface-container-lowest rounded-lg hover:bg-surface-container-low transition-colors text-on-surface" href="#/privacy-items">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">rule_folder</span>
+<span class="font-label-md text-label-md font-medium">Quản lý trong Chia sẻ từng mục (/privacy-items)</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</a>
+<a class="flex items-center justify-between p-space-sm bg-surface-container-lowest rounded-lg hover:bg-surface-container-low transition-colors text-on-surface" href="#/connect">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">group</span>
+<span class="font-label-md text-label-md font-medium">Xem danh sách Người đồng hành (/connect)</span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">chevron_right</span>
+</a>
+</div>
+</section>
+<!-- 3. NHÓM 2: ĐỒNG Ý THEO MỤC ĐÍCH (Consent by Purpose) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">assignment_turned_in</span>
+<h3 class="font-title-md text-title-md text-on-surface">Đồng ý theo mục đích</h3>
+</div>
+<span class="bg-surface-container-high text-on-surface-variant font-metadata text-metadata px-2 py-0.5 rounded-full">3 hạng mục</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+      Các mục đồng ý độc lập. Không gộp chung, không tự động kích hoạt.
+    </p>
+<div class="flex flex-col gap-space-sm mt-space-xs">
+<!-- Mục A: Bắt buộc -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap">
+<h4 class="font-label-lg text-label-lg text-on-surface font-semibold">Dịch vụ Family Bridge cốt lõi</h4>
+<span class="bg-surface-container text-on-surface-variant font-metadata text-metadata px-1.5 py-0.5 rounded">v1.4</span>
+</div>
+<p class="font-metadata text-metadata text-on-surface-variant mt-0.5">Áp dụng từ 01/09/2023</p>
+</div>
+<span class="bg-primary/10 text-primary font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0 font-medium">
+            Đã đồng ý bắt buộc
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-space-sm">
+          Lưu trữ tin nhắn, tín hiệu lắng nghe và mã kết nối trong phiên làm việc của bạn.
+        </p>
+<div class="mt-space-sm pt-space-xs flex justify-end">
+<button class="font-label-md text-label-md text-primary font-medium hover:underline flex items-center gap-1" onclick="openTermsModal('Dịch vụ Family Bridge cốt lõi', 'v1.4', 'Dữ liệu chỉ lưu trong phạm vi gia đình đã liên kết, không chia sẻ với bên thứ ba cho mục đích thương mại.')" type="button">
+<span class="material-symbols-outlined text-[16px]">visibility</span>
+            Xem điều khoản
+          </button>
+</div>
+</div>
+<!-- Mục B: Tùy chọn - Đang bật -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm transition-all duration-200" id="consent-ai-box">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap">
+<h4 class="font-label-lg text-label-lg text-on-surface font-semibold">AI hỗ trợ gợi ý cách diễn đạt</h4>
+<span class="bg-surface-container text-on-surface-variant font-metadata text-metadata px-1.5 py-0.5 rounded">v1.2</span>
+</div>
+<p class="font-metadata text-metadata text-tertiary mt-0.5 font-medium">Bảo vệ riêng tư tăng cường</p>
+</div>
+<span class="bg-secondary-fixed text-on-secondary-fixed font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0 font-medium" id="ai-consent-badge">
+            Đang bật
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-space-sm">
+          Chuyển hóa cảm xúc thành lời viết nhẹ nhàng. Không lưu nhật ký vào tập dữ liệu huấn luyện công khai hay mô hình bên ngoài.
+        </p>
+<div class="mt-space-md pt-space-xs flex items-center justify-between">
+<span class="font-metadata text-metadata text-on-surface-variant">Có thể bật/tắt lại bất kỳ lúc nào</span>
+<button class="px-3.5 py-1.5 rounded-lg bg-surface-container text-primary font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-all" id="ai-consent-btn" onclick="toggleAIConsent()" type="button">
+            Rút đồng ý
+          </button>
+</div>
+</div>
+<!-- Mục C: Tùy chọn - Đã từ chối -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm" id="consent-research-box">
+<div class="flex items-start justify-between gap-space-xs">
+<div class="flex-1 min-w-0">
+<div class="flex items-center gap-space-xs flex-wrap">
+<h4 class="font-label-lg text-label-lg text-on-surface font-semibold">Nghiên cứu tổng hợp sức khỏe học đường</h4>
+<span class="bg-surface-container text-on-surface-variant font-metadata text-metadata px-1.5 py-0.5 rounded">v1.0</span>
+</div>
+<p class="font-metadata text-metadata text-on-surface-variant mt-0.5">Dữ liệu phi danh tính</p>
+</div>
+<span class="bg-surface-container-high text-on-surface-variant font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0" id="research-badge">
+            Chưa đồng ý
+          </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-space-sm">
+          Đóng góp vào báo cáo thống kê gộp về cảm xúc học sinh cấp trường. Tuyệt đối không chứa danh tính, tên hoặc lớp học cụ thể.
+        </p>
+<div class="mt-space-md pt-space-xs flex items-center justify-end gap-space-xs">
+<button class="px-4 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container active:scale-95 transition-all flex items-center gap-1" id="research-btn" onclick="toggleResearchConsent()" type="button">
+<span class="material-symbols-outlined text-[16px]">check_circle</span>
+            Xem &amp; Đồng ý
+          </button>
+</div>
+</div>
+</div>
+</section>
+<!-- 4. NHÓM 3: YÊU CẦU XÓA DỮ LIỆU (Data Deletion Request) -->
+<section class="flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">delete_sweep</span>
+<h3 class="font-title-md text-title-md text-on-surface">Quyền xóa &amp; Quên dữ liệu</h3>
+</div>
+<!-- Explanatory card -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-xs">
+<div class="flex items-start gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">hourglass_empty</span>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+          Xóa dữ liệu được xử lý theo quy trình máy chủ (<strong>7–14 ngày làm việc</strong>) để đảm bảo toàn vẹn nhật ký kỹ thuật và tránh thao tác nhầm lẫn. Không xóa tức thì mọi bản sao lưu hệ thống.
+        </p>
+</div>
+</div>
+<!-- Big CTA Button to request deletion -->
+<button class="w-full bg-surface-container-lowest hover:bg-surface-container text-primary font-label-lg text-label-lg rounded-xl p-space-md shadow-sm flex items-center justify-center gap-space-xs active:scale-[0.99] transition-all" onclick="openDeleteDialog()" type="button">
+<span class="material-symbols-outlined text-[20px]">delete_forever</span>
+      Tạo yêu cầu xóa dữ liệu của tôi
+    </button>
+<!-- Recent Deletion Request Status Tracker -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-sm" id="active-deletion-card">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Yêu cầu #DEL-2023-0941</span>
+</div>
+<span class="bg-surface-container-high text-primary font-metadata text-metadata px-2.5 py-0.5 rounded-full flex items-center gap-1 font-medium">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse inline-block"></span>
+          Đang xử lý (3/7 ngày)
+        </span>
+</div>
+<div class="flex flex-col gap-1 text-on-surface-variant font-caption text-caption">
+<div class="flex justify-between">
+<span>Phạm vi:</span>
+<span class="font-medium text-on-surface">Ghi chép nhật ký &amp; Thư gửi</span>
+</div>
+<div class="flex justify-between">
+<span>Ngày tạo:</span>
+<span class="text-on-surface">18/10/2023</span>
+</div>
+<div class="flex justify-between">
+<span>Dự kiến hoàn tất:</span>
+<span class="text-on-surface">25/10/2023</span>
+</div>
+</div>
+<!-- Soft Progress Bar -->
+<div class="w-full bg-surface-container h-2 rounded-full overflow-hidden mt-1">
+<div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 42%;"></div>
+</div>
+<div class="flex items-center justify-between pt-space-xs">
+<span class="font-metadata text-metadata text-on-surface-variant">Vẫn có thể hủy trước khi hoàn tất</span>
+<button class="px-3 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-metadata text-metadata active:scale-95 transition-all" onclick="cancelDeletionRequest()" type="button">
+          Hủy yêu cầu
+        </button>
+</div>
+</div>
+</section>
+<!-- 5. CHÂN TRANG & THOÁT AN TOÀN (Support + Specs) -->
+<footer class="flex flex-col gap-space-md mt-space-sm pt-space-sm">
+<!-- Hỗ trợ tâm lý & trẻ em -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex flex-col gap-space-sm">
+<div class="flex items-center gap-space-xs text-on-surface">
+<span class="material-symbols-outlined text-primary text-[20px]">support_agent</span>
+<span class="font-title-md text-title-md font-semibold">Cần trợ giúp hoặc tư vấn độc lập?</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+        Nếu bạn cảm thấy áp lực gia đình quá lớn hoặc cần bảo mật an toàn khẩn cấp, các chuyên gia luôn lắng nghe bạn miễn phí.
+      </p>
+<div class="grid grid-cols-2 gap-space-sm mt-space-xs">
+<a class="flex items-center justify-center gap-1.5 py-2.5 px-space-xs bg-surface-container-lowest hover:bg-surface-container rounded-lg text-primary font-label-md text-label-md active:scale-95 transition-all text-center" href="tel:111">
+<span class="material-symbols-outlined text-[18px]">call</span>
+          Tổng đài 111 (24/7)
+        </a>
+<a class="flex items-center justify-center gap-1.5 py-2.5 px-space-xs bg-surface-container-lowest hover:bg-surface-container rounded-lg text-on-surface font-label-md text-label-md active:scale-95 transition-all text-center" href="#/hotline-school">
+<span class="material-symbols-outlined text-[18px]">spa</span>
+          Tâm lý học đường
+        </a>
+</div>
+</div>
+<!-- Developer Specs & Disclaimer Note -->
+<div class="p-space-sm rounded-lg bg-surface-container-high/40 flex flex-col gap-1 text-on-surface-variant font-metadata text-metadata">
+<div class="flex items-center justify-between font-mono">
+<span>Route: /privacy</span>
+<span>Policy: Cache-Valid-5m</span>
+</div>
+<p class="leading-normal mt-1">
+        * Lưu ý bảo mật: Ứng dụng không thể ngăn chặn hoàn toàn việc chụp ảnh màn hình từ thiết bị đầu cuối của người nhận. Hãy cân nhắc kỹ trước khi chia sẻ nội dung nhạy cảm.
+      </p>
+</div>
+</footer>
+<!-- MODAL / BOTTOM SHEET CONTAINER (Micro-Interactions) -->
+<div class="fixed inset-0 bg-inverse-surface/40 z-50 hidden backdrop-blur-[2px] transition-opacity duration-300 flex items-end justify-center" id="modal-backdrop">
+<div class="w-full max-w-md bg-surface-container-lowest rounded-t-xl p-space-lg shadow-xl flex flex-col gap-space-md animate-in slide-in-from-bottom duration-300" id="modal-box">
+<div class="w-12 h-1 bg-surface-container-high rounded-full mx-auto -mt-1 mb-1"></div>
+<div class="flex items-start justify-between">
+<h3 class="font-title-md text-title-md text-on-surface font-semibold" id="modal-title">Tiêu đề</h3>
+<button class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface" onclick="closeModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="font-body-md text-body-md text-on-surface-variant space-y-space-sm max-h-[530px] overflow-y-auto" id="modal-body">
+        Nội dung modal.
+      </div>
+<div class="flex items-center justify-end gap-space-sm pt-space-xs" id="modal-actions">
+<button class="px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md active:scale-95 transition-all" onclick="closeModal()" type="button">
+          Đóng
+        </button>
+</div>
+</div>
+</div>
+<!-- TOAST NOTIFICATION CONTAINER -->
+<div class="fixed bottom-6 inset-x-4 z-50 pointer-events-none transform translate-y-12 opacity-0 transition-all duration-300 flex justify-center" id="toast-notify">
+<div class="bg-inverse-surface text-inverse-on-surface px-4 py-2.5 rounded-lg shadow-md font-label-md text-label-md flex items-center gap-2 max-w-sm">
+<span class="material-symbols-outlined text-[18px] text-tertiary-fixed-dim" id="toast-icon">check_circle</span>
+<span id="toast-msg">Thông báo thành công</span>
+</div>
+</div>
+</div>
+<script>
+  // Micro-interactions and Privacy state handler
+  function showToast(message, icon = 'check_circle') {
+    const toast = document.getElementById('toast-notify');
+    const msgEl = document.getElementById('toast-msg');
+    const iconEl = document.getElementById('toast-icon');
+    if (!toast || !msgEl || !iconEl) return;
+    
+    msgEl.innerText = message;
+    iconEl.innerText = icon;
+    toast.classList.remove('translate-y-12', 'opacity-0');
+    toast.classList.add('translate-y-0', 'opacity-100');
+    
+    setTimeout(() => {
+      toast.classList.remove('translate-y-0', 'opacity-100');
+      toast.classList.add('translate-y-12', 'opacity-0');
+    }, 2800);
+  }
+
+  function revokeShare(cardId, itemName) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    
+    if (confirm(`Bạn có chắc chắn muốn thu hồi quyền xem cho "${itemName}" không? Người nhận sẽ không còn đọc được nội dung này.`)) {
+      card.style.opacity = '0.5';
+      card.style.pointerEvents = 'none';
+      setTimeout(() => {
+        card.innerHTML = `
+          <div class="flex items-center justify-between py-2 text-on-surface-variant font-metadata text-metadata">
+            <span class="flex items-center gap-1.5 line-through">
+              <span class="material-symbols-outlined text-[16px] text-outline">lock</span>
+              ${itemName} (Đã thu hồi quyền)
+            </span>
+            <span class="text-primary font-medium">Hoàn tất</span>
+          </div>
+        `;
+        card.style.opacity = '1';
+        showToast(`Đã thu hồi quyền xem: ${itemName}`);
+      }, 350);
+    }
+  }
+
+  function showShareDetail(title, recipient, date) {
+    const modal = document.getElementById('modal-backdrop');
+    const mTitle = document.getElementById('modal-title');
+    const mBody = document.getElementById('modal-body');
+    const mActions = document.getElementById('modal-actions');
+    
+    mTitle.innerText = "Chi tiết quyền xem nội dung";
+    mBody.innerHTML = `
+      <div class="space-y-3">
+        <div class="p-3 bg-surface-container rounded-lg">
+          <p class="font-metadata text-metadata text-on-surface-variant">Nội dung chia sẻ</p>
+          <p class="font-label-lg text-label-lg font-semibold text-on-surface">${title}</p>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <p class="flex justify-between text-on-surface-variant font-caption text-caption">
+            <span>Đối tượng được xem:</span>
+            <strong class="text-on-surface">${recipient}</strong>
+          </p>
+          <p class="flex justify-between text-on-surface-variant font-caption text-caption">
+            <span>Thời điểm cho phép:</span>
+            <span class="text-on-surface">${date}</span>
+          </p>
+          <p class="flex justify-between text-on-surface-variant font-caption text-caption">
+            <span>Mã hóa đầu cuối:</span>
+            <span class="text-primary font-medium">Bật (E2EE)</span>
+          </p>
+        </div>
+        <p class="text-metadata text-on-surface-variant mt-2 leading-relaxed">
+          Quyền truy cập này có hiệu lực cho đến khi bạn bấm thu hồi. Người nhận chỉ có quyền đọc, không thể chỉnh sửa bản gốc.
+        </p>
+      </div>
+    `;
+    mActions.innerHTML = `
+      <button type="button" onclick="closeModal()" class="w-full py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md active:scale-95 transition-all">
+        Đã hiểu
+      </button>
+    `;
+    modal.classList.remove('hidden');
+  }
+
+  function openTermsModal(name, version, summary) {
+    const modal = document.getElementById('modal-backdrop');
+    const mTitle = document.getElementById('modal-title');
+    const mBody = document.getElementById('modal-body');
+    const mActions = document.getElementById('modal-actions');
+    
+    mTitle.innerText = `${name} (${version})`;
+    mBody.innerHTML = `
+      <div class="space-y-3 text-on-surface-variant font-body-md text-body-md leading-relaxed">
+        <p class="text-on-surface font-medium">${summary}</p>
+        <p>1. Chúng tôi chỉ thu thập dữ liệu trao đổi trong phiên để hiển thị giữa bạn và người giám hộ được ghép đôi.</p>
+        <p>2. Dữ liệu được bảo vệ theo tiêu chuẩn mã hóa phiên AES-256 và chính sách bảo mật trẻ em Việt Nam.</p>
+        <p>3. Bạn có thể yêu cầu xóa toàn bộ lịch sử này bất kỳ lúc nào.</p>
+      </div>
+    `;
+    mActions.innerHTML = `
+      <button type="button" onclick="closeModal()" class="w-full py-2.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md active:scale-95 transition-all">
+        Đóng điều khoản
+      </button>
+    `;
+    modal.classList.remove('hidden');
+  }
+
+  let aiEnabled = true;
+  function toggleAIConsent() {
+    const badge = document.getElementById('ai-consent-badge');
+    const btn = document.getElementById('ai-consent-btn');
+    if (!badge || !btn) return;
+
+    if (aiEnabled) {
+      if (confirm("Bạn có muốn rút lại sự đồng ý sử dụng AI hỗ trợ diễn đạt? Các gợi ý viết nhẹ nhàng sẽ tạm ngưng hoạt động.")) {
+        aiEnabled = false;
+        badge.className = "bg-surface-container text-on-surface-variant font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0 font-medium";
+        badge.innerText = "Đã tắt";
+        btn.innerText = "Kích hoạt lại";
+        btn.className = "px-3.5 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md active:scale-95 transition-all";
+        showToast("Đã rút đồng ý tính năng AI");
+      }
+    } else {
+      aiEnabled = true;
+      badge.className = "bg-secondary-fixed text-on-secondary-fixed font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0 font-medium";
+      badge.innerText = "Đang bật";
+      btn.innerText = "Rút đồng ý";
+      btn.className = "px-3.5 py-1.5 rounded-lg bg-surface-container text-primary font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-all";
+      showToast("Đã kích hoạt hỗ trợ AI");
+    }
+  }
+
+  let researchEnabled = false;
+  function toggleResearchConsent() {
+    const badge = document.getElementById('research-badge');
+    const btn = document.getElementById('research-btn');
+    if (!badge || !btn) return;
+
+    if (!researchEnabled) {
+      researchEnabled = true;
+      badge.className = "bg-secondary-fixed text-on-secondary-fixed font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0 font-medium";
+      badge.innerText = "Đã đồng ý";
+      btn.className = "px-3.5 py-1.5 rounded-lg bg-surface-container text-primary font-label-md text-label-md hover:bg-surface-container-high active:scale-95 transition-all flex items-center gap-1";
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">close</span> Hủy đồng ý`;
+      showToast("Cảm ơn bạn đã đóng góp nghiên cứu học đường");
+    } else {
+      researchEnabled = false;
+      badge.className = "bg-surface-container-high text-on-surface-variant font-metadata text-metadata px-2.5 py-1 rounded-full shrink-0";
+      badge.innerText = "Chưa đồng ý";
+      btn.className = "px-4 py-1.5 rounded-lg bg-primary text-on-primary font-label-md text-label-md hover:bg-primary-container active:scale-95 transition-all flex items-center gap-1";
+      btn.innerHTML = `<span class="material-symbols-outlined text-[16px]">check_circle</span> Xem & Đồng ý`;
+      showToast("Đã rút đồng ý nghiên cứu học đường");
+    }
+  }
+
+  function openDeleteDialog() {
+    const modal = document.getElementById('modal-backdrop');
+    const mTitle = document.getElementById('modal-title');
+    const mBody = document.getElementById('modal-body');
+    const mActions = document.getElementById('modal-actions');
+    
+    mTitle.innerText = "Tạo yêu cầu xóa dữ liệu";
+    mBody.innerHTML = `
+      <div class="space-y-3">
+        <p class="font-body-md text-body-md text-on-surface-variant">
+          Hãy chọn phạm vi dữ liệu bạn muốn xóa vĩnh viễn khỏi máy chủ:
+        </p>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 p-3 bg-surface-container rounded-lg cursor-pointer">
+            <input type="checkbox" checked class="w-4 h-4 accent-[#89301e]">
+            <span class="font-label-md text-label-md text-on-surface">Nhật ký cảm xúc cá nhân</span>
+          </label>
+          <label class="flex items-center gap-2 p-3 bg-surface-container rounded-lg cursor-pointer">
+            <input type="checkbox" checked class="w-4 h-4 accent-[#89301e]">
+            <span class="font-label-md text-label-md text-on-surface">Thư gửi và tín hiệu lắng nghe</span>
+          </label>
+          <label class="flex items-center gap-2 p-3 bg-surface-container rounded-lg cursor-pointer">
+            <input type="checkbox" class="w-4 h-4 accent-[#89301e]">
+            <span class="font-label-md text-label-md text-on-surface">Tài khoản và thông tin ghép đôi người thân</span>
+          </label>
+        </div>
+        <p class="font-metadata text-metadata text-on-surface-variant leading-relaxed">
+          Quá trình xóa sẽ cần 7–14 ngày để máy chủ giải phóng khỏi các điểm sao lưu dự phòng.
+        </p>
+      </div>
+    `;
+    mActions.innerHTML = `
+      <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md">
+        Hủy bỏ
+      </button>
+      <button type="button" onclick="submitDeleteRequest()" class="px-4 py-2 rounded-lg bg-primary text-on-primary font-label-md text-label-md active:scale-95 transition-all">
+        Gửi yêu cầu xóa
+      </button>
+    `;
+    modal.classList.remove('hidden');
+  }
+
+  function submitDeleteRequest() {
+    closeModal();
+    showToast("Đã ghi nhận yêu cầu xóa dữ liệu mới", "schedule");
+  }
+
+  function cancelDeletionRequest() {
+    const card = document.getElementById('active-deletion-card');
+    if (!card) return;
+    
+    if (confirm("Bạn có chắc muốn hủy yêu cầu xóa dữ liệu #DEL-2023-0941? Dữ liệu của bạn sẽ được giữ lại an toàn.")) {
+      card.style.opacity = '0.5';
+      setTimeout(() => {
+        card.innerHTML = `
+          <div class="p-2 text-center text-on-surface-variant font-label-md text-label-md">
+            Yêu cầu xóa đã được hủy thành công. Dữ liệu của bạn được bảo lưu an toàn.
+          </div>
+        `;
+        card.style.opacity = '1';
+        showToast("Đã hủy yêu cầu xóa dữ liệu");
+      }, 300);
+    }
+  }
+
+  function closeModal() {
+    const modal = document.getElementById('modal-backdrop');
+    if (modal) modal.classList.add('hidden');
+  }
+</script></main></body></html>

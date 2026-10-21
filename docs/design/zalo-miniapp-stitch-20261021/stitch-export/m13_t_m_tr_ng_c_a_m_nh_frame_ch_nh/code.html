@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "secondary-fixed-dim": "#ffb4a3", "inverse-primary": "#ffb4a4", "error": "#ba1a1a", "primary": "#89301e", "on-surface": "#360f07", "inverse-on-surface": "#ffede9", "secondary": "#a03f2a", "on-primary-container": "#ffdcd5", "surface": "#fff8f6", "primary-fixed-dim": "#ffb4a4", "on-secondary-fixed": "#3d0600", "outline-variant": "#ddc0ba", "secondary-container": "#ff866b", "on-tertiary-fixed": "#291800", "on-surface-variant": "#56423e", "error-container": "#ffdad6", "inverse-surface": "#502319", "surface-container-high": "#ffe2dc", "on-tertiary-fixed-variant": "#624000", "on-error-container": "#93000a", "surface-container-highest": "#ffdad3", "primary-container": "#a84733", "surface-variant": "#ffdad3", "tertiary-fixed-dim": "#f7bc65", "background": "#fff8f6", "tertiary": "#6b4600", "surface-tint": "#9f402d", "on-primary-fixed-variant": "#802918", "on-primary": "#ffffff", "outline": "#89726d", "on-primary-fixed": "#3e0500", "on-tertiary-container": "#ffdeb4", "secondary-fixed": "#ffdad2", "tertiary-container": "#895c09", "on-error": "#ffffff", "on-secondary-container": "#741f0c", "surface-bright": "#fff8f6", "on-background": "#360f07", "surface-container-low": "#fff0ee", "surface-container-lowest": "#ffffff", "surface-dim": "#ffcfc5", "primary-fixed": "#ffdad3", "tertiary-fixed": "#ffddb2", "on-secondary": "#ffffff", "surface-container": "#ffe9e5", "on-tertiary": "#ffffff", "on-secondary-fixed-variant": "#812815" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "margin": "1rem", "space-md": "1rem", "space-lg": "1.25rem", "space-sm": "0.5rem", "space-xl": "1.5rem", "space-xs": "0.25rem", "gutter": "1rem" }, fontFamily: { "headline-sm": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"] }, fontSize: { "headline-sm": ["20px", { lineHeight: "28px", fontWeight: "600" }], "caption": ["13px", { lineHeight: "18px", fontWeight: "400" }], "body-lg": ["16px", { lineHeight: "26px", fontWeight: "400" }], "label-md": ["14px", { lineHeight: "20px", fontWeight: "500" }], "body-md": ["15px", { lineHeight: "24px", fontWeight: "400" }], "metadata": ["12px", { lineHeight: "16px", fontWeight: "500" }], "label-lg": ["16px", { lineHeight: "24px", fontWeight: "600" }], "headline-lg": ["24px", { lineHeight: "32px", letterSpacing: "-0.01em", fontWeight: "700" }], "title-md": ["18px", { lineHeight: "26px", fontWeight: "600" }], "headline-md": ["22px", { lineHeight: "30px", letterSpacing: "-0.01em", fontWeight: "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.06)]"><div class="h-16 px-margin flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Quay lại" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container active:scale-95 transition-all" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><div class="flex flex-col"><h1 class="font-title-md text-title-md text-on-surface leading-tight">Tam Trang Cua Minh</h1><div class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px] text-on-surface-variant">lock</span><span class="font-metadata text-metadata text-on-surface-variant">Chỉ mình bạn</span></div></div></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex flex-col relative w-full px-margin pt-16 pb-safe bg-surface min-h-screen"><div class="flex flex-col w-full pb-10 space-y-space-lg">
+<!-- 1. Header phụ / Privacy Banner -->
+<section class="bg-surface-container-low rounded-xl p-space-md shadow-sm flex items-start gap-space-sm">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[18px] text-primary" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<div class="flex flex-col space-y-0.5">
+<span class="font-label-md text-label-md text-primary font-semibold">Nhật ký riêng tư</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+        Mặc định chỉ mình bạn xem được. Bạn luôn chủ động quyết định có chia sẻ từng mục hay không.
+      </p>
+</div>
+</section>
+<!-- 2. Khối 1: Ghi nhận cảm xúc hôm nay -->
+<section class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-md">
+<div class="flex items-center justify-between">
+<div>
+<span class="font-metadata text-metadata text-on-surface-variant uppercase tracking-wider">Hôm nay, Thứ Sáu 24/10</span>
+<h2 class="font-title-md text-title-md text-on-surface font-semibold">Bạn đang cảm thấy thế nào?</h2>
+</div>
+<span class="material-symbols-outlined text-tertiary-container text-[22px]">calendar_today</span>
+</div>
+<!-- Emotion Chips Grid -->
+<div class="grid grid-cols-2 gap-space-xs" id="emotion-selector">
+<!-- Vui -->
+<button class="emotion-chip flex items-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant active:scale-98 transition-all text-left" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">sentiment_satisfied</span>
+<span class="font-label-md text-label-md">Vui</span>
+</button>
+<!-- Bình an (Selected) -->
+<button class="emotion-chip is-active flex items-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container text-on-surface shadow-sm active:scale-98 transition-all text-left" type="button">
+<span class="material-symbols-outlined text-[20px] text-primary" style="font-variation-settings: 'FILL' 1;">self_improvement</span>
+<span class="font-label-md text-label-md font-semibold text-primary">Bình an</span>
+</button>
+<!-- Mệt -->
+<button class="emotion-chip flex items-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant active:scale-98 transition-all text-left" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">bedtime</span>
+<span class="font-label-md text-label-md">Mệt</span>
+</button>
+<!-- Buồn -->
+<button class="emotion-chip flex items-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant active:scale-98 transition-all text-left" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">sentiment_dissatisfied</span>
+<span class="font-label-md text-label-md">Buồn</span>
+</button>
+<!-- Lo lắng -->
+<button class="emotion-chip flex items-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant active:scale-98 transition-all text-left" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">psychology_alt</span>
+<span class="font-label-md text-label-md">Lo lắng</span>
+</button>
+<!-- Bực -->
+<button class="emotion-chip flex items-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant active:scale-98 transition-all text-left" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">sentiment_extremely_dissatisfied</span>
+<span class="font-label-md text-label-md">Bực</span>
+</button>
+<!-- Khó nói (Full width) -->
+<button class="emotion-chip col-span-2 flex items-center justify-center gap-space-xs px-3 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant active:scale-98 transition-all" type="button">
+<span class="material-symbols-outlined text-[20px] text-on-surface-variant">sentiment_neutral</span>
+<span class="font-label-md text-label-md">Khó nói</span>
+</button>
+</div>
+<!-- Optional Reflection Note -->
+<div class="space-y-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md font-semibold text-on-surface" for="diary-note">Ghi chú cho chính bạn (tùy chọn)</label>
+<span class="font-metadata text-metadata text-on-surface-variant" id="char-counter">142/500 ký tự</span>
+</div>
+<textarea class="w-full rounded-xl bg-surface-container-lowest p-space-sm font-body-md text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:bg-surface-container-low shadow-sm resize-none" id="diary-note" maxlength="500" placeholder="Viết lại vài dòng về điều đang diễn ra..." rows="3">Hôm nay hoàn thành xong buổi thuyết trình nhóm, cảm giác nhẹ người hẳn. Về nhà sớm ăn cơm cùng bố mẹ.</textarea>
+</div>
+<!-- Primary Action Button -->
+<button class="w-full h-12 rounded-xl bg-primary-container text-on-primary font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-md active:scale-98 transition-all" id="save-mood-btn" type="button">
+<span class="material-symbols-outlined text-[20px]">bookmark_add</span>
+<span>Lưu tâm trạng hôm nay</span>
+</button>
+</section>
+<!-- 3. Khối 2: Tổng hợp mô tả cá nhân (90 ngày gần nhất) -->
+<section class="bg-surface-container-low rounded-xl p-space-md shadow-sm space-y-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[20px]">auto_stories</span>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">90 ngày gần nhất</h3>
+</div>
+<span class="font-metadata text-metadata text-on-surface-variant">Mô tả trung tính</span>
+</div>
+<div class="bg-surface-container-lowest rounded-lg p-space-sm shadow-sm flex items-center gap-space-md">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0">
+<span class="font-title-md text-title-md text-primary font-bold">32</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface font-medium">32 ngày đã ghi nhận cảm xúc</span>
+<span class="font-caption text-caption text-on-surface-variant">Không chấm điểm, không áp lực duy trì chuỗi</span>
+</div>
+</div>
+<!-- Tag Cloud of Emotions -->
+<div class="space-y-1.5 pt-1">
+<span class="font-metadata text-metadata text-on-surface-variant">Tần suất xuất hiện:</span>
+<div class="flex flex-wrap gap-1.5">
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface">
+<span class="material-symbols-outlined text-[15px] text-primary">self_improvement</span>
+<span class="font-caption text-caption">Bình an (14 ngày)</span>
+</div>
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">bedtime</span>
+<span class="font-caption text-caption">Mệt mỏi (8 ngày)</span>
+</div>
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">psychology_alt</span>
+<span class="font-caption text-caption">Lo lắng (6 ngày)</span>
+</div>
+<div class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-surface-container text-on-surface">
+<span class="material-symbols-outlined text-[15px] text-on-surface-variant">sentiment_satisfied</span>
+<span class="font-caption text-caption">Vui (4 ngày)</span>
+</div>
+</div>
+</div>
+<p class="font-caption text-caption text-on-surface-variant italic pt-1">
+      "Mỗi cảm xúc đều mang thông điệp riêng để lắng nghe bản thân."
+    </p>
+</section>
+<!-- 4. Khối 3: Lịch sử cảm xúc của bạn -->
+<section class="space-y-space-sm">
+<div class="flex items-center justify-between px-1">
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Lịch sử cảm xúc của bạn</h3>
+<span class="font-caption text-caption text-on-surface-variant">Gần đây nhất</span>
+</div>
+<!-- List Items -->
+<div class="space-y-space-sm">
+<!-- Mục 1: 23/10 -->
+<article class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px]">bedtime</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Mệt</span>
+<span class="font-metadata text-metadata text-on-surface-variant ml-1.5">• Hôm qua, 23/10</span>
+</div>
+</div>
+<!-- Trạng thái chia sẻ -->
+<div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-high text-on-secondary-fixed">
+<span class="material-symbols-outlined text-[13px] text-primary">diversity_1</span>
+<span class="font-metadata text-metadata font-medium">Đang chia sẻ với Mẹ</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface bg-surface-container-low rounded-lg p-space-sm leading-relaxed">
+          "Nhiều bài tập ôn thi trên lớp, cần ngủ sớm một chút."
+        </p>
+<div class="flex items-center justify-end gap-space-xs pt-0.5">
+<button class="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-container active:scale-95 transition-all flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span>Sửa mục này</span>
+</button>
+<button class="h-9 px-3 rounded-lg bg-surface-container text-primary font-label-md text-label-md active:scale-95 transition-all flex items-center gap-1 font-semibold" type="button">
+<span class="material-symbols-outlined text-[16px]">share</span>
+<span>Quản lý chia sẻ</span>
+</button>
+</div>
+</article>
+<!-- Mục 2: 22/10 -->
+<article class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[18px]" style="font-variation-settings: 'FILL' 1;">self_improvement</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Bình an</span>
+<span class="font-metadata text-metadata text-on-surface-variant ml-1.5">• Thứ Tư, 22/10</span>
+</div>
+</div>
+<!-- Trạng thái riêng tư -->
+<div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span class="font-metadata text-metadata">Chỉ mình bạn</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface bg-surface-container-low rounded-lg p-space-sm leading-relaxed">
+          "Buổi chiều ngồi uống trà cùng gia đình khá nhẹ nhõm."
+        </p>
+<div class="flex items-center justify-end gap-space-xs pt-0.5">
+<button class="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-container active:scale-95 transition-all flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span>Sửa mục này</span>
+</button>
+<button class="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md active:scale-95 transition-all flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">ios_share</span>
+<span>Chia sẻ mục này</span>
+</button>
+</div>
+</article>
+<!-- Mục 3: 20/10 -->
+<article class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm space-y-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">psychology_alt</span>
+</div>
+<div>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Lo lắng</span>
+<span class="font-metadata text-metadata text-on-surface-variant ml-1.5">• Thứ Hai, 20/10</span>
+</div>
+</div>
+<!-- Trạng thái riêng tư -->
+<div class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-surface-container-low text-on-surface-variant">
+<span class="material-symbols-outlined text-[13px]">lock</span>
+<span class="font-metadata text-metadata">Chỉ mình bạn</span>
+</div>
+</div>
+<p class="font-body-md text-body-md text-on-surface bg-surface-container-low rounded-lg p-space-sm leading-relaxed">
+          "Sắp tới hạn nộp đề tài nhóm."
+        </p>
+<div class="flex items-center justify-end gap-space-xs pt-0.5">
+<button class="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md hover:bg-surface-container active:scale-95 transition-all flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">edit_note</span>
+<span>Sửa mục này</span>
+</button>
+<button class="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md active:scale-95 transition-all flex items-center gap-1" type="button">
+<span class="material-symbols-outlined text-[16px]">ios_share</span>
+<span>Chia sẻ mục này</span>
+</button>
+</div>
+</article>
+</div>
+</section>
+<!-- 5. Lối liên kết tách biệt: Xem cảm xúc được chia sẻ với bạn -->
+<section class="pt-1">
+<a class="w-full bg-surface-container rounded-xl p-space-md shadow-sm flex items-center justify-between active:scale-98 transition-all group" href="javascript:void(0)">
+<div class="flex items-center gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[20px]">mark_email_unread</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-1.5">
+<span class="font-label-lg text-label-lg text-on-surface font-semibold">Xem cảm xúc được chia sẻ với bạn</span>
+<span class="w-5 h-5 rounded-full bg-primary text-on-primary font-metadata text-metadata flex items-center justify-center font-bold">1</span>
+</div>
+<span class="font-caption text-caption text-on-surface-variant">Tách biệt an toàn khỏi nhật ký nội tâm riêng</span>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:translate-x-1 transition-transform">arrow_forward</span>
+</a>
+</section>
+<!-- 6. Khung Ghi chú kỹ thuật bàn giao UI/UX (M13) -->
+<aside class="bg-surface-container-low rounded-xl p-space-md shadow-sm space-y-2">
+<div class="flex items-center gap-1.5 text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px]">developer_mode</span>
+<h4 class="font-label-md text-label-md font-semibold text-on-surface">Ghi chú kỹ thuật bàn giao UI/UX (M13)</h4>
+</div>
+<ul class="font-caption text-caption text-on-surface-variant space-y-1 list-disc list-inside">
+<li><strong>Quyền riêng tư mặc định:</strong> API POST tạo nhật ký luôn nhận payload <code>visibility: "private"</code> trừ khi người dùng chủ động mở modal chia sẻ.</li>
+<li><strong>Nguyên tắc màu trung tính:</strong> Tuyệt đối không gắn nhãn cảm xúc "tốt / xấu" bằng màu xanh lá hay đỏ. Toàn bộ chip dùng palette đất ấm nhằm tránh phán xét tâm lý học sinh.</li>
+<li><strong>Không gamification:</strong> Khối 90 ngày chỉ đếm số ngày hiện hữu (neutral descriptive metric). Nghiêm cấm đưa vào streak flame, rank hoặc khuyến khích áp lực check-in.</li>
+<li><strong>Phân tách luồng dữ liệu:</strong> Bản ghi của người khác nằm hoàn toàn ở route riêng <code>/shared-with-me</code> để tránh rò rỉ thị giác nhầm lẫn.</li>
+</ul>
+</aside>
+</div>
+<script>
+  // Micro-interaction: Emotion Chip Selection
+  document.querySelectorAll('.emotion-chip').forEach(button => {
+    button.addEventListener('click', () => {
+      document.querySelectorAll('.emotion-chip').forEach(btn => {
+        btn.classList.remove('is-active', 'bg-surface-container', 'shadow-sm');
+        btn.classList.add('bg-surface-container-low', 'text-on-surface-variant');
+        const icon = btn.querySelector('.material-symbols-outlined');
+        const text = btn.querySelector('span:last-child');
+        if (icon) {
+          icon.style.fontVariationSettings = "'FILL' 0";
+          icon.classList.remove('text-primary');
+          icon.classList.add('text-on-surface-variant');
+        }
+        if (text) {
+          text.classList.remove('font-semibold', 'text-primary');
+        }
+      });
+
+      button.classList.add('is-active', 'bg-surface-container', 'shadow-sm');
+      button.classList.remove('bg-surface-container-low', 'text-on-surface-variant');
+      const icon = button.querySelector('.material-symbols-outlined');
+      const text = button.querySelector('span:last-child');
+      if (icon) {
+        icon.style.fontVariationSettings = "'FILL' 1";
+        icon.classList.add('text-primary');
+        icon.classList.remove('text-on-surface-variant');
+      }
+      if (text) {
+        text.classList.add('font-semibold', 'text-primary');
+      }
+    });
+  });
+
+  // Micro-interaction: Char Counter
+  const textarea = document.getElementById('diary-note');
+  const counter = document.getElementById('char-counter');
+  if (textarea && counter) {
+    textarea.addEventListener('input', () => {
+      counter.textContent = `${textarea.value.length}/500 ký tự`;
+    });
+  }
+
+  // Micro-interaction: Save Button feedback
+  const saveBtn = document.getElementById('save-mood-btn');
+  if (saveBtn) {
+    saveBtn.addEventListener('click', () => {
+      const origHtml = saveBtn.innerHTML;
+      saveBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">check_circle</span><span>Đã lưu thành công</span>';
+      saveBtn.classList.remove('bg-primary-container');
+      saveBtn.classList.add('bg-secondary');
+      setTimeout(() => {
+        saveBtn.innerHTML = origHtml;
+        saveBtn.classList.add('bg-primary-container');
+        saveBtn.classList.remove('bg-secondary');
+      }, 1600);
+    });
+  }
+</script></main></body></html>

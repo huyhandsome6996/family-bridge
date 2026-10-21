@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_tab" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-tertiary-fixed-variant": "#624000", "inverse-surface": "#502319", "on-background": "#360f07", "on-tertiary": "#ffffff", "outline": "#89726d", "error": "#ba1a1a", "surface-container": "#ffe9e5", "on-surface": "#360f07", "secondary-fixed": "#ffdad2", "on-secondary-container": "#741f0c", "surface-container-high": "#ffe2dc", "inverse-on-surface": "#ffede9", "on-primary-container": "#ffdcd5", "inverse-primary": "#ffb4a4", "primary-fixed-dim": "#ffb4a4", "tertiary-fixed": "#ffddb2", "surface-container-highest": "#ffdad3", "on-tertiary-fixed": "#291800", "tertiary": "#6b4600", "outline-variant": "#ddc0ba", "secondary": "#a03f2a", "on-primary-fixed": "#3e0500", "on-surface-variant": "#56423e", "background": "#fff8f6", "tertiary-container": "#895c09", "on-error": "#ffffff", "surface-bright": "#fff8f6", "primary": "#89301e", "surface-dim": "#ffcfc5", "on-secondary-fixed-variant": "#812815", "error-container": "#ffdad6", "surface-variant": "#ffdad3", "on-primary-fixed-variant": "#802918", "primary-container": "#a84733", "surface-container-lowest": "#ffffff", "on-tertiary-container": "#ffdeb4", "secondary-fixed-dim": "#ffb4a3", "on-secondary-fixed": "#3d0600", "on-error-container": "#93000a", "tertiary-fixed-dim": "#f7bc65", "on-secondary": "#ffffff", "surface": "#fff8f6", "surface-container-low": "#fff0ee", "primary-fixed": "#ffdad3", "on-primary": "#ffffff", "surface-tint": "#9f402d", "secondary-container": "#ff866b" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xs": "0.25rem", "margin": "1rem", "space-xl": "1.5rem", "gutter": "1rem", "space-sm": "0.5rem", "space-lg": "1.25rem", "space-md": "1rem" }, "fontFamily": { "title-md": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"] }, "fontSize": { "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;background-color:#fff8f6;}body{overscroll-behavior-y:none;-webkit-tap-highlight-color:transparent;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)] pt-safe"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-sm"><h1 class="font-headline-sm text-headline-sm text-on-surface">Nhật Ký</h1></div><div class="flex items-center gap-space-xs"><a aria-label="Tìm trợ giúp" class="min-w-[44px] min-h-[44px] flex items-center justify-center text-primary-container hover:text-primary transition-colors" data-path="tro-giup" href="#"><span class="material-symbols-outlined text-[24px]">help</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center ml-space-xs"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full pt-14 pb-[calc(env(safe-area-inset-bottom,0px)+64px)] bg-surface min-h-screen"><div class="flex flex-col w-full px-margin pb-space-xl">
+<!-- Active Tab State Override for Shell -->
+<script>
+    (function() {
+      try {
+        const diaryNav = document.querySelector('nav a[data-path="nhat-ky"]');
+        if (diaryNav) {
+          diaryNav.classList.remove('text-on-surface-variant');
+          diaryNav.classList.add('text-primary-container', 'font-semibold');
+          const icon = diaryNav.querySelector('.material-symbols-outlined');
+          if (icon) icon.style.fontVariationSettings = "'FILL' 1";
+        }
+      } catch (e) {}
+    })();
+  </script>
+<!-- Central Intentional Waiting Canvas -->
+<div class="flex flex-col items-center text-center mt-space-md">
+<!-- Gentle Ambient Emblem -->
+<div class="relative w-20 h-20 rounded-full bg-surface-container-low flex items-center justify-center shadow-sm">
+<div class="absolute inset-1 rounded-full bg-surface-container-lowest/80"></div>
+<svg class="relative w-10 h-10 text-primary-container" fill="none" viewbox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+<path d="M10 8C10 6.89543 10.8954 6 12 6H34C36.2091 6 38 7.79086 38 10V38C38 40.2091 36.2091 42 34 42H12C10.8954 42 10 41.1046 10 40V8Z" fill="#FFE9E5" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5"></path>
+<path d="M16 6V42" stroke="currentColor" stroke-linecap="round" stroke-width="2"></path>
+<path d="M22 16H32" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"></path>
+<path d="M22 24H30" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"></path>
+<path d="M22 32H28" stroke="currentColor" stroke-linecap="round" stroke-width="2.5"></path>
+<circle cx="34" cy="38" fill="currentColor" r="1.5"></circle>
+</svg>
+</div>
+<!-- Status Badge -->
+<div class="mt-space-md inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-surface-container-high text-on-surface-variant font-metadata text-metadata shadow-sm">
+<span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>
+<span>Trang chờ trải nghiệm • Lộ trình hoàn thiện</span>
+</div>
+<!-- Primary Title -->
+<h2 class="mt-space-md font-headline-md text-headline-md text-on-surface tracking-tight">
+      Nhật ký sẽ mở ở bản đầy đủ
+    </h2>
+<!-- Core Message -->
+<p class="mt-space-sm font-body-lg text-body-lg text-on-surface-variant leading-relaxed max-w-[340px]">
+      Nhật ký riêng và nhật ký song hành là nội dung cá nhân của bạn. Mỗi trang chỉ được chia sẻ với người đồng hành khi bạn chủ động chọn chia sẻ trang đó.
+    </p>
+<!-- Warm Emotional Safeguard Card -->
+<div class="w-full mt-space-lg p-space-md rounded-xl bg-surface-container-lowest shadow-[0_2px_8px_-2px_rgba(113,61,50,0.06),0_1px_3px_0_rgba(113,61,50,0.04)] text-left">
+<div class="flex items-center gap-space-xs mb-space-sm">
+<span class="text-base select-none">🌱</span>
+<h3 class="font-label-lg text-label-lg text-on-surface">Cam kết bảo vệ không gian riêng tư</h3>
+</div>
+<div class="space-y-space-sm font-body-md text-body-md text-on-surface-variant">
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container flex items-center justify-center shrink-0 mt-0.5 text-primary">
+<span class="material-symbols-outlined text-[15px]">lock</span>
+</div>
+<div class="min-w-0">
+<span class="font-medium text-on-surface">Quyền kiểm soát hoàn toàn:</span>
+<span class="text-on-surface-variant"> Mọi dòng ghi chép mặc định ở chế độ riêng tư, chỉ một mình bạn có thể đọc.</span>
+</div>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container flex items-center justify-center shrink-0 mt-0.5 text-primary">
+<span class="material-symbols-outlined text-[15px]">spa</span>
+</div>
+<div class="min-w-0">
+<span class="font-medium text-on-surface">Không áp lực tần suất:</span>
+<span class="text-on-surface-variant"> Ứng dụng không duy trì chỉ số streak (chuỗi ngày), không nhắc nhở dồn dập hay chấm điểm cảm xúc.</span>
+</div>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container flex items-center justify-center shrink-0 mt-0.5 text-primary">
+<span class="material-symbols-outlined text-[15px]">verified_user</span>
+</div>
+<div class="min-w-0">
+<span class="font-medium text-on-surface">Kết nối an toàn:</span>
+<span class="text-on-surface-variant"> Chia sẻ chỉ diễn ra khi bạn chủ động duyệt từng trang cụ thể.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Auxiliary Actions & Safe Exit -->
+<div class="w-full mt-space-lg space-y-space-sm">
+<!-- Return Home CTA -->
+<a class="w-full h-12 rounded-xl bg-surface-container-lowest hover:bg-surface-container-low text-primary-container font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-sm transition-colors active:scale-[0.99]" data-path="trang-chu" href="#">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+<span>Về Trang chủ để gửi tín hiệu hoặc trò chuyện</span>
+</a>
+<!-- Urgent Listening Support Anchor Card -->
+<div class="w-full p-space-md rounded-xl bg-surface-container-low flex items-center justify-between gap-space-sm shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[20px]">support_agent</span>
+</div>
+<div class="flex flex-col min-w-0">
+<p class="font-label-md text-label-md text-on-surface truncate">Cần giãi bày ngay?</p>
+<p class="font-caption text-caption text-on-surface-variant truncate">Đội ngũ lắng nghe &amp; danh bạ tư vấn</p>
+</div>
+</div>
+<a class="shrink-0 px-3 py-2 rounded-lg bg-surface-container-highest hover:bg-surface-container text-primary font-label-md text-label-md transition-colors" data-path="tro-giup" href="#">
+        Tìm trợ giúp
+      </a>
+</div>
+</div>
+<!-- Design Spec & Technical State Panel -->
+<div class="w-full mt-space-xl p-space-md rounded-xl bg-surface-container-lowest/60 shadow-[0_1px_4px_rgba(113,61,50,0.03)]">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-outline text-[16px]">terminal</span>
+<span class="font-metadata text-metadata text-outline uppercase tracking-wider">Thông số kỹ thuật màn hình</span>
+</div>
+<span class="px-2 py-0.5 rounded bg-surface-container font-metadata text-metadata text-on-surface-variant">M15 / Diary</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm mt-space-sm font-metadata text-metadata text-on-surface-variant">
+<div class="flex flex-col gap-0.5 p-2 rounded-lg bg-surface-container-low/50">
+<span class="text-outline">Mã route</span>
+<span class="font-mono text-on-surface font-semibold">/diary</span>
+</div>
+<div class="flex flex-col gap-0.5 p-2 rounded-lg bg-surface-container-low/50">
+<span class="text-outline">Target frame</span>
+<span class="text-on-surface font-semibold">390×844px (M15)</span>
+</div>
+<div class="flex flex-col gap-0.5 p-2 rounded-lg bg-surface-container-low/50">
+<span class="text-outline">Shell navigation</span>
+<span class="text-on-surface font-semibold">5 Tabs (Tab 4 Active)</span>
+</div>
+<div class="flex flex-col gap-0.5 p-2 rounded-lg bg-surface-container-low/50">
+<span class="text-outline">Feature Flag</span>
+<span class="font-mono text-primary font-semibold">diary_full: false</span>
+</div>
+</div>
+<p class="mt-space-sm font-caption text-caption text-outline leading-tight">
+      Trạng thái chờ có chủ ý (Intentional Wait State) loại bỏ hoàn toàn các CTA rỗng, đảm bảo tính bảo mật và giảm tải lo âu cho học sinh &amp; phụ huynh.
+    </p>
+</div>
+</div></main><nav class="fixed bottom-0 inset-x-0 z-50 pb-safe bg-surface/90 backdrop-blur-xl shadow-[0_-2px_12px_rgba(113,61,50,0.06)]" data-active-classes="text-primary-container font-semibold"><div class="flex items-center justify-around h-16 px-space-xs"><a class="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors" data-path="trang-chu" href="#"><span class="material-symbols-outlined text-[24px]">home</span><span class="font-metadata text-metadata mt-0.5">Trang chủ</span></a><a class="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors" data-path="hop-thu" href="#"><span class="material-symbols-outlined text-[24px]">mail</span><span class="font-metadata text-metadata mt-0.5">Hộp thư</span></a><a class="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors" data-path="dong-hanh" href="#"><span class="material-symbols-outlined text-[24px]">handshake</span><span class="font-metadata text-metadata mt-0.5">Đồng hành</span></a><a class="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors" data-path="nhat-ky" href="#"><span class="material-symbols-outlined text-[24px]">edit_note</span><span class="font-metadata text-metadata mt-0.5">Nhật ký</span></a><a class="flex flex-col items-center justify-center flex-1 h-full min-h-[44px] text-on-surface-variant hover:text-on-surface transition-colors" data-path="ca-nhan" href="#"><span class="material-symbols-outlined text-[24px]">person</span><span class="font-metadata text-metadata mt-0.5">Cá nhân</span></a></div></nav></body></html>

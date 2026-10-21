@@ -1,0 +1,1085 @@
+{
+  "source_archive": "stitch_family_bridge_design_system.zip",
+  "source_sha256": "769902948b505f2383f075f3578aa367b1bda137c9c5ad04fe9228d40ecad3f6",
+  "file_count": 175,
+  "screen_count": 87,
+  "screens_per_page": {
+    "EXPLORATION": 4,
+    "M01": 2,
+    "M02": 1,
+    "M03": 2,
+    "M04": 3,
+    "M05": 2,
+    "M06": 4,
+    "M07": 4,
+    "M08": 2,
+    "M09": 4,
+    "M10": 5,
+    "M11": 4,
+    "M12": 4,
+    "M13": 4,
+    "M14": 4,
+    "M15": 2,
+    "M16": 5,
+    "M17": 4,
+    "M18": 4,
+    "M19": 4,
+    "M20": 4,
+    "M21": 4,
+    "M22": 4,
+    "M23": 4,
+    "M24": 3
+  },
+  "files": [
+    {
+      "archive_path": "stitch_family_bridge_design_system/trang_ch_family_bridge/code.html",
+      "path": "stitch-export/trang_ch_family_bridge/code.html",
+      "bytes": 16675,
+      "sha256": "d9f4fbcc080fb17f0db0b3671987e1087e3fa8860748ee1b760723fde55410e5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/trang_ch_family_bridge/screen.png",
+      "path": "stitch-export/trang_ch_family_bridge/screen.png",
+      "bytes": 250255,
+      "sha256": "14017f97c8d6b7cd0feaefc662416762644dadd0cc03f45c054756ea1ede80b5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/so_n_th_chia_s_family_bridge/code.html",
+      "path": "stitch-export/so_n_th_chia_s_family_bridge/code.html",
+      "bytes": 19692,
+      "sha256": "98287463536da397353c97e2a084cbf0a3ac48d97832c57409b4dfd38e3ce27c"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/so_n_th_chia_s_family_bridge/screen.png",
+      "path": "stitch-export/so_n_th_chia_s_family_bridge/screen.png",
+      "bytes": 264649,
+      "sha256": "c24b2da02b5d04cb317fa57a5fd2a1b5da654f421e41b07cc10080911d5294eb"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/h_p_th_family_bridge/code.html",
+      "path": "stitch-export/h_p_th_family_bridge/code.html",
+      "bytes": 27925,
+      "sha256": "ed8a9da1ee5f5372328a41f066676260373c42ff1f9a14bd2ecf30e362284d3b"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/h_p_th_family_bridge/screen.png",
+      "path": "stitch-export/h_p_th_family_bridge/screen.png",
+      "bytes": 277757,
+      "sha256": "21431af414b0c5449e1a6d7c8bdab055fecec024e94821233c1b95a613ee3e24"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/ng_h_nh_k_t_n_i_family_bridge/code.html",
+      "path": "stitch-export/ng_h_nh_k_t_n_i_family_bridge/code.html",
+      "bytes": 20575,
+      "sha256": "f5dd968cd417de905b471e141dbb2966d7e7aba875f2c9397e2586f5c2146eae"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/ng_h_nh_k_t_n_i_family_bridge/screen.png",
+      "path": "stitch-export/ng_h_nh_k_t_n_i_family_bridge/screen.png",
+      "bytes": 280047,
+      "sha256": "e08e968e416962e0dd35b38c425a46d20921b7b4590684858321f17eb13dfe4a"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m01_ch_o_m_ng_390px/code.html",
+      "path": "stitch-export/m01_ch_o_m_ng_390px/code.html",
+      "bytes": 13396,
+      "sha256": "f60b21642c449a9f6039b7409e6532e39aa6555564ecaf88674338701b1d8070"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m01_ch_o_m_ng_390px/screen.png",
+      "path": "stitch-export/m01_ch_o_m_ng_390px/screen.png",
+      "bytes": 236679,
+      "sha256": "17328e21df7a55ef77fcb079959d28ea0b377424c686ffd74f3ae90e13d2bae5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m01_ch_o_m_ng_320px_ch_l_n/code.html",
+      "path": "stitch-export/m01_ch_o_m_ng_320px_ch_l_n/code.html",
+      "bytes": 12759,
+      "sha256": "83745eae86be6e7580ed70af5a5a48994931936dfc60c3f92c8c3c2bf549577f"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m01_ch_o_m_ng_320px_ch_l_n/screen.png",
+      "path": "stitch-export/m01_ch_o_m_ng_320px_ch_l_n/screen.png",
+      "bytes": 248288,
+      "sha256": "63bba1b04c3d89e158fce8b7ecc1e8f24a7b6c507fd0ce1cec1d673ff71e1352"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m02_c_ch_d_ng_family_bridge/code.html",
+      "path": "stitch-export/m02_c_ch_d_ng_family_bridge/code.html",
+      "bytes": 15535,
+      "sha256": "ab9ddfec50885a0b73caf2528d6ec6c228cab78ba67969d85fcb705ae2829dd4"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m02_c_ch_d_ng_family_bridge/screen.png",
+      "path": "stitch-export/m02_c_ch_d_ng_family_bridge/screen.png",
+      "bytes": 244995,
+      "sha256": "f55a84cdf7b72937d9f0155b8101fdfe23714c3cbd50f371167f227ff7ed4daa"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m03_ng_nh_p_b_ng_m_t_i_kho_n/code.html",
+      "path": "stitch-export/m03_ng_nh_p_b_ng_m_t_i_kho_n/code.html",
+      "bytes": 13354,
+      "sha256": "396772ea5160640a4d037fee1e960779df56548ea9b71e23d69266b49fa9bf5f"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m03_ng_nh_p_b_ng_m_t_i_kho_n/screen.png",
+      "path": "stitch-export/m03_ng_nh_p_b_ng_m_t_i_kho_n/screen.png",
+      "bytes": 276146,
+      "sha256": "ebc0421565de40f9fa39929568f9736550bb0831c176ce47ee1ced9222a9bc81"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m03_tr_ng_th_i_ng_nh_p_x_l_l_i/code.html",
+      "path": "stitch-export/m03_tr_ng_th_i_ng_nh_p_x_l_l_i/code.html",
+      "bytes": 24343,
+      "sha256": "65fcee18016dc7b7513aaf49a19919aa79a2e07b0ff7b3a08578ffeac5f9b8c8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m03_tr_ng_th_i_ng_nh_p_x_l_l_i/screen.png",
+      "path": "stitch-export/m03_tr_ng_th_i_ng_nh_p_x_l_l_i/screen.png",
+      "bytes": 242309,
+      "sha256": "f645126182aaecce880a986402879e6a8eeb3c2274761676979028796e0638cb"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m05_ch_n_vai_tr_xem_tr_c_frame_ch_nh/code.html",
+      "path": "stitch-export/m05_ch_n_vai_tr_xem_tr_c_frame_ch_nh/code.html",
+      "bytes": 14614,
+      "sha256": "2ed04d7894e0b9d08909221a1863c1d5731aaed4f2a4a2a237c22fdc0989d611"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m05_ch_n_vai_tr_xem_tr_c_frame_ch_nh/screen.png",
+      "path": "stitch-export/m05_ch_n_vai_tr_xem_tr_c_frame_ch_nh/screen.png",
+      "bytes": 304160,
+      "sha256": "417d3823ed314498ac3fffc2035ad25e3a286ce1360f5ad069bdd252e9d75797"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m05_tr_ng_th_i_ang_chuy_n_v_o_b_n_xem_tr_c/code.html",
+      "path": "stitch-export/m05_tr_ng_th_i_ang_chuy_n_v_o_b_n_xem_tr_c/code.html",
+      "bytes": 12566,
+      "sha256": "906bbe442945338298e82bfa32136e766bb2baf2f639f8f236c42343dbb9b5ec"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m05_tr_ng_th_i_ang_chuy_n_v_o_b_n_xem_tr_c/screen.png",
+      "path": "stitch-export/m05_tr_ng_th_i_ang_chuy_n_v_o_b_n_xem_tr_c/screen.png",
+      "bytes": 322422,
+      "sha256": "5b0563c4d15a1f84395dfcaf52b932abf4ce7ec31c3135e7014752815e8f4fc8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m04_ng_ch_a_ch_n/code.html",
+      "path": "stitch-export/m04_ng_ch_a_ch_n/code.html",
+      "bytes": 15319,
+      "sha256": "3c27ec9d541e37378c36de0617d203f5abbc4c7ff3f8a1d339baba0ca301439e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m04_ng_ch_a_ch_n/screen.png",
+      "path": "stitch-export/m04_ng_ch_a_ch_n/screen.png",
+      "bytes": 287798,
+      "sha256": "dfc78b9167b21b256b3668801cc686026c120b4faaf2a306ba3c2e8b132d0c99"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m04_ng_ch_n_b_t_bu_c/code.html",
+      "path": "stitch-export/m04_ng_ch_n_b_t_bu_c/code.html",
+      "bytes": 17631,
+      "sha256": "df6574eaf833715ea6314360e41a78d58928c1d894486ea457ed377416deadcd"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m04_ng_ch_n_b_t_bu_c/screen.png",
+      "path": "stitch-export/m04_ng_ch_n_b_t_bu_c/screen.png",
+      "bytes": 254671,
+      "sha256": "dcf2e267821497c511456038bb499770461a14f3ee252f3c87fef442c7f71ef6"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m04_ng_l_i_l_u_k_t_n_i/code.html",
+      "path": "stitch-export/m04_ng_l_i_l_u_k_t_n_i/code.html",
+      "bytes": 17077,
+      "sha256": "7ee3dcbdee55010bc9082fe3d28d0159f3cfa163644bd70db65846daea1c8f37"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m04_ng_l_i_l_u_k_t_n_i/screen.png",
+      "path": "stitch-export/m04_ng_l_i_l_u_k_t_n_i/screen.png",
+      "bytes": 196739,
+      "sha256": "fe05f5a268aa637f762f9368a33c88c3e05ff3f46486ee22d523835e4929cfdb"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_ng_i_ch_m_s_c/code.html",
+      "path": "stitch-export/m06_trang_ch_ng_i_ch_m_s_c/code.html",
+      "bytes": 20126,
+      "sha256": "e0adb65fd50e58df8096f9214ffd0061e325ce29ec42945a9b0d7a71de580aa4"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_ng_i_ch_m_s_c/screen.png",
+      "path": "stitch-export/m06_trang_ch_ng_i_ch_m_s_c/screen.png",
+      "bytes": 223357,
+      "sha256": "1903b04ae3565110dc1122cc8f7988ccdf2901d81415f247363684e096dd5637"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_h_c_sinh_thpt/code.html",
+      "path": "stitch-export/m06_trang_ch_h_c_sinh_thpt/code.html",
+      "bytes": 19350,
+      "sha256": "30559de13a435153e0d07a671d3e413a24a34fbe1278aa1a9528293aeb78d19d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_h_c_sinh_thpt/screen.png",
+      "path": "stitch-export/m06_trang_ch_h_c_sinh_thpt/screen.png",
+      "bytes": 205775,
+      "sha256": "806f50e2ae00bad0bacb779437325dd2e046226317347d4836849f3b6f0ab6f5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_ch_a_k_t_n_i/code.html",
+      "path": "stitch-export/m06_trang_ch_ch_a_k_t_n_i/code.html",
+      "bytes": 24462,
+      "sha256": "6c02987bb9387db3658b625b929f713084d01edf8e76612abf57ede7cdc30dcd"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_ch_a_k_t_n_i/screen.png",
+      "path": "stitch-export/m06_trang_ch_ch_a_k_t_n_i/screen.png",
+      "bytes": 249314,
+      "sha256": "b2087cb0af7cfeb7909ec69aae358a0693e5c3f3254f081573ab1da6951b16b2"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_l_i_t_i_c_c_b/code.html",
+      "path": "stitch-export/m06_trang_ch_l_i_t_i_c_c_b/code.html",
+      "bytes": 19086,
+      "sha256": "b114a13a58e5728ecdc1003d41bcf8d844f8e24016adf96e19ad2ac01c849d07"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m06_trang_ch_l_i_t_i_c_c_b/screen.png",
+      "path": "stitch-export/m06_trang_ch_l_i_t_i_c_c_b/screen.png",
+      "bytes": 224597,
+      "sha256": "1f73e533a86a127addd0a8b0b1c97fb1818581892cc84990280fea9ab4ecb061"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_ng_h_nh_tu_n_ang_ho_t_ng/code.html",
+      "path": "stitch-export/m07_ng_h_nh_tu_n_ang_ho_t_ng/code.html",
+      "bytes": 27169,
+      "sha256": "0cc07d59bc459553bd27d3f715c4dd58de160278ac13cc91614a371c849ba5b5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_ng_h_nh_tu_n_ang_ho_t_ng/screen.png",
+      "path": "stitch-export/m07_ng_h_nh_tu_n_ang_ho_t_ng/screen.png",
+      "bytes": 306525,
+      "sha256": "df96a57c21aae17c8f380b610cf28d221086bcf08cfd2646c0423c055449b447"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_chi_ti_t_ho_t_ng_ng_h_nh/code.html",
+      "path": "stitch-export/m07_chi_ti_t_ho_t_ng_ng_h_nh/code.html",
+      "bytes": 19007,
+      "sha256": "f09211702e7eb07be8e74743ddd2dad03b667a818a645b698364fa7a164d11e3"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_chi_ti_t_ho_t_ng_ng_h_nh/screen.png",
+      "path": "stitch-export/m07_chi_ti_t_ho_t_ng_ng_h_nh/screen.png",
+      "bytes": 258615,
+      "sha256": "7b5646c426f5028196a794900b82fb721c307c10ec1fe0e5df5e44eb9ea54200"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_ng_h_nh_tr_c_khi_tham_gia/code.html",
+      "path": "stitch-export/m07_ng_h_nh_tr_c_khi_tham_gia/code.html",
+      "bytes": 26091,
+      "sha256": "d3ca020fa4a8ddffbff829dcfdb5296b509b21ff530fead91b2ed7aa992bd475"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_ng_h_nh_tr_c_khi_tham_gia/screen.png",
+      "path": "stitch-export/m07_ng_h_nh_tr_c_khi_tham_gia/screen.png",
+      "bytes": 276130,
+      "sha256": "cd9c7e8ba213fb0e815d498e19b1df6b3bb66208969fcf510372d5bde5c9eeea"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_th_a_c_gia_nh_tu_n_4/code.html",
+      "path": "stitch-export/m07_th_a_c_gia_nh_tu_n_4/code.html",
+      "bytes": 23789,
+      "sha256": "d0ba9b045a348e54d60a235cf0952919b4c3fa2ac325671ef2ed87de85565a8d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m07_th_a_c_gia_nh_tu_n_4/screen.png",
+      "path": "stitch-export/m07_th_a_c_gia_nh_tu_n_4/screen.png",
+      "bytes": 196805,
+      "sha256": "34dae515e71fbeca846eece3f35b42f1797796777eacbc80384d1643a6175412"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m08_h_p_th_danh_s_ch_c_chi_ti_t/code.html",
+      "path": "stitch-export/m08_h_p_th_danh_s_ch_c_chi_ti_t/code.html",
+      "bytes": 20506,
+      "sha256": "c0c9d3611f482da3dc3f3008b76fcd2b1066e5e7cc39abf3db9b0aabf0aa715c"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m08_h_p_th_danh_s_ch_c_chi_ti_t/screen.png",
+      "path": "stitch-export/m08_h_p_th_danh_s_ch_c_chi_ti_t/screen.png",
+      "bytes": 244251,
+      "sha256": "4fb9b90d12b493e7e7daba97d9abc8581ca81b2f6e4d07aac5a5b724c88b8dc7"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m08_h_p_th_c_c_tr_ng_th_i_ngo_i_l/code.html",
+      "path": "stitch-export/m08_h_p_th_c_c_tr_ng_th_i_ngo_i_l/code.html",
+      "bytes": 26292,
+      "sha256": "0566b3f29f4cdb2f0cd6b1afe4caabecb86781c9cf92d323af29af99de8a4a0a"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m08_h_p_th_c_c_tr_ng_th_i_ngo_i_l/screen.png",
+      "path": "stitch-export/m08_h_p_th_c_c_tr_ng_th_i_ngo_i_l/screen.png",
+      "bytes": 299778,
+      "sha256": "e0fe43113ddeaca907f863cf0f219eeda2853a1042bf89629047ef897ad88ee9"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_c_th_nh_n_ph_n_h_i_frame_ch_nh/code.html",
+      "path": "stitch-export/m09_c_th_nh_n_ph_n_h_i_frame_ch_nh/code.html",
+      "bytes": 20172,
+      "sha256": "45eb1ed67ba3ade70875114a6a1da148a914344a338e4ef3debffd1e21819c8c"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_c_th_nh_n_ph_n_h_i_frame_ch_nh/screen.png",
+      "path": "stitch-export/m09_c_th_nh_n_ph_n_h_i_frame_ch_nh/screen.png",
+      "bytes": 219141,
+      "sha256": "80d1bfd69c46f959ba13431d282ca7d76bff16ff43d5cf22e7534f744fcf3f61"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_sheet_th_a_thu_n_minh_b_ch_ai/code.html",
+      "path": "stitch-export/m09_sheet_th_a_thu_n_minh_b_ch_ai/code.html",
+      "bytes": 16361,
+      "sha256": "b5cc25a03f1a9ba8457311f39dc7819a1aa19618ca36eaaaca634dd8a5f8be0e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_sheet_th_a_thu_n_minh_b_ch_ai/screen.png",
+      "path": "stitch-export/m09_sheet_th_a_thu_n_minh_b_ch_ai/screen.png",
+      "bytes": 275386,
+      "sha256": "0e056925439531f9dda1777519ef16704baf4a42d3eef291cc2f2e3f7ec2ca08"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_th_g_i_kh_ng_ph_n_h_i_ng_c/code.html",
+      "path": "stitch-export/m09_th_g_i_kh_ng_ph_n_h_i_ng_c/code.html",
+      "bytes": 14044,
+      "sha256": "da1fee3395227e17f13806478abc6caee92cbc583734b54c7f9dcd4f54019150"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_th_g_i_kh_ng_ph_n_h_i_ng_c/screen.png",
+      "path": "stitch-export/m09_th_g_i_kh_ng_ph_n_h_i_ng_c/screen.png",
+      "bytes": 247547,
+      "sha256": "98788d010086d08331e15827d2e137c525719b08a66f185f4899d91df91ded38"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_tr_ng_th_i_thu_h_i_ch_a_r_k_t_qu/code.html",
+      "path": "stitch-export/m09_tr_ng_th_i_thu_h_i_ch_a_r_k_t_qu/code.html",
+      "bytes": 19982,
+      "sha256": "c7af55aa7e897ccdaef3f1997c7a3c256145f0a3f0f6e6c3039707a1ba09daf5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m09_tr_ng_th_i_thu_h_i_ch_a_r_k_t_qu/screen.png",
+      "path": "stitch-export/m09_tr_ng_th_i_thu_h_i_ch_a_r_k_t_qu/screen.png",
+      "bytes": 222984,
+      "sha256": "af1fe8f744d5c74bc1783e6c227b0cf25d0163c7109a81edd0a60863350c79c0"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_sheet_quy_n_ri_ng_t_tr_c_khi_d_ng_ai/code.html",
+      "path": "stitch-export/m10_sheet_quy_n_ri_ng_t_tr_c_khi_d_ng_ai/code.html",
+      "bytes": 14663,
+      "sha256": "b1f0c55e56be55ee989fb1196b02afd48c48febef6c2ca4ab72acd1bc5e19a44"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_sheet_quy_n_ri_ng_t_tr_c_khi_d_ng_ai/screen.png",
+      "path": "stitch-export/m10_sheet_quy_n_ri_ng_t_tr_c_khi_d_ng_ai/screen.png",
+      "bytes": 134477,
+      "sha256": "ba2a65a369f60adddccc6b9ca98e13d345c63a80e6c9c47c4ee95f8da8738b73"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_so_n_th_c_m_x_c_frame_ch_nh/code.html",
+      "path": "stitch-export/m10_so_n_th_c_m_x_c_frame_ch_nh/code.html",
+      "bytes": 16763,
+      "sha256": "e3741228df39117b61de65f836d86e9ec1cbdc166f7d2b271e442e2b3360c3f7"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_so_n_th_c_m_x_c_frame_ch_nh/screen.png",
+      "path": "stitch-export/m10_so_n_th_c_m_x_c_frame_ch_nh/screen.png",
+      "bytes": 280806,
+      "sha256": "e5d377f69fb521eff32c322affd15938e04d2d4e0b4aa1e88dfe156f97348904"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_panel_g_i_di_n_t_ai/code.html",
+      "path": "stitch-export/m10_panel_g_i_di_n_t_ai/code.html",
+      "bytes": 18763,
+      "sha256": "084e8e376c24279dcfd0cd761d88afdbbcda5df987451e7b2f36878de7b9912e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_panel_g_i_di_n_t_ai/screen.png",
+      "path": "stitch-export/m10_panel_g_i_di_n_t_ai/screen.png",
+      "bytes": 265069,
+      "sha256": "69813eb3be1ade4ebefff1653a38130bade1e786ef43ab7cbf00d7a93c9b8cd1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_tr_ng_th_i_t_m_d_ng_an_to_n_300s/code.html",
+      "path": "stitch-export/m10_tr_ng_th_i_t_m_d_ng_an_to_n_300s/code.html",
+      "bytes": 16651,
+      "sha256": "e3b7fbbc55c9a801af5946708161af0679b673be0d0e4458712d67f2dcb7e4f2"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_tr_ng_th_i_t_m_d_ng_an_to_n_300s/screen.png",
+      "path": "stitch-export/m10_tr_ng_th_i_t_m_d_ng_an_to_n_300s/screen.png",
+      "bytes": 318921,
+      "sha256": "2ed1e0b6734c5ecc216c24fa5bd713fead651e81cf42cf0fc96ec280e9df8767"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_xem_tr_c_x_c_nh_n_g_i/code.html",
+      "path": "stitch-export/m10_xem_tr_c_x_c_nh_n_g_i/code.html",
+      "bytes": 18051,
+      "sha256": "ee1d9a4bdf272b1c35acd1d64852f7dd0efc4ede5ed0172e47346726a5a73bfd"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m10_xem_tr_c_x_c_nh_n_g_i/screen.png",
+      "path": "stitch-export/m10_xem_tr_c_x_c_nh_n_g_i/screen.png",
+      "bytes": 273500,
+      "sha256": "d10a80336c232b047c692ceed309abc164ae5e53ecf66eec9c0ef2d8ecfea33b"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_th_vi_n_th_c_m_x_c_m_n_ch_nh/code.html",
+      "path": "stitch-export/m11_th_vi_n_th_c_m_x_c_m_n_ch_nh/code.html",
+      "bytes": 16636,
+      "sha256": "227610d445d18bc58dcdaac2f1d4458ababe7fe6ea03c6f7e2d8062c8d3fbdfd"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_th_vi_n_th_c_m_x_c_m_n_ch_nh/screen.png",
+      "path": "stitch-export/m11_th_vi_n_th_c_m_x_c_m_n_ch_nh/screen.png",
+      "bytes": 250632,
+      "sha256": "63ca35a324ab1dee693a5406360d8343257713501dc7eb2fcbdb91d12220fdbe"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_xem_tr_c_x_c_nh_n_g_i_th/code.html",
+      "path": "stitch-export/m11_xem_tr_c_x_c_nh_n_g_i_th/code.html",
+      "bytes": 15698,
+      "sha256": "85e79df7379784cb49fe13276afd0684925e398068ac0d4b0a73aa3d555ba630"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_xem_tr_c_x_c_nh_n_g_i_th/screen.png",
+      "path": "stitch-export/m11_xem_tr_c_x_c_nh_n_g_i_th/screen.png",
+      "bytes": 308858,
+      "sha256": "93b7f4f8b7f8640b3ea0008aab489ec7c92798f371b93f31751bccce50e29f2e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_tr_ng_th_i_bi_n_x_l_l_i/code.html",
+      "path": "stitch-export/m11_tr_ng_th_i_bi_n_x_l_l_i/code.html",
+      "bytes": 15975,
+      "sha256": "d383a801b2368d88c8098a888392d43bb7fc7cc624b26a40865c52e297d695b5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_tr_ng_th_i_bi_n_x_l_l_i/screen.png",
+      "path": "stitch-export/m11_tr_ng_th_i_bi_n_x_l_l_i/screen.png",
+      "bytes": 248740,
+      "sha256": "20dfabe247044ec687d079a2f4335982d8c564617a7138095c70df19095bab09"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_chi_ti_t_th_so_n_l_i_k_m/code.html",
+      "path": "stitch-export/m11_chi_ti_t_th_so_n_l_i_k_m/code.html",
+      "bytes": 19840,
+      "sha256": "7e44b3295403174e7a31c522073a919f3ecd565894a4ee67a1ab9719587af25e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m11_chi_ti_t_th_so_n_l_i_k_m/screen.png",
+      "path": "stitch-export/m11_chi_ti_t_th_so_n_l_i_k_m/screen.png",
+      "bytes": 219392,
+      "sha256": "d91051a8f9373fa63ed1c8ef4a6d6d62544ade5f26326da1b9b60f883d2bcef1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_h_c_sinh_g_i_t_n_hi_u_l_ng_nghe/code.html",
+      "path": "stitch-export/m12_h_c_sinh_g_i_t_n_hi_u_l_ng_nghe/code.html",
+      "bytes": 22667,
+      "sha256": "5c86bacaca2b53eff540c8abbbbb055f6df8c6fc2682e3777d806689aba803f3"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_h_c_sinh_g_i_t_n_hi_u_l_ng_nghe/screen.png",
+      "path": "stitch-export/m12_h_c_sinh_g_i_t_n_hi_u_l_ng_nghe/screen.png",
+      "bytes": 274222,
+      "sha256": "4e16b9ed1ffa0345819835413a2b8c311f0768eff484da9356e2cab038f6ddda"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_xem_tr_c_g_i_t_n_hi_u/code.html",
+      "path": "stitch-export/m12_xem_tr_c_g_i_t_n_hi_u/code.html",
+      "bytes": 15523,
+      "sha256": "a2c56dbf111633104e13903788cc6f0974c2eed1969b36ff40893bd4722c1807"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_xem_tr_c_g_i_t_n_hi_u/screen.png",
+      "path": "stitch-export/m12_xem_tr_c_g_i_t_n_hi_u/screen.png",
+      "bytes": 282896,
+      "sha256": "2a172ce498eebb573e895b6c5cd9ab8124efa17d7c2686189b72d3998090e6c6"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_ng_i_ch_m_s_c_ti_p_nh_n_t_n_hi_u/code.html",
+      "path": "stitch-export/m12_ng_i_ch_m_s_c_ti_p_nh_n_t_n_hi_u/code.html",
+      "bytes": 15742,
+      "sha256": "7ea57ec370de3052f2f9f9e3b25ee550fd4fcd3ec9b4594b99a2afc0ff9d36a8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_ng_i_ch_m_s_c_ti_p_nh_n_t_n_hi_u/screen.png",
+      "path": "stitch-export/m12_ng_i_ch_m_s_c_ti_p_nh_n_t_n_hi_u/screen.png",
+      "bytes": 340011,
+      "sha256": "01991836601e9d8809f4289410cd1e144ca20115ec3c2d044fc8291e1fdaed59"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_x_l_m_t_m_ng_ch_a_r_k_t_qu/code.html",
+      "path": "stitch-export/m12_x_l_m_t_m_ng_ch_a_r_k_t_qu/code.html",
+      "bytes": 13664,
+      "sha256": "8e0efad3e44e4565c995a02ca0c1e1473631dca456c8f077c6116dd8b6707948"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m12_x_l_m_t_m_ng_ch_a_r_k_t_qu/screen.png",
+      "path": "stitch-export/m12_x_l_m_t_m_ng_ch_a_r_k_t_qu/screen.png",
+      "bytes": 347957,
+      "sha256": "ff362a69ebe6b3dce87130551c71a3f3141ec2ebf329617a27bae3f25837e36c"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_sheet_chia_s_tr_ng_th_i_thu_h_i_minh_b_ch/code.html",
+      "path": "stitch-export/m13_sheet_chia_s_tr_ng_th_i_thu_h_i_minh_b_ch/code.html",
+      "bytes": 19111,
+      "sha256": "ac4880f7c065a952bc61f781a1c773a43b8ce5979e57e3539e8d117792f53730"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_sheet_chia_s_tr_ng_th_i_thu_h_i_minh_b_ch/screen.png",
+      "path": "stitch-export/m13_sheet_chia_s_tr_ng_th_i_thu_h_i_minh_b_ch/screen.png",
+      "bytes": 133577,
+      "sha256": "2b585ef646061166e0abf80ff53b037d2a9ceb340a23cb89d9d177b2a8eea28f"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_t_m_tr_ng_c_a_m_nh_frame_ch_nh/code.html",
+      "path": "stitch-export/m13_t_m_tr_ng_c_a_m_nh_frame_ch_nh/code.html",
+      "bytes": 24008,
+      "sha256": "95b5a821d234a4c33c4fc342cb9a9e70dbd2a41b2f54612479f898bf26853e3e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_t_m_tr_ng_c_a_m_nh_frame_ch_nh/screen.png",
+      "path": "stitch-export/m13_t_m_tr_ng_c_a_m_nh_frame_ch_nh/screen.png",
+      "bytes": 211581,
+      "sha256": "8553c2e2df2fb097e1894b4198969befb6708ebe6068aae8e38cdad1ef657b37"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_tr_ng_th_i_ghi_nh_n_trong_ng_y_s_a_m_c/code.html",
+      "path": "stitch-export/m13_tr_ng_th_i_ghi_nh_n_trong_ng_y_s_a_m_c/code.html",
+      "bytes": 21028,
+      "sha256": "67760f0c2a4d00687f99c22a3f9698594cdba7e333dd889dd73bcbc2fff3d59f"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_tr_ng_th_i_ghi_nh_n_trong_ng_y_s_a_m_c/screen.png",
+      "path": "stitch-export/m13_tr_ng_th_i_ghi_nh_n_trong_ng_y_s_a_m_c/screen.png",
+      "bytes": 255420,
+      "sha256": "fa83f3947e453514cb18f1ebf74014a30f75c0853eac3d0fa24f855b79e7441d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_c_nh_b_o_s_a_n_i_dung_m_c_c_chia_s/code.html",
+      "path": "stitch-export/m13_c_nh_b_o_s_a_n_i_dung_m_c_c_chia_s/code.html",
+      "bytes": 17682,
+      "sha256": "f7fd17cf8511da42672670af6c3a6358d4916705bfd9d9c36490f52bd4d64ac8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m13_c_nh_b_o_s_a_n_i_dung_m_c_c_chia_s/screen.png",
+      "path": "stitch-export/m13_c_nh_b_o_s_a_n_i_dung_m_c_c_chia_s/screen.png",
+      "bytes": 318363,
+      "sha256": "e8c51b65b469df9b94744e1e26ac289c159d4d7710e3203800a33a777ee09c1e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_danh_s_ch_c_m_x_c_c_chia_s_frame_ch_nh/code.html",
+      "path": "stitch-export/m14_danh_s_ch_c_m_x_c_c_chia_s_frame_ch_nh/code.html",
+      "bytes": 21032,
+      "sha256": "1a907f11bbb07694a0da8ceae8d2a4ff27f968ae654c158de522e50cd8f061f5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_danh_s_ch_c_m_x_c_c_chia_s_frame_ch_nh/screen.png",
+      "path": "stitch-export/m14_danh_s_ch_c_m_x_c_c_chia_s_frame_ch_nh/screen.png",
+      "bytes": 230770,
+      "sha256": "37403cf095ce226c93739effbf48ea868bbe0acc99702e84ab96ba7853240222"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_c_chi_ti_t_n_i_dung_c_m_x_c_c_chia_s/code.html",
+      "path": "stitch-export/m14_c_chi_ti_t_n_i_dung_c_m_x_c_c_chia_s/code.html",
+      "bytes": 13428,
+      "sha256": "984e6c2664cf6ac39627f5d23c5c1176b78e5361d33eca9eb377fb2be4ddd619"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_c_chi_ti_t_n_i_dung_c_m_x_c_c_chia_s/screen.png",
+      "path": "stitch-export/m14_c_chi_ti_t_n_i_dung_c_m_x_c_c_chia_s/screen.png",
+      "bytes": 308327,
+      "sha256": "f590826a7354382c7f1a58000eddcdbd2e81bbc014c781e43a29c77c7a3c9ed0"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_tr_ng_th_i_kh_ng_c_n_xem_c_thu_h_i_h_t_k_t_n_i/code.html",
+      "path": "stitch-export/m14_tr_ng_th_i_kh_ng_c_n_xem_c_thu_h_i_h_t_k_t_n_i/code.html",
+      "bytes": 13204,
+      "sha256": "36c0c415510baac41c9c63e0f74645a2a68aba3d2cdc51dd63685c75b8ccb9a6"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_tr_ng_th_i_kh_ng_c_n_xem_c_thu_h_i_h_t_k_t_n_i/screen.png",
+      "path": "stitch-export/m14_tr_ng_th_i_kh_ng_c_n_xem_c_thu_h_i_h_t_k_t_n_i/screen.png",
+      "bytes": 287812,
+      "sha256": "e417aff796306db1b3d9e9b090b6f1a03e01c02cd7b4fc8e7461d12ec00a81a8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m15_nh_t_k_trang_ch_hi_n_t_i_390px/code.html",
+      "path": "stitch-export/m15_nh_t_k_trang_ch_hi_n_t_i_390px/code.html",
+      "bytes": 14969,
+      "sha256": "8c6e8cd0e160a58bbfc1769aae454dbe61e9f2718b463ee003a858003643229a"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m15_nh_t_k_trang_ch_hi_n_t_i_390px/screen.png",
+      "path": "stitch-export/m15_nh_t_k_trang_ch_hi_n_t_i_390px/screen.png",
+      "bytes": 297814,
+      "sha256": "3c2e39af767827246e4d3c7bb97bf299c61a8c3dd877a71d97c9a83325268ca0"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_danh_s_ch_tr_ng_x_l_l_i_t_i_d_li_u/code.html",
+      "path": "stitch-export/m14_danh_s_ch_tr_ng_x_l_l_i_t_i_d_li_u/code.html",
+      "bytes": 18582,
+      "sha256": "594ed0afbf5af3aaff6ad813c07c56366eb1fe335fea1da41a921608e20a01fa"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m14_danh_s_ch_tr_ng_x_l_l_i_t_i_d_li_u/screen.png",
+      "path": "stitch-export/m14_danh_s_ch_tr_ng_x_l_l_i_t_i_d_li_u/screen.png",
+      "bytes": 277279,
+      "sha256": "8d3a7ba2138d189888ed3e63c66d5f2c0189d5c83919269a9f4a1b85afbf5a06"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m15_nh_t_k_b_n_ch_l_n_320px/code.html",
+      "path": "stitch-export/m15_nh_t_k_b_n_ch_l_n_320px/code.html",
+      "bytes": 15409,
+      "sha256": "4dd494d284f91bd824d13c5b6337b173f2c365ef43b4707011239078450f8d81"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m15_nh_t_k_b_n_ch_l_n_320px/screen.png",
+      "path": "stitch-export/m15_nh_t_k_b_n_ch_l_n_320px/screen.png",
+      "bytes": 261764,
+      "sha256": "14994f654fd0957935b4dd0189bceb8b48f0602fe43c6d051833894b1ed44b8a"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_ng_i_ng_h_nh_ch_a_k_t_n_i_h_ng_d_n/code.html",
+      "path": "stitch-export/m17_ng_i_ng_h_nh_ch_a_k_t_n_i_h_ng_d_n/code.html",
+      "bytes": 17645,
+      "sha256": "7a04329fbe6e86f98311d9592b4ee0f2e7e9e4e06d3a48e7b690852530888b34"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_ng_i_ng_h_nh_ch_a_k_t_n_i_h_ng_d_n/screen.png",
+      "path": "stitch-export/m17_ng_i_ng_h_nh_ch_a_k_t_n_i_h_ng_d_n/screen.png",
+      "bytes": 228397,
+      "sha256": "69a671e26235028710025bb0c5c93731c503dc343fda388c92479f695ef7efa1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_sheet_m_m_i_x_c_minh_danh_t_nh_hai_ph_a/code.html",
+      "path": "stitch-export/m17_sheet_m_m_i_x_c_minh_danh_t_nh_hai_ph_a/code.html",
+      "bytes": 22859,
+      "sha256": "72015020e781d29fd8c20347e428b35d89e43117b35c17e427722ba31fc1ad3b"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_sheet_m_m_i_x_c_minh_danh_t_nh_hai_ph_a/screen.png",
+      "path": "stitch-export/m17_sheet_m_m_i_x_c_minh_danh_t_nh_hai_ph_a/screen.png",
+      "bytes": 80459,
+      "sha256": "bb3dafd0104f203b2b6b78e5e34f097ea8bf28ead4ed4801e2cdeb46557dee32"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_dialog_h_y_k_t_n_i_x_l_ngo_i_l/code.html",
+      "path": "stitch-export/m17_dialog_h_y_k_t_n_i_x_l_ngo_i_l/code.html",
+      "bytes": 16940,
+      "sha256": "dff294866f395ac79af4feee73cd0d4effd491d67809e5ecad69595dfb7ac393"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_dialog_h_y_k_t_n_i_x_l_ngo_i_l/screen.png",
+      "path": "stitch-export/m17_dialog_h_y_k_t_n_i_x_l_ngo_i_l/screen.png",
+      "bytes": 475412,
+      "sha256": "c4170e83ab43da60af1fc47a49a9f3a15aa3b89794793488ddd986f14101079b"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_ng_i_ng_h_nh_k_t_n_i_l_i_m_i/code.html",
+      "path": "stitch-export/m17_ng_i_ng_h_nh_k_t_n_i_l_i_m_i/code.html",
+      "bytes": 29105,
+      "sha256": "5d7a9a7a162033b568105d99ae22472800e31a2887f94bd55ef9bc7a72780f49"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m17_ng_i_ng_h_nh_k_t_n_i_l_i_m_i/screen.png",
+      "path": "stitch-export/m17_ng_i_ng_h_nh_k_t_n_i_l_i_m_i/screen.png",
+      "bytes": 255167,
+      "sha256": "f6c5971953291df1f1ee4bbaa91d243b6c3dc348c07261b80557c2328ae646a4"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_1/code.html",
+      "path": "stitch-export/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_1/code.html",
+      "bytes": 14691,
+      "sha256": "25969f7db872cbf8a58896a7ff43e6aa939db72170fa5f0a12ab1f978ec5aae9"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_1/screen.png",
+      "path": "stitch-export/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_1/screen.png",
+      "bytes": 27598,
+      "sha256": "49087771322cd97d5879862e8206069f13e1802f782540475277d5f3d7c00857"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_ghi_ch_p_ri_ng_chia_s_t_ng_m_c_frame_ch_nh/code.html",
+      "path": "stitch-export/m16_ghi_ch_p_ri_ng_chia_s_t_ng_m_c_frame_ch_nh/code.html",
+      "bytes": 17849,
+      "sha256": "7fd2f97c51144892ee17f9f4cad1c2d7e49c64ccd8c671f2b3da452e04749712"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_ghi_ch_p_ri_ng_chia_s_t_ng_m_c_frame_ch_nh/screen.png",
+      "path": "stitch-export/m16_ghi_ch_p_ri_ng_chia_s_t_ng_m_c_frame_ch_nh/screen.png",
+      "bytes": 228712,
+      "sha256": "481c85d009acf848c7081d7fb9d7f8f458f7a1e4b1f79a21535ace5560fe5e7f"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_xung_t_n_i_dung_thu_h_i_quy_n_c/code.html",
+      "path": "stitch-export/m16_xung_t_n_i_dung_thu_h_i_quy_n_c/code.html",
+      "bytes": 22191,
+      "sha256": "ff306929f98c610e56d09e95638a66849cf581362b4a09d5c65ba5399dc215a5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_xung_t_n_i_dung_thu_h_i_quy_n_c/screen.png",
+      "path": "stitch-export/m16_xung_t_n_i_dung_thu_h_i_quy_n_c/screen.png",
+      "bytes": 198302,
+      "sha256": "a2c3048eb0c269ef8a1879098406658ab76fd2822b44e92bb7fd4c907d666009"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_tr_ng_th_i_bi_n_x_l_l_i_m_ng/code.html",
+      "path": "stitch-export/m16_tr_ng_th_i_bi_n_x_l_l_i_m_ng/code.html",
+      "bytes": 22100,
+      "sha256": "ff20d306cb24f2e79cd2255ecea1f1103c9946b0431049ad4ce71027dd13b722"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_tr_ng_th_i_bi_n_x_l_l_i_m_ng/screen.png",
+      "path": "stitch-export/m16_tr_ng_th_i_bi_n_x_l_l_i_m_ng/screen.png",
+      "bytes": 221892,
+      "sha256": "54dc579e2a51a470b0b82f6d8347509ae0600d6c85d3f97ca01c3b21a380f51d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_ch_i_ph_ng_x_c_nh_n/code.html",
+      "path": "stitch-export/m18_ch_i_ph_ng_x_c_nh_n/code.html",
+      "bytes": 16511,
+      "sha256": "9a50109179eade1ddfaf91ca6525ad9fb3c3c684cb13708900fcda72db033d25"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_ch_i_ph_ng_x_c_nh_n/screen.png",
+      "path": "stitch-export/m18_ch_i_ph_ng_x_c_nh_n/screen.png",
+      "bytes": 289585,
+      "sha256": "ff57a3fa7a68776b6f03cbe53ab3a5ca088ed98eb29334b6fb9574d598ad3d72"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_x_c_nh_n_gh_p_n_i_frame_ch_nh/code.html",
+      "path": "stitch-export/m18_x_c_nh_n_gh_p_n_i_frame_ch_nh/code.html",
+      "bytes": 16924,
+      "sha256": "9cd029b9eda5e9dc6dd438e156d4513f316fcd2f30635eb603b87add0eb50047"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_x_c_nh_n_gh_p_n_i_frame_ch_nh/screen.png",
+      "path": "stitch-export/m18_x_c_nh_n_gh_p_n_i_frame_ch_nh/screen.png",
+      "bytes": 320920,
+      "sha256": "f8cfbe18ab899f0b66d661d9153b6d2d866c76a4eea1e703662f0decac262d01"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_kh_ng_c_xu_t_dialog_t_ch_i/code.html",
+      "path": "stitch-export/m18_kh_ng_c_xu_t_dialog_t_ch_i/code.html",
+      "bytes": 16578,
+      "sha256": "4432edacc9e397ea8418678ad8a8a0bbec3705f0d2d6b2dd17e0369eb4ebcee8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_kh_ng_c_xu_t_dialog_t_ch_i/screen.png",
+      "path": "stitch-export/m18_kh_ng_c_xu_t_dialog_t_ch_i/screen.png",
+      "bytes": 343190,
+      "sha256": "105e8fd31e63c1329ce3f75559409a8483448e75a32cff92b3b1328cdf159e26"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_c_p_k_t_n_i_admin_active/code.html",
+      "path": "stitch-export/m18_c_p_k_t_n_i_admin_active/code.html",
+      "bytes": 12731,
+      "sha256": "cb629fc061a16f951973f73aef28b406669fb2a1f7e6c1a36b72280f141fc0b1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m18_c_p_k_t_n_i_admin_active/screen.png",
+      "path": "stitch-export/m18_c_p_k_t_n_i_admin_active/screen.png",
+      "bytes": 280174,
+      "sha256": "0a81023b62edfbe625cb1971a9b1c5b870c9d35a3e5d0ff2db51b195afe7d2e9"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_2/code.html",
+      "path": "stitch-export/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_2/code.html",
+      "bytes": 11423,
+      "sha256": "678bc155f19f4e368602f56375a2488eea4b40c9e484091ec45f41ba57c39756"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_2/screen.png",
+      "path": "stitch-export/m16_sheet_x_c_nh_n_chia_s_t_ng_trang_2/screen.png",
+      "bytes": 364376,
+      "sha256": "f45b3998ac7f379762866df984ff8bdcaff75d69f1b2394a8932f51fc4ba9762"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_t_i_kho_n_h_c_sinh/code.html",
+      "path": "stitch-export/m19_c_nh_n_t_i_kho_n_h_c_sinh/code.html",
+      "bytes": 21114,
+      "sha256": "4e199010d37759695ee35a4789c1f795c14061f46cc4043c3bb2733314bb9155"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_t_i_kho_n_h_c_sinh/screen.png",
+      "path": "stitch-export/m19_c_nh_n_t_i_kho_n_h_c_sinh/screen.png",
+      "bytes": 295809,
+      "sha256": "4be7a4e69003c32a57af8b5d44f4da9ce7ab48f208b24704059a5c9714ae24b7"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_ch_demo_d_li_u_minh_h_a/code.html",
+      "path": "stitch-export/m19_c_nh_n_ch_demo_d_li_u_minh_h_a/code.html",
+      "bytes": 25355,
+      "sha256": "af3a5f89144c7bb9033450775379a928613a3b97437491ed7706aaf930729886"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_ch_demo_d_li_u_minh_h_a/screen.png",
+      "path": "stitch-export/m19_c_nh_n_ch_demo_d_li_u_minh_h_a/screen.png",
+      "bytes": 258649,
+      "sha256": "5f60263de7e294598800fe32d84e21805ac92065b3b51da5155e6507e87894bc"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_t_i_kho_n_ng_i_ch_m_s_c/code.html",
+      "path": "stitch-export/m19_c_nh_n_t_i_kho_n_ng_i_ch_m_s_c/code.html",
+      "bytes": 23864,
+      "sha256": "add1cc281b70841d66a6c1aadb965038661a2a3dc656aefb4af3c22bee7c4110"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_t_i_kho_n_ng_i_ch_m_s_c/screen.png",
+      "path": "stitch-export/m19_c_nh_n_t_i_kho_n_ng_i_ch_m_s_c/screen.png",
+      "bytes": 264176,
+      "sha256": "b71f14519db5b7dae7be0a3851921579234d073ba1f30d6ae9077dd0a3d57d19"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_dialog_ng_xu_t_sheet_i_t_n/code.html",
+      "path": "stitch-export/m19_c_nh_n_dialog_ng_xu_t_sheet_i_t_n/code.html",
+      "bytes": 25744,
+      "sha256": "f4901f9e7a771e2eb70c33ad6318a17a9a195b9732e8d719e994d8e06f0facf9"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m19_c_nh_n_dialog_ng_xu_t_sheet_i_t_n/screen.png",
+      "path": "stitch-export/m19_c_nh_n_dialog_ng_xu_t_sheet_i_t_n/screen.png",
+      "bytes": 326878,
+      "sha256": "a897f764fd2983ab28da6923d7fd3114b4b870b936f0799bdecfc14f5495fed6"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_c_i_t_t_i_kho_n_danh_s_ch_ch_nh/code.html",
+      "path": "stitch-export/m20_c_i_t_t_i_kho_n_danh_s_ch_ch_nh/code.html",
+      "bytes": 23666,
+      "sha256": "22af6232a8d4031a752ae0a45901f06ee53ebbfcf51e7ded1b10ef4559be0166"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_c_i_t_t_i_kho_n_danh_s_ch_ch_nh/screen.png",
+      "path": "stitch-export/m20_c_i_t_t_i_kho_n_danh_s_ch_ch_nh/screen.png",
+      "bytes": 279540,
+      "sha256": "d2e1c321dca319a26c44b518f6b25516e8011bf5695f83b37b31182b37f60538"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_sheet_i_t_n_m_ng_nh_p_quy_n_m_y_ch/code.html",
+      "path": "stitch-export/m20_sheet_i_t_n_m_ng_nh_p_quy_n_m_y_ch/code.html",
+      "bytes": 16716,
+      "sha256": "b8c0b9bd388fae69ab4114ec7a54e8e27e43adf6915bcb994e0e4460c750a5df"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_sheet_i_t_n_m_ng_nh_p_quy_n_m_y_ch/screen.png",
+      "path": "stitch-export/m20_sheet_i_t_n_m_ng_nh_p_quy_n_m_y_ch/screen.png",
+      "bytes": 230471,
+      "sha256": "23f238943514ed1392e16e38c5699f977fe69eda2579be5d6a151fa8db5ba797"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_sheet_i_m_t_kh_u_b_n_ph_m_m/code.html",
+      "path": "stitch-export/m20_sheet_i_m_t_kh_u_b_n_ph_m_m/code.html",
+      "bytes": 17910,
+      "sha256": "ddd0b552a03b1aaaf68ef55c48a5f647d9e81eab705062e480fb6a2184098308"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_sheet_i_m_t_kh_u_b_n_ph_m_m/screen.png",
+      "path": "stitch-export/m20_sheet_i_m_t_kh_u_b_n_ph_m_m/screen.png",
+      "bytes": 40266,
+      "sha256": "3f09e52d83fad8f55fb6be4eefea2c760adea078d505cd375d03576c1149f944"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_l_i_m_t_kh_u_hi_n_t_i_dialog_ng_xu_t/code.html",
+      "path": "stitch-export/m20_l_i_m_t_kh_u_hi_n_t_i_dialog_ng_xu_t/code.html",
+      "bytes": 20789,
+      "sha256": "671367174d82768bf1c30e58b3618f8e1eea66e891a145146407e2b8ec61d9eb"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m20_l_i_m_t_kh_u_hi_n_t_i_dialog_ng_xu_t/screen.png",
+      "path": "stitch-export/m20_l_i_m_t_kh_u_hi_n_t_i_dialog_ng_xu_t/screen.png",
+      "bytes": 200584,
+      "sha256": "195b0a224233b075cdc3e9d4519035a109071c0dc8be543338b0eaf28ad66b46"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_k_t_n_i_th_nh_c_ng/code.html",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_k_t_n_i_th_nh_c_ng/code.html",
+      "bytes": 16311,
+      "sha256": "6a8509465f1c4eca06902f2f45ea355fbcbaee5edb0a6d7667741418917066e3"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_k_t_n_i_th_nh_c_ng/screen.png",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_k_t_n_i_th_nh_c_ng/screen.png",
+      "bytes": 264625,
+      "sha256": "a29caac28c88dbb682be398e2d90db6c6ac727ed422879bd3d103b8a83e5da0a"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_l_i_m_ng_qu_th_i_gian_ch/code.html",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_l_i_m_ng_qu_th_i_gian_ch/code.html",
+      "bytes": 14432,
+      "sha256": "2762414c4ea5e456abed58ed9586120e4a4bc60668451b928c909588ff692aa3"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_l_i_m_ng_qu_th_i_gian_ch/screen.png",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_l_i_m_ng_qu_th_i_gian_ch/screen.png",
+      "bytes": 252227,
+      "sha256": "161a832524eda00eb987bcc38b359818497a48e503c7bfce6f68146be63aaaa5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_ang_ki_m_tra.../code.html",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_ang_ki_m_tra/code.html",
+      "bytes": 14355,
+      "sha256": "848edad4069ea248969919625179e8a5517e73ea425702c32710fd0a7bae50f5"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_ang_ki_m_tra.../screen.png",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_ang_ki_m_tra/screen.png",
+      "bytes": 140716,
+      "sha256": "610b83b284e663a49bf219991e29556ed9f2be4c7a6a17a2d1ef1ccfc1d934d9"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_m_y_ch_b_o_tr_m_ph_ng/code.html",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_m_y_ch_b_o_tr_m_ph_ng/code.html",
+      "bytes": 16403,
+      "sha256": "24e4bd7ffc2ac03f8c381b34e82bcbbea13492abe6c5f7ebb484a345de3b7580"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m23_ki_m_tra_k_t_n_i_m_y_ch_b_o_tr_m_ph_ng/screen.png",
+      "path": "stitch-export/m23_ki_m_tra_k_t_n_i_m_y_ch_b_o_tr_m_ph_ng/screen.png",
+      "bytes": 267502,
+      "sha256": "210400442bca19e060658b627ffe332640dfb34cae39b6a3d5ab9a08e2927c2d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m24_kh_ng_t_m_th_y_trang_kh_ch_ch_a_ng_nh_p/code.html",
+      "path": "stitch-export/m24_kh_ng_t_m_th_y_trang_kh_ch_ch_a_ng_nh_p/code.html",
+      "bytes": 12862,
+      "sha256": "9e19d62b756020eebea0399a2c807815c744d4b66c30ddb303a240ffd3115e4e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m24_kh_ng_t_m_th_y_trang_kh_ch_ch_a_ng_nh_p/screen.png",
+      "path": "stitch-export/m24_kh_ng_t_m_th_y_trang_kh_ch_ch_a_ng_nh_p/screen.png",
+      "bytes": 272294,
+      "sha256": "5a223b9259294c81ee59bf3710cbc873f6e943c42d16b436c24f1bb6497846c1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m24_kh_ng_t_m_th_y_trang_c_phi_n_ng_nh_p/code.html",
+      "path": "stitch-export/m24_kh_ng_t_m_th_y_trang_c_phi_n_ng_nh_p/code.html",
+      "bytes": 13451,
+      "sha256": "98991647afe9c287d308b483b5ec0a3ad04daca3f28c471e66c6fec71cdd9544"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m24_kh_ng_t_m_th_y_trang_c_phi_n_ng_nh_p/screen.png",
+      "path": "stitch-export/m24_kh_ng_t_m_th_y_trang_c_phi_n_ng_nh_p/screen.png",
+      "bytes": 216666,
+      "sha256": "a776fd9f41c66130ba56375b7af363c907fc06d8b99b2b8d3702a8a73e066b5d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m24_b_n_ch_l_n_320px_handoff_k_thu_t/code.html",
+      "path": "stitch-export/m24_b_n_ch_l_n_320px_handoff_k_thu_t/code.html",
+      "bytes": 12752,
+      "sha256": "a95a6e62b7f892de867ef5247cf67e29eb97c3eb5e7f059c19f0adddc687bcf1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m24_b_n_ch_l_n_320px_handoff_k_thu_t/screen.png",
+      "path": "stitch-export/m24_b_n_ch_l_n_320px_handoff_k_thu_t/screen.png",
+      "bytes": 261755,
+      "sha256": "3fbc3a78c6ddd02b4915081bc2c75c14d965c876355dfe819a52505378cad539"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_frame_ch_nh_ang_x_c_minh/code.html",
+      "path": "stitch-export/m22_t_m_tr_gi_p_frame_ch_nh_ang_x_c_minh/code.html",
+      "bytes": 17410,
+      "sha256": "cd1936158da3412e9326ae1d47e9d139dbe6578595dacac5520a235ebec8a85d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_frame_ch_nh_ang_x_c_minh/screen.png",
+      "path": "stitch-export/m22_t_m_tr_gi_p_frame_ch_nh_ang_x_c_minh/screen.png",
+      "bytes": 250288,
+      "sha256": "bc63794112f555bd2f69ced7dd224cb83091af79abbf01fa1178c1e40fa6c675"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_t_b_n_nh_p_pause_300s/code.html",
+      "path": "stitch-export/m22_t_m_tr_gi_p_t_b_n_nh_p_pause_300s/code.html",
+      "bytes": 15508,
+      "sha256": "4439a7655dfc4cbce06d3d793d1b9a52a6788d2665e66fce1bcb0ef0dcf6fab8"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_t_b_n_nh_p_pause_300s/screen.png",
+      "path": "stitch-export/m22_t_m_tr_gi_p_t_b_n_nh_p_pause_300s/screen.png",
+      "bytes": 309095,
+      "sha256": "61261503d233af150b0b31d69d5d0c1027903477c4a694d9974bf7271e22af79"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_tham_chi_u_khi_d_li_u_duy_t/code.html",
+      "path": "stitch-export/m22_t_m_tr_gi_p_tham_chi_u_khi_d_li_u_duy_t/code.html",
+      "bytes": 27837,
+      "sha256": "a7f39957d09e9ee11e092c24fa2e474cabe4684971a5b723ea51aeb51e53243e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_tham_chi_u_khi_d_li_u_duy_t/screen.png",
+      "path": "stitch-export/m22_t_m_tr_gi_p_tham_chi_u_khi_d_li_u_duy_t/screen.png",
+      "bytes": 277510,
+      "sha256": "2143563c69b9083f63bb575841543ed240bf6a61aca153114be00ce0d97e4ac1"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_b_n_ch_l_n_200/code.html",
+      "path": "stitch-export/m22_t_m_tr_gi_p_b_n_ch_l_n_200/code.html",
+      "bytes": 11448,
+      "sha256": "fa3b0a141349d6f6b5fa8bd35fe6e608584e5866fc93eaedd6c55f8c867b7e5f"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m22_t_m_tr_gi_p_b_n_ch_l_n_200/screen.png",
+      "path": "stitch-export/m22_t_m_tr_gi_p_b_n_ch_l_n_200/screen.png",
+      "bytes": 286557,
+      "sha256": "05b03155e9d37c9f9b18259f1635f7eee4e9fa2ba72497a2f670982475c0501d"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_ri_ng_t_ng_v_x_a_d_li_u_frame_ch_nh/code.html",
+      "path": "stitch-export/m21_ri_ng_t_ng_v_x_a_d_li_u_frame_ch_nh/code.html",
+      "bytes": 38076,
+      "sha256": "a449d0bfaf476c6d80b4e051fd4ccf5ea717d646413752c5203cc6e95a6290bc"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_ri_ng_t_ng_v_x_a_d_li_u_frame_ch_nh/screen.png",
+      "path": "stitch-export/m21_ri_ng_t_ng_v_x_a_d_li_u_frame_ch_nh/screen.png",
+      "bytes": 189534,
+      "sha256": "0e7dee12b9d601dd21dace5308d25cc66dc7553836014af54c8691a30f8d0bb3"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_sheet_x_c_nh_n_thu_h_i_quy_n_chia_s/code.html",
+      "path": "stitch-export/m21_sheet_x_c_nh_n_thu_h_i_quy_n_chia_s/code.html",
+      "bytes": 16180,
+      "sha256": "b5c76bbd427e04fa71f223d06a8940e58afab2e032eb4577f5211257d97c0efb"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_sheet_x_c_nh_n_thu_h_i_quy_n_chia_s/screen.png",
+      "path": "stitch-export/m21_sheet_x_c_nh_n_thu_h_i_quy_n_chia_s/screen.png",
+      "bytes": 64183,
+      "sha256": "826c7d58ac0be4e33fc3e970c7e4f64f2289b41e56e7a639cc927b6c15350579"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_sheet_r_t_ng_h_qu_th_c_t/code.html",
+      "path": "stitch-export/m21_sheet_r_t_ng_h_qu_th_c_t/code.html",
+      "bytes": 14661,
+      "sha256": "100fcd788fef33ebc6ac4f72a775eea10ef1093858b0474c047bac161a76cbf7"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_sheet_r_t_ng_h_qu_th_c_t/screen.png",
+      "path": "stitch-export/m21_sheet_r_t_ng_h_qu_th_c_t/screen.png",
+      "bytes": 10289,
+      "sha256": "279b1d7ab00f6e3e9eefaef1d47584306abc7ced75afa8e55f1c401c290351fb"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_quy_tr_nh_y_u_c_u_x_a_d_li_u_l_ch_s_x_l/code.html",
+      "path": "stitch-export/m21_quy_tr_nh_y_u_c_u_x_a_d_li_u_l_ch_s_x_l/code.html",
+      "bytes": 21011,
+      "sha256": "df96a17fba169f143da7e0c287b081e9bec58cdfff39b145db3ab51de26d687e"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/m21_quy_tr_nh_y_u_c_u_x_a_d_li_u_l_ch_s_x_l/screen.png",
+      "path": "stitch-export/m21_quy_tr_nh_y_u_c_u_x_a_d_li_u_l_ch_s_x_l/screen.png",
+      "bytes": 252198,
+      "sha256": "7326f3184d8ce58e4cfb70c5b3e6f1df1b1cd4e44301c1ab2e57d1bb0d696954"
+    },
+    {
+      "archive_path": "stitch_family_bridge_design_system/family_bridge_mini_app/DESIGN.md",
+      "path": "stitch-export/family_bridge_mini_app/DESIGN.md",
+      "bytes": 10042,
+      "sha256": "5e1a414ed690e405963a846ba6b5f803b5873f7c25029f9c502cea4554024905"
+    }
+  ]
+}

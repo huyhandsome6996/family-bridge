@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{"colors":{"on-error-container":"#93000a","on-secondary-fixed":"#3d0600","surface-container-lowest":"#ffffff","tertiary":"#6b4600","secondary-container":"#ff866b","error":"#ba1a1a","surface-container":"#ffe9e5","on-error":"#ffffff","surface-bright":"#fff8f6","surface-container-low":"#fff0ee","background":"#fff8f6","primary-fixed":"#ffdad3","tertiary-container":"#895c09","on-background":"#360f07","surface-dim":"#ffcfc5","outline":"#89726d","surface-tint":"#9f402d","secondary-fixed":"#ffdad2","on-surface-variant":"#56423e","primary":"#89301e","on-tertiary-fixed-variant":"#624000","inverse-primary":"#ffb4a4","outline-variant":"#ddc0ba","tertiary-fixed":"#ffddb2","surface-container-highest":"#ffdad3","on-primary":"#ffffff","on-primary-fixed":"#3e0500","on-tertiary":"#ffffff","secondary":"#a03f2a","error-container":"#ffdad6","on-tertiary-container":"#ffdeb4","on-tertiary-fixed":"#291800","surface-variant":"#ffdad3","on-primary-container":"#ffdcd5","on-secondary-fixed-variant":"#812815","secondary-fixed-dim":"#ffb4a3","inverse-on-surface":"#ffede9","surface-container-high":"#ffe2dc","on-surface":"#360f07","surface":"#fff8f6","on-primary-fixed-variant":"#802918","tertiary-fixed-dim":"#f7bc65","on-secondary-container":"#741f0c","primary-fixed-dim":"#ffb4a4","on-secondary":"#ffffff","inverse-surface":"#502319","primary-container":"#a84733"},"borderRadius":{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},"spacing":{"space-lg":"1.25rem","gutter":"1rem","space-xl":"1.5rem","space-sm":"0.5rem","space-md":"1rem","space-xs":"0.25rem","margin":"1rem"},"fontFamily":{"metadata":["Be Vietnam Pro"],"label-lg":["Be Vietnam Pro"],"caption":["Be Vietnam Pro"],"title-md":["Be Vietnam Pro"],"body-md":["Be Vietnam Pro"],"headline-sm":["Be Vietnam Pro"],"headline-lg":["Be Vietnam Pro"],"headline-md":["Be Vietnam Pro"],"label-md":["Be Vietnam Pro"],"body-lg":["Be Vietnam Pro"]},"fontSize":{"metadata":["12px",{"lineHeight":"16px","fontWeight":"500"}],"label-lg":["16px",{"lineHeight":"24px","fontWeight":"600"}],"caption":["13px",{"lineHeight":"18px","fontWeight":"400"}],"title-md":["18px",{"lineHeight":"26px","fontWeight":"600"}],"body-md":["15px",{"lineHeight":"24px","fontWeight":"400"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"600"}],"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"700"}],"headline-md":["22px",{"lineHeight":"30px","letterSpacing":"-0.01em","fontWeight":"600"}],"label-md":["14px",{"lineHeight":"20px","fontWeight":"500"}],"body-lg":["16px",{"lineHeight":"26px","fontWeight":"400"}]}}}};</script><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/90 backdrop-blur-xl pt-safe shadow-[0_1px_8px_rgba(113,61,50,0.05)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Quay lại" class="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span></button><h1 class="font-title-md text-title-md text-on-surface font-semibold tracking-tight truncate max-w-[200px]">Tín Hiệu Cần Lắng Nghe</h1></div><div class="flex items-center gap-space-xs"><a class="flex items-center gap-1 px-space-sm h-9 rounded-full bg-surface-container-high/60 hover:bg-surface-container-high text-primary font-label-md text-label-md transition-colors" data-path="tim-tro-giup" href="#"><span class="material-symbols-outlined text-[18px]">help</span><span class="hidden xs:inline">Tìm trợ giúp</span></a><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface min-h-screen"><div class="flex flex-col w-full pb-safe">
+<!-- Interactive View Container: Toggles between Preview State & Sent State -->
+<div class="flex flex-col w-full gap-space-lg" id="flow-container">
+<!-- STATE 1: PREVIEW STATE (Initial) -->
+<section class="flex flex-col w-full gap-space-md transition-all duration-300" id="preview-state">
+<!-- Gentle Prompt Header -->
+<div class="flex flex-col gap-space-xs pt-space-xs">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">mark_chat_unread</span>
+<span class="font-label-md text-label-md font-semibold">Xem trước tín hiệu trước khi gửi</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+          Hãy đọc lại thông điệp để chắc chắn đây đúng là điều bạn muốn gửi gắm tới người thân lúc này.
+        </p>
+</div>
+<!-- Main Message Card (Standardized Server Output) -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm flex flex-col gap-space-md relative overflow-hidden">
+<!-- Subtle warm accent highlight bar on left -->
+<div class="absolute left-0 top-0 bottom-0 w-1.5 bg-primary-container"></div>
+<!-- Recipient & Intent Metadata Row -->
+<div class="flex flex-col gap-space-xs pl-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-[18px]">person_heart</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Gửi đến: Mẹ Lan</span>
+</div>
+<span class="inline-flex items-center px-space-xs py-0.5 rounded-full bg-surface-container text-primary font-metadata text-metadata font-medium">
+              Riêng tư
+            </span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary-container text-[18px]">spa</span>
+<span class="font-caption text-caption text-on-surface-variant">Tín hiệu chọn: <strong class="text-on-surface font-medium">Muốn trò chuyện yên tĩnh</strong></span>
+</div>
+</div>
+<!-- Message Body Quoted Frame -->
+<div class="bg-surface-container-low rounded-lg p-space-md flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-xs text-primary opacity-80">
+<span class="material-symbols-outlined text-[16px]">format_quote</span>
+<span class="font-metadata text-metadata font-semibold uppercase tracking-wider">Thông điệp gửi đi</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed italic">
+            "Con đang cảm thấy một chút nặng lòng và mong muốn được trò chuyện yên tĩnh cùng mẹ khi mẹ có thời gian. Con chưa cần lời khuyên ngay, chỉ cần mẹ lắng nghe con."
+          </p>
+</div>
+<!-- Trust & Security Commitment Note -->
+<div class="flex items-start gap-space-xs text-on-surface-variant pt-space-xs pl-space-xs">
+<span class="material-symbols-outlined text-tertiary text-[18px] shrink-0 mt-0.5">verified_user</span>
+<p class="font-caption text-caption text-on-surface-variant">
+            Tín hiệu này được gửi trực tiếp và an toàn trong Family Bridge, không tự động chuyển tiếp ra ngoài.
+          </p>
+</div>
+</div>
+<!-- Contextual Psychological Safe Space Banner -->
+<div class="bg-surface-container-high/60 rounded-xl p-space-md flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-secondary text-[22px] shrink-0 mt-0.5">wb_twilight</span>
+<div class="flex flex-col gap-0.5">
+<h2 class="font-label-md text-label-md text-on-surface font-semibold">Tôn trọng nhịp sống của nhau</h2>
+<p class="font-caption text-caption text-on-surface-variant">
+            Gửi tín hiệu không tạo áp lực phải hồi đáp ngay lập tức. Đây là lời mời kết nối chân thành và nhẹ nhàng.
+          </p>
+</div>
+</div>
+<!-- Action Button Group -->
+<div class="flex flex-col gap-space-sm pt-space-sm">
+<button class="w-full h-12 rounded-xl bg-primary-container hover:bg-primary active:scale-[0.99] text-surface-container-lowest font-label-lg text-label-lg font-semibold shadow-sm flex items-center justify-center gap-space-xs transition-all cursor-pointer" id="btn-send-signal" type="button">
+<span class="material-symbols-outlined text-[20px]">send</span>
+<span>Gửi tín hiệu ngay</span>
+</button>
+<a class="w-full h-12 rounded-xl bg-surface-container-lowest text-on-surface-variant hover:text-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors cursor-pointer" href="#" onclick="history.back(); return false;">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+<span>Chọn lại nhu cầu</span>
+</a>
+</div>
+</section>
+<!-- STATE 2: SENT CONFIRMATION (Hidden initially, triggered via JS) -->
+<section class="hidden flex-col w-full gap-space-lg transition-all duration-300" id="sent-success-state">
+<!-- Primary Success Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col items-center text-center gap-space-md">
+<!-- Animated / Soft Badge -->
+<div class="w-16 h-16 rounded-full bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[36px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">
+            Đã gửi tín hiệu tới Mẹ Lan thành công
+          </h2>
+<span class="font-metadata text-metadata text-on-surface-variant">
+            Ghi nhận vào lúc <span id="sent-time">vừa xong</span>
+</span>
+</div>
+<!-- Honest & Grounded Psychological Reality Check -->
+<div class="bg-surface-container-low rounded-xl p-space-md text-left flex flex-col gap-space-xs w-full">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-[18px]">favorite</span>
+<span class="font-label-md text-label-md font-semibold">Bạn đã làm rất tốt!</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-relaxed">
+            Mẹ Lan sẽ thấy tín hiệu này trong ứng dụng. Bạn đã làm rất tốt khi chủ động chia sẻ nhu cầu của mình một cách thẳng thắn và ôn hòa.
+          </p>
+<div class="pt-space-xs flex items-start gap-space-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-[18px] text-tertiary shrink-0 mt-0.5">info</span>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+              Hệ thống không cam kết đối phương xem ngay hay có mặt tức thì. Nếu bạn đang trong tình huống nguy cấp hoặc cần hỗ trợ y tế/tâm lý khẩn cấp, vui lòng chạm vào <strong>Tìm trợ giúp</strong> ở góc trên bên phải.
+            </p>
+</div>
+</div>
+<!-- Message Summary Capsule -->
+<div class="w-full py-space-xs px-space-sm rounded-lg bg-surface-container/60 flex items-center justify-between">
+<span class="font-caption text-caption text-on-surface-variant">Tín hiệu:</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate max-w-[200px]">Muốn trò chuyện yên tĩnh</span>
+</div>
+</div>
+<!-- Calming Reflection Reminder Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md flex items-center gap-space-md shadow-sm">
+<div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[24px]">self_improvement</span>
+</div>
+<div class="flex flex-col gap-0.5">
+<h3 class="font-label-md text-label-md text-on-surface font-semibold">Trong lúc chờ đợi</h3>
+<p class="font-caption text-caption text-on-surface-variant">
+            Hãy uống một ngụm nước ấm, hít thở sâu vài nhịp hoặc ghi chép thêm vào mục Nhật ký nếu bạn muốn giải tỏa suy nghĩ.
+          </p>
+</div>
+</div>
+<!-- Action Buttons After Sending -->
+<div class="flex flex-col gap-space-sm pt-space-xs">
+<a class="w-full h-12 rounded-xl bg-primary-container hover:bg-primary active:scale-[0.99] text-surface-container-lowest font-label-lg text-label-lg font-semibold shadow-sm flex items-center justify-center gap-space-xs transition-all cursor-pointer" data-path="hop-thu" href="#">
+<span class="material-symbols-outlined text-[20px]">mark_email_read</span>
+<span>Mở Hộp thư</span>
+</a>
+<a class="w-full h-12 rounded-xl bg-surface-container-lowest text-on-surface hover:text-primary font-label-md text-label-md font-semibold flex items-center justify-center gap-space-xs transition-colors cursor-pointer" data-path="trang-chu" href="#">
+<span class="material-symbols-outlined text-[18px]">cottage</span>
+<span>Quay về Trang chủ</span>
+</a>
+</div>
+</section>
+</div>
+</div>
+<script>
+  (function initSignalConfirmationFlow() {
+    var sendBtn = document.getElementById('btn-send-signal');
+    var previewState = document.getElementById('preview-state');
+    var sentState = document.getElementById('sent-success-state');
+    var timeSlot = document.getElementById('sent-time');
+
+    if (sendBtn && previewState && sentState) {
+      sendBtn.addEventListener('click', function() {
+        // Subtle loading feedback on button
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span><span>Đang xử lý tín hiệu...</span>';
+        
+        setTimeout(function() {
+          // Stamp current time formatted in Vietnamese locale
+          var now = new Date();
+          var hours = String(now.getHours()).padStart(2, '0');
+          var minutes = String(now.getMinutes()).padStart(2, '0');
+          if (timeSlot) {
+            timeSlot.textContent = hours + ':' + minutes + ' hôm nay';
+          }
+
+          // Transition states
+          previewState.classList.add('hidden');
+          sentState.classList.remove('hidden');
+          sentState.classList.add('flex');
+
+          // Scroll gracefully to top of page
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }, 500);
+      });
+    }
+  })();
+</script></main></body></html>

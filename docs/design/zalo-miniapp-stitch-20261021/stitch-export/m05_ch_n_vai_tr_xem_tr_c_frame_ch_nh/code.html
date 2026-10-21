@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-tertiary-fixed-variant": "#624000", "surface": "#fff8f6", "on-secondary-fixed-variant": "#812815", "secondary-fixed": "#ffdad2", "tertiary": "#6b4600", "primary": "#89301e", "primary-container": "#a84733", "on-tertiary-fixed": "#291800", "tertiary-fixed": "#ffddb2", "surface-bright": "#fff8f6", "primary-fixed-dim": "#ffb4a4", "on-secondary": "#ffffff", "surface-container-high": "#ffe2dc", "on-tertiary": "#ffffff", "on-primary-fixed": "#3e0500", "outline-variant": "#ddc0ba", "surface-container-low": "#fff0ee", "inverse-primary": "#ffb4a4", "on-primary-container": "#ffdcd5", "surface-container-highest": "#ffdad3", "on-background": "#360f07", "tertiary-fixed-dim": "#f7bc65", "surface-dim": "#ffcfc5", "surface-variant": "#ffdad3", "outline": "#89726d", "error-container": "#ffdad6", "error": "#ba1a1a", "on-secondary-fixed": "#3d0600", "on-error": "#ffffff", "on-primary-fixed-variant": "#802918", "primary-fixed": "#ffdad3", "inverse-surface": "#502319", "secondary-container": "#ff866b", "background": "#fff8f6", "inverse-on-surface": "#ffede9", "surface-container": "#ffe9e5", "on-surface": "#360f07", "on-tertiary-container": "#ffdeb4", "tertiary-container": "#895c09", "on-surface-variant": "#56423e", "secondary": "#a03f2a", "on-secondary-container": "#741f0c", "surface-container-lowest": "#ffffff", "surface-tint": "#9f402d", "on-error-container": "#93000a", "on-primary": "#ffffff", "secondary-fixed-dim": "#ffb4a3" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "gutter": "1rem", "space-lg": "1.25rem", "space-xs": "0.25rem", "space-sm": "0.5rem", "space-md": "1rem", "margin": "1rem", "space-xl": "1.5rem" }, "fontFamily": { "caption": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"] }, "fontSize": { "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }] } } } }</script></head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><button aria-label="Quay lại" class="min-w-[44px] min-h-[44px] -ml-2 flex items-center gap-1 text-primary focus:outline-none" onclick="history.back()"><span class="material-symbols-outlined text-[22px]">arrow_back_ios_new</span><span class="font-label-md text-label-md">Quay lại</span></button><div class="flex-1 text-center px-space-xs truncate"><h1 class="font-title-md text-title-md text-on-surface truncate">Chọn Vai Trò Xem Trước</h1></div><div class="min-w-[44px] min-h-[44px] flex items-center justify-end -mr-1"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-safe bg-surface px-margin"><div class="flex flex-col w-full pb-8">
+<!-- Interactive Feedback Overlay Container (Client-Side) -->
+<div class="hidden fixed bottom-6 left-4 right-4 z-50 bg-inverse-surface text-inverse-on-surface px-space-md py-3 rounded-xl shadow-xl flex items-center justify-between" id="selection-toast">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary-fixed-dim" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+<span class="font-label-md text-label-md" id="toast-text">Đang tải giao diện xem trước...</span>
+</div>
+<span class="material-symbols-outlined text-[18px] opacity-70">arrow_forward</span>
+</div>
+<!-- Warm Canvas Main Column -->
+<div class="flex flex-col w-full gap-space-lg">
+<!-- Top Notice Banner: Demo / Preview Clarification -->
+<section class="bg-tertiary-fixed/40 rounded-xl p-space-md shadow-sm">
+<div class="flex items-start gap-space-sm">
+<div class="w-7 h-7 rounded-full bg-tertiary-container/20 flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-tertiary text-[18px]" style="font-variation-settings: 'FILL' 1;">info</span>
+</div>
+<div class="flex flex-col gap-1">
+<div class="flex items-center gap-2">
+<span class="bg-tertiary text-on-tertiary font-metadata text-metadata uppercase tracking-wider px-2 py-0.5 rounded-full font-semibold">
+              DỮ LIỆU MINH HỌA
+            </span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+            Chế độ xem trước giao diện — <strong class="font-medium text-on-surface">Không lưu hay thay đổi dữ liệu thật</strong>. Hãy thoải mái trải nghiệm các tính năng đồng hành.
+          </p>
+</div>
+</div>
+</section>
+<!-- Visual Framing: Editorial Intro -->
+<header class="flex flex-col gap-1.5 pt-1">
+<h2 class="font-headline-md text-headline-md text-primary tracking-tight">
+        Bạn muốn xem giao diện của ai?
+      </h2>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+        Trải nghiệm trước cách hoạt động của ứng dụng. Vai trò tài khoản chính thức sẽ do nhà trường hoặc giáo viên cấp khi đăng nhập.
+      </p>
+</header>
+<!-- Role Selection Cards -->
+<div class="flex flex-col gap-space-md">
+<!-- Option 1: Student Role -->
+<button aria-label="Chọn xem trước giao diện Con — học sinh THPT" class="group text-left w-full min-h-[96px] bg-surface-container-lowest active:bg-surface-container-low transition-colors duration-150 p-space-md rounded-xl shadow-sm flex items-start gap-space-md focus:outline-none" onclick="handleRoleSelect('student', '/preview/student')" type="button">
+<!-- Stylized Student Icon Container -->
+<div class="w-12 h-12 rounded-xl bg-primary-fixed flex items-center justify-center shrink-0 text-primary group-hover:scale-105 transition-transform">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M12 20h9"></path>
+<path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+<path d="M15 5l3 3"></path>
+</svg>
+</div>
+<!-- Role Information -->
+<div class="flex-1 min-w-0 flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<span class="font-label-lg text-label-lg text-on-surface font-semibold tracking-tight">
+              Con — học sinh THPT
+            </span>
+<span class="material-symbols-outlined text-[20px] text-primary transition-transform group-hover:translate-x-1">
+              chevron_right
+            </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-snug line-clamp-2">
+            Ghi nhận cảm xúc hàng ngày, mở lời nhẹ nhàng và gửi tâm sự khi sẵn sàng.
+          </p>
+<div class="pt-1.5 flex items-center gap-1 text-primary">
+<span class="font-caption text-caption font-semibold">Xem giao diện học sinh</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</div>
+</div>
+</button>
+<!-- Option 2: Caregiver Role -->
+<button aria-label="Chọn xem trước giao diện Người chăm sóc" class="group text-left w-full min-h-[96px] bg-surface-container-lowest active:bg-surface-container-low transition-colors duration-150 p-space-md rounded-xl shadow-sm flex items-start gap-space-md focus:outline-none" onclick="handleRoleSelect('caregiver', '/preview/caregiver')" type="button">
+<!-- Stylized Caregiver Icon Container -->
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed flex items-center justify-center shrink-0 text-secondary group-hover:scale-105 transition-transform">
+<svg aria-hidden="true" class="w-6 h-6" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" viewbox="0 0 24 24">
+<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+<path d="M12 11a2.5 2.5 0 0 0 0 5"></path>
+</svg>
+</div>
+<!-- Role Information -->
+<div class="flex-1 min-w-0 flex flex-col gap-1">
+<div class="flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-lg text-label-lg text-on-surface font-semibold tracking-tight">
+                Người chăm sóc
+              </span>
+<span class="font-metadata text-metadata text-outline font-normal">
+                (Phụ huynh, người giám hộ)
+              </span>
+</div>
+<span class="material-symbols-outlined text-[20px] text-secondary transition-transform group-hover:translate-x-1">
+              chevron_right
+            </span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant leading-snug line-clamp-2">
+            Lắng nghe tâm tư, nhận thông điệp chia sẻ và đồng hành cùng con bằng sự thấu hiểu.
+          </p>
+<div class="pt-1.5 flex items-center gap-1 text-secondary">
+<span class="font-caption text-caption font-semibold">Xem giao diện phụ huynh</span>
+<span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</div>
+</div>
+</button>
+</div>
+<!-- Alternative Paths: Authenticate or Emergency Psychological Help -->
+<div class="flex flex-col gap-space-sm pt-2">
+<!-- Primary Secondary Action: Login with Official Credentials -->
+<a class="w-full min-h-[48px] bg-surface-container-lowest text-on-surface hover:bg-surface-container-low px-space-md rounded-xl flex items-center justify-center gap-2 font-label-lg text-label-lg shadow-sm transition-colors text-center" href="/login">
+<span class="material-symbols-outlined text-[20px] text-outline">key</span>
+<span>Đăng nhập tài khoản thật</span>
+</a>
+<!-- Instant Support Hotline / Shield Link (No Login Required) -->
+<a class="w-full min-h-[44px] py-2 px-space-md flex items-center justify-center gap-2 text-primary hover:text-primary-container font-label-md text-label-md transition-colors" href="/help/psychology">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span>Tìm trợ giúp học đường &amp; tâm lý</span>
+</a>
+</div>
+<!-- Handover Design Specification Note -->
+<aside class="mt-4 bg-surface-container-low rounded-xl p-space-md shadow-sm">
+<div class="flex items-center gap-2 mb-2 text-on-surface">
+<span class="material-symbols-outlined text-[18px] text-tertiary">design_services</span>
+<span class="font-label-md text-label-md font-semibold">Quy chuẩn bàn giao (Design Spec)</span>
+</div>
+<dl class="grid grid-cols-2 gap-x-2 gap-y-1.5 font-caption text-caption text-on-surface-variant">
+<div>
+<dt class="font-medium text-outline text-metadata">Mã Route</dt>
+<dd class="text-on-surface font-mono">/role-select</dd>
+</div>
+<div>
+<dt class="font-medium text-outline text-metadata">Điều hướng</dt>
+<dd class="text-on-surface">Stack (Không Tab Bar)</dd>
+</div>
+<div>
+<dt class="font-medium text-outline text-metadata">Nút Quay lại</dt>
+<dd class="text-on-surface font-mono">/how-to-use</dd>
+</div>
+<div>
+<dt class="font-medium text-outline text-metadata">Vùng chạm (Hit Area)</dt>
+<dd class="text-on-surface">≥ 48px diện tích tiếp xúc</dd>
+</div>
+<div class="col-span-2">
+<dt class="font-medium text-outline text-metadata">Quy cách Demo</dt>
+<dd class="text-on-surface">Badge minh họa cố định, click trực tiếp không xác nhận popup</dd>
+</div>
+<div class="col-span-2">
+<dt class="font-medium text-outline text-metadata">Hệ khoảng cách Spacing</dt>
+<dd class="text-on-surface">8px (sm) / 12px / 16px (gutter) / 24px (xl)</dd>
+</div>
+</dl>
+</aside>
+</div>
+</div>
+<script>
+  function handleRoleSelect(role, destinationUrl) {
+    var toast = document.getElementById('selection-toast');
+    var toastText = document.getElementById('toast-text');
+    if (!toast || !toastText) return;
+
+    if (role === 'student') {
+      toastText.textContent = 'Mở giao diện xem trước: Con — học sinh...';
+    } else {
+      toastText.textContent = 'Mở giao diện xem trước: Người chăm sóc...';
+    }
+
+    toast.classList.remove('hidden');
+
+    // Smooth direct preview transition without modal blockers
+    setTimeout(function() {
+      // In real Mini App runtime, invoke router push:
+      // zmp.navigation.navigate(destinationUrl);
+      window.location.href = destinationUrl;
+    }, 450);
+  }
+</script></main></body></html>

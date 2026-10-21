@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior-y:none;font-family:'Be Vietnam Pro',sans-serif;}.pb-safe{padding-bottom:max(env(safe-area-inset-bottom,0px),24px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "background": "#fff8f6", "surface-variant": "#ffdad3", "tertiary": "#6b4600", "inverse-primary": "#ffb4a4", "secondary-container": "#ff866b", "on-error-container": "#93000a", "on-secondary": "#ffffff", "secondary": "#a03f2a", "tertiary-container": "#895c09", "surface-dim": "#ffcfc5", "tertiary-fixed-dim": "#f7bc65", "on-primary-fixed": "#3e0500", "primary-fixed": "#ffdad3", "on-tertiary": "#ffffff", "surface-container": "#ffe9e5", "primary": "#89301e", "inverse-surface": "#502319", "primary-container": "#a84733", "outline-variant": "#ddc0ba", "tertiary-fixed": "#ffddb2", "on-error": "#ffffff", "outline": "#89726d", "secondary-fixed": "#ffdad2", "surface-bright": "#fff8f6", "on-surface": "#360f07", "surface-container-highest": "#ffdad3", "primary-fixed-dim": "#ffb4a4", "on-surface-variant": "#56423e", "on-tertiary-fixed": "#291800", "inverse-on-surface": "#ffede9", "on-secondary-fixed-variant": "#812815", "surface-container-low": "#fff0ee", "on-tertiary-container": "#ffdeb4", "on-secondary-fixed": "#3d0600", "secondary-fixed-dim": "#ffb4a3", "surface": "#fff8f6", "error": "#ba1a1a", "on-secondary-container": "#741f0c", "surface-container-high": "#ffe2dc", "on-primary": "#ffffff", "surface-tint": "#9f402d", "on-primary-fixed-variant": "#802918", "on-primary-container": "#ffdcd5", "on-background": "#360f07", "on-tertiary-fixed-variant": "#624000", "surface-container-lowest": "#ffffff", "error-container": "#ffdad6" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-xs": "0.25rem", "space-sm": "0.5rem", "margin": "1rem", "space-md": "1rem", "space-lg": "1.25rem", "gutter": "1rem", "space-xl": "1.5rem" }, "fontFamily": { "label-lg": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"] }, "fontSize": { "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }] } } } };</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/90 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.05)] pt-safe"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Quay lại" class="w-12 h-12 -ml-2 rounded-full flex items-center justify-center text-on-surface hover:bg-surface-container active:bg-surface-container-high transition-colors" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-md text-title-md text-on-surface tracking-tight truncate max-w-[200px]">Tìm Trợ Giúp</h1></div><div class="flex items-center gap-space-xs"><div class="flex items-center bg-surface-container-low/80 backdrop-blur-md rounded-full px-1 py-0.5"><button aria-label="Tùy chọn Zalo Mini App" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-[20px]">more_horiz</span></button><button aria-label="Đóng Mini App" class="w-9 h-9 rounded-full flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container active:bg-surface-container-high transition-colors" type="button"><span class="material-symbols-outlined text-[18px]">close</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 ml-1"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-safe bg-surface"><div class="flex flex-col w-full pb-12">
+<!-- Banner Thao Khảo & Cảnh Báo Bản Phê Duyệt -->
+<div class="px-margin pt-space-xs">
+<div class="bg-surface-container-high rounded-xl p-space-md shadow-sm relative overflow-hidden">
+<div class="absolute -right-4 -bottom-4 w-24 h-24 bg-primary/5 rounded-full pointer-events-none"></div>
+<div class="flex items-center gap-space-xs mb-space-xs">
+<span class="inline-flex items-center px-2 py-0.5 rounded-full text-metadata font-metadata bg-primary text-on-primary">
+          [ BẢN THAM CHIẾU — PHỤ THUỘC DỮ LIỆU ĐÃ DUYỆT ]
+        </span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+        Đây là thiết kế mẫu tham chiếu UI tương lai khi nhà trường và cơ quan chuyên môn đã hoàn tất phê duyệt danh bạ. Bản hiện hành trong sản phẩm thực tế là trạng thái đang xác minh (Frame chính).
+      </p>
+<div class="mt-space-sm pt-space-xs flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[16px] text-tertiary">info</span>
+<span class="font-metadata text-metadata text-tertiary">Chế độ xem trước tính năng đã xác thực (Verified State Mockup)</span>
+</div>
+</div>
+</div>
+<!-- Thông điệp tâm lý ấm áp, gần gũi -->
+<div class="px-margin mt-space-md">
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<div>
+<h2 class="font-label-lg text-label-lg text-on-surface">Bạn luôn có người đồng hành</h2>
+<p class="font-body-md text-body-md text-on-surface-variant mt-0.5">
+            Mọi chia sẻ đều được giữ kín và lắng nghe với lòng thấu hiểu sâu sắc từ thầy cô và chuyên gia.
+          </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Nhóm 1: Đầu mối hỗ trợ của trường -->
+<div class="px-margin mt-space-lg">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[20px]">school</span>
+<h3 class="font-title-md text-title-md text-on-surface">Đầu mối hỗ trợ của trường</h3>
+</div>
+<span class="font-metadata text-metadata text-on-secondary-container bg-secondary-container/40 px-2 py-0.5 rounded-full">
+        Đã xác thực
+      </span>
+</div>
+<!-- Card Chi Tiết Nhà Trường -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="flex items-start gap-space-sm">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<img class="w-10 h-10 object-contain rounded" data-alt="Emblem logo of Nguyen Hue High School for the Gifted in warm terracotta tones, representing educational support and care, simple flat design with clean paper aesthetics" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDn-Lp9-mc396D3SHb6nt8ZvOCxadYP8ZIakRgx7cAKfNs3ZjIC8-GYZcV5JZsoD2IkivnhGDKWKz2YsWK8jPpTvNfUMCVDii1xD57Hb7xGnRrzG8EQGIhi24mtcVqrSqeK0CAlMt7EzLwKOqPjNocdD_twU2C3DnTiSCRF91w3xGIFzVwcFyUQbi5h-UhVbMj0XSRhDaJg07FqViskW2lsiPelFveoKHwMI1rv6w8ibSkQPh-6Hzmv"/>
+</div>
+<div class="min-w-0 flex-1">
+<span class="font-metadata text-metadata text-primary uppercase tracking-wider block">THPT Chuyên Nguyễn Huệ (Minh họa)</span>
+<h4 class="font-label-lg text-label-lg text-on-surface mt-0.5">Phòng tư vấn tâm lý học đường &amp; Ban giám thị</h4>
+</div>
+</div>
+<!-- Thông tin liên hệ cơ sở -->
+<div class="mt-space-md space-y-space-xs">
+<div class="flex items-start gap-space-sm p-2 rounded-lg bg-surface-container-low">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5">meeting_room</span>
+<div>
+<span class="font-metadata text-metadata text-on-surface-variant block">Địa điểm tiếp nhận</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">Tầng 2, Nhà Hiệu Bộ, Phòng 204</span>
+</div>
+</div>
+<div class="flex items-start gap-space-sm p-2 rounded-lg bg-surface-container-low">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5">schedule</span>
+<div>
+<span class="font-metadata text-metadata text-on-surface-variant block">Thời gian tiếp nhận</span>
+<span class="font-body-md text-body-md text-on-surface font-medium">Giờ hành chính (7:30 - 16:30, Thứ 2 - Thứ 6)</span>
+</div>
+</div>
+</div>
+<!-- Tương tác hành động -->
+<div class="mt-space-md grid grid-cols-1 gap-space-xs">
+<button class="w-full h-12 px-space-md rounded-lg bg-surface-container text-on-surface font-label-md text-label-md flex items-center justify-between hover:bg-surface-container-high active:bg-surface-container-highest transition-colors" onclick="openDirectGuideModal()" type="button">
+<span class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-primary">directions_walk</span>
+<span>Xem hướng dẫn gặp trực tiếp</span>
+</span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">chevron_right</span>
+</button>
+<button class="w-full h-12 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-space-xs shadow-sm hover:opacity-95 active:opacity-90 transition-opacity" onclick="openPrivateBookingModal()" type="button">
+<span class="material-symbols-outlined text-[20px]">lock</span>
+<span>Gửi đề nghị hẹn gặp kín</span>
+</button>
+</div>
+<div class="mt-space-xs text-center">
+<span class="font-metadata text-metadata text-on-surface-variant">Đề nghị được gửi ẩn danh hoặc hiển thị tên tùy bạn chọn</span>
+</div>
+</div>
+</div>
+<!-- Nhóm 2: Đầu mối tư vấn tâm lý học đường (Đối tác được chứng nhận) -->
+<div class="px-margin mt-space-lg">
+<div class="flex items-center justify-between mb-space-sm">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[20px]">verified</span>
+<h3 class="font-title-md text-title-md text-on-surface">Đối tác chuyên môn được cấp phép</h3>
+</div>
+<span class="font-metadata text-metadata text-on-tertiary-container bg-tertiary-fixed px-2 py-0.5 rounded-full">
+        Cấp sở GD&amp;ĐT
+      </span>
+</div>
+<!-- Card Chi Tiết Đối Tác -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm">
+<div class="flex items-start gap-space-sm">
+<div class="w-12 h-12 rounded-lg bg-surface-container flex items-center justify-center shrink-0">
+<img class="w-10 h-10 object-contain rounded" data-alt="Warm modern emblem for Center of Psychological and Educational Research, professional yet comforting warmth, earth terracotta style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBbbUVMmynj22p7E5LSViSlc-G8LPOq2diwXELbdmqG1PjugdLpXmkDVUpax43I1awbPsjwrAdDDq7EmKJ1FX_m3BLFqns4bAzAz4jLDuuklYaWtjbqvTDSja9TJRzbADCoeorsCKiMq7ZeQuDLWAnFiXUPTK962ZWhgfc3vDkUMZM7FbbnDxzE8OKfpEPviVmsam57FZyYlrLjiwh0-m8sA3yti4lOs8DMmPqasDhdwf_tbU2M3UdH"/>
+</div>
+<div class="min-w-0 flex-1">
+<span class="font-metadata text-metadata text-on-surface-variant block">Chứng nhận hợp tác y tế &amp; học đường</span>
+<h4 class="font-label-lg text-label-lg text-on-surface mt-0.5">Trung tâm Nghiên cứu &amp; Ứng dụng Tâm lý Giáo dục</h4>
+</div>
+</div>
+<div class="mt-space-md p-space-sm rounded-lg bg-surface-container-low">
+<div class="flex items-start gap-space-sm">
+<span class="material-symbols-outlined text-primary text-[20px] mt-0.5">contact_support</span>
+<div>
+<span class="font-metadata text-metadata text-on-surface-variant block">Phương thức hỗ trợ</span>
+<p class="font-body-md text-body-md text-on-surface mt-0.5">
+              Tư vấn trực tiếp và trực tuyến theo lịch hẹn chuyên gia. Hỗ trợ tâm lý tuổi mới lớn, áp lực thi cử và mâu thuẫn gia đình.
+            </p>
+</div>
+</div>
+</div>
+<div class="mt-space-md">
+<button class="w-full h-12 px-space-md rounded-lg bg-surface-container-high text-on-surface font-label-md text-label-md flex items-center justify-between hover:bg-surface-container-highest transition-colors" onclick="confirmExternalRedirect('Trung tâm Nghiên cứu &amp; Ứng dụng Tâm lý Giáo dục', 'https://tamlyhocduong.edu.vn')" type="button">
+<span class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-[20px] text-primary">visibility</span>
+<span>Xem thông tin giới thiệu đối tác</span>
+</span>
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">open_in_new</span>
+</button>
+</div>
+<div class="mt-space-xs flex items-center justify-center gap-1 text-on-surface-variant">
+<span class="material-symbols-outlined text-[14px]">shield_person</span>
+<span class="font-metadata text-metadata">Mọi kết nối ra ngoài đều được kiểm tra bảo mật nghiêm ngặt</span>
+</div>
+</div>
+</div>
+<!-- Quy tắc minh bạch & Cam kết bảo mật -->
+<div class="px-margin mt-space-lg">
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm">
+<h4 class="font-label-md text-label-md text-on-surface flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">gavel</span>
+        Quy ước an toàn &amp; Quyền riêng tư
+      </h4>
+<ul class="mt-space-sm space-y-space-xs text-on-surface-variant font-caption text-caption">
+<li class="flex items-start gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0"></span>
+<span>Không thu thập số điện thoại cá nhân khi chưa được bạn cấp phép cụ thể.</span>
+</li>
+<li class="flex items-start gap-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 shrink-0"></span>
+<span>Các cuộc trao đổi kín chỉ được tiếp cận bởi chuyên viên tư vấn được chỉ định.</span>
+</li>
+</ul>
+</div>
+</div>
+<!-- Phần ghi chú bàn giao UI/UX Developer (Tech Handoff Section) -->
+<div class="px-margin mt-space-xl">
+<div class="rounded-xl p-space-md bg-inverse-surface text-inverse-on-surface shadow-md">
+<div class="flex items-center justify-between border-b pb-space-xs" style="border-color: rgba(255, 237, 233, 0.15)">
+<span class="font-label-md text-label-md text-tertiary-fixed flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+          DEV HANDOFF &amp; SPECIFICATION NOTES
+        </span>
+<span class="text-[10px] font-mono uppercase bg-primary-container px-2 py-0.5 rounded text-on-primary-container">M22 Reference Spec</span>
+</div>
+<div class="mt-space-sm space-y-space-sm font-caption text-caption">
+<div>
+<span class="font-bold text-tertiary-fixed block font-mono text-metadata">1. API CONTRACT &amp; FALLBACK RULES:</span>
+<p class="text-inverse-on-surface/90 mt-0.5">
+            Endpoint <code class="font-mono bg-on-surface/30 px-1 rounded text-primary-fixed">GET /api/help/contacts</code> trả về danh sách đối tác kèm cờ boolean <code class="font-mono text-primary-fixed">verified: true/false</code>.
+          </p>
+<p class="text-inverse-on-surface/80 mt-1">
+<strong>Nguyên tắc:</strong> Nếu có bất kỳ đối tác nào có <code class="font-mono text-primary-fixed">verified: false</code> hoặc hệ thống chưa đồng bộ đủ biên bản ký duyệt số, UI <span class="text-secondary-fixed underline">bắt buộc fallback</span> về Frame M22 chính (Giao diện chờ xác minh / Hotline quốc gia 111).
+          </p>
+</div>
+<div>
+<span class="font-bold text-tertiary-fixed block font-mono text-metadata">2. ZERO-UNVERIFIED CALL POLICY:</span>
+<p class="text-inverse-on-surface/90 mt-0.5">
+            Tuyệt đối không render nút hành động dạng <code class="font-mono text-primary-fixed">tel:</code> nếu số điện thoại chưa được Ban Quản Trị và Ban Giám Hiệu nhà trường ký văn bản phê chuẩn. Tránh mọi rủi ro học sinh liên hệ vào số cá nhân chưa qua kiểm định đạo đức nghề nghiệp.
+          </p>
+</div>
+<div>
+<span class="font-bold text-tertiary-fixed block font-mono text-metadata">3. CLIENT-SIDE TRANSITION PROTOCOL:</span>
+<p class="text-inverse-on-surface/90 mt-0.5">
+            Mọi thao tác điều hướng ra ngoài webview Zalo Mini App đều phải chạy qua Modal xác thực trung gian (Explicit Consent Sheet) nhằm bảo vệ dữ liệu phiên của học sinh.
+          </p>
+</div>
+</div>
+</div>
+</div>
+<!-- Modal Hướng dẫn gặp trực tiếp (Ẩn mặc định) -->
+<div class="fixed inset-0 z-50 hidden bg-on-surface/40 backdrop-blur-sm flex items-end justify-center" id="modal-direct-guide">
+<div class="w-full max-w-md bg-surface rounded-t-2xl p-space-lg shadow-xl animate-in slide-in-from-bottom duration-200">
+<div class="w-10 h-1 bg-outline-variant rounded-full mx-auto mb-space-md"></div>
+<div class="flex items-center justify-between">
+<h3 class="font-title-md text-title-md text-on-surface">Hướng dẫn đến gặp trực tiếp</h3>
+<button class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface" onclick="closeDirectGuideModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<div class="mt-space-md space-y-space-sm font-body-md text-body-md text-on-surface-variant">
+<div class="flex items-start gap-space-sm">
+<span class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-metadata text-metadata shrink-0">1</span>
+<p>Đi qua cổng chính trường, rẽ phải vào tòa nhà Hiệu Bộ (nhà 3 tầng vàng).</p>
+</div>
+<div class="flex items-start gap-space-sm">
+<span class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-metadata text-metadata shrink-0">2</span>
+<p>Lên cầu thang giữa tới Tầng 2, rẽ trái đến cuối hành lang (Phòng 204).</p>
+</div>
+<div class="flex items-start gap-space-sm">
+<span class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center font-metadata text-metadata shrink-0">3</span>
+<p>Gõ cửa nhẹ nhàng. Thầy cô tư vấn tâm lý luôn đón tiếp bạn trong không gian riêng tư, ấm áp.</p>
+</div>
+</div>
+<div class="mt-space-lg">
+<button class="w-full h-12 rounded-lg bg-primary text-on-primary font-label-md text-label-md" onclick="closeDirectGuideModal()" type="button">
+          Đã hiểu hướng dẫn
+        </button>
+</div>
+</div>
+</div>
+<!-- Modal Đặt hẹn kín (Ẩn mặc định) -->
+<div class="fixed inset-0 z-50 hidden bg-on-surface/40 backdrop-blur-sm flex items-end justify-center" id="modal-private-booking">
+<div class="w-full max-w-md bg-surface rounded-t-2xl p-space-lg shadow-xl">
+<div class="w-10 h-1 bg-outline-variant rounded-full mx-auto mb-space-md"></div>
+<div class="flex items-center justify-between">
+<h3 class="font-title-md text-title-md text-on-surface">Đề nghị hẹn gặp kín</h3>
+<button class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-on-surface" onclick="closePrivateBookingModal()" type="button">
+<span class="material-symbols-outlined text-[18px]">close</span>
+</button>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-space-xs">
+        Lời nhắn của bạn sẽ được gửi trực tiếp đến hộp thư bảo mật của Thầy/Cô tư vấn trường.
+      </p>
+<div class="mt-space-md space-y-space-sm">
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-1">Khung giờ bạn rảnh nhất</label>
+<div class="grid grid-cols-2 gap-space-xs">
+<button class="time-slot-btn h-10 rounded-lg bg-surface-container-high text-on-surface font-caption text-caption flex items-center justify-center" onclick="selectTimeSlot(this)" type="button">Giờ ra chơi sáng</button>
+<button class="time-slot-btn h-10 rounded-lg bg-surface-container text-on-surface-variant font-caption text-caption flex items-center justify-center" onclick="selectTimeSlot(this)" type="button">Cuối buổi học chiều</button>
+</div>
+</div>
+<div>
+<label class="block font-label-md text-label-md text-on-surface mb-1">Lời nhắn (Không bắt buộc)</label>
+<div class="w-full rounded-lg bg-surface-container-low p-space-sm">
+<textarea class="w-full bg-transparent resize-none outline-none font-body-md text-body-md text-on-surface placeholder:text-on-surface-variant" placeholder="Em muốn chia sẻ về..." rows="3"></textarea>
+</div>
+</div>
+</div>
+<div class="mt-space-lg flex gap-space-xs">
+<button class="w-1/2 h-12 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md" onclick="closePrivateBookingModal()" type="button">
+          Hủy bỏ
+        </button>
+<button class="w-1/2 h-12 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-1" onclick="submitBooking()" type="button">
+<span class="material-symbols-outlined text-[18px]">send</span>
+          Gửi đề nghị
+        </button>
+</div>
+</div>
+</div>
+<!-- Modal Xác nhận chuyển tiếp ra ngoài ứng dụng -->
+<div class="fixed inset-0 z-50 hidden bg-on-surface/40 backdrop-blur-sm flex items-center justify-center p-margin" id="modal-external-confirm">
+<div class="w-full max-w-sm bg-surface rounded-2xl p-space-lg shadow-xl">
+<div class="w-12 h-12 rounded-full bg-surface-container-high flex items-center justify-center mx-auto mb-space-sm text-primary">
+<span class="material-symbols-outlined text-[24px]">open_in_browser</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface text-center">Rời khỏi Mini App?</h3>
+<p class="font-body-md text-body-md text-on-surface-variant text-center mt-space-xs" id="external-dest-desc">
+        Bạn đang chuẩn bị chuyển hướng đến trang web đối tác chính thức.
+      </p>
+<div class="mt-space-md p-space-sm rounded-lg bg-surface-container-low text-on-surface font-metadata text-metadata flex items-center gap-1.5">
+<span class="material-symbols-outlined text-primary text-[16px]">verified_user</span>
+<span>Liên kết đã được xác thực an toàn thông tin</span>
+</div>
+<div class="mt-space-lg flex gap-space-xs">
+<button class="w-1/2 h-12 rounded-lg bg-surface-container text-on-surface font-label-md text-label-md" onclick="closeExternalModal()" type="button">
+          Ở lại
+        </button>
+<button class="w-1/2 h-12 rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center justify-center gap-1" id="btn-proceed-external" type="button">
+<span>Tiếp tục</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Toast Thông Báo Thành Công -->
+<div class="fixed bottom-20 inset-x-margin z-50 pointer-events-none opacity-0 transition-opacity duration-300" id="toast-success">
+<div class="bg-inverse-surface text-inverse-on-surface px-space-md py-space-sm rounded-xl shadow-lg flex items-center gap-space-sm max-w-sm mx-auto">
+<span class="material-symbols-outlined text-tertiary-fixed text-[20px]">check_circle</span>
+<span class="font-body-md text-body-md flex-1" id="toast-text">Yêu cầu đã được gửi kín an toàn!</span>
+</div>
+</div>
+</div>
+<script>
+  function openDirectGuideModal() {
+    document.getElementById('modal-direct-guide').classList.remove('hidden');
+  }
+
+  function closeDirectGuideModal() {
+    document.getElementById('modal-direct-guide').classList.add('hidden');
+  }
+
+  function openPrivateBookingModal() {
+    document.getElementById('modal-private-booking').classList.remove('hidden');
+  }
+
+  function closePrivateBookingModal() {
+    document.getElementById('modal-private-booking').classList.add('hidden');
+  }
+
+  function selectTimeSlot(el) {
+    document.querySelectorAll('.time-slot-btn').forEach(btn => {
+      btn.classList.remove('bg-surface-container-high', 'text-on-surface');
+      btn.classList.add('bg-surface-container', 'text-on-surface-variant');
+    });
+    el.classList.remove('bg-surface-container', 'text-on-surface-variant');
+    el.classList.add('bg-surface-container-high', 'text-on-surface');
+  }
+
+  function submitBooking() {
+    closePrivateBookingModal();
+    showToast('Đã gửi đề nghị hẹn gặp kín tới thầy cô thành công.');
+  }
+
+  let targetUrl = '';
+  function confirmExternalRedirect(name, url) {
+    targetUrl = url;
+    document.getElementById('external-dest-desc').textContent = 'Bạn sắp chuyển tiếp đến trang giới thiệu của "' + name + '".';
+    document.getElementById('modal-external-confirm').classList.remove('hidden');
+    
+    document.getElementById('btn-proceed-external').onclick = function() {
+      closeExternalModal();
+      showToast('Đang kết nối tới trang đối tác được duyệt...');
+      setTimeout(() => {
+        if (targetUrl) window.open(targetUrl, '_blank');
+      }, 600);
+    };
+  }
+
+  function closeExternalModal() {
+    document.getElementById('modal-external-confirm').classList.add('hidden');
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast-success');
+    document.getElementById('toast-text').textContent = msg;
+    toast.classList.remove('opacity-0');
+    toast.classList.add('opacity-100');
+    setTimeout(() => {
+      toast.classList.remove('opacity-100');
+      toast.classList.add('opacity-0');
+    }, 2800);
+  }
+</script></main></body></html>

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{width:100vw;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-surface":"#360f07","secondary-container":"#ff866b","on-background":"#360f07","surface-container":"#ffe9e5","inverse-surface":"#502319","error-container":"#ffdad6","on-primary":"#ffffff","on-surface-variant":"#56423e","background":"#fff8f6","on-secondary-fixed":"#3d0600","surface":"#fff8f6","surface-container-low":"#fff0ee","tertiary":"#6b4600","on-error":"#ffffff","on-tertiary-container":"#ffdeb4","on-secondary-fixed-variant":"#812815","tertiary-fixed-dim":"#f7bc65","on-tertiary":"#ffffff","on-secondary":"#ffffff","outline-variant":"#ddc0ba","secondary-fixed-dim":"#ffb4a3","surface-container-high":"#ffe2dc","secondary":"#a03f2a","on-error-container":"#93000a","tertiary-fixed":"#ffddb2","on-tertiary-fixed":"#291800","on-tertiary-fixed-variant":"#624000","primary-container":"#a84733","secondary-fixed":"#ffdad2","error":"#ba1a1a","surface-dim":"#ffcfc5","surface-container-lowest":"#ffffff","surface-container-highest":"#ffdad3","on-primary-fixed-variant":"#802918","on-primary-container":"#ffdcd5","primary-fixed":"#ffdad3","primary-fixed-dim":"#ffb4a4","inverse-on-surface":"#ffede9","surface-tint":"#9f402d","inverse-primary":"#ffb4a4","surface-bright":"#fff8f6","on-primary-fixed":"#3e0500","on-secondary-container":"#741f0c","surface-variant":"#ffdad3","outline":"#89726d","tertiary-container":"#895c09","primary":"#89301e"},borderRadius:{"DEFAULT":"0.25rem","lg":"0.5rem","xl":"0.75rem","full":"9999px"},spacing:{"space-sm":"0.5rem","margin":"1rem","space-md":"1rem","space-xl":"1.5rem","gutter":"1rem","space-xs":"0.25rem","space-lg":"1.25rem"},fontFamily:{"headline-lg":["Be Vietnam Pro"],"label-md":["Be Vietnam Pro"],"title-md":["Be Vietnam Pro"],"caption":["Be Vietnam Pro"],"headline-md":["Be Vietnam Pro"],"body-md":["Be Vietnam Pro"],"body-lg":["Be Vietnam Pro"],"metadata":["Be Vietnam Pro"],"label-lg":["Be Vietnam Pro"],"headline-sm":["Be Vietnam Pro"]},fontSize:{"headline-lg":["24px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"700"}],"label-md":["14px",{"lineHeight":"20px","fontWeight":"500"}],"title-md":["18px",{"lineHeight":"26px","fontWeight":"600"}],"caption":["13px",{"lineHeight":"18px","fontWeight":"400"}],"headline-md":["22px",{"lineHeight":"30px","letterSpacing":"-0.01em","fontWeight":"600"}],"body-md":["15px",{"lineHeight":"24px","fontWeight":"400"}],"body-lg":["16px",{"lineHeight":"26px","fontWeight":"400"}],"metadata":["12px",{"lineHeight":"16px","fontWeight":"500"}],"label-lg":["16px",{"lineHeight":"24px","fontWeight":"600"}],"headline-sm":["20px",{"lineHeight":"28px","fontWeight":"600"}]}}}};</script><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.05)] pt-safe"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center gap-space-xs"><button aria-label="Quay lại" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface hover:bg-surface-container active:scale-95 transition-all" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-headline-sm text-headline-sm text-on-surface truncate">Người Đồng Hành</h1></div><div class="flex items-center"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shadow-sm"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface flex-grow"><div class="flex flex-col w-full pb-8">
+<!-- Status Feedback Banner (Offline/Unstable Network Warning) -->
+<div class="w-full bg-surface-container-high rounded-xl p-space-md shadow-sm mb-space-md transition-all duration-300" id="network-warning">
+<div class="flex items-start gap-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[22px]">wifi_off</span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-title-md text-title-md text-on-surface">Đường truyền gián đoạn</span>
+<span class="font-metadata text-metadata px-2 py-0.5 rounded-full bg-surface-container text-outline">Offline</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1">
+          Chưa thể xác nhận trạng thái mã mời do đường truyền không ổn định. Dữ liệu mã nhập <span class="font-label-md text-label-md text-primary bg-surface px-1.5 py-0.5 rounded">FB-8842-AN</span> được giữ nguyên an toàn trên thiết bị của bạn.
+        </p>
+<div class="flex items-center gap-space-sm mt-space-sm">
+<button class="h-10 px-space-md rounded-lg bg-primary text-on-primary font-label-md text-label-md flex items-center gap-1.5 active:scale-98 transition-transform" id="btn-retry" type="button">
+<span class="material-symbols-outlined text-[18px]" id="retry-icon">sync</span>
+<span>Thử lại kết nối</span>
+</button>
+<span class="font-caption text-caption text-on-surface-variant italic">Không mất dữ liệu nháp</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Active Relationship Card with Discrete Context Menu -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm mb-space-lg">
+<div class="flex items-center justify-between mb-space-sm">
+<span class="font-metadata text-metadata text-outline tracking-wider uppercase">Kết nối gia đình</span>
+<span class="font-metadata text-metadata text-primary bg-surface-container-low px-2 py-0.5 rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-primary inline-block"></span> Đồng hành 6 tháng
+      </span>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="relative">
+<img class="w-14 h-14 rounded-full object-cover shadow-inner" data-alt="A warm and gentle portrait of an East Asian father in his late forties wearing a soft earth-toned linen shirt, smiling tenderly indoors with soft golden morning sunlight illuminating the serene scene" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZQQOgcHq5GQvZug9ejjFhH5ojqAdjj-aLBzUWbLsbUf2mr5je0y4ws4OvUVigzkCiQmxCYn7TVxuq90jlfjrDTZ9cb0xHwSy1laebgVhOzlA7uDsu6OE3P3Z6BtE9RxPolGqdm49Gd8J9oCL4Ebh9yaQjGD0bhMljOnchuPKmc3sBuWnV1EoEmUrD1B3Tpa1Sz8-EVvu24hjreSyoxkXOxyKRLkwS02cMqMNeRf0CVoMXBgdK1PLK"/>
+<span class="absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full bg-secondary-container"></span>
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<h2 class="font-title-md text-title-md text-on-surface truncate">Bố Hoàng</h2>
+<p class="font-body-md text-body-md text-on-surface-variant truncate">Đã chia sẻ 24 lá thư &amp; 18 thẻ cảm xúc</p>
+</div>
+</div>
+<!-- Secondary Discrete Actions: No alarming red triggers -->
+<div class="mt-space-md pt-space-sm flex items-center justify-between">
+<button class="h-9 px-3 rounded-lg bg-surface-container-low text-on-surface-variant font-label-md text-label-md flex items-center gap-1.5 hover:bg-surface-container active:scale-95 transition-all" type="button">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+<span>Kỷ niệm chung</span>
+</button>
+<!-- Safe subtle option to revoke -->
+<button class="h-9 px-3 rounded-lg text-outline hover:text-on-surface font-label-md text-label-md flex items-center gap-1.5 active:bg-surface-container-low transition-colors" id="open-revoke-dialog" type="button">
+<span class="material-symbols-outlined text-[18px]">more_horiz</span>
+<span>Tùy chọn an toàn</span>
+</button>
+</div>
+</div>
+<!-- Safety Guarantees & Privacy Notes -->
+<div class="bg-surface-container-low rounded-xl p-space-md shadow-sm mb-space-md">
+<div class="flex items-center gap-2 mb-2">
+<span class="material-symbols-outlined text-tertiary text-[20px]">shield</span>
+<h3 class="font-title-md text-title-md text-on-surface">Nguyên tắc bảo vệ riêng tư</h3>
+</div>
+<ul class="flex flex-col gap-2.5">
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0 mt-0.5">check_circle</span>
+<p class="font-caption text-caption text-on-surface-variant">
+          Không tự động hồi sinh kết nối khi nạp lại trang nếu bạn đã quyết định ngắt kết nối.
+        </p>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0 mt-0.5">lock</span>
+<p class="font-caption text-caption text-on-surface-variant">
+          Nội dung tâm sự riêng tư tuyệt đối không bao giờ được chuyển tiếp sang người dự phòng khác.
+        </p>
+</li>
+<li class="flex items-start gap-2">
+<span class="material-symbols-outlined text-outline text-[18px] shrink-0 mt-0.5">history_edu</span>
+<p class="font-caption text-caption text-on-surface-variant">
+          Hộp thư lưu niệm đã trao đổi được bảo tồn toàn vẹn cho cả hai như một phần ký ức trân trọng.
+        </p>
+</li>
+</ul>
+</div>
+<!-- Warm Illustration Banner -->
+<div class="relative w-full rounded-xl overflow-hidden shadow-sm h-36 bg-surface-container">
+<img class="w-full h-full object-cover opacity-90" data-alt="Warm editorial illustration of two people sitting at a wooden tea table with quiet respectful space between them, warm terracotta and cocoa tones, gentle diffuse afternoon light, tranquil and comforting paper texture style" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA9_hMzr1ozUmiMpr4BFKwT704WTktU2ORw9oiQepDu_b-I6jUgGBxSLSd13aP2VANCWbbmj2BJ4nRtc1o3kfsOV2jEqLVUbE1EWuZtxccH9nBquAyHYzTZGQYBK5enWQgkQ_xp319omawEIESGLeGDBgAbfALx9fpaoeDdwQPBJI-8ubDtdlVZaRAtF8zBb8S3Y4nDOvLRqf8aAGZahRHZo5C_y9mjVUajGx_1PBwPll3hfCbyPgyl"/>
+<div class="absolute inset-0 bg-gradient-to-t from-inverse-surface/80 via-inverse-surface/30 to-transparent flex flex-col justify-end p-space-md">
+<p class="font-title-md text-title-md text-inverse-on-surface">Không gian an toàn cảm xúc</p>
+<p class="font-caption text-caption text-inverse-on-surface/90">Mọi tương tác đều bắt đầu và khép lại trên sự tự nguyện, tôn trọng.</p>
+</div>
+</div>
+<!-- Revoke Connection Dialog Backdrop & Sheet (Non-coercive modal) -->
+<div class="fixed inset-0 z-50 bg-inverse-surface/40 backdrop-blur-sm hidden flex items-end justify-center transition-opacity duration-200" id="dialog-overlay">
+<div class="w-full max-w-lg bg-surface-container-lowest rounded-t-xl p-space-lg shadow-xl transform translate-y-full transition-transform duration-300 max-h-[795px] overflow-y-auto" id="dialog-sheet">
+<!-- Drag handle -->
+<div class="w-10 h-1 bg-outline-variant/60 rounded-full mx-auto mb-space-md"></div>
+<!-- Dialog Header -->
+<div class="flex items-center gap-space-sm mb-space-sm">
+<div class="w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center text-secondary shrink-0">
+<span class="material-symbols-outlined text-[22px]">heart_broken</span>
+</div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Hủy kết nối với Bố Hoàng?</h2>
+</div>
+<!-- Transparent Explanation Content -->
+<div class="bg-surface-container-low rounded-xl p-space-md mb-space-lg">
+<p class="font-label-md text-label-md text-on-surface mb-2">Sau khi hủy kết nối:</p>
+<div class="flex flex-col gap-2.5">
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">sensors_off</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Bố Hoàng sẽ <span class="font-medium text-on-surface">không còn nhận được tín hiệu lắng nghe</span> hoặc các bài chia sẻ mới từ bạn.
+            </p>
+</div>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">mark_email_read</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Những thẻ cảm xúc và thư đã gửi trước đây <span class="font-medium text-on-surface">vẫn được lưu trong Hộp thư của hai bên</span> như một phần ký ức tôn trọng.
+            </p>
+</div>
+<div class="flex items-start gap-2">
+<span class="material-symbols-outlined text-secondary text-[18px] shrink-0 mt-0.5">favorite</span>
+<p class="font-body-md text-body-md text-on-surface-variant">
+              Bạn có thể <span class="font-medium text-on-surface">kết nối lại bất cứ lúc nào</span> nếu cả hai cùng đồng thuận.
+            </p>
+</div>
+</div>
+</div>
+<!-- Action Buttons Stack (Safe primary option first, sober confirmation second) -->
+<div class="flex flex-col gap-space-sm">
+<!-- Safe Default: Retain Connection -->
+<button class="w-full h-12 rounded-xl bg-surface-container text-on-surface font-label-lg text-label-lg flex items-center justify-center active:bg-surface-container-high transition-colors" id="btn-cancel-revoke" type="button">
+          Giữ kết nối
+        </button>
+<!-- Deliberate and Sober Revocation (Brownish-red subtle, non-aggressive) -->
+<button class="w-full h-12 rounded-xl bg-surface-container-highest text-secondary font-label-lg text-label-lg flex items-center justify-center active:bg-error-container transition-colors" id="btn-confirm-revoke" type="button">
+          Xác nhận hủy kết nối
+        </button>
+</div>
+<p class="font-caption text-caption text-outline text-center mt-space-md">
+        Hành động này tôn trọng không gian cá nhân của bạn bất kỳ lúc nào.
+      </p>
+</div>
+</div>
+</div>
+<script>
+  (function () {
+    const openBtn = document.getElementById('open-revoke-dialog');
+    const overlay = document.getElementById('dialog-overlay');
+    const sheet = document.getElementById('dialog-sheet');
+    const cancelBtn = document.getElementById('btn-cancel-revoke');
+    const confirmBtn = document.getElementById('btn-confirm-revoke');
+    const retryBtn = document.getElementById('btn-retry');
+    const retryIcon = document.getElementById('retry-icon');
+    const networkWarning = document.getElementById('network-warning');
+
+    function showDialog() {
+      overlay.classList.remove('hidden');
+      setTimeout(() => {
+        sheet.classList.remove('translate-y-full');
+      }, 10);
+    }
+
+    function hideDialog() {
+      sheet.classList.add('translate-y-full');
+      setTimeout(() => {
+        overlay.classList.add('hidden');
+      }, 250);
+    }
+
+    if (openBtn) openBtn.addEventListener('click', showDialog);
+    if (cancelBtn) cancelBtn.addEventListener('click', hideDialog);
+
+    if (overlay) {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) hideDialog();
+      });
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener('click', () => {
+        // Enforce state machine: revoked state persisted, idempotency guaranteed
+        sessionStorage.setItem('connection_revoked_hoang', 'true');
+        hideDialog();
+        setTimeout(() => {
+          window.location.reload();
+        }, 300);
+      });
+    }
+
+    if (retryBtn) {
+      retryBtn.addEventListener('click', () => {
+        retryIcon.classList.add('animate-spin');
+        setTimeout(() => {
+          retryIcon.classList.remove('animate-spin');
+          networkWarning.classList.add('opacity-50');
+          setTimeout(() => {
+            networkWarning.classList.remove('opacity-50');
+          }, 400);
+        }, 1200);
+      });
+    }
+  })();
+</script></main></body></html>

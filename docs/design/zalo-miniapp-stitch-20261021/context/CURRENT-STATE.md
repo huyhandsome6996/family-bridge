@@ -1,0 +1,13 @@
+# Hiện trạng tại thời điểm bàn giao
+
+- Nhánh hồ sơ bắt đầu từ `origin/main` = `015514c18e1293416f26c4dec7fb2340d1381f2f` ngày 21/10/2026. Đây là merge PR45 sửa migration cấp cặp không phá dữ liệu và log trạng thái AI an toàn. Fetch lại trước khi lập trình vì main có thể thay đổi.
+- Mini App Testing Version 5, app ID `3411096375330044972`, đã được upload trong nhiệm vụ trước. Nó dùng backend công khai `https://family-bridge-backend.onrender.com`, mã lớp HS/PH và mật khẩu; Zalo SDK login cũ đang dormant.
+- V5 được build từ `0eea109adb893867dbbe1e5ffbb07f2221559133`, sau đó branch build guard có commit CI `0bfa27d68a99c02dc4bd7afa0b43f13a193f1925`. Các commit này thuộc [PR44](https://github.com/huyhandsome6996/family-bridge/pull/44), chưa được merge vào main tại thời điểm lập hồ sơ. Vì vậy main hiện có thể chưa có build guard `VITE_API_BASE_URL`/build-info của v5. Không gộp nguyên PR44 hoặc nhánh tính năng khác một cách mù quáng; kiểm tra baseline mới, giữ địa chỉ build đúng và bổ sung kiểm tra tối thiểu nếu còn thiếu trong phạm vi bảo đảm build UI.
+- [PR45](https://github.com/huyhandsome6996/family-bridge/pull/45) đã merge. Backend/web đã live commit `015514c`; runtime backend ghi `enabled=True key_present=True model_supported=True provider_wired=True`; kiểm tra thời điểm đó `/ai/status` trả true sau đăng nhập.
+- Kết quả Gemini thật chưa xác minh vì tài khoản kiểm thử chưa có consent hiện hành ở API khi đo. Chủ tài khoản từ chối việc agent ghi consent hộ và nói sẽ tự thao tác. Coding agent UI không được ghi đồng ý thật, gửi câu thử đến Gemini, gửi thư thật hay dùng tài khoản thật chỉ vì được giao redesign. Dùng fixture/local test để xác minh UI gate.
+- Người dùng đã quyết định giữ Gemini key hiện tại. Không làm lại vòng yêu cầu key/Render, không fetch/đọc/log credential để thiết kế giao diện. Key chỉ ở backend, không bundle `VITE_*`.
+- Cặp do admin cấp đã ACTIVE không cần HS/PH xác nhận thêm. `/proposal` và mã mời chỉ cho luồng đề xuất tự nguyện khi thực sự có dữ liệu.
+- `web/` là web độc lập, build `web/dist`; `zalo-mini-app/` là client Zalo, build `zalo-mini-app/www`. Không port HTML vào web rồi coi đã sửa Mini App. Headless chung ở `packages/family_bridge_shared/`; package mobile feature khác không phải UI router hiện tại.
+- Các báo cáo `zalo-v5-release.md`, `ai-recovery.md`, `original-login-ai-incident.md` là snapshot lịch sử. Không chép theo các lệnh deploy, yêu cầu sửa backend hoặc hướng dẫn xin merge trong chúng; quyền hiện hành được giới hạn ở prompt bàn giao UI.
+
+Không file mật khẩu lớp, ZMP_TOKEN, refresh token, API key hoặc ảnh secret nào được kèm hồ sơ. QR/link v5 trong báo cáo là artifact thử nghiệm cũ, không phải evidence bản UI mới đã deploy.

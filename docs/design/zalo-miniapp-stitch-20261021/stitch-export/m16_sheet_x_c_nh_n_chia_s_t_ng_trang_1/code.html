@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary": "#ffffff", "on-surface": "#360f07", "tertiary-fixed-dim": "#f7bc65", "tertiary-fixed": "#ffddb2", "error": "#ba1a1a", "on-secondary-container": "#741f0c", "surface": "#fff8f6", "inverse-primary": "#ffb4a4", "on-secondary": "#ffffff", "surface-variant": "#ffdad3", "secondary-fixed-dim": "#ffb4a3", "background": "#fff8f6", "surface-container": "#ffe9e5", "on-tertiary-container": "#ffdeb4", "on-primary-container": "#ffdcd5", "surface-container-low": "#fff0ee", "secondary-container": "#ff866b", "primary-fixed": "#ffdad3", "on-error": "#ffffff", "tertiary": "#6b4600", "on-tertiary-fixed-variant": "#624000", "on-primary-fixed": "#3e0500", "secondary-fixed": "#ffdad2", "on-tertiary": "#ffffff", "on-surface-variant": "#56423e", "surface-container-highest": "#ffdad3", "on-secondary-fixed": "#3d0600", "surface-bright": "#fff8f6", "on-background": "#360f07", "inverse-on-surface": "#ffede9", "surface-container-lowest": "#ffffff", "surface-container-high": "#ffe2dc", "on-secondary-fixed-variant": "#812815", "outline-variant": "#ddc0ba", "primary-container": "#a84733", "surface-dim": "#ffcfc5", "tertiary-container": "#895c09", "surface-tint": "#9f402d", "on-tertiary-fixed": "#291800", "on-error-container": "#93000a", "error-container": "#ffdad6", "inverse-surface": "#502319", "primary-fixed-dim": "#ffb4a4", "outline": "#89726d", "primary": "#89301e", "on-primary-fixed-variant": "#802918", "secondary": "#a03f2a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.25rem", "space-xs": "0.25rem", "gutter": "1rem", "margin": "1rem", "space-xl": "1.5rem", "space-md": "1rem", "space-sm": "0.5rem" }, "fontFamily": { "headline-md": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"] }, "fontSize": { "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center min-w-0 flex-1"><button aria-label="Quay lại" class="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-md text-title-md text-on-surface truncate ml-space-xs">Chia Sẻ Từng Mục</h1></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex-1 flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface"><div class="flex flex-col w-full relative">
+<!-- Backdrop Simulator (Parent context M16 peek) -->
+<div class="fixed inset-0 z-40 bg-black/40 backdrop-blur-[2px] transition-opacity duration-300" id="sheet-backdrop"></div>
+<!-- Modal / Bottom Sheet Panel -->
+<div aria-labelledby="modal-title" aria-modal="true" class="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-surface rounded-t-[24px] shadow-2xl max-h-[795px] overflow-hidden" role="dialog">
+<!-- Drag Handle Bar -->
+<div class="w-full flex justify-center pt-space-sm pb-space-xs shrink-0 cursor-grab active:cursor-grabbing">
+<div class="w-10 h-1 bg-outline-variant/60 rounded-full"></div>
+</div>
+<!-- Sheet Header -->
+<div class="px-margin pt-space-xs pb-space-sm flex items-start justify-between shrink-0">
+<div class="flex-1 pr-space-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface" id="modal-title">
+          Xác nhận chia sẻ trang ghi chép
+        </h2>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">
+          Vui lòng đọc lại toàn bộ bản mới nhất trước khi quyết định gửi.
+        </p>
+</div>
+<button aria-label="Đóng cửa sổ" class="w-9 h-9 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors shrink-0" onclick="history.back()" type="button">
+<span class="material-symbols-outlined text-[20px]">close</span>
+</button>
+</div>
+<!-- Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto px-margin pb-space-sm space-y-space-md">
+<!-- 2. Khung đọc duyệt toàn văn nội dung (Full Inspection Card) -->
+<section aria-label="Nội dung trang chuẩn bị gửi" class="bg-surface-container-lowest rounded-xl p-space-md shadow-sm relative overflow-hidden">
+<!-- Warm decorative paper tag line on top edge -->
+<div class="absolute top-0 inset-x-0 h-1 bg-primary-container"></div>
+<div class="flex items-center justify-between gap-space-xs mb-space-xs">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-surface-container text-primary font-metadata text-metadata">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+<span>Trang riêng #02</span>
+</div>
+<span class="font-metadata text-metadata text-on-surface-variant">20/10/2023</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface mt-1 mb-1">
+          Những điều muốn nói nhưng chưa dám
+        </h3>
+<div class="flex items-center gap-1.5 text-tertiary-container font-metadata text-metadata mb-space-sm">
+<span class="material-symbols-outlined text-[14px]">verified</span>
+<span>Bản ghi chép gốc • Chưa chỉnh sửa</span>
+</div>
+<!-- Full Text Uncut -->
+<div class="bg-surface-container-low rounded-lg p-space-md text-on-surface font-body-md text-body-md leading-relaxed select-none relative">
+<span class="material-symbols-outlined text-outline-variant/30 text-[32px] absolute top-2 right-2 select-none pointer-events-none">format_quote</span>
+          "Có những lúc mình chỉ mong ba mẹ nghe hết câu chuyện mà không vội vàng đưa ra lời khuyên hay so sánh với bạn khác. Hôm nay con viết những dòng này chỉ để giải tỏa bớt áp lực trong lòng, mong mẹ hiểu thêm về cảm xúc của con lúc này."
+        </div>
+<!-- Audit metrics pill -->
+<div class="flex items-center justify-between mt-space-sm pt-space-xs text-on-surface-variant font-metadata text-metadata">
+<div class="flex items-center gap-1">
+<span class="material-symbols-outlined text-[15px] text-tertiary">fact_check</span>
+<span>Độ dài: <strong>268 ký tự</strong></span>
+</div>
+<div class="flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span>Không có dữ liệu nhạy cảm</span>
+</div>
+</div>
+</section>
+<!-- 3. Thông tin người nhận & Cam kết cô lập quyền riêng tư -->
+<section aria-label="Đối tượng nhận và quyền riêng tư" class="space-y-space-sm">
+<!-- Recipient Card -->
+<div class="bg-surface-container-lowest rounded-xl p-space-md flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-space-sm min-w-0">
+<div class="relative w-12 h-12 rounded-full overflow-hidden shrink-0 bg-surface-variant">
+<img class="w-full h-full object-cover" data-alt="Chân dung người mẹ Việt Nam trung niên hiền hậu, nụ cười dịu dàng ấm áp, ánh sáng tự nhiên mềm mại, tông màu ấm áp terracotta nhẹ nhàng" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-oWj3WYp8QPuJL-IS9aK9MxLw3RNePNKAqxFU9SvfAgmvkGQ2s8DBdWQlwXw_cbY1AiY8vC8MZGEB4FV6NsG0wcuq59XNc8jeKGPzc2-PEvz4-rxB6lPl9P5TNHkI-y-1hkhryYh_jf-3U5oa44KgVIa_u-8xdhpBYUWcgN_JNKNXekLrrZ1WKxC8LF5C7aHJDKJ3qN70cH0uvV6nuO1T7yPZP_UIz4Mm_48j5apSvCW0uiTz7ULT"/>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-primary rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-on-primary text-[10px]">family_restroom</span>
+</div>
+</div>
+<div class="min-w-0">
+<div class="flex items-center gap-1.5">
+<h4 class="font-label-lg text-label-lg text-on-surface truncate">Mẹ (Nguyễn Thị Mai)</h4>
+<span class="material-symbols-outlined text-primary text-[16px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant truncate">Tài khoản gia đình đã kết nối an toàn</p>
+</div>
+</div>
+<div class="w-7 h-7 rounded-full bg-surface-container flex items-center justify-center text-on-surface-variant shrink-0">
+<span class="material-symbols-outlined text-[18px]">lock_person</span>
+</div>
+</div>
+<!-- Privacy Isolation Box -->
+<div class="bg-surface-container rounded-xl p-space-md space-y-space-xs shadow-sm">
+<div class="flex items-center gap-space-xs text-primary font-label-md text-label-md">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<span>Cam kết cô lập quyền riêng tư</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface leading-normal">
+<strong>Cam kết minh bạch:</strong> CHỈ DUY NHẤT trang này được chia sẻ tới Mẹ Lan. Toàn bộ các trang ghi chép khác, nhật ký cá nhân và lịch sử tâm trạng vẫn ở chế độ riêng tư 100%.
+          </p>
+<div class="flex items-start gap-1.5 pt-space-xs text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[16px] shrink-0 mt-0.5 text-primary">history_toggle_off</span>
+<span>Bạn có thể thu hồi quyền đọc của trang này bất cứ lúc nào tại mục <strong>Quản lý chia sẻ</strong>.</span>
+</div>
+</div>
+</section>
+<!-- 5. Ghi chú kỹ thuật Zalo Mini App bàn giao ở đáy -->
+<aside aria-label="Thông số kỹ thuật phiên truyền nhận" class="bg-surface-container-low rounded-lg p-space-sm space-y-1">
+<div class="flex items-center gap-1.5 text-on-surface-variant font-metadata text-metadata">
+<span class="material-symbols-outlined text-[14px]">dns</span>
+<span class="uppercase tracking-wide">Đặc tả bàn giao Zalo Mini App:</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+          • Cơ chế truyền tin một chiều (Snapshot Sync): nội dung nhận là phiên bản chụp tại thời điểm bấm gửi.<br/>
+          • Các chỉnh sửa sau này trên máy con sẽ <strong>không tự động cập nhật</strong> sang thiết bị của mẹ.<br/>
+          • Tác vụ được ghi nhận vào bảng ghi vết cục bộ: <code class="bg-surface-variant/70 px-1 py-0.5 rounded font-mono text-[11px] text-on-surface">audit_log:share_page_02</code>.
+        </p>
+</aside>
+</div>
+<!-- 4. Bộ nút hành động kép (Sticky Bottom Action Bar) -->
+<div class="p-margin bg-surface shrink-0 space-y-space-xs shadow-[0_-4px_16px_rgba(113,61,50,0.06)]">
+<!-- Nút chính (CTA) -->
+<button class="w-full h-12 bg-primary-container hover:bg-primary text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-space-xs shadow-md transition-all active:scale-[0.98]" id="btn-confirm-share" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+<span>Xác nhận chia sẻ trang này cho Mẹ Lan</span>
+</button>
+<!-- Nút phụ -->
+<button class="w-full h-12 bg-surface-container-high hover:bg-surface-variant text-on-secondary-container rounded-xl font-label-lg text-label-lg flex items-center justify-center gap-space-xs transition-colors active:scale-[0.98]" onclick="history.back()" type="button">
+<span class="material-symbols-outlined text-[20px]">lock</span>
+<span>Giữ lại riêng tư, chưa chia sẻ</span>
+</button>
+</div>
+</div>
+</div>
+<script>
+  (function () {
+    const btnConfirm = document.getElementById('btn-confirm-share');
+    if (btnConfirm) {
+      btnConfirm.addEventListener('click', function () {
+        this.disabled = true;
+        this.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span><span>Đang truyền bản ghi an toàn...</span>';
+        setTimeout(() => {
+          this.innerHTML = '<span class="material-symbols-outlined text-[20px]">check_circle</span><span>Đã chia sẻ thành công tới Mẹ Lan</span>';
+          setTimeout(() => {
+            if (window.history.length > 1) {
+              window.history.back();
+            }
+          }, 700);
+        }, 850);
+      });
+    }
+  })();
+</script></main></body></html>

@@ -1,0 +1,20 @@
+# Tài liệu repo liên quan (đọc phiên bản trên nhánh/main đã tích hợp)
+
+- [AGENTS](../../../AGENTS.md)
+- [Scope](../../project-scope.md)
+- [UI rules](../../engineering/ui-rules.md)
+- [DSA rules](../../engineering/dsa-rules.md)
+- [Security rules](../../security/security-rules.md)
+- [Brand](../brand-identity.md)
+- [Workflow](../../engineering/workflow-rules.md)
+- [User flows](../../product/user-flows.md)
+- [Access/sharing](../../product/access-sharing-matrix.md)
+- [State machines](../../product/workflow-state-machines.md)
+- [Decisions](../../product/decision-register.md)
+- [Four-week flow](../../product/four-week-flow.md)
+- [ERD](../../data/erd.md)
+- [Mini App contracts](../../../zalo-mini-app/CONTRACTS.md)
+- [Kiến trúc tách web/Mini App](../../handover/web-miniapp-separation/architecture.md)
+- [AI recovery runbook](../../handover/ai-runtime-recovery-20261021.md)
+
+Không sao chép hàng trăm tài liệu repo thành snapshot thứ hai. Các đường dẫn này là tài liệu đã có ngay trên nhánh, cần đọc cùng gói tài liệu người dùng/outputs đã gom; không lẫn tài liệu ứng dụng khác, danh sách tài khoản hoặc secret.

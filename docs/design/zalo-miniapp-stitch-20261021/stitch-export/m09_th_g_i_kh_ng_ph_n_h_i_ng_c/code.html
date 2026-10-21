@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "primary": "#89301e", "primary-container": "#a84733", "tertiary": "#6b4600", "inverse-primary": "#ffb4a4", "on-tertiary-container": "#ffdeb4", "error-container": "#ffdad6", "on-tertiary-fixed": "#291800", "secondary-fixed-dim": "#ffb4a3", "secondary-container": "#ff866b", "surface-bright": "#fff8f6", "on-error": "#ffffff", "inverse-on-surface": "#ffede9", "tertiary-container": "#895c09", "on-primary-fixed-variant": "#802918", "on-tertiary": "#ffffff", "on-primary-container": "#ffdcd5", "tertiary-fixed": "#ffddb2", "surface-tint": "#9f402d", "surface-container-high": "#ffe2dc", "on-error-container": "#93000a", "surface-container-highest": "#ffdad3", "surface-container-low": "#fff0ee", "surface-variant": "#ffdad3", "primary-fixed-dim": "#ffb4a4", "inverse-surface": "#502319", "surface-dim": "#ffcfc5", "on-background": "#360f07", "surface-container-lowest": "#ffffff", "tertiary-fixed-dim": "#f7bc65", "on-secondary-fixed": "#3d0600", "on-primary": "#ffffff", "on-primary-fixed": "#3e0500", "secondary-fixed": "#ffdad2", "primary-fixed": "#ffdad3", "secondary": "#a03f2a", "on-secondary-container": "#741f0c", "on-secondary-fixed-variant": "#812815", "on-secondary": "#ffffff", "outline": "#89726d", "surface-container": "#ffe9e5", "surface": "#fff8f6", "background": "#fff8f6", "on-tertiary-fixed-variant": "#624000", "on-surface": "#360f07", "outline-variant": "#ddc0ba", "on-surface-variant": "#56423e", "error": "#ba1a1a" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-sm": "0.5rem", "space-lg": "1.25rem", "margin": "1rem", "space-xl": "1.5rem", "space-md": "1rem", "gutter": "1rem", "space-xs": "0.25rem" }, fontFamily: { "headline-lg": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"] }, fontSize: { "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }] } } } };</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior-y:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)]"><div class="h-14 px-margin flex items-center justify-between gap-space-sm"><div class="flex items-center min-w-0"><button aria-label="Quay lại Hộp thư" class="flex items-center gap-space-xs pr-space-sm -ml-space-xs min-h-[44px] min-w-[44px] text-primary hover:text-primary-container transition-colors rounded-full" onclick="history.back()" type="button"><span class="material-symbols-outlined text-[24px]">arrow_back_ios_new</span><span class="hidden sm:inline font-label-md text-label-md">Quay lại</span></button><h1 class="font-title-md text-title-md text-on-surface truncate ml-space-xs">Chi Tiet Thu</h1></div><div class="flex items-center gap-space-xs shrink-0"><button aria-label="Trợ giúp và hướng dẫn" class="w-11 h-11 flex items-center justify-center rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container transition-colors" type="button"><span class="material-symbols-outlined text-[22px]">info</span></button><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full pt-14 pb-safe bg-surface"><div class="flex flex-col w-full">
+<div class="px-margin pt-space-sm pb-space-lg flex flex-col gap-space-lg">
+<!-- Breadcrumb & Delivery Status Bar -->
+<div class="flex items-center justify-between gap-space-sm bg-surface-container-low px-space-md py-space-sm rounded-xl">
+<div class="flex items-center gap-space-xs text-primary">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md font-semibold text-on-surface">Thư bạn đã gửi</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant font-caption text-caption">
+<span class="material-symbols-outlined text-[14px]">schedule</span>
+<span>16:20 • Hôm qua</span>
+</div>
+</div>
+<!-- Letter Stationery Envelope Wrapper -->
+<article class="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col gap-space-md relative overflow-hidden">
+<!-- Decorative Paper Accent -->
+<div class="absolute top-0 left-0 bottom-0 w-1.5 bg-primary-container"></div>
+<!-- Recipient Metadata -->
+<div class="flex items-center justify-between flex-wrap gap-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="font-metadata text-metadata text-on-surface-variant">Gửi đến:</span>
+<div class="inline-flex items-center gap-1.5 px-space-sm py-0.5 rounded-full bg-surface-container text-on-surface">
+<span class="material-symbols-outlined text-[15px] text-primary">favorite</span>
+<span class="font-label-md text-label-md font-medium">Người đồng hành (Bố)</span>
+</div>
+</div>
+<div class="inline-flex items-center gap-1 text-outline font-metadata text-metadata" title="Nội dung được bảo vệ quyền riêng tư 1-1">
+<span class="material-symbols-outlined text-[14px]">lock</span>
+<span>Thư riêng tư</span>
+</div>
+</div>
+<!-- Letter Subject -->
+<div class="pt-space-xs">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Con muốn xin phép nói chuyện về tuần học tới</h2>
+</div>
+<!-- Letter Body Content -->
+<div class="font-body-lg text-body-lg text-on-surface-variant leading-relaxed">
+<p class="whitespace-pre-line text-on-surface">Con thấy dạo này lịch học thêm hơi dày và con thấy khá mệt mỏi vào các buổi tối. Con muốn cùng bố ngồi lại để sắp xếp lại thời gian biểu một chút sao cho phù hợp hơn.</p>
+</div>
+<!-- Sender Stamp & Sent Confirmation -->
+<div class="pt-space-md mt-space-xs flex items-center justify-between text-on-surface-variant font-caption text-caption">
+<div class="flex items-center gap-1 text-primary font-medium">
+<span class="material-symbols-outlined text-[16px]">outgoing_mail</span>
+<span>Đã lưu trong hộp thư đi</span>
+</div>
+<div class="flex items-center gap-1">
+<span>Gửi từ ứng dụng Đồng Hành</span>
+</div>
+</div>
+</article>
+<!-- Warm Status Callout (Respectful Connection, No Pressure) -->
+<div class="bg-surface-container rounded-xl p-space-md flex flex-col gap-space-sm shadow-sm">
+<div class="flex items-center gap-space-xs">
+<div class="w-8 h-8 rounded-full bg-tertiary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-tertiary text-[18px]">hourglass_top</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Đang chờ hồi âm từ Người đồng hành</span>
+<span class="font-caption text-caption text-on-surface-variant">Bố sẽ đọc thư khi có khoảnh khắc thư thả</span>
+</div>
+</div>
+<div class="bg-surface-container-lowest/80 rounded-lg p-space-sm">
+<p class="font-body-md text-body-md text-on-surface-variant">Mỗi người đều cần thời gian để lắng nghe và chia sẻ. Ứng dụng không đặt thông báo hối thúc hay áp lực trả lời ngay, để cuộc trò chuyện luôn diễn ra chân thành và tự nhiên nhất.</p>
+</div>
+</div>
+<!-- Contextual Gentle Actions -->
+<div class="flex flex-col gap-space-sm">
+<span class="font-metadata text-metadata text-outline px-space-xs uppercase tracking-wider">Tùy chọn tương tác an toàn</span>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm">
+<a class="min-h-[48px] px-space-md bg-surface-container-lowest rounded-xl flex items-center justify-between text-on-surface shadow-sm active:bg-surface-container transition-colors" href="#/compose">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-primary">edit_note</span>
+<span class="font-label-md text-label-md font-medium">Gửi thêm lời nhắn mới</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-outline">arrow_forward</span>
+</a>
+<button class="min-h-[48px] px-space-md bg-surface-container-lowest rounded-xl flex items-center justify-between text-on-surface shadow-sm active:bg-surface-container transition-colors text-left" id="save-memo-btn" onclick="toggleMemoStatus()" type="button">
+<div class="flex items-center gap-space-sm">
+<span class="material-symbols-outlined text-[20px] text-tertiary" id="memo-icon">bookmark_border</span>
+<span class="font-label-md text-label-md font-medium" id="memo-text">Lưu vào ghi nhớ cá nhân</span>
+</div>
+<span class="material-symbols-outlined text-[18px] text-primary hidden" id="memo-check">done</span>
+</button>
+</div>
+</div>
+<!-- School & Psychological Support Access Point -->
+<div class="bg-surface-container-low rounded-xl p-space-md flex items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-sm">
+<div class="w-9 h-9 rounded-full bg-secondary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-secondary-container text-[20px]">support_agent</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md font-medium text-on-surface">Cần trò chuyện ngay bây giờ?</span>
+<span class="font-caption text-caption text-on-surface-variant">Phòng tham vấn tâm lý &amp; trợ giúp học đường</span>
+</div>
+</div>
+<button aria-label="Tìm trợ giúp học đường và tâm lý" class="shrink-0 px-space-sm py-1.5 rounded-lg bg-surface-container-lowest text-primary font-label-md text-label-md font-semibold shadow-sm hover:bg-surface-container transition-colors" type="button">
+        Tìm trợ giúp
+      </button>
+</div>
+<!-- Design Specification & Handover Specs Box -->
+<section class="bg-surface-container-high rounded-xl p-space-md text-on-surface flex flex-col gap-space-xs mt-space-xs">
+<div class="flex items-center gap-space-xs text-primary mb-1">
+<span class="material-symbols-outlined text-[18px]">developer_board</span>
+<h3 class="font-title-md text-title-md font-semibold">Design Handover Specs</h3>
+</div>
+<div class="grid grid-cols-1 gap-space-xs font-caption text-caption text-on-surface-variant">
+<div class="flex items-baseline justify-between bg-surface-container-lowest/60 px-space-sm py-1 rounded">
+<span class="font-semibold text-on-surface">Route</span>
+<code class="font-metadata text-metadata text-primary font-mono">/messages/:id?type=sent</code>
+</div>
+<div class="flex items-baseline justify-between bg-surface-container-lowest/60 px-space-sm py-1 rounded">
+<span class="font-semibold text-on-surface">Psychological Safety</span>
+<span class="text-right">Không hiển thị seen/read receipt</span>
+</div>
+<div class="flex items-baseline justify-between bg-surface-container-lowest/60 px-space-sm py-1 rounded">
+<span class="font-semibold text-on-surface">Screen Type</span>
+<span class="text-right">Full frame con (Ẩn Bottom Tab Bar)</span>
+</div>
+<div class="flex items-baseline justify-between bg-surface-container-lowest/60 px-space-sm py-1 rounded">
+<span class="font-semibold text-on-surface">Safe-Area Insets</span>
+<span class="text-right">Bottom padding 24px (pb-6)</span>
+</div>
+</div>
+</section>
+</div>
+</div>
+<script>
+  function toggleMemoStatus() {
+    const icon = document.getElementById('memo-icon');
+    const text = document.getElementById('memo-text');
+    const check = document.getElementById('memo-check');
+    const isSaved = icon.getAttribute('style')?.includes("'FILL' 1");
+
+    if (!isSaved) {
+      icon.style.fontVariationSettings = "'FILL' 1";
+      text.textContent = 'Đã lưu vào ghi nhớ cá nhân';
+      check.classList.remove('hidden');
+    } else {
+      icon.style.fontVariationSettings = "'FILL' 0";
+      text.textContent = 'Lưu vào ghi nhớ cá nhân';
+      check.classList.add('hidden');
+    }
+  }
+</script></main></body></html>

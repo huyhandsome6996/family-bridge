@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,400;0,500;0,600;0,700;1,400&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { colors: { "on-secondary-container": "#741f0c", "on-secondary": "#ffffff", "on-primary-fixed-variant": "#802918", "tertiary-fixed": "#ffddb2", "inverse-on-surface": "#ffede9", "secondary-container": "#ff866b", "outline-variant": "#ddc0ba", "on-tertiary-fixed": "#291800", "surface-tint": "#9f402d", "surface-container-high": "#ffe2dc", "surface-dim": "#ffcfc5", "inverse-primary": "#ffb4a4", "surface-container-low": "#fff0ee", "on-surface": "#360f07", "on-secondary-fixed": "#3d0600", "on-tertiary-fixed-variant": "#624000", "on-primary": "#ffffff", "tertiary-fixed-dim": "#f7bc65", "surface-container-lowest": "#ffffff", "primary-container": "#a84733", "on-tertiary-container": "#ffdeb4", "error-container": "#ffdad6", "error": "#ba1a1a", "primary": "#89301e", "background": "#fff8f6", "on-surface-variant": "#56423e", "surface-bright": "#fff8f6", "on-primary-container": "#ffdcd5", "on-background": "#360f07", "secondary-fixed-dim": "#ffb4a3", "on-secondary-fixed-variant": "#812815", "tertiary": "#6b4600", "surface": "#fff8f6", "on-primary-fixed": "#3e0500", "surface-container": "#ffe9e5", "on-tertiary": "#ffffff", "inverse-surface": "#502319", "secondary": "#a03f2a", "secondary-fixed": "#ffdad2", "surface-variant": "#ffdad3", "tertiary-container": "#895c09", "primary-fixed-dim": "#ffb4a4", "primary-fixed": "#ffdad3", "on-error-container": "#93000a", "outline": "#89726d", "on-error": "#ffffff", "surface-container-highest": "#ffdad3" }, borderRadius: { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, spacing: { "space-xs": "0.25rem", "space-lg": "1.25rem", "margin": "1rem", "space-xl": "1.5rem", "gutter": "1rem", "space-md": "1rem", "space-sm": "0.5rem" }, fontFamily: { "title-md": ["Be Vietnam Pro"], "headline-md": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"] }, fontSize: { "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }] } } } }</script><style>@layer base { html, body { width: 100vw; min-height: 100vh; margin: 0; padding: 0; } body { overscroll-behavior-y: none; } .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); } .pt-safe { padding-top: env(safe-area-inset-top, 0px); } main > :first-child { margin-top: 0 !important; } main > :last-child { margin-bottom: 0 !important; } } ::-webkit-scrollbar { display: none; }</style></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased flex flex-col min-h-screen"><header class="fixed top-0 inset-x-0 z-50 pt-safe bg-surface/80 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><a aria-label="Quay lại" class="min-w-[44px] min-h-[44px] -ml-space-sm flex items-center gap-space-xs text-on-surface-variant hover:text-primary transition-colors focus:outline-none" data-path="how-to-use" href="#"><span class="material-symbols-outlined text-[20px]">arrow_back_ios_new</span><span class="font-label-md text-label-md">Quay lại</span></a><h1 class="font-title-md text-title-md text-on-surface truncate text-center flex-1 mx-space-sm">Đăng Nhập</h1><div class="min-w-[44px] min-h-[44px] flex items-center justify-end"><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></div></header><main class="flex-1 flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface"><div class="flex flex-col w-full pb-10 space-y-5">
+<!-- Status Badge / Spec Header -->
+<div class="flex items-center justify-between bg-surface-container-high px-4 py-3 rounded-xl shadow-sm">
+<div class="flex items-center gap-2 min-w-0">
+<span class="w-2.5 h-2.5 rounded-full bg-error animate-ping"></span>
+<span class="w-2.5 h-2.5 rounded-full bg-error -ml-4"></span>
+<p class="font-label-md text-label-md text-on-surface truncate">
+        M03 UI SPEC — Trạng thái tương tác &amp; Báo lỗi thực tế
+      </p>
+</div>
+<span class="font-metadata text-metadata px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant shrink-0">
+      Server v2.4
+    </span>
+</div>
+<!-- State Toggle Tabs (Interactive Prototype) -->
+<div class="flex gap-1.5 p-1 bg-surface-container rounded-xl overflow-x-auto no-scrollbar">
+<button class="spec-tab flex-1 min-w-[100px] py-2 px-2.5 rounded-lg font-label-md text-label-md text-center transition-all bg-primary text-on-primary shadow-sm flex items-center justify-center gap-1.5" id="tab-error" onclick="switchState('state-error')" type="button">
+<span class="material-symbols-outlined text-[16px]">error</span>
+<span>Sai thông tin</span>
+</button>
+<button class="spec-tab flex-1 min-w-[100px] py-2 px-2.5 rounded-lg font-label-md text-label-md text-center transition-all bg-transparent text-on-surface-variant flex items-center justify-center gap-1.5" id="tab-lockout" onclick="switchState('state-lockout')" type="button">
+<span class="material-symbols-outlined text-[16px]">lock_clock</span>
+<span>Tạm khóa</span>
+</button>
+<button class="spec-tab flex-1 min-w-[110px] py-2 px-2.5 rounded-lg font-label-md text-label-md text-center transition-all bg-transparent text-on-surface-variant flex items-center justify-center gap-1.5" id="tab-keyboard" onclick="switchState('state-keyboard')" type="button">
+<span class="material-symbols-outlined text-[16px]">keyboard</span>
+<span>Bàn phím mở</span>
+</button>
+</div>
+<!-- Global Network / Offline Banner Spec -->
+<div class="flex items-center justify-between gap-3 bg-error-container text-on-error-container p-3 rounded-xl shadow-sm animate-pulse">
+<div class="flex items-center gap-2.5 min-w-0">
+<span class="material-symbols-outlined text-[20px] shrink-0 text-error">wifi_off</span>
+<p class="font-caption text-caption text-on-error-container leading-tight truncate">
+        Không thể kết nối máy chủ. Kiểm tra Wi-Fi / 4G và thử lại.
+      </p>
+</div>
+<button class="shrink-0 font-label-md text-label-md bg-error text-on-error px-3 py-1.5 rounded-lg flex items-center gap-1 shadow-sm active:scale-95 transition-transform" type="button">
+<span class="material-symbols-outlined text-[14px]">refresh</span>
+<span>Thử lại</span>
+</button>
+</div>
+<!-- SECTION 1: SAI THÔNG TIN (STATE 1) -->
+<div class="state-container flex flex-col space-y-4" id="state-error">
+<!-- Visual Accent Card -->
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm flex flex-col space-y-4">
+<div class="flex items-center justify-between pb-1">
+<div class="flex items-center gap-2">
+<div class="w-8 h-8 rounded-full bg-secondary-container/30 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[20px]">badge</span>
+</div>
+<div>
+<h2 class="font-title-md text-title-md text-on-surface">Đăng nhập tài khoản</h2>
+<p class="font-caption text-caption text-on-surface-variant">Hệ thống sổ liên lạc &amp; kết nối gia đình</p>
+</div>
+</div>
+<span class="font-metadata text-metadata bg-error-container text-on-error-container px-2 py-0.5 rounded-full font-semibold">
+          Lỗi 401
+        </span>
+</div>
+<!-- Stable In-form Error Notice Container -->
+<div class="bg-error-container/70 p-3.5 rounded-xl flex items-start gap-3 shadow-sm">
+<span class="material-symbols-outlined text-error text-[22px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">
+          error
+        </span>
+<div class="flex-1 min-w-0">
+<p class="font-label-md text-label-md text-on-error-container font-semibold">
+            Đăng nhập không thành công
+          </p>
+<p class="font-caption text-caption text-on-error-container/90 mt-0.5 leading-snug">
+            Thông tin đăng nhập không chính xác. Vui lòng kiểm tra lại mã học sinh/phụ huynh hoặc mật khẩu do lớp cấp.
+          </p>
+</div>
+</div>
+<!-- Input: Mã định danh -->
+<div class="flex flex-col space-y-1.5">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span>Mã số học sinh hoặc SĐT</span>
+<span class="font-metadata text-metadata text-on-surface-variant font-normal">Đã xác thực</span>
+</label>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-[20px]">
+            school
+          </span>
+<input class="w-full h-12 pl-11 pr-10 bg-surface-container-low text-on-surface font-body-md text-body-md rounded-xl focus:outline-none" readonly="" type="text" value="HS0099"/>
+<span class="material-symbols-outlined absolute right-3 text-secondary text-[20px]" style="font-variation-settings: 'FILL' 1;">
+            check_circle
+          </span>
+</div>
+</div>
+<!-- Input: Mật khẩu (Trạng thái Lỗi rõ rệt) -->
+<div class="flex flex-col space-y-1.5">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-error font-semibold flex items-center gap-1">
+<span>Mật khẩu bảo mật</span>
+<span class="w-1.5 h-1.5 rounded-full bg-error"></span>
+</label>
+<a class="font-caption text-caption text-primary hover:underline" href="#">Quên mật khẩu?</a>
+</div>
+<div class="relative flex items-center bg-error-container/20 rounded-xl">
+<span class="material-symbols-outlined absolute left-3.5 text-error text-[20px]">
+            lock
+          </span>
+<input class="w-full h-12 pl-11 pr-11 bg-transparent text-error font-body-md text-body-md rounded-xl focus:outline-none" readonly="" type="password" value="••••••••"/>
+<button aria-label="Hiện mật khẩu" class="absolute right-3 text-error p-1" type="button">
+<span class="material-symbols-outlined text-[20px]">visibility_off</span>
+</button>
+</div>
+<!-- Error Sub-label -->
+<p class="font-caption text-caption text-error flex items-center gap-1 pt-0.5">
+<span class="material-symbols-outlined text-[16px]">info</span>
+          Mật khẩu không khớp với tài khoản HS0099 (còn 2 lần thử)
+        </p>
+</div>
+<!-- Action Button (Submitting / Spinner State) -->
+<div class="pt-2">
+<button class="w-full h-12 bg-primary text-on-primary font-label-lg text-label-lg rounded-xl shadow-md flex items-center justify-center gap-2 active:opacity-90" type="button">
+<svg class="animate-spin h-5 w-5 text-on-primary" fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+<path class="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" fill="currentColor"></path>
+</svg>
+<span>Đang kiểm tra lại...</span>
+</button>
+</div>
+</div>
+<!-- UX Hint / Micro-copy -->
+<div class="bg-surface-container-low p-4 rounded-xl flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-surface-container-high flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">contact_support</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant">
+        Chưa có mã học sinh? Hãy nhờ Giáo viên Chủ nhiệm cấp lại thẻ định danh học kỳ mới.
+      </p>
+</div>
+</div>
+<!-- SECTION 2: TẠM KHÓA BẢO MẬT (STATE 2) -->
+<div class="state-container hidden flex-col space-y-4" id="state-lockout">
+<!-- Security Warning Card -->
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm flex flex-col space-y-4">
+<!-- Lockout Alert Container (Warm Amber / Security Tone) -->
+<div class="bg-tertiary-fixed p-4 rounded-xl flex items-start gap-3 shadow-sm">
+<div class="w-9 h-9 rounded-full bg-tertiary-container text-on-tertiary flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">
+            timer
+          </span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-label-lg text-label-lg text-on-tertiary-fixed font-semibold leading-tight">
+            Tài khoản tạm thời bị khóa 15 phút do nhập sai nhiều lần
+          </h3>
+<p class="font-caption text-caption text-on-tertiary-fixed-variant mt-1.5 leading-relaxed">
+            Hệ thống bảo vệ tài khoản tự động khóa. Nếu cần truy cập khẩn cấp, vui lòng liên hệ trực tiếp thầy cô phụ trách hoặc quản trị viên lớp.
+          </p>
+</div>
+</div>
+<!-- Countdown Visualizer -->
+<div class="bg-surface-container p-4 rounded-xl flex items-center justify-between">
+<div class="flex items-center gap-2.5">
+<span class="material-symbols-outlined text-tertiary text-[24px]">hourglass_top</span>
+<div>
+<p class="font-metadata text-metadata text-on-surface-variant">Thời gian tự mở khóa sau:</p>
+<p class="font-headline-sm text-headline-sm text-primary font-bold tracking-wider">14:38</p>
+</div>
+</div>
+<div class="w-12 h-12 relative flex items-center justify-center">
+<svg class="w-12 h-12 transform -rotate-90" viewbox="0 0 36 36">
+<path class="text-surface-variant" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-width="3"></path>
+<path class="text-primary" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="85, 100" stroke-linecap="round" stroke-width="3"></path>
+</svg>
+<span class="material-symbols-outlined absolute text-[16px] text-primary">lock</span>
+</div>
+</div>
+<!-- Disabled Form Inputs -->
+<div class="opacity-60 pointer-events-none space-y-3">
+<div class="flex flex-col space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Mã số tài khoản</label>
+<div class="h-12 px-3.5 bg-surface-container-high text-on-surface-variant font-body-md text-body-md rounded-xl flex items-center">
+            HS0099
+          </div>
+</div>
+<div class="flex flex-col space-y-1">
+<label class="font-label-md text-label-md text-on-surface">Mật khẩu</label>
+<div class="h-12 px-3.5 bg-surface-container-high text-on-surface-variant font-body-md text-body-md rounded-xl flex items-center">
+            ••••••••••••
+          </div>
+</div>
+</div>
+<!-- Quick Emergency Actions -->
+<div class="pt-2 flex flex-col space-y-2">
+<a class="w-full h-12 bg-secondary-container text-on-secondary-container font-label-md text-label-md rounded-xl flex items-center justify-center gap-2 shadow-sm active:scale-[0.99] transition-transform" href="tel:19001234">
+<span class="material-symbols-outlined text-[20px]">phone_in_talk</span>
+<span>Gọi Hotline Hỗ trợ Nhà trường</span>
+</a>
+<button class="w-full h-11 bg-surface-container text-on-surface font-label-md text-label-md rounded-xl flex items-center justify-center gap-1.5" type="button">
+<span class="material-symbols-outlined text-[18px]">chat</span>
+<span>Gửi tin nhắn Zalo cho Giáo viên Chủ nhiệm</span>
+</button>
+</div>
+</div>
+</div>
+<!-- SECTION 3: MÔ PHỎNG BÀN PHÍM ẢO MỞ (STATE 3) -->
+<div class="state-container hidden flex-col space-y-4" id="state-keyboard">
+<!-- Viewport Container Simulation -->
+<div class="bg-surface-container-lowest rounded-2xl shadow-md overflow-hidden flex flex-col">
+<!-- Screen Simulation Header Bar -->
+<div class="bg-surface-container-high px-4 py-2 flex items-center justify-between text-on-surface-variant">
+<div class="flex items-center gap-1.5">
+<span class="material-symbols-outlined text-[16px] text-primary">smartphone</span>
+<span class="font-metadata text-metadata font-semibold">Mô phỏng Viewport Khi Mở Bàn Phím</span>
+</div>
+<span class="font-metadata text-metadata bg-primary text-on-primary px-2 py-0.5 rounded-full">
+          Keyboard: 280px
+        </span>
+</div>
+<!-- Scrollable Safe Viewport Area -->
+<div class="p-4 flex flex-col space-y-3.5 bg-background">
+<!-- Floating Active Warning Above Keyboard -->
+<div class="bg-error-container p-3 rounded-xl flex items-center gap-2.5 shadow-sm">
+<span class="material-symbols-outlined text-error text-[18px] shrink-0">priority_high</span>
+<p class="font-caption text-caption text-on-error-container truncate">
+            Mật khẩu nhập sai lần 1. Nhấn nút Đăng nhập để tiếp tục.
+          </p>
+</div>
+<!-- Compact Active Input Form -->
+<div class="space-y-2.5">
+<div class="h-11 px-3 bg-surface-container rounded-lg flex items-center justify-between text-on-surface font-body-md text-body-md">
+<span class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant">person</span>
+<span>HS0099</span>
+</span>
+<span class="material-symbols-outlined text-[18px] text-secondary">check</span>
+</div>
+<!-- Active Focused Field with Simulated Cursor -->
+<div class="h-11 px-3 bg-surface-container-lowest rounded-lg flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px] text-primary">lock</span>
+<span class="font-body-md text-body-md text-on-surface">••••••</span>
+<span class="w-0.5 h-5 bg-primary animate-pulse"></span>
+</div>
+<span class="font-metadata text-metadata text-primary font-semibold">Ẩn</span>
+</div>
+</div>
+<!-- Elevated Sticky Primary CTA (Ensured Not Covered) -->
+<div class="pt-1">
+<button class="w-full h-11 bg-primary text-on-primary font-label-md text-label-md rounded-xl shadow-md flex items-center justify-center gap-2 active:scale-98" type="button">
+<span class="material-symbols-outlined text-[18px]">login</span>
+<span>Xác nhận đăng nhập</span>
+</button>
+</div>
+</div>
+<!-- Mobile Virtual Keyboard Representation -->
+<div class="bg-surface-container-high p-3 flex flex-col space-y-2 select-none">
+<div class="flex items-center justify-between text-on-surface-variant px-1">
+<span class="font-metadata text-metadata">Gợi ý mật khẩu từ Zalo Keychain</span>
+<span class="material-symbols-outlined text-[18px]">expand_more</span>
+</div>
+<!-- Simulated Keyboard Keys -->
+<div class="grid grid-cols-10 gap-1 text-center font-label-md text-label-md text-on-surface">
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">Q</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">W</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">E</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">R</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">T</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">Y</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">U</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">I</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">O</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">P</div>
+</div>
+<div class="grid grid-cols-9 gap-1 px-3 text-center font-label-md text-label-md text-on-surface">
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">A</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">S</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">D</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">F</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">G</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">H</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">J</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">K</div>
+<div class="bg-surface-container-lowest py-2 rounded shadow-xs">L</div>
+</div>
+<div class="grid grid-cols-4 gap-1.5 pt-1 text-on-surface font-label-md text-label-md">
+<div class="bg-surface-container py-2 rounded flex items-center justify-center font-metadata text-metadata">123</div>
+<div class="col-span-2 bg-surface-container-lowest py-2 rounded shadow-xs text-center">Dấu cách</div>
+<div class="bg-primary text-on-primary py-2 rounded flex items-center justify-center font-semibold text-[13px]">Nhập</div>
+</div>
+</div>
+</div>
+<!-- Engineering Implementation Notes for Zalo Mini App -->
+<div class="bg-surface-container-low p-4 rounded-xl space-y-2">
+<div class="flex items-center gap-1.5 text-on-surface font-label-md text-label-md">
+<span class="material-symbols-outlined text-[18px] text-tertiary">developer_mode</span>
+<span class="font-semibold">Lưu ý kỹ thuật cho Frontend Developers</span>
+</div>
+<ul class="font-caption text-caption text-on-surface-variant space-y-1.5 pl-5 list-disc">
+<li>Sử dụng API <code class="bg-surface-container px-1 py-0.5 rounded text-primary">window.visualViewport</code> để cập nhật chiều cao khi bàn phím đẩy lên.</li>
+<li>Kích hoạt <code class="bg-surface-container px-1 py-0.5 rounded text-primary">scrollIntoView({ behavior: 'smooth', block: 'center' })</code> khi trường input focus.</li>
+<li>Hộp thông báo lỗi luôn đặt ở vị trí tĩnh (Inline Form Error), tuyệt đối không để toast che nút CTA hoặc bàn phím ảo.</li>
+</ul>
+</div>
+</div>
+<!-- Supporting Footer Navigation Prompt -->
+<div class="pt-2 text-center">
+<p class="font-caption text-caption text-on-surface-variant">
+      Gặp sự cố đăng nhập liên tục? 
+      <a class="font-label-md text-label-md text-primary font-semibold hover:underline inline-flex items-center gap-0.5 ml-1" href="#">
+<span>Gửi yêu cầu hỗ trợ kỹ thuật</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</a>
+</p>
+</div>
+</div>
+<script>
+  function switchState(stateId) {
+    // Hide all states
+    const states = document.querySelectorAll('.state-container');
+    states.forEach(el => el.classList.add('hidden'));
+
+    // Show target state
+    const target = document.getElementById(stateId);
+    if (target) {
+      target.classList.remove('hidden');
+    }
+
+    // Reset tabs
+    const tabs = document.querySelectorAll('.spec-tab');
+    tabs.forEach(tab => {
+      tab.classList.remove('bg-primary', 'text-on-primary', 'shadow-sm');
+      tab.classList.add('bg-transparent', 'text-on-surface-variant');
+    });
+
+    // Highlight active tab
+    const activeTab = document.getElementById(
+      stateId === 'state-error' ? 'tab-error' :
+      stateId === 'state-lockout' ? 'tab-lockout' : 'tab-keyboard'
+    );
+    if (activeTab) {
+      activeTab.classList.remove('bg-transparent', 'text-on-surface-variant');
+      activeTab.classList.add('bg-primary', 'text-on-primary', 'shadow-sm');
+    }
+  }
+</script></main></body></html>

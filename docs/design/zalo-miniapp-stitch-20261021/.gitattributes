@@ -1,0 +1,4 @@
+# Preserve the exact source bytes and manifest hashes across Windows/Linux.
+# Raw upstream HTML includes whitespace; keep it unchanged rather than "fixing" source.
+stitch-export/** -text -whitespace
+source-archive/** -text

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary": "#ffffff", "on-surface": "#360f07", "tertiary-fixed-dim": "#f7bc65", "tertiary-fixed": "#ffddb2", "error": "#ba1a1a", "on-secondary-container": "#741f0c", "surface": "#fff8f6", "inverse-primary": "#ffb4a4", "on-secondary": "#ffffff", "surface-variant": "#ffdad3", "secondary-fixed-dim": "#ffb4a3", "background": "#fff8f6", "surface-container": "#ffe9e5", "on-tertiary-container": "#ffdeb4", "on-primary-container": "#ffdcd5", "surface-container-low": "#fff0ee", "secondary-container": "#ff866b", "primary-fixed": "#ffdad3", "on-error": "#ffffff", "tertiary": "#6b4600", "on-tertiary-fixed-variant": "#624000", "on-primary-fixed": "#3e0500", "secondary-fixed": "#ffdad2", "on-tertiary": "#ffffff", "on-surface-variant": "#56423e", "surface-container-highest": "#ffdad3", "on-secondary-fixed": "#3d0600", "surface-bright": "#fff8f6", "on-background": "#360f07", "inverse-on-surface": "#ffede9", "surface-container-lowest": "#ffffff", "surface-container-high": "#ffe2dc", "on-secondary-fixed-variant": "#812815", "outline-variant": "#ddc0ba", "primary-container": "#a84733", "surface-dim": "#ffcfc5", "tertiary-container": "#895c09", "surface-tint": "#9f402d", "on-tertiary-fixed": "#291800", "on-error-container": "#93000a", "error-container": "#ffdad6", "inverse-surface": "#502319", "primary-fixed-dim": "#ffb4a4", "outline": "#89726d", "primary": "#89301e", "on-primary-fixed-variant": "#802918", "secondary": "#a03f2a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.25rem", "space-xs": "0.25rem", "gutter": "1rem", "margin": "1rem", "space-xl": "1.5rem", "space-md": "1rem", "space-sm": "0.5rem" }, "fontFamily": { "headline-md": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"] }, "fontSize": { "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center min-w-0 flex-1"><button aria-label="Quay lại" class="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-md text-title-md text-on-surface truncate ml-space-xs">Chia Sẻ Từng Mục</h1></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex-1 flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface"><div class="flex flex-col w-full pb-10 space-y-5">
+<!-- Interactive State Switcher for Dev / QA Review -->
+<div class="bg-surface-container p-3 rounded-xl shadow-sm flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">developer_mode</span>
+<span class="font-label-md text-label-md text-on-surface">Chế độ kiểm thử (QA Tester)</span>
+</div>
+<div class="flex items-center space-x-1.5">
+<button class="px-2.5 py-1 rounded-full text-caption font-caption transition-all bg-primary text-on-primary" id="btn-all" onclick="switchState('all')">Tất cả</button>
+<button class="px-2.5 py-1 rounded-full text-caption font-caption transition-all bg-surface text-on-surface-variant" id="btn-case1" onclick="switchState('case1')">Ca 1</button>
+<button class="px-2.5 py-1 rounded-full text-caption font-caption transition-all bg-surface text-on-surface-variant" id="btn-case2" onclick="switchState('case2')">Ca 2</button>
+<button class="px-2.5 py-1 rounded-full text-caption font-caption transition-all bg-surface text-on-surface-variant" id="btn-case3" onclick="switchState('case3')">Ca 3</button>
+</div>
+</div>
+<!-- Intro Narrative Note -->
+<div class="bg-surface-container-low p-4 rounded-xl shadow-sm relative overflow-hidden">
+<div class="absolute -right-3 -top-3 w-16 h-16 rounded-full bg-primary/5 pointer-events-none"></div>
+<div class="flex items-start space-x-3">
+<div class="w-8 h-8 rounded-full bg-secondary-container/30 flex items-center justify-center shrink-0 mt-0.5 text-primary">
+<span class="material-symbols-outlined text-[20px]">shield_person</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg text-on-surface">Đặc tả bảo mật &amp; Xung đột dữ liệu</p>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">Mô-đun M16: Đảm bảo tính minh bạch, tôn trọng không gian riêng tư giữa Con và Cha Mẹ trên nền Zalo Mini App.</p>
+</div>
+</div>
+</div>
+<!-- CASE 1: Xung đột nội dung cần đọc lại (Content Conflict / Re-validation Needed) -->
+<section class="flex flex-col space-y-2 transition-all" id="section-case1">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-primary-container"></span>
+<h2 class="font-label-lg text-label-lg text-on-surface">Trường hợp 1: Sửa nội dung sau khi đã gửi</h2>
+</div>
+<span class="font-metadata text-metadata text-primary bg-primary-fixed px-2 py-0.5 rounded-full">Trạng thái: Dirty State</span>
+</div>
+<!-- Soft Warm Banner Container -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm space-y-4">
+<!-- Warning Banner (Warm Amber/Terracotta Tinted) -->
+<div class="bg-tertiary-fixed/60 p-3.5 rounded-lg flex items-start space-x-3">
+<div class="w-7 h-7 rounded-full bg-tertiary/15 flex items-center justify-center shrink-0 text-tertiary mt-0.5">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">history_edu</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-md text-label-md text-on-surface font-semibold">Trang này đã có thay đổi nội dung sau khi chia sẻ</p>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-relaxed">
+            Bản trên máy của <span class="font-semibold text-on-surface">Mẹ Lan</span> hiện vẫn là bản cũ (ngày 22/10, 19:40).
+          </p>
+<div class="mt-2.5 p-2 bg-surface rounded-lg">
+<p class="font-caption text-caption text-primary font-medium flex items-center">
+<span class="material-symbols-outlined text-[16px] mr-1">verified_user</span>
+              Hệ thống TUYỆT ĐỐI KHÔNG tự động cập nhật bản mới sang máy người nhận khi chưa có sự xác nhận của bạn.
+            </p>
+</div>
+</div>
+</div>
+<!-- Preview of current diary snippet -->
+<div class="bg-surface-container-low p-3 rounded-lg flex items-center justify-between">
+<div class="flex items-center space-x-3 min-w-0">
+<div class="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[20px]">draft</span>
+</div>
+<div class="min-w-0">
+<p class="font-label-md text-label-md text-on-surface truncate">Nhật ký áp lực thi học kỳ 1</p>
+<p class="font-metadata text-metadata text-on-surface-variant">Đã thêm 142 từ lúc 14:15 hôm nay</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-outline-variant text-[20px]">edit_note</span>
+</div>
+<!-- Action Buttons -->
+<div class="flex flex-col space-y-2 pt-1">
+<button class="w-full h-12 bg-primary-container text-on-primary rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center space-x-2 active:opacity-90 shadow-sm transition-transform active:scale-[0.99]" onclick="triggerToast('Yêu cầu đồng bộ bản mới đã gửi đến Mẹ Lan.')">
+<span class="material-symbols-outlined text-[20px]">send_time_extension</span>
+<span>Xem bản mới &amp; Chia sẻ lại cho Mẹ</span>
+</button>
+<button class="w-full h-12 bg-surface text-primary rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center space-x-2 active:bg-surface-container-low transition-colors" onclick="simulateRevoke()">
+<span class="material-symbols-outlined text-[20px]">lock_reset</span>
+<span>Thu hồi chia sẻ bản cũ ngay</span>
+</button>
+</div>
+</div>
+</section>
+<!-- CASE 2: Kiểm tra quyền trước khi mở trang (Pre-flight Permission Check / Revoked Access) -->
+<section class="flex flex-col space-y-2 transition-all" id="section-case2">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-outline"></span>
+<h2 class="font-label-lg text-label-lg text-on-surface">Trường hợp 2: Kiểm tra quyền truy cập (Pre-flight)</h2>
+</div>
+<span class="font-metadata text-metadata text-error bg-error-container/40 px-2 py-0.5 rounded-full">Mã: 403_REVOKED</span>
+</div>
+<!-- Permission Denied Card -->
+<div class="bg-surface-container-lowest p-5 rounded-xl shadow-sm text-center flex flex-col items-center">
+<!-- Tactile Padlock Illustration Container -->
+<div class="w-16 h-16 rounded-full bg-surface-container-high flex items-center justify-center mb-3.5 shadow-inner">
+<span class="material-symbols-outlined text-primary text-[32px]" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface font-semibold">Không thể mở nội dung này</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-2 leading-relaxed px-2">
+        Người đồng hành đã thu hồi quyền đọc trang này hoặc liên kết kết nối đã kết thúc. Để tôn trọng quyền riêng tư của người viết, nội dung không còn được hiển thị.
+      </p>
+<div class="w-full bg-surface-container-low p-3 rounded-lg mt-4 mb-5 text-left flex items-start space-x-2.5">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px] mt-0.5">info</span>
+<p class="font-metadata text-metadata text-on-surface-variant leading-relaxed">
+          Mỗi ghi chú chỉ cấp quyền giải mã một lần qua khoá sinh trắc học Zalo Auth. Khi bên gửi thu hồi, bản lưu đệm trên thiết bị này đã được xoá sạch.
+        </p>
+</div>
+<!-- Action Buttons -->
+<div class="w-full flex flex-col space-y-2">
+<button class="w-full h-12 bg-primary text-on-primary rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center space-x-1.5 active:opacity-90 shadow-sm" onclick="triggerToast('Đang trở về danh sách trang được chia sẻ...')">
+<span class="material-symbols-outlined text-[20px]">arrow_back</span>
+<span>Quay về danh sách trang</span>
+</button>
+<button class="w-full h-12 bg-surface text-on-surface rounded-xl font-label-md text-label-md font-semibold flex items-center justify-center space-x-1.5 active:bg-surface-container-low" onclick="triggerToast('Chuyển hướng đến màn hình Kết nối gia đình')">
+<span class="material-symbols-outlined text-[20px]">supervisor_account</span>
+<span>Quản lý kết nối gia đình</span>
+</button>
+</div>
+</div>
+</section>
+<!-- CASE 3: Thu hồi quyền chia sẻ thành công (Revocation Confirmed / Success Toast) -->
+<section class="flex flex-col space-y-2 transition-all" id="section-case3">
+<div class="flex items-center justify-between px-1">
+<div class="flex items-center space-x-2">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<h2 class="font-label-lg text-label-lg text-on-surface">Trường hợp 3: Xác nhận thu hồi quyền thành công</h2>
+</div>
+<span class="font-metadata text-metadata text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded-full">Sự kiện: Revoked_OK</span>
+</div>
+<!-- Active Success State Card -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm space-y-3 relative overflow-hidden">
+<div class="flex items-start space-x-3">
+<div class="w-9 h-9 rounded-full bg-primary-fixed flex items-center justify-center shrink-0 text-primary mt-0.5">
+<span class="material-symbols-outlined text-[22px]">check_circle</span>
+</div>
+<div class="flex-1 min-w-0">
+<p class="font-label-lg text-label-lg text-on-surface font-semibold text-primary">Đã thu hồi quyền đọc thành công</p>
+<p class="font-body-md text-body-md text-on-surface mt-1 leading-relaxed">
+            Người nhận sẽ không thể tiếp tục mở trang này trên thiết bị của họ.
+          </p>
+<div class="mt-3 p-3 bg-surface-container-low rounded-lg flex items-start space-x-2">
+<span class="material-symbols-outlined text-outline text-[16px] mt-0.5">photo_camera</span>
+<p class="font-caption text-caption text-on-surface-variant leading-snug">
+<span class="font-medium text-on-surface">Lưu ý chân thành:</span> Ứng dụng không thể can thiệp vào ảnh chụp màn hình nếu đối phương đã chủ động lưu ảnh trước thời điểm thu hồi.
+            </p>
+</div>
+</div>
+</div>
+<!-- Quick Metadata Details -->
+<div class="pt-2 flex items-center justify-between text-on-surface-variant font-metadata text-metadata">
+<span>Đối tượng thu hồi: Mẹ Lan</span>
+<span>Thời gian: 15:02 hôm nay</span>
+</div>
+</div>
+</section>
+<!-- CASE 4: Khối đặc tả bảo mật (Security & Privacy Spec for Devs / QA) -->
+<section class="flex flex-col space-y-2 pt-2">
+<div class="flex items-center space-x-2 px-1">
+<span class="material-symbols-outlined text-primary text-[20px]">terminal</span>
+<h2 class="font-label-lg text-label-lg text-on-surface">Đặc tả bảo mật &amp; Kiến trúc kỹ thuật (Spec M16)</h2>
+</div>
+<div class="bg-surface-container-high p-4 rounded-xl shadow-sm space-y-3">
+<!-- Spec Item 1 -->
+<div class="bg-surface-container-lowest p-3.5 rounded-lg flex items-start space-x-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[18px]">sync_disabled</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Zero Realtime Sync</span>
+<span class="font-metadata text-metadata bg-surface-container px-2 py-0.5 rounded text-on-surface-variant font-mono">No WebSocket</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-relaxed">
+            Tuyệt đối không dùng WebSockets tự đẩy dữ liệu nhật ký mới sang máy cha mẹ. Khi Con chỉnh sửa nội dung, luồng hiển thị trên máy Con chuyển sang cờ <code class="text-primary font-mono text-[11px]">is_dirty: true</code> và chỉ cấp quyền gửi lại sau khi Con chủ động bấm xác nhận.
+          </p>
+</div>
+</div>
+<!-- Spec Item 2 -->
+<div class="bg-surface-container-lowest p-3.5 rounded-lg flex items-start space-x-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[18px]">person_check</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Khóa 1 trang - 1 người nhận</span>
+<span class="font-metadata text-metadata bg-surface-container px-2 py-0.5 rounded text-on-surface-variant font-mono">Single Recipient</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-relaxed">
+            Không tạo link công khai chung. Mỗi lượt chia sẻ được mã hoá asymmetric độc bản gắn chặt với Zalo UID của người nhận. Thu hồi với người này không ảnh hưởng đến liên kết đã cấp cho người khác.
+          </p>
+</div>
+</div>
+<!-- Spec Item 3 -->
+<div class="bg-surface-container-lowest p-3.5 rounded-lg flex items-start space-x-3">
+<div class="w-8 h-8 rounded-lg bg-surface-container flex items-center justify-center shrink-0 text-primary">
+<span class="material-symbols-outlined text-[18px]">fingerprint</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md font-semibold text-on-surface">Idempotency Key Protection</span>
+<span class="font-metadata text-metadata bg-surface-container px-2 py-0.5 rounded text-on-surface-variant font-mono">X-Idempotency-Key</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-1 leading-relaxed">
+            Hành động thu hồi (Revoke) và cấp lại (Re-share) bắt buộc gửi kèm UUIDv4. Nếu mạng chập chờn hoặc bấm liên tục trong Zalo webview, server xử lý duy nhất 1 giao dịch để tránh xung đột trạng thái bảo mật.
+          </p>
+</div>
+</div>
+</div>
+</section>
+<!-- Dev Inspection / Diagnostic Footer Bar -->
+<div class="bg-surface-container-low p-3 rounded-lg flex items-center justify-between text-on-surface-variant font-metadata text-metadata">
+<div class="flex items-center space-x-1.5 truncate">
+<span class="material-symbols-outlined text-[16px]">alt_route</span>
+<span class="truncate">Endpoint: POST /api/v1/pages/{id}/revoke-access</span>
+</div>
+<span class="shrink-0 font-mono text-primary font-semibold">200 OK</span>
+</div>
+<!-- Interactive Floating Toast Container -->
+<div class="fixed bottom-6 left-4 right-4 bg-inverse-surface text-inverse-on-surface p-3.5 rounded-xl shadow-lg flex items-center space-x-3 opacity-0 pointer-events-none transition-all duration-300 z-50 transform translate-y-4" id="live-toast">
+<span class="material-symbols-outlined text-inverse-primary text-[22px] shrink-0">info</span>
+<p class="font-body-md text-body-md flex-1 leading-snug" id="live-toast-text">Thông báo hệ thống</p>
+</div>
+</div>
+<script>
+  function switchState(state) {
+    const s1 = document.getElementById('section-case1');
+    const s2 = document.getElementById('section-case2');
+    const s3 = document.getElementById('section-case3');
+    const btns = ['btn-all', 'btn-case1', 'btn-case2', 'btn-case3'];
+
+    btns.forEach(b => {
+      const el = document.getElementById(b);
+      el.className = 'px-2.5 py-1 rounded-full text-caption font-caption transition-all bg-surface text-on-surface-variant';
+    });
+
+    const activeBtn = document.getElementById('btn-' + state);
+    if (activeBtn) {
+      activeBtn.className = 'px-2.5 py-1 rounded-full text-caption font-caption transition-all bg-primary text-on-primary';
+    }
+
+    if (state === 'all') {
+      s1.style.display = 'flex';
+      s2.style.display = 'flex';
+      s3.style.display = 'flex';
+    } else if (state === 'case1') {
+      s1.style.display = 'flex';
+      s2.style.display = 'none';
+      s3.style.display = 'none';
+    } else if (state === 'case2') {
+      s1.style.display = 'none';
+      s2.style.display = 'flex';
+      s3.style.display = 'none';
+    } else if (state === 'case3') {
+      s1.style.display = 'none';
+      s2.style.display = 'none';
+      s3.style.display = 'flex';
+    }
+  }
+
+  let toastTimer = null;
+  function triggerToast(message) {
+    const toast = document.getElementById('live-toast');
+    const toastText = document.getElementById('live-toast-text');
+    toastText.innerText = message;
+    
+    toast.classList.remove('opacity-0', 'pointer-events-none', 'translate-y-4');
+    toast.classList.add('opacity-100', 'translate-y-0');
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('opacity-100', 'translate-y-0');
+      toast.classList.add('opacity-0', 'pointer-events-none', 'translate-y-4');
+    }, 3200);
+  }
+
+  function simulateRevoke() {
+    triggerToast('✓ Đã thu hồi quyền đọc của trang này thành công!');
+    const sec3 = document.getElementById('section-case3');
+    if (sec3) {
+      sec3.scrollIntoView({ behavior: 'smooth' });
+    }
+  }
+</script></main></body></html>

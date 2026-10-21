@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/><meta content="mobile_stack" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config = { darkMode: "class", theme: { extend: { "colors": { "on-primary": "#ffffff", "on-surface": "#360f07", "tertiary-fixed-dim": "#f7bc65", "tertiary-fixed": "#ffddb2", "error": "#ba1a1a", "on-secondary-container": "#741f0c", "surface": "#fff8f6", "inverse-primary": "#ffb4a4", "on-secondary": "#ffffff", "surface-variant": "#ffdad3", "secondary-fixed-dim": "#ffb4a3", "background": "#fff8f6", "surface-container": "#ffe9e5", "on-tertiary-container": "#ffdeb4", "on-primary-container": "#ffdcd5", "surface-container-low": "#fff0ee", "secondary-container": "#ff866b", "primary-fixed": "#ffdad3", "on-error": "#ffffff", "tertiary": "#6b4600", "on-tertiary-fixed-variant": "#624000", "on-primary-fixed": "#3e0500", "secondary-fixed": "#ffdad2", "on-tertiary": "#ffffff", "on-surface-variant": "#56423e", "surface-container-highest": "#ffdad3", "on-secondary-fixed": "#3d0600", "surface-bright": "#fff8f6", "on-background": "#360f07", "inverse-on-surface": "#ffede9", "surface-container-lowest": "#ffffff", "surface-container-high": "#ffe2dc", "on-secondary-fixed-variant": "#812815", "outline-variant": "#ddc0ba", "primary-container": "#a84733", "surface-dim": "#ffcfc5", "tertiary-container": "#895c09", "surface-tint": "#9f402d", "on-tertiary-fixed": "#291800", "on-error-container": "#93000a", "error-container": "#ffdad6", "inverse-surface": "#502319", "primary-fixed-dim": "#ffb4a4", "outline": "#89726d", "primary": "#89301e", "on-primary-fixed-variant": "#802918", "secondary": "#a03f2a" }, "borderRadius": { "DEFAULT": "0.25rem", "lg": "0.5rem", "xl": "0.75rem", "full": "9999px" }, "spacing": { "space-lg": "1.25rem", "space-xs": "0.25rem", "gutter": "1rem", "margin": "1rem", "space-xl": "1.5rem", "space-md": "1rem", "space-sm": "0.5rem" }, "fontFamily": { "headline-md": ["Be Vietnam Pro"], "label-lg": ["Be Vietnam Pro"], "headline-lg": ["Be Vietnam Pro"], "metadata": ["Be Vietnam Pro"], "caption": ["Be Vietnam Pro"], "title-md": ["Be Vietnam Pro"], "body-md": ["Be Vietnam Pro"], "label-md": ["Be Vietnam Pro"], "body-lg": ["Be Vietnam Pro"], "headline-sm": ["Be Vietnam Pro"] }, "fontSize": { "headline-md": ["22px", { "lineHeight": "30px", "letterSpacing": "-0.01em", "fontWeight": "600" }], "label-lg": ["16px", { "lineHeight": "24px", "fontWeight": "600" }], "headline-lg": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "700" }], "metadata": ["12px", { "lineHeight": "16px", "fontWeight": "500" }], "caption": ["13px", { "lineHeight": "18px", "fontWeight": "400" }], "title-md": ["18px", { "lineHeight": "26px", "fontWeight": "600" }], "body-md": ["15px", { "lineHeight": "24px", "fontWeight": "400" }], "label-md": ["14px", { "lineHeight": "20px", "fontWeight": "500" }], "body-lg": ["16px", { "lineHeight": "26px", "fontWeight": "400" }], "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }] } } } }</script><style>@layer base{html,body{width:100%;margin:0;padding:0;}body{overscroll-behavior:none;}.pb-safe{padding-bottom:env(safe-area-inset-bottom,0px);}.pt-safe{padding-top:env(safe-area-inset-top,0px);}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head><body class="bg-surface font-body-md text-on-surface flex flex-col min-h-screen"><header class="fixed top-0 w-full z-50 pt-safe bg-surface/85 backdrop-blur-xl shadow-[0_1px_8px_rgba(113,61,50,0.04)]"><div class="h-14 px-margin flex items-center justify-between"><div class="flex items-center min-w-0 flex-1"><button aria-label="Quay lại" class="w-11 h-11 -ml-space-xs flex items-center justify-center text-on-surface hover:text-primary transition-colors" onclick="history.back()"><span class="material-symbols-outlined text-[24px]">arrow_back</span></button><h1 class="font-title-md text-title-md text-on-surface truncate ml-space-xs">Chia Sẻ Từng Mục</h1></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="flex-1 flex flex-col relative w-full px-margin pt-14 pb-safe bg-surface"><div class="flex flex-col w-full pb-10 space-y-6">
+<!-- Interactive State Switcher for UX Review / Prototype Auditing -->
+<div class="w-full bg-surface-container-low rounded-xl p-3 flex flex-col space-y-2 shadow-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-primary text-[18px]">tune</span>
+<span class="font-metadata text-metadata text-on-surface-variant uppercase tracking-wider">Chế độ kiểm thử trải nghiệm (Edge Case Simulator)</span>
+</div>
+<span class="font-metadata text-metadata text-secondary-container bg-surface-container-highest px-2 py-0.5 rounded-full">Zalo Sandbox</span>
+</div>
+<div class="grid grid-cols-2 gap-2">
+<button class="py-2 px-3 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1.5 transition-all bg-primary-container text-on-primary shadow-sm" id="btn-state-empty" onclick="switchEdgeScenario('empty')">
+<span class="material-symbols-outlined text-[18px]">edit_note</span>
+<span>1. Trống trải nghiệm</span>
+</button>
+<button class="py-2 px-3 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1.5 transition-all bg-surface-container text-on-surface hover:bg-surface-variant" id="btn-state-error" onclick="switchEdgeScenario('error')">
+<span class="material-symbols-outlined text-[18px]">wifi_off</span>
+<span>2. Lỗi mạng lưu trữ</span>
+</button>
+</div>
+</div>
+<!-- SCENARIO 1: Empty State (Thư thái, không áp lực, bảo mật riêng tư) -->
+<section class="flex flex-col w-full transition-opacity duration-300" id="scenario-empty-container">
+<!-- Stationery-themed Empty Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-6 shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+<!-- Soft ambient decorative element -->
+<div class="absolute -top-12 -right-12 w-32 h-32 rounded-full bg-tertiary-fixed/30 blur-2xl pointer-events-none"></div>
+<div class="absolute -bottom-10 -left-10 w-28 h-28 rounded-full bg-primary-fixed/20 blur-xl pointer-events-none"></div>
+<!-- Vector Cozy Stationery Illustration (Under 2KB SVG) -->
+<div class="w-28 h-28 my-3 flex items-center justify-center relative">
+<svg class="w-full h-full" fill="none" viewbox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+<!-- Soft Desk Shadow & Ambient Glow -->
+<ellipse cx="60" cy="98" fill="#ffe2dc" opacity="0.8" rx="42" ry="7"></ellipse>
+<!-- Warm Notebook Base -->
+<rect fill="#fff8f6" height="68" rx="8" width="52" x="34" y="24"></rect>
+<rect fill="#a84733" fill-opacity="0.04" height="68" rx="8" width="52" x="34" y="24"></rect>
+<!-- Notebook subtle pages layer -->
+<rect fill="#ffffff" height="64" rx="6" width="48" x="38" y="28"></rect>
+<!-- Ruled lines on paper -->
+<path d="M46 44H78M46 54H74M46 64H68" stroke="#ddc0ba" stroke-linecap="round" stroke-width="2.5"></path>
+<!-- Terracotta bookmark ribbon -->
+<path d="M72 24V40L76 37L80 40V24" fill="#a84733"></path>
+<!-- Gentle cozy writing fountain pen -->
+<g transform="rotate(-32 75 72)">
+<!-- Pen barrel -->
+<rect fill="#6b4600" height="42" rx="4" width="8" x="62" y="32"></rect>
+<!-- Metal band -->
+<rect fill="#f7bc65" height="3" width="8" x="62" y="44"></rect>
+<!-- Pen nib -->
+<path d="M62 74L66 84L70 74H62Z" fill="#895c09"></path>
+<circle cx="66" cy="78" fill="#ffddb2" r="1"></circle>
+</g>
+<!-- Emotional warm spark stars -->
+<path d="M30 32C30 32 32 28 36 28C32 28 30 24 30 24C30 24 28 28 24 28C28 28 30 32 30 32Z" fill="#f7bc65"></path>
+<path d="M88 78C88 78 89.5 75 92.5 75C89.5 75 88 72 88 72C88 72 86.5 75 83.5 75C86.5 75 88 78 88 78Z" fill="#ff866b"></path>
+</svg>
+</div>
+<!-- Empathetic Headline -->
+<h2 class="font-headline-md text-headline-md text-on-surface mt-2 mb-2">
+        Bạn chưa có trang ghi chép riêng nào
+      </h2>
+<!-- Reassuring, guilt-free description -->
+<p class="font-body-md text-body-md text-on-surface-variant max-w-xs leading-relaxed mb-6">
+        Đây là góc nhỏ để bạn lắng nghe chính mình. Bạn có thể viết vài dòng bất cứ khi nào thấy sẵn sàng. Mọi điều bạn viết tại đây đều được giữ riêng tư trọn vẹn.
+      </p>
+<!-- Privacy trust badge -->
+<div class="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-surface-container text-on-surface-variant mb-6 shadow-sm">
+<span class="material-symbols-outlined text-[16px] text-primary" style="font-variation-settings: 'FILL' 1;">lock</span>
+<span class="font-caption text-caption">Mã hóa cục bộ &amp; bảo mật một chiều</span>
+</div>
+<!-- Action Button -->
+<button class="w-full h-12 bg-primary-container text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center space-x-2 shadow-md active:opacity-90 transition-transform active:scale-[0.99]" onclick="focusWritingArea()">
+<span class="material-symbols-outlined text-[20px]">edit</span>
+<span>Bắt đầu viết trang đầu tiên</span>
+</button>
+</div>
+<!-- Interactive Mock Writing Area that gains focus -->
+<div class="w-full mt-5 bg-surface-container-lowest rounded-xl p-4 shadow-sm flex flex-col space-y-3" id="mock-writing-box">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<div class="w-2.5 h-2.5 rounded-full bg-secondary-container"></div>
+<span class="font-label-md text-label-md text-on-surface">Khung soạn nháp an toàn</span>
+</div>
+<span class="font-metadata text-metadata text-outline">Chỉ mình bạn xem</span>
+</div>
+<textarea class="w-full bg-surface-container-low text-on-surface rounded-lg p-3.5 font-body-lg text-body-lg placeholder:text-outline focus:outline-none focus:bg-surface-container transition-all resize-none" id="private-note-input" placeholder="Hôm nay bạn cảm thấy thế nào? Bạn có thể trải lòng tại đây..." rows="4"></textarea>
+<div class="flex items-center justify-between pt-1">
+<span class="font-metadata text-metadata text-on-surface-variant flex items-center space-x-1">
+<span class="material-symbols-outlined text-[15px] text-tertiary">offline_pin</span>
+<span>Tự động lưu tạm IndexedDB</span>
+</span>
+<button class="px-4 py-2 bg-primary text-on-primary rounded-lg font-label-md text-label-md shadow-sm active:opacity-90" onclick="simulateSaveTrigger()">
+          Lưu riêng tư
+        </button>
+</div>
+</div>
+</section>
+<!-- SCENARIO 2: Network Timeout / Failure State (No data loss commitment) -->
+<section class="hidden flex flex-col w-full space-y-4 transition-opacity duration-300" id="scenario-error-container">
+<!-- Main Network Failure Alert Card -->
+<div class="w-full bg-surface-container-lowest rounded-xl p-5 shadow-md flex flex-col space-y-4">
+<!-- Header with Status Icon -->
+<div class="flex items-start space-x-3.5">
+<div class="w-11 h-11 rounded-full bg-error-container text-on-error-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[24px]">wifi_off</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex items-center space-x-2">
+<h2 class="font-headline-sm text-headline-sm text-on-surface truncate">
+              Kết nối mạng bị gián đoạn
+            </h2>
+</div>
+<p class="font-caption text-caption text-on-surface-variant mt-0.5">
+            Không thể đồng bộ với máy chủ vào lúc 16:42
+          </p>
+</div>
+</div>
+<!-- Ironclad Data Preservation Guarantee -->
+<div class="w-full bg-surface-container-high rounded-xl p-3.5 flex items-start space-x-3">
+<span class="material-symbols-outlined text-primary text-[22px] shrink-0 mt-0.5" style="font-variation-settings: 'FILL' 1;">verified_user</span>
+<div class="flex-1 flex flex-col space-y-1">
+<span class="font-label-md text-label-md text-on-surface">Cam kết bảo toàn dữ liệu chữ</span>
+<p class="font-body-md text-body-md text-on-surface-variant leading-relaxed">
+            Nội dung ghi chép của bạn đã được lưu tạm an toàn trong bộ nhớ máy (<span class="font-medium text-primary">IndexedDB</span>). Bạn không bị mất chữ vừa nhập.
+          </p>
+</div>
+</div>
+<!-- Preview of Preserved Draft snippet -->
+<div class="bg-surface-container-low rounded-lg p-3 text-on-surface-variant font-body-md text-body-md italic flex items-center justify-between">
+<div class="truncate pr-2">
+          “Chiều nay con có bài kiểm tra toán, có chút hồi hộp nhưng...”
+        </div>
+<span class="font-metadata text-metadata text-outline shrink-0 not-italic bg-surface-container-lowest px-2 py-0.5 rounded">142 ký tự</span>
+</div>
+<!-- Safe Handling Guidelines: No silent auto-retry note -->
+<div class="flex items-center space-x-2 text-outline px-1">
+<span class="material-symbols-outlined text-[16px]">info</span>
+<span class="font-metadata text-metadata">Không tự động gửi lại trong nền để tránh trùng lặp ghi chép.</span>
+</div>
+<!-- Dual Action Resolution Buttons -->
+<div class="flex flex-col space-y-2.5 pt-1">
+<!-- Primary Action: Manual explicit retry -->
+<button class="w-full h-12 bg-primary-container text-on-primary rounded-xl font-label-lg text-label-lg flex items-center justify-center space-x-2 shadow-sm active:opacity-90 transition-all" id="btn-retry-save" onclick="handleManualRetry()">
+<span class="material-symbols-outlined text-[20px]">refresh</span>
+<span>Thử lưu lại ngay</span>
+</button>
+<!-- Secondary Action: Keep draft offline -->
+<button class="w-full h-12 bg-surface-container text-on-surface rounded-xl font-label-lg text-label-lg flex items-center justify-center space-x-2 active:bg-surface-variant transition-colors" id="btn-keep-draft" onclick="handleKeepDraftOffline()">
+<span class="material-symbols-outlined text-[20px]">save_as</span>
+<span>Giữ bản nháp trên máy này</span>
+</button>
+</div>
+</div>
+<!-- Notification Toast (Appears on click) -->
+<div class="hidden w-full bg-inverse-surface text-inverse-on-surface p-3.5 rounded-xl shadow-lg flex items-center space-x-3 transition-transform" id="draft-saved-toast">
+<span class="material-symbols-outlined text-secondary-container text-[20px]">check_circle</span>
+<span class="font-body-md text-body-md flex-1">Đã chốt bản nháp vào bộ nhớ an toàn. Bạn có thể yên tâm quay lại sau.</span>
+</div>
+</section>
+<!-- SCENARIO 3: Data Limitation Note (Tail of the List) -->
+<section class="w-full bg-surface-container-low rounded-xl p-4 shadow-sm flex flex-col space-y-2">
+<div class="flex items-start space-x-3">
+<div class="w-8 h-8 rounded-full bg-surface-container flex items-center justify-center shrink-0 mt-0.5">
+<span class="material-symbols-outlined text-tertiary text-[18px]">history_toggle_off</span>
+</div>
+<div class="flex-1">
+<h3 class="font-label-md text-label-md text-on-surface">Giới hạn hiển thị 20 trang gần nhất</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mt-1 leading-relaxed">
+          Hệ thống đang hiển thị 20 trang ghi chép gần nhất để đảm bảo tốc độ phản hồi mượt mà trên Zalo Mini App. Toàn bộ dữ liệu cũ hơn vẫn được lưu trữ an toàn trong tài khoản của bạn.
+        </p>
+</div>
+</div>
+<!-- Explicit reassurance: no fake load button -->
+<div class="pt-2 flex items-center justify-between text-outline text-metadata font-metadata">
+<span class="flex items-center space-x-1">
+<span class="material-symbols-outlined text-[14px]">cloud_done</span>
+<span>Đã đồng bộ máy chủ toàn diện</span>
+</span>
+<span>Trang 1 / 1 (20 mục)</span>
+</div>
+</section>
+<!-- Technical Handover & Spec Documentation (M16 Delivery Specs) -->
+<section class="w-full bg-surface-container-lowest rounded-xl p-5 shadow-sm flex flex-col space-y-4">
+<div class="flex items-center justify-between">
+<div class="flex items-center space-x-2">
+<div class="w-7 h-7 rounded-lg bg-surface-variant text-on-secondary-container flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">terminal</span>
+</div>
+<h3 class="font-title-md text-title-md text-on-surface">Bảng thông số kỹ thuật M16</h3>
+</div>
+<span class="font-metadata text-metadata text-primary bg-primary-fixed px-2 py-0.5 rounded-full">Zalo SDK v2.x</span>
+</div>
+<div class="space-y-3">
+<!-- Spec Item 1: Insets -->
+<div class="p-3 bg-surface-container-low rounded-lg flex flex-col space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface">1. Safe-Area Navigation Insets</span>
+<span class="font-metadata text-metadata text-primary font-mono">env(safe-area-inset-*)</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+          Xử lý top padding bằng header shell cố định (56px) tránh tai thỏ. Đáy màn hình tính toán dự phòng 56px + safe-area-bottom để tab bar Zalo không đè lên nút hành động.
+        </p>
+</div>
+<!-- Spec Item 2: Offline-First Engine -->
+<div class="p-3 bg-surface-container-low rounded-lg flex flex-col space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface">2. Cơ chế Offline-First</span>
+<span class="font-metadata text-metadata text-tertiary font-mono">zalo.setStorage / IDB</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+          Mọi ký tự gõ được snapshot vào IndexedDB theo chu kỳ 1.5s debounced. Khi phát hiện network timeout (HTTP 408 / Offline event), kích hoạt cờ trạng thái tại chỗ, tuyệt đối không gửi ngầm nền tránh nhân đôi dữ liệu nhạy cảm.
+        </p>
+</div>
+<!-- Spec Item 3: Typography & Ergonomics -->
+<div class="p-3 bg-surface-container-low rounded-lg flex flex-col space-y-1">
+<div class="flex items-center justify-between">
+<span class="font-label-md text-label-md text-on-surface">3. Công thái học thị giác</span>
+<span class="font-metadata text-metadata text-secondary font-mono">Be Vietnam Pro 16px</span>
+</div>
+<p class="font-caption text-caption text-on-surface-variant leading-relaxed">
+          Toàn bộ input body text áp dụng cỡ 16px tiêu chuẩn (line-height 26px) giúp phụ huynh lớn tuổi đọc rõ ràng mà học sinh không bị cảm giác ngột ngạt khi viết nhật ký cảm xúc dài.
+        </p>
+</div>
+</div>
+</section>
+</div>
+<script>
+  function switchEdgeScenario(type) {
+    const emptyContainer = document.getElementById('scenario-empty-container');
+    const errorContainer = document.getElementById('scenario-error-container');
+    const btnEmpty = document.getElementById('btn-state-empty');
+    const btnError = document.getElementById('btn-state-error');
+
+    if (type === 'empty') {
+      emptyContainer.classList.remove('hidden');
+      errorContainer.classList.add('hidden');
+      btnEmpty.className = 'py-2 px-3 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1.5 transition-all bg-primary-container text-on-primary shadow-sm';
+      btnError.className = 'py-2 px-3 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1.5 transition-all bg-surface-container text-on-surface hover:bg-surface-variant';
+    } else {
+      emptyContainer.classList.add('hidden');
+      errorContainer.classList.remove('hidden');
+      btnError.className = 'py-2 px-3 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1.5 transition-all bg-primary-container text-on-primary shadow-sm';
+      btnEmpty.className = 'py-2 px-3 rounded-lg font-label-md text-label-md flex items-center justify-center space-x-1.5 transition-all bg-surface-container text-on-surface hover:bg-surface-variant';
+    }
+  }
+
+  function focusWritingArea() {
+    const input = document.getElementById('private-note-input');
+    const box = document.getElementById('mock-writing-box');
+    if (input) {
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      input.focus();
+    }
+  }
+
+  function simulateSaveTrigger() {
+    // When user tries to save during testing, switch to network failure scenario gracefully
+    switchEdgeScenario('error');
+  }
+
+  function handleManualRetry() {
+    const retryBtn = document.getElementById('btn-retry-save');
+    const originalContent = retryBtn.innerHTML;
+    retryBtn.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span><span>Đang kết nối lại...</span>';
+    retryBtn.disabled = true;
+
+    setTimeout(() => {
+      retryBtn.innerHTML = originalContent;
+      retryBtn.disabled = false;
+      alert('Đang mô phỏng: Đường truyền vẫn chưa ổn định. Bản nháp tiếp tục được neo giữ an toàn tại IndexedDB trên máy của bạn.');
+    }, 1200);
+  }
+
+  function handleKeepDraftOffline() {
+    const toast = document.getElementById('draft-saved-toast');
+    if (toast) {
+      toast.classList.remove('hidden');
+      setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 3500);
+    }
+  }
+</script></main></body></html>

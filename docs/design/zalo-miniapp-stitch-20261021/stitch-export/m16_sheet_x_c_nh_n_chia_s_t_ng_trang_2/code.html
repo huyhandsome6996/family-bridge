@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" name="viewport"/>
+<meta content="mobile_stack" name="shell-type"/>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "on-primary": "#ffffff",
+            "on-surface": "#360f07",
+            "surface": "#fff8f6",
+            "surface-variant": "#ffdad3",
+            "background": "#fff8f6",
+            "surface-container": "#ffe9e5",
+            "surface-container-low": "#fff0ee",
+            "surface-container-lowest": "#ffffff",
+            "surface-container-high": "#ffe2dc",
+            "outline-variant": "#ddc0ba",
+            "primary-container": "#a84733",
+            "outline": "#89726d",
+            "primary": "#89301e",
+            "secondary": "#a03f2a",
+            "on-secondary-container": "#713d32"
+          },
+          fontFamily: {
+            sans: ["Be Vietnam Pro", "sans-serif"]
+          }
+        }
+      }
+    }
+  </script>
+<style>
+    @layer base {
+      html, body {
+        width: 100%;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        overscroll-behavior: none;
+      }
+      .pb-safe {
+        padding-bottom: env(safe-area-inset-bottom, 16px);
+      }
+      .pt-safe {
+        padding-top: env(safe-area-inset-top, 20px);
+      }
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-surface font-sans text-on-surface min-h-screen relative flex flex-col justify-end overflow-hidden antialiased select-none">
+<!-- Lớp nền mô phỏng giao diện /privacy-items bên dưới -->
+<div aria-hidden="true" class="absolute inset-0 z-0 bg-[#FFF8F6] overflow-hidden filter blur-[2px] opacity-70 pointer-events-none">
+<!-- Top bar giả lập -->
+<div class="pt-safe px-4 h-14 flex items-center justify-between border-b border-[#ddc0ba]/40 bg-[#fff8f6]">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[24px] text-on-surface">arrow_back</span>
+<span class="font-semibold text-[17px] text-on-surface">Mục chia sẻ riêng tư</span>
+</div>
+<span class="material-symbols-outlined text-[24px] text-on-surface">tune</span>
+</div>
+<!-- List item giả lập -->
+<div class="p-4 space-y-3">
+<div class="p-4 rounded-xl bg-white border border-[#E8D5CE] shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-semibold text-[#89301E]">Trang riêng #01</span>
+<span class="text-xs text-gray-500">12/10/2023</span>
+</div>
+<p class="text-sm text-gray-800 font-medium">Kế hoạch thi học kỳ &amp; ước mơ đại học</p>
+<p class="text-xs text-gray-500 mt-1 line-clamp-2">Con muốn thử sức với ngành mỹ thuật số, dù biết ba mẹ có phần lo lắng...</p>
+</div>
+<div class="p-4 rounded-xl bg-white border-2 border-[#A84733] shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-semibold text-[#89301E]">Trang riêng #02</span>
+<span class="text-xs text-[#89301E] font-medium">Đang chọn chia sẻ</span>
+</div>
+<p class="text-sm text-gray-800 font-semibold">Những điều muốn nói nhưng chưa dám</p>
+</div>
+<div class="p-4 rounded-xl bg-white border border-[#E8D5CE] shadow-sm">
+<div class="flex justify-between items-center mb-1">
+<span class="text-xs font-semibold text-gray-600">Trang riêng #03</span>
+<span class="text-xs text-gray-500">25/10/2023</span>
+</div>
+<p class="text-sm text-gray-800 font-medium">Nhật ký cảm xúc sau buổi họp phụ huynh</p>
+</div>
+</div>
+</div>
+<!-- 1. Màn hình mờ tối (Dark Overlay 50% opacity) -->
+<div class="fixed inset-0 z-20 bg-black/50 transition-opacity"></div>
+<!-- 2. Bottom Sheet màu trắng ngà (#FFF8F6) -->
+<div class="relative z-30 w-full bg-[#FFF8F6] rounded-t-[24px] shadow-2xl flex flex-col max-h-[92vh] border-t border-[#E8D5CE]">
+<!-- Thanh kéo (Pull-handle) -->
+<div class="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing shrink-0">
+<div class="w-12 h-1.5 bg-[#89726D]/30 rounded-full"></div>
+</div>
+<!-- Tiêu đề & Nút đóng -->
+<div class="px-5 pt-2 pb-3 flex items-start justify-between shrink-0">
+<div class="flex-1 pr-3">
+<h2 class="text-[19px] leading-tight font-bold text-[#360F07]">
+          Xác nhận chia sẻ trang ghi chép
+        </h2>
+<p class="text-[13px] leading-snug text-[#713D32]/80 mt-1">
+          Vui lòng đọc lại toàn bộ bản mới nhất trước khi quyết định gửi.
+        </p>
+</div>
+<button aria-label="Đóng" class="w-8 h-8 rounded-full bg-[#FFE9E5] hover:bg-[#FFDAD3] flex items-center justify-center text-[#713D32] transition-colors shrink-0" onclick="history.back()" type="button">
+<span class="material-symbols-outlined text-[19px]">close</span>
+</button>
+</div>
+<!-- Nội dung cuộn mượt mà -->
+<div class="flex-1 overflow-y-auto px-5 space-y-3.5 pb-3">
+<!-- 3. Thẻ toàn văn nội dung (Full Inspection Card) -->
+<section class="bg-white rounded-[12px] border border-[#E8D5CE] p-4 shadow-sm relative">
+<div class="flex items-center justify-between gap-2 mb-2">
+<div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#FFE9E5] text-[#89301E] text-[12px] font-semibold">
+<span class="material-symbols-outlined text-[15px]" style="font-variation-settings: 'FILL' 1;">menu_book</span>
+<span>Trang riêng #02</span>
+</div>
+<span class="text-[12px] text-[#713D32]/75 font-medium">20/10/2023</span>
+</div>
+<h3 class="text-[16px] font-bold text-[#360F07] leading-snug mb-2.5">
+          Những điều muốn nói nhưng chưa dám
+        </h3>
+<!-- Khung nội dung trích xuất -->
+<div class="bg-[#FFF8F6] rounded-[8px] p-3 text-[14px] leading-relaxed text-[#360F07] border border-[#E8D5CE]/60 relative">
+<span class="material-symbols-outlined text-[#89726D]/20 text-[28px] absolute top-2 right-2 pointer-events-none">format_quote</span>
+          "Có những lúc mình chỉ mong ba mẹ nghe hết câu chuyện mà không vội vàng đưa ra lời khuyên hay so sánh với bạn khác. Hôm nay con viết những dòng này chỉ để giải tỏa bớt áp lực trong lòng, mong mẹ hiểu thêm về cảm xúc của con lúc này."
+        </div>
+</section>
+<!-- 4. Thẻ người nhận & Cam kết cô lập quyền riêng tư -->
+<section class="space-y-2.5">
+<!-- Người nhận -->
+<div class="bg-white rounded-[12px] border border-[#E8D5CE] p-3.5 flex items-center justify-between shadow-sm">
+<div class="flex items-center gap-3">
+<div class="relative w-11 h-11 rounded-full overflow-hidden shrink-0 bg-[#FFDAD3]">
+<img alt="Mẹ (Nguyễn Thị Mai)" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB-oWj3WYp8QPuJL-IS9aK9MxLw3RNePNKAqxFU9SvfAgmvkGQ2s8DBdWQlwXw_cbY1AiY8vC8MZGEB4FV6NsG0wcuq59XNc8jeKGPzc2-PEvz4-rxB6lPl9P5TNHkI-y-1hkhryYh_jf-3U5oa44KgVIa_u-8xdhpBYUWcgN_JNKNXekLrrZ1WKxC8LF5C7aHJDKJ3qN70cH0uvV6nuO1T7yPZP_UIz4Mm_48j5apSvCW0uiTz7ULT"/>
+<div class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-[#89301E] rounded-full flex items-center justify-center">
+<span class="material-symbols-outlined text-white text-[9px]">family_restroom</span>
+</div>
+</div>
+<div>
+<div class="flex items-center gap-1.5">
+<h4 class="text-[14px] font-bold text-[#360F07]">Mẹ (Nguyễn Thị Mai)</h4>
+<span class="material-symbols-outlined text-[#89301E] text-[15px]" style="font-variation-settings: 'FILL' 1;">favorite</span>
+</div>
+<p class="text-[12px] text-[#713D32]/80">Tài khoản gia đình đã kết nối an toàn</p>
+</div>
+</div>
+<span class="material-symbols-outlined text-[#89726D] text-[20px]">verified_user</span>
+</div>
+<!-- Hộp cam kết cô lập -->
+<div class="bg-[#FFE9E5] rounded-[12px] p-3.5 border border-[#E8D5CE]/80 text-[13px] leading-relaxed text-[#360F07]">
+<p class="font-medium">
+<span class="mr-1">🔒</span>
+<span class="font-bold text-[#89301E]">Cam kết minh bạch:</span> CHỈ DUY NHẤT trang này được chia sẻ tới Mẹ Lan. Toàn bộ các trang ghi chép khác, nhật ký cá nhân và lịch sử tâm trạng vẫn ở chế độ riêng tư 100%. Bạn có thể thu hồi quyền đọc của trang này bất cứ lúc nào.
+          </p>
+</div>
+</section>
+<!-- 6. Ghi chú kỹ thuật bàn giao M16 ở chân màn hình -->
+<aside class="bg-[#FFF0EE] rounded-[10px] p-3 border border-[#E8D5CE]/60 text-[11px] leading-normal text-[#713D32]/85 space-y-1">
+<div class="flex items-center gap-1.5 font-bold text-[#89301E] uppercase tracking-wide text-[10.5px]">
+<span class="material-symbols-outlined text-[13px]">terminal</span>
+<span>Đặc tả kỹ thuật bàn giao M16 (Zalo Mini App)</span>
+</div>
+<p>• <strong>Cơ chế truyền 1 chiều:</strong> Tạo bản sao tĩnh (Snapshot) ngay lúc gửi; không tự động sync các chỉnh sửa về sau của con.</p>
+<p>• <strong>Kiểm soát Idempotency:</strong> Khóa token giao dịch <code class="bg-[#FFDAD3]/60 px-1 py-0.5 rounded font-mono text-[10px] text-[#360F07]">share_page_02_token</code> tránh kích hoạt gửi trùng lặp.</p>
+</aside>
+</div>
+<!-- 5. Hai nút hành động kép -->
+<div class="px-5 pt-3 pb-safe bg-[#FFF8F6] border-t border-[#E8D5CE]/60 shrink-0 space-y-2">
+<!-- Nút chính: Terracotta #A84733, chữ #FFF4E8, cao 48px, bo 12px -->
+<button class="w-full h-[48px] bg-[#A84733] hover:bg-[#89301E] active:scale-[0.99] text-[#FFF4E8] rounded-[12px] font-semibold text-[15px] flex items-center justify-center gap-2 shadow-sm transition-all" id="btn-confirm-share" type="button">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">send</span>
+<span>Xác nhận chia sẻ trang này cho Mẹ Lan</span>
+</button>
+<!-- Nút phụ: #F5E5DF, chữ #713D32, cao 48px, bo 12px -->
+<button class="w-full h-[48px] bg-[#F5E5DF] hover:bg-[#EBD8D1] active:scale-[0.99] text-[#713D32] rounded-[12px] font-semibold text-[15px] flex items-center justify-center gap-2 transition-all" onclick="history.back()" type="button">
+<span class="material-symbols-outlined text-[19px]">lock</span>
+<span>Giữ lại riêng tư, chưa chia sẻ</span>
+</button>
+</div>
+</div>
+<script>
+    (function () {
+      const btnConfirm = document.getElementById('btn-confirm-share');
+      if (btnConfirm) {
+        btnConfirm.addEventListener('click', function () {
+          this.disabled = true;
+          this.innerHTML = '<span class="material-symbols-outlined text-[20px] animate-spin">progress_activity</span><span>Đang chia sẻ an toàn...</span>';
+          setTimeout(() => {
+            this.innerHTML = '<span class="material-symbols-outlined text-[20px]">check_circle</span><span>Đã chia sẻ thành công tới Mẹ Lan</span>';
+            setTimeout(() => {
+              if (window.history.length > 1) {
+                window.history.back();
+              }
+            }, 600);
+          }, 800);
+        });
+      }
+    })();
+  </script>
+</body></html>
