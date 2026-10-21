@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
+import { requireApiBaseUrl } from "./scripts/build-config.mjs";
 
 // __APP_VERSION__ — nhúng phiên bản package.json vào bundle (hiện ở sidebar
 // shell + trang help). Chỉ đọc khi build; không phải biến môi trường secret.
@@ -42,23 +43,39 @@ function zaloManifest() {
   };
 }
 
-export default defineConfig({
-  root: ".",
-  base: "./",
-  plugins: [zaloManifest()],
-  define: appVersion(),
-  build: {
-    outDir: "www",
-    assetsInlineLimit: 0,
-    target: "es2020",
-    cssTarget: "safari13.1",
-    modulePreload: false,
-    rollupOptions: {
-      output: {
-        entryFileNames: "assets/app.module.js",
-        chunkFileNames: "assets/[name]-[hash].module.js",
-        assetFileNames: "assets/[name][extname]",
+export default defineConfig(({ command, mode }) => {
+  // loadEnv respects Vite's shell > mode file > .env precedence, including
+  // an explicitly empty shell value. .env.example is never loaded.
+  const apiBaseUrl = command === "build"
+    ? requireApiBaseUrl(loadEnv(mode, process.cwd(), "VITE_").VITE_API_BASE_URL)
+    : null;
+  return {
+    root: ".",
+    base: "./",
+    plugins: [zaloManifest(), {
+      name: "family-bridge-build-info",
+      generateBundle() {
+        this.emitFile({ type: "asset", fileName: "build-info.json",
+          source: JSON.stringify({ apiBaseUrl, mode }) });
+      },
+    }],
+    define: {
+      ...appVersion(),
+      ...(apiBaseUrl ? { "import.meta.env.VITE_API_BASE_URL": JSON.stringify(apiBaseUrl) } : {}),
+    },
+    build: {
+      outDir: "www",
+      assetsInlineLimit: 0,
+      target: "es2020",
+      cssTarget: "safari13.1",
+      modulePreload: false,
+      rollupOptions: {
+        output: {
+          entryFileNames: "assets/app.module.js",
+          chunkFileNames: "assets/[name]-[hash].module.js",
+          assetFileNames: "assets/[name][extname]",
+        },
       },
     },
-  },
+  };
 });

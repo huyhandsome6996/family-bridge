@@ -47,7 +47,7 @@ function makeTempApp({ withSession }) {
   const tmp = path.join(APP_DIR, ".f15-artifact-case");
   fs.rmSync(tmp, { recursive: true, force: true });
   fs.mkdirSync(tmp, { recursive: true });
-  for (const entry of ["src", "index.html", "vite.config.mjs",
+  for (const entry of ["src", "scripts", "index.html", "vite.config.mjs",
                        "package.json", "app-config.json"]) {
     fs.cpSync(path.join(APP_DIR, entry), path.join(tmp, entry),
               { recursive: true });
@@ -73,7 +73,8 @@ function makeTempApp({ withSession }) {
 function buildApp(tmp) {
   const bin = path.join(APP_DIR, "node_modules", "vite", "bin", "vite.js");
   execFileSync(process.execPath, [bin, "build", "--outDir", "www-artifact-test",
-                     "--emptyOutDir"], { cwd: tmp, stdio: "pipe" });
+                     "--emptyOutDir"], { cwd: tmp, stdio: "pipe",
+    env: { ...process.env, VITE_API_BASE_URL: "https://api.example.com" } });
   return path.join(tmp, "www-artifact-test");
 }
 

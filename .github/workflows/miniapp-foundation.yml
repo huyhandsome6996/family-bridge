@@ -43,6 +43,8 @@ jobs:
         run: npm test
 
       - name: Production build + verify Zalo manifest
+        env:
+          VITE_API_BASE_URL: https://family-bridge-backend.onrender.com
         run: npm run build
 
       - name: Scan staged bundle for secrets

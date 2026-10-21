@@ -77,6 +77,11 @@ jobs:
       - name: Mini App QA tests (happy-dom)
         working-directory: zalo-mini-app
         run: node --test tests/*.test.mjs
+      - name: Build and verify Mini App production bundle
+        working-directory: zalo-mini-app
+        env:
+          VITE_API_BASE_URL: https://family-bridge-backend.onrender.com
+        run: npm run build
 
   # W1-c (web-miniapp-separation, ADR-4): job web — tests + build của frontend
   # web độc lập, tests shared package, và kiểm chứng biên giới import
