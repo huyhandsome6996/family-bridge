@@ -18,12 +18,15 @@ Contract (frozen v1 C5):
 
 from __future__ import annotations
 
+import logging
 from typing import Any, Optional
 
 from .gemini import (
     ALLOWED_GEMINI_MODELS, DEFAULT_GEMINI_MODEL, GeminiProvider,
 )
 from . import registry
+
+logger = logging.getLogger(__name__)
 
 
 def build_provider_from_settings(dj_settings: Any) -> Optional[GeminiProvider]:
@@ -66,7 +69,16 @@ def configure_from_settings() -> bool:
     from django.conf import settings
 
     provider = build_provider_from_settings(settings)
-    if provider is None:
-        return False
-    registry.register_ai_provider(provider)
-    return True
+    if provider is not None:
+        registry.register_ai_provider(provider)
+    # Operational diagnosis only: never log key/model values or private text,
+    # and never probe the provider during Django boot/migrate/health.
+    logger.info(
+        "F04 AI configuration: enabled=%s key_present=%s model_supported=%s provider_wired=%s",
+        bool(getattr(settings, "FB_AI_ENABLED", False)),
+        bool(str(getattr(settings, "GEMINI_API_KEY", "") or "").strip()),
+        (getattr(settings, "GEMINI_MODEL", "") or DEFAULT_GEMINI_MODEL)
+        in ALLOWED_GEMINI_MODELS,
+        provider is not None,
+    )
+    return provider is not None
