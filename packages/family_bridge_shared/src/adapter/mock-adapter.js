@@ -1067,7 +1067,7 @@ export function createMockAdapter({ scenario = null } = {}) {
 
     async lookupOperation(key) {
       await wait(100);
-      return { status: "sent", key, source: "fixture" };
+      return { state: "sent", status: "sent", idempotency_key: key, key, source: "fixture" };
     },
 
     async listCards({ group = null } = {}) {

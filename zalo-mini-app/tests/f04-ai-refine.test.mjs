@@ -169,7 +169,7 @@ function createAdapter(behavior = {}) {
       created_at: "2026-10-16T00:00:00Z",
     }),
     markMessageRead: async () => ({ read: true }),
-    lookupOperation: async (key) => ({ status: "sent", key }),
+    lookupOperation: async (key) => ({ state: "sent", status: "sent", key }),
   };
   return { adapter, calls };
 }

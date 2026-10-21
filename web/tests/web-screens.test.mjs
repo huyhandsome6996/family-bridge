@@ -176,7 +176,7 @@ function fakeWebAdapter({
     lookupOperation: async (key) => {
       behavior.lookupCalls = behavior.lookupCalls || [];
       behavior.lookupCalls.push(key);
-      return behavior.lookupResult || { status: "sent", key };
+      return behavior.lookupResult || { state: "sent", status: "sent", key };
     },
     // ---- M4: F10 tín hiệu + F04 AI ----
     signalMeta: async () => ({ needs }),
@@ -1121,7 +1121,7 @@ function mailAdapter({ rows = MAIL_MESSAGES, connections = [MAIL_CONNECTION], be
     lookupOperation: async (key) => {
       behavior.lookupCalls = behavior.lookupCalls || [];
       behavior.lookupCalls.push(key);
-      return behavior.lookupResult || { status: "sent", key };
+      return behavior.lookupResult || { state: "sent", status: "sent", key };
     },
     aiStatus: async () => behavior.aiStatusResult || { ai_enabled: false },
     // F04: consent gate (C3) — mặc định đã cấp quyền ai_processing cho luồng
@@ -1386,7 +1386,7 @@ describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", 
     unmount(host);
   });
 
-  it("thư gửi đi (sent + đã đọc): KHÔNG gọi markMessageRead; bong bóng --sent", async () => {
+  it("thư gửi đi (sent + đã đọc): KHÔNG gọi markMessageRead; bong bóng --sent; KHÔNG composer/nút/AI (R01)", async () => {
     withSession();
     const behavior = {};
     const { ctx } = makeCtx({
@@ -1396,6 +1396,51 @@ describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", 
     await wait(90);
     assert.ok(el.querySelector(".fb-msg-bubble--sent"), "thư gửi -> bong bóng sent");
     assert.deepEqual(behavior.markReadCalls || [], [], "sent: tuyệt đối không markRead");
+    assert.ok(!el.querySelector("textarea"), "sent: tuyệt đối KHÔNG có textarea phản hồi (R01)");
+    assert.ok(!findButton(el, "Gửi phản hồi"), "sent: tuyệt đối KHÔNG có nút Gửi phản hồi");
+    assert.ok(!findButton(el, "AI gợi ý cách diễn đạt êm ái hơn"), "sent: tuyệt đối KHÔNG có nút AI");
+    assert.ok(!el.querySelector(".fb-msg-compose"), "sent: tuyệt đối KHÔNG có khung compose");
+    assert.ok(textOf(el).includes("Đây là thư bạn đã gửi đi"), "sent: thông báo thư đã gửi");
+    unmount(host);
+  });
+
+  it("direction không hợp lệ hoặc thiếu thông tin -> fail-closed, không composer/mutation (T10)", async () => {
+    withSession();
+    const badThread = { message_id: "m-bad", direction: null, counterparty_id: null, body: "test" };
+    const behavior = {};
+    const adapter = mailAdapter({ behavior });
+    adapter.getMessage = async () => badThread;
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter, params: "id=m-bad",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    assert.ok(!el.querySelector("textarea"), "fail-closed: không có textarea");
+    assert.ok(!findButton(el, "Gửi phản hồi"), "fail-closed: không có nút gửi");
+    assert.ok(textOf(el).includes("Dữ liệu thư không hợp lệ"), "thông báo dữ liệu không hợp lệ");
+    unmount(host);
+  });
+
+  it("lỗi từ chối xác định 404 reply_target_not_found -> giữ lời soạn, KHÔNG nói 'có thể đã gửi', không lookup (T11)", async () => {
+    withSession();
+    const err = new ApiError("Không tìm thấy thư để hồi âm.", 404, "http");
+    err.details = { reason: "reply_target_not_found" };
+    const behavior = { sendError: err };
+    const { ctx } = makeCtx({
+      demo: false, role: "student", adapter: mailAdapter({ behavior }), params: "id=m-1",
+    });
+    const { host, el } = mount(messagePage, ctx);
+    await wait(60);
+    const textarea = el.querySelector("textarea");
+    textarea.value = "Lời phản hồi thử nghiệm.";
+    textarea.dispatchEvent(new Event("input", { bubbles: true }));
+    findButton(el, "Gửi phản hồi").click();
+    await wait(30);
+    const text = textOf(el);
+    assert.ok(!text.includes("KẾT QUẢ CHƯA XÁC ĐỊNH"), "lỗi xác định: KHÔNG được báo 'kết quả chưa xác định'");
+    assert.ok(!text.includes("máy chủ có thể đã nhận thư"), "lỗi xác định: KHÔNG gợi ý máy chủ đã nhận");
+    assert.equal(textarea.value, "Lời phản hồi thử nghiệm.", "giữ nguyên lời đang soạn trong textarea");
+    assert.ok(!findButton(el, "Kiểm tra trạng thái gửi"), "lỗi xác định: không cần tra cứu operation");
     unmount(host);
   });
 
@@ -1488,6 +1533,7 @@ describe("Web M5a — message (w15): chi tiết + phản hồi qua API thật", 
     await wait(30);
     assert.equal(behavior.lookupCalls.length, 1, "lookup đúng 1 lần");
     assert.equal(behavior.lookupCalls[0], behavior.sendCalls[0].key, "lookup đúng key lượt gửi");
+    assert.ok(textOf(el).includes("Máy chủ xác nhận lượt gửi này thành công"), "lookup state sent hiển thị thành công (R03/T12)");
     unmount(host);
   });
 

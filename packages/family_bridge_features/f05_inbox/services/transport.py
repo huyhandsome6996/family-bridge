@@ -97,7 +97,7 @@ class MessageTransportService:
         reply_to_id = None
         if reply_to:
             parent = Message.objects.filter(pk=reply_to).first()
-            if parent is None or str(parent.recipient_id) != str(sender_id):
+            if parent is None or str(parent.recipient_id) != str(sender_id) or str(parent.sender_id) != str(recipient_id):
                 raise NotFound({"reason": "reply_target_not_found"})
             reply_to_id = str(parent.pk)
 

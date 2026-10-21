@@ -70,7 +70,7 @@ HARNESS_DEPS = {
                     "f13_help"],
     "f07_mood": ["f01_identity", "f15_privacy"],
     "f08_journal": ["f01_identity", "f15_privacy"],
-    "f05_inbox": ["f01_identity"],
+    "f05_inbox": ["f01_identity", "f11_supporters"],
     "f03_cards": ["f01_identity", "f05_inbox"],
     "f04_ai": ["f01_identity", "f06_drafts"],
     "f06_drafts": ["f01_identity"],
@@ -141,6 +141,7 @@ else:
     raise RuntimeError(f"FB_TEST_DB must be sqlite or mysql, got {DB_ENGINE}")
 
 AUTH_USER_MODEL = "labusers.User"
+PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": ["harness.auth.AlwaysChallengeAuthentication"],

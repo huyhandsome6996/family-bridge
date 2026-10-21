@@ -155,6 +155,30 @@ class SendPathTests(F05Base):
                                       reply_to=parent.message_id))
         self.assertEqual(str(reply.reply_to), parent.message_id)
 
+        # sender cannot reply to own message (T07)
+        with self.assertRaises(NotFound):
+            self.service.send(sender_id=str(self.student.pk),
+                              recipient_id=str(self.caregiver.pk),
+                              kind="quick_reply", approved_body="tự phản hồi",
+                              idempotency_key=self.key + "self_reply",
+                              reply_to=parent.message_id,
+                              payload_hash_hex=self.hash_for(
+                                  kind="quick_reply",
+                                  recipient=self.caregiver,
+                                  body="tự phản hồi", reply_to=parent.message_id))
+
+        # recipient replies to M but recipient_id points to third party C (T08)
+        with self.assertRaises(NotFound):
+            self.service.send(sender_id=str(self.caregiver.pk),
+                              recipient_id=str(self.stranger.pk),
+                              kind="quick_reply", approved_body="gửi nhầm người",
+                              idempotency_key=self.key + "wrong_recipient",
+                              reply_to=parent.message_id,
+                              payload_hash_hex=self.hash_for(
+                                  kind="quick_reply",
+                                  recipient=self.stranger,
+                                  body="gửi nhầm người", reply_to=parent.message_id))
+
     def test_context_reply_requires_valid_share(self):
         item_id = uuid.uuid4()
         GrantRow.objects.create(item_type="journal_page", item_id=item_id,

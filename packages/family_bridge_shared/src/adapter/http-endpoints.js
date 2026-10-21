@@ -659,12 +659,20 @@ export function createHttpEndpoints({
       return data || { results: [] };
     },
 
-    /** GET /api/v1/operations/{key} — tra cứu kết quả khi mất response. */
+    /** GET /api/v1/operations/{key} — tra cứu kết quả khi mất response.
+     * Backend trả state: "sent" | "not_found"; chuẩn hóa cả state và status để tương thích đơn nguồn.
+     */
     async lookupOperation(key) {
       requireBaseUrl();
       const data = await authed(() =>
         request(`/api/v1/operations/${encodeURIComponent(key)}`));
-      return data; // { status: "sent" | ... }
+      if (!data) return data;
+      const state = data.state || data.status;
+      return {
+        ...data,
+        state,
+        status: state,
+      };
     },
 
     // ---------------------- Web (Task 2): F03 thẻ cảm xúc --------------------

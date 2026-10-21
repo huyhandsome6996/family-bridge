@@ -169,7 +169,7 @@ function createAdapter(behavior = {}) {
     sendMessage: async () => {
       throw new Error("compose KHÔNG được dùng sendMessage");
     },
-    lookupOperation: async (key) => ({ status: "sent", key }),
+    lookupOperation: async (key) => ({ state: "sent", status: "sent", key }),
   };
   return { adapter, calls, deferredPreviews, deferredEdits };
 }

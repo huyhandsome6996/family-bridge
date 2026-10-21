@@ -259,8 +259,20 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   );
 
   const messageId = String((thread && thread.message_id) || "");
-  const direction = thread && thread.direction === "sent" ? "sent" : "received";
+  const direction = thread && (thread.direction === "sent" || thread.direction === "received") ? thread.direction : null;
   const counterpartyId = String((thread && thread.counterparty_id) || "");
+
+  // R04 / T10: Dữ liệu thiếu hoặc direction không hợp lệ -> fail-closed, không tự suy ra received
+  if (!direction || !messageId || !counterpartyId) {
+    body.appendChild(
+      h("section", { class: "fb-scard fb-msg-invalid" },
+        h("p", { class: "fb-page__note", role: "status" },
+          "Dữ liệu thư không hợp lệ hoặc thiếu thông tin người nhận/gửi. Vui lòng quay lại Hộp thư và thử lại.")
+      )
+    );
+    return;
+  }
+
   const counterpartyName = (counterpartyId && namesById.get(counterpartyId))
     || "Thành viên Family Bridge";
   const kindLabel = KIND_LABELS[String((thread && thread.kind) || "")] || "Thư";
@@ -304,7 +316,16 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   );
   body.appendChild(threadCard);
 
-  // ---- Khung phản hồi: gợi ý nhanh + AI (tuỳ) + gửi có xác nhận ----
+  // R01 / T01 / T05: Thư gửi đi (direction === "sent") -> KHÔNG render composer, KHÔNG AI, KHÔNG gửi
+  if (direction === "sent") {
+    const sentNotice = h("section", { class: "fb-scard fb-msg-sent-notice" },
+      h("p", { class: "fb-sec__sub" }, "Đây là thư bạn đã gửi đi. Bạn có thể xem lại nội dung tại đây.")
+    );
+    body.appendChild(sentNotice);
+    return;
+  }
+
+  // ---- Khung phản hồi: CHỈ dành cho thư nhận (direction === "received") ----
   const composeCard = h("section", { class: "fb-scard fb-msg-compose" });
   composeCard.appendChild(h("h2", { class: "fb-scard__title" }, "Phản hồi thư này"));
   composeCard.appendChild(
@@ -365,6 +386,7 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
   });
 
   function onSend() {
+    if (direction !== "received") return;
     const text = textarea.value.trim();
     if (!text || sending.busy) return;
     sending.busy = true;
@@ -385,8 +407,28 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
         ctx.navigate("/mailbox");
       })
       .catch((error) => {
-        sending.busy = false;
-        sendBtn.disabled = false;
+        if (error && error.status === 401) {
+          ctx.navigate("/login?reason=expired");
+          return;
+        }
+
+        const isDeterministicRejection = error && typeof error.status === "number"
+          && error.status >= 400 && error.status < 500
+          && error.kind !== "timeout" && error.kind !== "network";
+
+        if (isDeterministicRejection) {
+          // R02 / T11: Lỗi từ chối xác định (400, 403, 404 reply_target_not_found)
+          // Giữ lời đang soạn trong textarea, cho phép người dùng sửa và thử lại; KHÔNG nói "có thể đã nhận".
+          sending.busy = false;
+          sendBtn.disabled = !textarea.value.trim();
+          statusNote.textContent = describeError(error, "Máy chủ từ chối gửi phản hồi.");
+          const oldLookup = composeCard.querySelector(".fb-msg-lookup");
+          if (oldLookup) oldLookup.remove();
+          return;
+        }
+
+        // R02 / T12: Tình huống không rõ kết quả (timeout, network, 5xx)
+        // Giữ busy, chặn bấm lại sinh key mới ngay mà phải tra cứu trước.
         statusNote.textContent = "KẾT QUẢ CHƯA XÁC ĐỊNH: máy chủ có thể đã nhận thư. "
           + "Kiểm tra trạng thái gửi trước khi thử lại — không gửi lại ngay. "
           + `(${describeError(error, "Không nhận được xác nhận từ máy chủ.")})`;
@@ -410,12 +452,23 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
     Promise.resolve()
       .then(() => ctx.adapter.lookupOperation(key))
       .then((result) => {
-        const status = result && result.status;
+        // R03: Đọc cả state và status chuẩn hóa từ shared adapter
+        const state = result && (result.state || result.status);
         clear(wrap);
-        wrap.appendChild(h("p", { class: "fb-page__note", role: "status" },
-          status === "sent"
-            ? "Máy chủ xác nhận lượt gửi này thành công — không cần gửi lại."
-            : `Máy chủ báo trạng thái: ${status || "không rõ"}. Chưa xác nhận được — không gửi lại ngay.`));
+        if (state === "sent") {
+          wrap.appendChild(h("p", { class: "fb-page__note", role: "status" },
+            "Máy chủ xác nhận lượt gửi này thành công — không cần gửi lại."));
+          statusNote.textContent = "Phản hồi đã rời thiết bị của bạn qua xác nhận gửi.";
+          sendBtn.disabled = true;
+          sending.busy = true;
+        } else {
+          wrap.appendChild(h("p", { class: "fb-page__note", role: "status" },
+            `Máy chủ báo trạng thái: ${state || "không rõ"}. Chưa xác nhận được — không gửi lại ngay.`));
+          if (state === "not_found") {
+            sending.busy = false;
+            sendBtn.disabled = !textarea.value.trim();
+          }
+        }
       })
       .catch(() => {
         clear(wrap);
@@ -456,18 +509,59 @@ function renderThread(body, ctx, { demo, thread, namesById, role, stale }) {
       chipsNote.textContent = "Chưa lấy được gợi ý nhanh — bạn vẫn viết phản hồi tự do bên dưới.";
     });
 
-  // ---- AI (F04): cổng THẬT qua aiStatus; tắt → không render nút ----
-  Promise.resolve()
-    .then(() => ctx.adapter.aiStatus())
-    .then((aiStatus) => {
-      if (stale()) return;
-      // Hợp đồng C1: máy chủ trả {ai_enabled} — đọc đúng shape, không fallback
-      // shape lạ (R2A3-05). Lỗi fetch -> catch: không render nút, không tuyên bố.
-      const enabled = Boolean(aiStatus && aiStatus.ai_enabled === true);
-      if (!enabled) return; // trung thực: không có cổng thì không có nút
-      renderAiSlot(ctx, { aiSlot, textarea, stale, ai, pageBody: body });
-    })
-    .catch(() => { /* không có trạng thái AI → không nút */ });
+  // ---- AI (F04): Cổng thật qua aiStatus; trạng thái trung thực (docs/02) ----
+  function checkAiStatus() {
+    clear(aiSlot);
+    Promise.resolve()
+      .then(() => ctx.adapter.aiStatus())
+      .then((aiStatus) => {
+        if (stale()) return;
+        clear(aiSlot);
+        const enabled = Boolean(aiStatus && aiStatus.ai_enabled === true);
+        if (enabled) {
+          renderAiSlot(ctx, { aiSlot, textarea, stale, ai, pageBody: body });
+        } else {
+          // AI chưa bật trên máy chủ: nút disabled kèm lý do trung thực
+          const disabledBtn = h("button", {
+            class: "fb-btn fb-btn--neutral",
+            type: "button",
+            disabled: true,
+            title: "Tính năng gợi ý AI chưa được bật trên máy chủ.",
+          },
+            createIcon({ name: "auto_awesome", size: 18 }),
+            h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
+          );
+          const note = h("p", { class: "fb-sec__sub", role: "status" },
+            "Cổng gợi ý AI chưa được bật trên máy chủ — nút sẽ mở khi máy chủ bật.");
+          aiSlot.appendChild(disabledBtn);
+          aiSlot.appendChild(note);
+        }
+      })
+      .catch(() => {
+        if (stale()) return;
+        clear(aiSlot);
+        const disabledBtn = h("button", {
+          class: "fb-btn fb-btn--neutral",
+          type: "button",
+          disabled: true,
+          title: "Chưa kiểm tra được trạng thái cổng gợi ý AI.",
+        },
+          createIcon({ name: "auto_awesome", size: 18 }),
+          h("span", {}, "AI gợi ý cách diễn đạt êm ái hơn"),
+        );
+        const note = h("p", { class: "fb-sec__sub", role: "status" },
+          "Chưa kiểm tra được trạng thái cổng gợi ý AI — bạn vẫn viết phản hồi tự do bên dưới.");
+        const retryBtn = createButton({
+          label: "Thử lại kết nối AI",
+          variant: "ghost",
+          onClick: () => checkAiStatus(),
+        });
+        aiSlot.appendChild(disabledBtn);
+        aiSlot.appendChild(note);
+        aiSlot.appendChild(retryBtn);
+      });
+  }
+  checkAiStatus();
 }
 
 /* --------------------------- AI gợi ý (chỉ điền textarea) --------------------------- */

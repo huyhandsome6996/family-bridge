@@ -91,6 +91,30 @@ class MessageApiTests(F05ApiBase):
             **auth_header(self.caregiver_token))
         self.assertEqual(reply.status_code, 201)
 
+        # sender cannot reply to own message via API (T07)
+        self_reply = self.client.post(
+            "/api/v1/messages",
+            {"kind": "quick_reply", "recipient_id": str(self.caregiver.pk),
+             "body": "con tự phản hồi", "reply_to": message_id},
+            format="json", HTTP_X_IDEMPOTENCY_KEY="reply-self-abcdef01",
+            **auth_header(self.student_token))
+        self.assertEqual(self_reply.status_code, 404)
+        self.assertEqual(self_reply.data["error"]["code"], "not_found")
+        self.assertEqual(self_reply.data["error"]["details"]["reason"], "reply_target_not_found")
+
+        # recipient replies but sets wrong recipient_id (third party C) (T08)
+        stranger = make_student()
+        make_test_connection(stranger, self.caregiver)
+        wrong_counterparty = self.client.post(
+            "/api/v1/messages",
+            {"kind": "quick_reply", "recipient_id": str(stranger.pk),
+             "body": "nhầm người nhận", "reply_to": message_id},
+            format="json", HTTP_X_IDEMPOTENCY_KEY="reply-wrong-abcdef01",
+            **auth_header(self.caregiver_token))
+        self.assertEqual(wrong_counterparty.status_code, 404)
+        self.assertEqual(wrong_counterparty.data["error"]["code"], "not_found")
+        self.assertEqual(wrong_counterparty.data["error"]["details"]["reason"], "reply_target_not_found")
+
     def test_send_requires_idempotency_key(self):
         response = self.client.post(
             "/api/v1/messages",

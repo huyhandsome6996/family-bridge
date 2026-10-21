@@ -533,7 +533,7 @@ function openSendSheet(ctx, card, data) {
     Promise.resolve()
       .then(() => ctx.adapter.lookupOperation(key))
       .then((result) => {
-        const status = result && result.status;
+        const status = result && (result.state || result.status);
         const line = status === "sent"
           ? "Máy chủ xác nhận lượt gửi này ĐÃ thành công — không cần gửi lại."
           : `Máy chủ báo trạng thái: ${status || "không rõ"}. Chưa xác nhận được lần gửi — không gửi lại ngay.`;

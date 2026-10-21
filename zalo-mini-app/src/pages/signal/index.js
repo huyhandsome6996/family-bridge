@@ -123,7 +123,7 @@ export const page = {
         .then((pageData) => {
           if (cancelled || currentRun !== runId) return;
           const rows = (pageData && Array.isArray(pageData.results) ? pageData.results : [])
-            .filter((row) => row && row.kind === "listening_signal");
+            .filter((row) => row && row.kind === "listening_signal" && row.direction === "received");
           renderCaregiver(body, ctx, { demo, rows, reload: () => rerun(ctx) });
         })
         .catch((error) => {
@@ -525,7 +525,7 @@ function renderStudent(body, ctx, { demo, metaNeeds, connections }) {
     Promise.resolve()
       .then(() => ctx.adapter.lookupOperation(key))
       .then((result) => {
-        const status = result && result.status;
+        const status = result && (result.state || result.status);
         wrap.appendChild(h("p", { class: "fb-page__note", role: "status" },
           status === "sent"
             ? "Máy chủ xác nhận lượt phát này ĐÃ thành công — không cần phát lại."
