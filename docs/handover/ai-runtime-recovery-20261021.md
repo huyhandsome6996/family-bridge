@@ -15,6 +15,11 @@ live build `ae022e4e0149c61be4fb3b33b2b0980c5374fba0`, deploy
 `dep-dbc0ekbncjis73ei6p5g`. Health/ready 200 do not prove latest main is live
 or AI is enabled. No Gemini error has yet been confirmed in production.
 
+AI status checks with locally supplied test-roster credentials confirmed
+both student and caregiver login HTTP 200 and ai_enabled=false (status
+HTTP 200); both sessions were logged out. No consent was submitted and no
+provider request/message was generated.
+
 The unsafe seed looked up accounts by a new external_ref while supplying
 login_code only in create defaults. Existing codes with earlier references
 therefore collided. It also deleted lockout history, embedded a shared
@@ -43,6 +48,11 @@ and never calls Gemini during startup/migration/health. Runtime AI still
 requires explicit enablement, a supported model and a valid server key.
 Server-only environment placeholders are documented in backend/.env.example.
 
+CI's schema drift guard also exposed that ContentItem's model Meta omitted
+the unique constraint already created by admin_core.0002. Restore that exact
+model declaration; makemigrations --check reports no changes. This does not
+create/drop a database constraint or add a schema migration.
+
 ## Runtime procedure
 
 Huy explicitly requested keeping the existing Render Gemini key on
@@ -60,16 +70,18 @@ only confirms wiring, not provider acceptance. See the official
 After reviewed code is merged/deployed: monitor the exact deploy ID until
 live, inspect the F04 booleans and Gunicorn listening, verify health/ready,
 then use an authenticated HS/PH session for status and one non-sensitive
-refine with current consent/idempotency. No current authenticated user
-session has been supplied to this agent; real HS/PH/Gemini/device checks
-must remain NOT_RUN until exercised. Accepting a suggestion must only fill
+refine with current consent/idempotency. HS/PH auth/status was exercised with
+the local roster; real Gemini/device checks remain NOT_RUN until exercised.
+Accepting a suggestion must only fill
 the composer; manual responses and explicit send remain available.
 
 ## Evidence and bounds
 
 - Full feature-lab: 806 tests, 788 PASS, 18 SKIP (SQLite; provider/MySQL gates).
 - Real backend settings: core probes/classroom integration + migration
-  regression, 13/13 PASS on SQLite.
+  regression, 13/13 PASS on SQLite; full foundation suite 51 PASS, 2 SKIP.
+  Schema drift check reports no changes.
+- Admin/F04/F16 regression after model alignment: 202 PASS, 9 SKIP.
 - Prior focused AI UI run: web 49/49, Mini App 51/51 PASS (browser test DOM).
 - Diff whitespace checks pass. Local document checker reports the known
   Taste raw-checksum mismatch from CRLF checkout; Linux CI checks separately.
