@@ -73,6 +73,26 @@ class ProviderWiringTests(TestCase):
             self.assertTrue(configure_from_settings())
         self.assertIsInstance(registry.get_ai_provider(), GeminiProvider)
 
+    def test_startup_diagnosis_is_safe_and_performs_no_provider_request(self):
+        with _settings(FB_AI_ENABLED=False), mock.patch(
+                "urllib.request.urlopen", side_effect=AssertionError("no network at startup")), \
+                self.assertLogs("family_bridge_features.f04_ai.services.wiring", level="INFO") as logs:
+            self.assertFalse(configure_from_settings())
+        line = " ".join(logs.output)
+        self.assertIn("enabled=False", line)
+        self.assertIn("key_present=True", line)
+        self.assertIn("provider_wired=False", line)
+        self.assertNotIn(CANARY_KEY, line)
+
+    def test_invalid_model_diagnosis_does_not_echo_untrusted_config(self):
+        with _settings(GEMINI_MODEL="private-config-canary"), self.assertLogs(
+                "family_bridge_features.f04_ai.services.wiring", level="INFO") as logs:
+            self.assertFalse(configure_from_settings())
+        line = " ".join(logs.output)
+        self.assertIn("model_supported=False", line)
+        self.assertNotIn("private-config-canary", line)
+        self.assertNotIn(CANARY_KEY, line)
+
     def test_provider_wiring_never_raises_on_broken_settings_object(self):
         class Broken:
             FB_AI_ENABLED = property(lambda self: (_ for _ in ()).throw(

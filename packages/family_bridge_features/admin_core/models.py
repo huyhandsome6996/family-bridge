@@ -123,6 +123,12 @@ class ContentItem(models.Model):
 
     class Meta:
         app_label = "admin_core"
+        # Already created by 0002_content_key_revision_unique. Keep model
+        # metadata aligned so makemigrations cannot silently propose its removal.
+        constraints = [
+            models.UniqueConstraint(fields=["content_key", "revision"],
+                                    name="uniq_content_key_revision"),
+        ]
         indexes = [
             models.Index(fields=["status", "updated_at"]),
         ]
